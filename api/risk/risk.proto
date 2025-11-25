@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package risk;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/risk;risk";
+
+// 风险管理服务
+service RiskService {
+  // 评估风险
+  rpc AssessRisk(AssessRiskRequest) returns (RiskAssessmentResponse);
+  // 获取风险指标
+  rpc GetRiskMetrics(GetRiskMetricsRequest) returns (RiskMetricsResponse);
+  // 检查风险限额
+  rpc CheckRiskLimit(CheckRiskLimitRequest) returns (RiskLimitResponse);
+  // 获取风险警告
+  rpc GetRiskAlerts(GetRiskAlertsRequest) returns (RiskAlertsResponse);
+}
+
+message AssessRiskRequest {
+  string user_id = 1;
+  string symbol = 2;
+  string side = 3;
+  string quantity = 4;
+  string price = 5;
+}
+
+message RiskAssessmentResponse {
+  string risk_level = 1; // LOW, MEDIUM, HIGH, CRITICAL
+  string risk_score = 2;
+  string margin_requirement = 3;
+  bool is_allowed = 4;
+  string reason = 5;
+}
+
+message GetRiskMetricsRequest {
+  string user_id = 1;
+}
+
+message RiskMetricsResponse {
+  string var_95 = 1; // Value at Risk
+  string var_99 = 2;
+  string max_drawdown = 3;
+  string sharpe_ratio = 4;
+  string correlation = 5;
+}
+
+message CheckRiskLimitRequest {
+  string user_id = 1;
+  string limit_type = 2; // POSITION_SIZE, DAILY_LOSS, LEVERAGE
+}
+
+message RiskLimitResponse {
+  string limit_type = 1;
+  string limit_value = 2;
+  string current_value = 3;
+  string remaining = 4;
+  bool is_exceeded = 5;
+}
+
+message GetRiskAlertsRequest {
+  string user_id = 1;
+}
+
+message RiskAlert {
+  string alert_id = 1;
+  string alert_type = 2;
+  string severity = 3;
+  string message = 4;
+  int64 timestamp = 5;
+}
+
+message RiskAlertsResponse {
+  repeated RiskAlert alerts = 1;
+}

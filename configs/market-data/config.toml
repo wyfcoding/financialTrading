@@ -1,0 +1,94 @@
+# MarketDataService 配置文件
+# 支持环境变量覆盖：APP_<SECTION>_<KEY> 格式
+# 例如：APP_HTTP_PORT=8081 会覆盖 http.port 配置
+
+# 服务基本信息
+service_name = "market-data-service"
+version = "1.0.0"
+environment = "dev" # dev, staging, prod
+
+# HTTP 服务配置
+[http]
+host = "0.0.0.0"
+port = 8080
+read_timeout = 30
+write_timeout = 30
+max_connections = 1000
+
+# gRPC 服务配置
+[grpc]
+host = "0.0.0.0"
+port = 50051
+max_concurrent_streams = 1000
+idle_timeout = 300
+
+# 数据库配置
+[database]
+driver = "mysql"
+# DSN 格式：user:password@tcp(host:port)/dbname?charset=utf8mb4&parseTime=True&loc=Local
+dsn = "root:password@tcp(localhost:3306)/trading_system?charset=utf8mb4&parseTime=True&loc=Local"
+max_open_conns = 25
+max_idle_conns = 5
+conn_max_lifetime = 300
+log_enabled = false
+slow_query_threshold = 1000
+
+# Redis 缓存配置
+[redis]
+host = "localhost"
+port = 6379
+password = ""
+db = 0
+max_pool_size = 10
+conn_timeout = 5
+read_timeout = 3
+write_timeout = 3
+
+# Kafka 消息队列配置
+[kafka]
+brokers = ["localhost:9092"]
+group_id = "market-data-service"
+partitions = 3
+replication = 1
+session_timeout = 10
+
+# 日志配置
+[logger]
+level = "info"
+format = "json"
+output = "stdout"
+file_path = "logs/market-data-service.log"
+max_size = 100
+max_backups = 10
+max_age = 30
+compress = true
+with_caller = true
+with_stacktrace = false
+
+# 追踪配置
+[tracing]
+enabled = true
+type = "jaeger"
+jaeger_endpoint = "http://localhost:14268/api/traces"
+sampling_rate = 0.1
+
+# 指标配置
+[metrics]
+enabled = true
+port = 9090
+path = "/metrics"
+
+# 市场数据服务特定配置
+[market_data]
+# 行情数据保留天数
+quote_retention_days = 30
+# K 线数据保留天数
+kline_retention_days = 365
+# 订单簿快照保留小时数
+orderbook_retention_hours = 24
+# 交易记录保留天数
+trade_retention_days = 90
+# 行情更新频率（毫秒）
+quote_update_interval = 1000
+# 是否启用实时推送
+enable_realtime_push = true

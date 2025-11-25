@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package monitoring_analytics;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/monitoring-analytics;monitoring_analytics";
+
+import "google/protobuf/timestamp.proto";
+
+// MonitoringAnalyticsService 提供监控和分析服务
+service MonitoringAnalyticsService {
+  // 记录指标
+  rpc RecordMetric (RecordMetricRequest) returns (RecordMetricResponse);
+  // 获取指标
+  rpc GetMetrics (GetMetricsRequest) returns (GetMetricsResponse);
+  // 获取系统健康状态
+  rpc GetSystemHealth (GetSystemHealthRequest) returns (GetSystemHealthResponse);
+}
+
+message Metric {
+  string name = 1;
+  double value = 2;
+  map<string, string> tags = 3;
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+message SystemHealth {
+  string service_name = 1;
+  string status = 2; // UP, DOWN, DEGRADED
+  string message = 3;
+  google.protobuf.Timestamp last_checked = 4;
+}
+
+message RecordMetricRequest {
+  Metric metric = 1;
+}
+
+message RecordMetricResponse {
+  bool success = 1;
+}
+
+message GetMetricsRequest {
+  string name = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+}
+
+message GetMetricsResponse {
+  repeated Metric metrics = 1;
+}
+
+message GetSystemHealthRequest {
+  string service_name = 1; // Optional, if empty return all
+}
+
+message GetSystemHealthResponse {
+  repeated SystemHealth health_statuses = 1;
+}

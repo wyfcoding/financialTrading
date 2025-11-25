@@ -1,0 +1,132 @@
+package infrastructure
+
+import (
+	"context"
+	"encoding/json"
+	"time"
+
+	"github.com/fynnwu/FinancialTrading/internal/monitoring-analytics/domain"
+	"gorm.io/gorm"
+)
+
+// MetricModel 指标数据库模型
+type MetricModel struct {
+	gorm.Model
+	Name      string    `gorm:"column:name;type:varchar(100);index;not null;comment:指标名称"`
+	Value     float64   `gorm:"column:value;type:decimal(20,8);not null;comment:指标值"`
+	Tags      string    `gorm:"column:tags;type:text;comment:标签JSON"`
+	Timestamp time.Time `gorm:"column:timestamp;index;not null;comment:时间戳"`
+}
+
+// TableName 指定表名
+func (MetricModel) TableName() string {
+	return "metrics"
+}
+
+// ToDomain 转换为领域实体
+func (m *MetricModel) ToDomain() *domain.Metric {
+	var tags map[string]string
+	_ = json.Unmarshal([]byte(m.Tags), &tags)
+	return &domain.Metric{
+		Name:      m.Name,
+		Value:     m.Value,
+		Tags:      tags,
+		Timestamp: m.Timestamp,
+	}
+}
+
+// MetricRepositoryImpl 指标仓储实现
+type MetricRepositoryImpl struct {
+	db *gorm.DB
+}
+
+func NewMetricRepository(db *gorm.DB) domain.MetricRepository {
+	return &MetricRepositoryImpl{db: db}
+}
+
+func (r *MetricRepositoryImpl) Save(ctx context.Context, metric *domain.Metric) error {
+	tagsJSON, _ := json.Marshal(metric.Tags)
+	model := &MetricModel{
+		Name:      metric.Name,
+		Value:     metric.Value,
+		Tags:      string(tagsJSON),
+		Timestamp: metric.Timestamp,
+	}
+	return r.db.WithContext(ctx).Create(model).Error
+}
+
+func (r *MetricRepositoryImpl) GetMetrics(ctx context.Context, name string, startTime, endTime time.Time) ([]*domain.Metric, error) {
+	var models []MetricModel
+	if err := r.db.WithContext(ctx).Where("name = ? AND timestamp BETWEEN ? AND ?", name, startTime, endTime).Find(&models).Error; err != nil {
+		return nil, err
+	}
+
+	metrics := make([]*domain.Metric, len(models))
+	for i, m := range models {
+		metrics[i] = m.ToDomain()
+	}
+	return metrics, nil
+}
+
+// SystemHealthModel 系统健康数据库模型
+type SystemHealthModel struct {
+	gorm.Model
+	ServiceName string    `gorm:"column:service_name;type:varchar(100);index;not null;comment:服务名称"`
+	Status      string    `gorm:"column:status;type:varchar(20);not null;comment:状态"`
+	Message     string    `gorm:"column:message;type:text;comment:消息"`
+	LastChecked time.Time `gorm:"column:last_checked;not null;comment:最后检查时间"`
+}
+
+// TableName 指定表名
+func (SystemHealthModel) TableName() string {
+	return "system_health"
+}
+
+// ToDomain 转换为领域实体
+func (m *SystemHealthModel) ToDomain() *domain.SystemHealth {
+	return &domain.SystemHealth{
+		ServiceName: m.ServiceName,
+		Status:      m.Status,
+		Message:     m.Message,
+		LastChecked: m.LastChecked,
+	}
+}
+
+// SystemHealthRepositoryImpl 系统健康仓储实现
+type SystemHealthRepositoryImpl struct {
+	db *gorm.DB
+}
+
+func NewSystemHealthRepository(db *gorm.DB) domain.SystemHealthRepository {
+	return &SystemHealthRepositoryImpl{db: db}
+}
+
+func (r *SystemHealthRepositoryImpl) Save(ctx context.Context, health *domain.SystemHealth) error {
+	model := &SystemHealthModel{
+		ServiceName: health.ServiceName,
+		Status:      health.Status,
+		Message:     health.Message,
+		LastChecked: health.LastChecked,
+	}
+	return r.db.WithContext(ctx).Create(model).Error
+}
+
+func (r *SystemHealthRepositoryImpl) GetLatestHealth(ctx context.Context, serviceName string) ([]*domain.SystemHealth, error) {
+	var models []SystemHealthModel
+	query := r.db.WithContext(ctx)
+	if serviceName != "" {
+		query = query.Where("service_name = ?", serviceName)
+	}
+
+	// 获取每个服务的最新状态（简化实现：直接获取所有记录，实际应分组取最新）
+	// 这里为了演示简单，只获取最近的100条
+	if err := query.Order("last_checked desc").Limit(100).Find(&models).Error; err != nil {
+		return nil, err
+	}
+
+	healths := make([]*domain.SystemHealth, len(models))
+	for i, m := range models {
+		healths[i] = m.ToDomain()
+	}
+	return healths, nil
+}

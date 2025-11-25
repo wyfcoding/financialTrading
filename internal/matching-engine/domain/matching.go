@@ -1,0 +1,67 @@
+// Package domain 包含撮合引擎的领域模型
+package domain
+
+import (
+	"github.com/fynnwu/FinancialTrading/pkg/algos"
+	"github.com/shopspring/decimal"
+)
+
+// MatchingResult 撮合结果
+type MatchingResult struct {
+	// 订单 ID
+	OrderID string
+	// 成交列表
+	Trades []*algos.Trade
+	// 剩余数量
+	RemainingQuantity decimal.Decimal
+	// 状态
+	Status string
+}
+
+// OrderBookSnapshot 订单簿快照
+type OrderBookSnapshot struct {
+	// 交易对
+	Symbol string
+	// 买单
+	Bids []*OrderBookLevel
+	// 卖单
+	Asks []*OrderBookLevel
+	// 时间戳
+	Timestamp int64
+}
+
+// OrderBookLevel 订单簿层级
+type OrderBookLevel struct {
+	// 价格
+	Price decimal.Decimal
+	// 数量
+	Quantity decimal.Decimal
+}
+
+// MatchingEngine 撮合引擎接口
+type MatchingEngine interface {
+	// 提交订单进行撮合
+	SubmitOrder(order *algos.Order) *MatchingResult
+	// 获取订单簿快照
+	GetOrderBook(symbol string, depth int) *OrderBookSnapshot
+	// 获取成交历史
+	GetTrades(symbol string, limit int) []*algos.Trade
+}
+
+// TradeRepository 成交记录仓储接口
+type TradeRepository interface {
+	// 保存成交记录
+	Save(trade *algos.Trade) error
+	// 获取成交历史
+	GetHistory(symbol string, limit int) ([]*algos.Trade, error)
+	// 获取最新成交
+	GetLatest(symbol string, limit int) ([]*algos.Trade, error)
+}
+
+// OrderBookRepository 订单簿仓储接口
+type OrderBookRepository interface {
+	// 保存订单簿快照
+	SaveSnapshot(snapshot *OrderBookSnapshot) error
+	// 获取最新订单簿
+	GetLatest(symbol string) (*OrderBookSnapshot, error)
+}

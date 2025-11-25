@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package pricing;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/pricing;pricing";
+
+import "google/protobuf/timestamp.proto";
+
+// PricingService 提供期权定价与希腊字母计算服务
+service PricingService {
+  // 获取期权价格
+  rpc GetOptionPrice (GetOptionPriceRequest) returns (GetOptionPriceResponse);
+  // 获取希腊字母
+  rpc GetGreeks (GetGreeksRequest) returns (GetGreeksResponse);
+}
+
+message OptionContract {
+  string symbol = 1;
+  string type = 2; // CALL, PUT
+  double strike_price = 3;
+  google.protobuf.Timestamp expiry_date = 4;
+}
+
+message Greeks {
+  double delta = 1;
+  double gamma = 2;
+  double theta = 3;
+  double vega = 4;
+  double rho = 5;
+}
+
+message GetOptionPriceRequest {
+  OptionContract contract = 1;
+  double underlying_price = 2;
+  double volatility = 3;
+  double risk_free_rate = 4;
+}
+
+message GetOptionPriceResponse {
+  double price = 1;
+  google.protobuf.Timestamp calculation_time = 2;
+}
+
+message GetGreeksRequest {
+  OptionContract contract = 1;
+  double underlying_price = 2;
+  double volatility = 3;
+  double risk_free_rate = 4;
+}
+
+message GetGreeksResponse {
+  Greeks greeks = 1;
+  google.protobuf.Timestamp calculation_time = 2;
+}

@@ -1,0 +1,103 @@
+package interfaces
+
+import (
+	"context"
+
+	pb "github.com/fynnwu/FinancialTrading/go-api/quant"
+	"github.com/fynnwu/FinancialTrading/internal/quant/application"
+	"github.com/fynnwu/FinancialTrading/internal/quant/domain"
+	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+// GRPCHandler gRPC 处理器
+type GRPCHandler struct {
+	pb.UnimplementedQuantServiceServer
+	app *application.QuantService
+}
+
+// NewGRPCHandler 创建 gRPC 处理器实例
+func NewGRPCHandler(app *application.QuantService) *GRPCHandler {
+	return &GRPCHandler{app: app}
+}
+
+// CreateStrategy 创建策略
+func (h *GRPCHandler) CreateStrategy(ctx context.Context, req *pb.CreateStrategyRequest) (*pb.CreateStrategyResponse, error) {
+	id, err := h.app.CreateStrategy(ctx, req.Name, req.Description, req.Script)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.CreateStrategyResponse{
+		StrategyId: id,
+	}, nil
+}
+
+// GetStrategy 获取策略
+func (h *GRPCHandler) GetStrategy(ctx context.Context, req *pb.GetStrategyRequest) (*pb.GetStrategyResponse, error) {
+	strategy, err := h.app.GetStrategy(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	if strategy == nil {
+		return &pb.GetStrategyResponse{}, nil
+	}
+
+	return &pb.GetStrategyResponse{
+		Strategy: toProtoStrategy(strategy),
+	}, nil
+}
+
+// RunBacktest 运行回测
+func (h *GRPCHandler) RunBacktest(ctx context.Context, req *pb.RunBacktestRequest) (*pb.RunBacktestResponse, error) {
+	id, err := h.app.RunBacktest(ctx, req.StrategyId, req.Symbol, req.StartTime.AsTime(), req.EndTime.AsTime(), req.InitialCapital)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.RunBacktestResponse{
+		BacktestId: id,
+	}, nil
+}
+
+// GetBacktestResult 获取回测结果
+func (h *GRPCHandler) GetBacktestResult(ctx context.Context, req *pb.GetBacktestResultRequest) (*pb.GetBacktestResultResponse, error) {
+	result, err := h.app.GetBacktestResult(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	if result == nil {
+		return &pb.GetBacktestResultResponse{}, nil
+	}
+
+	return &pb.GetBacktestResultResponse{
+		Result: toProtoBacktestResult(result),
+	}, nil
+}
+
+func toProtoStrategy(s *domain.Strategy) *pb.Strategy {
+	return &pb.Strategy{
+		Id:          s.ID,
+		Name:        s.Name,
+		Description: s.Description,
+		Script:      s.Script,
+		Status:      string(s.Status),
+		CreatedAt:   timestamppb.New(s.CreatedAt),
+		UpdatedAt:   timestamppb.New(s.UpdatedAt),
+	}
+}
+
+func toProtoBacktestResult(r *domain.BacktestResult) *pb.BacktestResult {
+	return &pb.BacktestResult{
+		Id:          r.ID,
+		StrategyId:  r.StrategyID,
+		Symbol:      r.Symbol,
+		StartTime:   timestamppb.New(r.StartTime),
+		EndTime:     timestamppb.New(r.EndTime),
+		TotalReturn: r.TotalReturn,
+		MaxDrawdown: r.MaxDrawdown,
+		SharpeRatio: r.SharpeRatio,
+		TotalTrades: int32(r.TotalTrades),
+		Status:      string(r.Status),
+		CreatedAt:   timestamppb.New(r.CreatedAt),
+	}
+}

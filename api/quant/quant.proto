@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package quant;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/quant;quant";
+
+import "google/protobuf/timestamp.proto";
+
+// QuantService 提供量化策略管理与回测服务
+service QuantService {
+  // 创建策略
+  rpc CreateStrategy (CreateStrategyRequest) returns (CreateStrategyResponse);
+  // 获取策略
+  rpc GetStrategy (GetStrategyRequest) returns (GetStrategyResponse);
+  // 运行回测
+  rpc RunBacktest (RunBacktestRequest) returns (RunBacktestResponse);
+  // 获取回测结果
+  rpc GetBacktestResult (GetBacktestResultRequest) returns (GetBacktestResultResponse);
+}
+
+message Strategy {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string script = 4; // 策略脚本或配置
+  string status = 5; // ACTIVE, INACTIVE
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message BacktestResult {
+  string id = 1;
+  string strategy_id = 2;
+  string symbol = 3;
+  google.protobuf.Timestamp start_time = 4;
+  google.protobuf.Timestamp end_time = 5;
+  double total_return = 6;
+  double max_drawdown = 7;
+  double sharpe_ratio = 8;
+  int32 total_trades = 9;
+  string status = 10; // RUNNING, COMPLETED, FAILED
+  google.protobuf.Timestamp created_at = 11;
+}
+
+message CreateStrategyRequest {
+  string name = 1;
+  string description = 2;
+  string script = 3;
+}
+
+message CreateStrategyResponse {
+  string strategy_id = 1;
+}
+
+message GetStrategyRequest {
+  string id = 1;
+}
+
+message GetStrategyResponse {
+  Strategy strategy = 1;
+}
+
+message RunBacktestRequest {
+  string strategy_id = 1;
+  string symbol = 2;
+  google.protobuf.Timestamp start_time = 3;
+  google.protobuf.Timestamp end_time = 4;
+  double initial_capital = 5;
+}
+
+message RunBacktestResponse {
+  string backtest_id = 1;
+}
+
+message GetBacktestResultRequest {
+  string id = 1;
+}
+
+message GetBacktestResultResponse {
+  BacktestResult result = 1;
+}

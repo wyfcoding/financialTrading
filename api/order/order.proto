@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+package order;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/order;order";
+
+// 订单服务
+service OrderService {
+  // 创建订单
+  rpc CreateOrder(CreateOrderRequest) returns (OrderResponse);
+  // 取消订单
+  rpc CancelOrder(CancelOrderRequest) returns (OrderResponse);
+  // 修改订单
+  rpc ModifyOrder(ModifyOrderRequest) returns (OrderResponse);
+  // 获取订单详情
+  rpc GetOrder(GetOrderRequest) returns (OrderResponse);
+  // 获取订单列表
+  rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse);
+  // 订阅订单更新（流式）
+  rpc SubscribeOrders(SubscribeOrdersRequest) returns (stream OrderUpdate);
+}
+
+// 创建订单请求
+message CreateOrderRequest {
+  string user_id = 1;
+  string symbol = 2;
+  string side = 3; // BUY or SELL
+  string order_type = 4; // LIMIT, MARKET, STOP_LOSS, TAKE_PROFIT
+  string price = 5;
+  string quantity = 6;
+  string time_in_force = 7; // GTC, IOC, FOK
+  string client_order_id = 8;
+}
+
+// 订单响应
+message OrderResponse {
+  string order_id = 1;
+  string user_id = 2;
+  string symbol = 3;
+  string side = 4;
+  string order_type = 5;
+  string price = 6;
+  string quantity = 7;
+  string filled_quantity = 8;
+  string status = 9; // PENDING, OPEN, PARTIALLY_FILLED, FILLED, CANCELLED, REJECTED
+  string time_in_force = 10;
+  int64 created_at = 11;
+  int64 updated_at = 12;
+  string error_message = 13;
+}
+
+// 取消订单请求
+message CancelOrderRequest {
+  string order_id = 1;
+  string user_id = 2;
+}
+
+// 修改订单请求
+message ModifyOrderRequest {
+  string order_id = 1;
+  string user_id = 2;
+  string price = 3;
+  string quantity = 4;
+}
+
+// 获取订单请求
+message GetOrderRequest {
+  string order_id = 1;
+  string user_id = 2;
+}
+
+// 获取订单列表请求
+message ListOrdersRequest {
+  string user_id = 1;
+  string symbol = 2;
+  string status = 3;
+  int32 page = 4;
+  int32 page_size = 5;
+}
+
+// 订单列表响应
+message ListOrdersResponse {
+  repeated OrderResponse orders = 1;
+  int64 total = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+// 订阅订单请求
+message SubscribeOrdersRequest {
+  string user_id = 1;
+  repeated string symbols = 2;
+}
+
+// 订单更新
+message OrderUpdate {
+  string order_id = 1;
+  string user_id = 2;
+  string symbol = 3;
+  string status = 4;
+  string filled_quantity = 5;
+  int64 timestamp = 6;
+}

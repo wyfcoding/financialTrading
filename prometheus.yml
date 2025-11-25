@@ -1,0 +1,101 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'trading-system'
+
+scrape_configs:
+  # Prometheus 自身
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # MarketDataService
+  - job_name: 'market-data-service'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: '/metrics'
+
+  # OrderService
+  - job_name: 'order-service'
+    static_configs:
+      - targets: ['localhost:9091']
+    metrics_path: '/metrics'
+
+  # MatchingEngineService
+  - job_name: 'matching-engine-service'
+    static_configs:
+      - targets: ['localhost:9092']
+    metrics_path: '/metrics'
+
+  # ExecutionService
+  - job_name: 'execution-service'
+    static_configs:
+      - targets: ['localhost:9093']
+    metrics_path: '/metrics'
+
+  # AccountService
+  - job_name: 'account-service'
+    static_configs:
+      - targets: ['localhost:9094']
+    metrics_path: '/metrics'
+
+  # PositionService
+  - job_name: 'position-service'
+    static_configs:
+      - targets: ['localhost:9095']
+    metrics_path: '/metrics'
+
+  # RiskService
+  - job_name: 'risk-service'
+    static_configs:
+      - targets: ['localhost:9096']
+    metrics_path: '/metrics'
+
+  # ClearingService
+  - job_name: 'clearing-service'
+    static_configs:
+      - targets: ['localhost:9097']
+    metrics_path: '/metrics'
+
+  # ReferenceDataService
+  - job_name: 'reference-data-service'
+    static_configs:
+      - targets: ['localhost:9098']
+    metrics_path: '/metrics'
+
+  # NotificationService
+  - job_name: 'notification-service'
+    static_configs:
+      - targets: ['localhost:9099']
+    metrics_path: '/metrics'
+
+  # QuantService
+  - job_name: 'quant-service'
+    static_configs:
+      - targets: ['localhost:9100']
+    metrics_path: '/metrics'
+
+  # MarketSimulationService
+  - job_name: 'market-simulation-service'
+    static_configs:
+      - targets: ['localhost:9101']
+    metrics_path: '/metrics'
+
+  # PricingService
+  - job_name: 'pricing-service'
+    static_configs:
+      - targets: ['localhost:9102']
+    metrics_path: '/metrics'
+
+  # MarketMakingService
+  - job_name: 'market-making-service'
+    static_configs:
+      - targets: ['localhost:9103']
+    metrics_path: '/metrics'
+
+  # MonitoringAnalyticsService
+  - job_name: 'monitoring-analytics-service'
+    static_configs:
+      - targets: ['localhost:9104']
+    metrics_path: '/metrics'

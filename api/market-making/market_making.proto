@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package market_making;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/market-making;market_making";
+
+import "google/protobuf/timestamp.proto";
+
+// MarketMakingService 提供做市策略管理服务
+service MarketMakingService {
+  // 设置做市策略
+  rpc SetStrategy (SetStrategyRequest) returns (SetStrategyResponse);
+  // 获取做市策略
+  rpc GetStrategy (GetStrategyRequest) returns (GetStrategyResponse);
+  // 获取做市绩效
+  rpc GetPerformance (GetPerformanceRequest) returns (GetPerformanceResponse);
+}
+
+message QuoteStrategy {
+  string id = 1;
+  string symbol = 2;
+  double spread = 3; // 目标点差
+  double min_order_size = 4;
+  double max_order_size = 5;
+  double max_position = 6;
+  string status = 7; // ACTIVE, PAUSED
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message MarketMakingPerformance {
+  string symbol = 1;
+  double total_pnl = 2;
+  double total_volume = 3;
+  int32 total_trades = 4;
+  double sharpe_ratio = 5;
+  google.protobuf.Timestamp start_time = 6;
+  google.protobuf.Timestamp end_time = 7;
+}
+
+message SetStrategyRequest {
+  string symbol = 1;
+  double spread = 2;
+  double min_order_size = 3;
+  double max_order_size = 4;
+  double max_position = 5;
+  string status = 6;
+}
+
+message SetStrategyResponse {
+  string strategy_id = 1;
+}
+
+message GetStrategyRequest {
+  string symbol = 1;
+}
+
+message GetStrategyResponse {
+  QuoteStrategy strategy = 1;
+}
+
+message GetPerformanceRequest {
+  string symbol = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+}
+
+message GetPerformanceResponse {
+  MarketMakingPerformance performance = 1;
+}

@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package account;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/account;account";
+
+// 账户服务
+service AccountService {
+  // 创建账户
+  rpc CreateAccount(CreateAccountRequest) returns (AccountResponse);
+  // 获取账户信息
+  rpc GetAccount(GetAccountRequest) returns (AccountResponse);
+  // 更新账户信息
+  rpc UpdateAccount(UpdateAccountRequest) returns (AccountResponse);
+  // 获取账户余额
+  rpc GetBalance(GetBalanceRequest) returns (BalanceResponse);
+  // 充值
+  rpc Deposit(DepositRequest) returns (TransactionResponse);
+  // 提现
+  rpc Withdraw(WithdrawRequest) returns (TransactionResponse);
+  // 获取交易历史
+  rpc GetTransactionHistory(GetTransactionHistoryRequest) returns (TransactionHistoryResponse);
+}
+
+message CreateAccountRequest {
+  string user_id = 1;
+  string account_type = 2;
+  string currency = 3;
+}
+
+message AccountResponse {
+  string account_id = 1;
+  string user_id = 2;
+  string account_type = 3;
+  string currency = 4;
+  string balance = 5;
+  string available_balance = 6;
+  int64 created_at = 7;
+  int64 updated_at = 8;
+}
+
+message GetAccountRequest {
+  string account_id = 1;
+  string user_id = 2;
+}
+
+message UpdateAccountRequest {
+  string account_id = 1;
+  string user_id = 2;
+  map<string, string> updates = 3;
+}
+
+message GetBalanceRequest {
+  string account_id = 1;
+  string user_id = 2;
+}
+
+message BalanceResponse {
+  string account_id = 1;
+  string balance = 2;
+  string available_balance = 3;
+  string frozen_balance = 4;
+  int64 timestamp = 5;
+}
+
+message DepositRequest {
+  string account_id = 1;
+  string user_id = 2;
+  string amount = 3;
+  string currency = 4;
+}
+
+message WithdrawRequest {
+  string account_id = 1;
+  string user_id = 2;
+  string amount = 3;
+  string currency = 4;
+  string address = 5;
+}
+
+message TransactionResponse {
+  string transaction_id = 1;
+  string account_id = 2;
+  string type = 3;
+  string amount = 4;
+  string status = 5;
+  int64 timestamp = 6;
+}
+
+message GetTransactionHistoryRequest {
+  string account_id = 1;
+  string user_id = 2;
+  int32 limit = 3;
+}
+
+message Transaction {
+  string transaction_id = 1;
+  string type = 2;
+  string amount = 3;
+  string status = 4;
+  int64 timestamp = 5;
+}
+
+message TransactionHistoryResponse {
+  repeated Transaction transactions = 1;
+}

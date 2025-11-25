@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package execution;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/execution;execution";
+
+// 执行服务
+service ExecutionService {
+  // 执行订单
+  rpc ExecuteOrder(ExecuteOrderRequest) returns (ExecutionResponse);
+  // 获取执行历史
+  rpc GetExecutionHistory(GetExecutionHistoryRequest) returns (ExecutionHistoryResponse);
+  // 订阅执行更新（流式）
+  rpc SubscribeExecutions(SubscribeExecutionsRequest) returns (stream ExecutionUpdate);
+}
+
+message ExecuteOrderRequest {
+  string order_id = 1;
+  string user_id = 2;
+  string symbol = 3;
+  string side = 4;
+  string price = 5;
+  string quantity = 6;
+}
+
+message ExecutionResponse {
+  string execution_id = 1;
+  string order_id = 2;
+  string status = 3;
+  string executed_quantity = 4;
+  string executed_price = 5;
+  int64 timestamp = 6;
+  string error_message = 7;
+}
+
+message GetExecutionHistoryRequest {
+  string user_id = 1;
+  string symbol = 2;
+  int32 limit = 3;
+}
+
+message ExecutionRecord {
+  string execution_id = 1;
+  string order_id = 2;
+  string symbol = 3;
+  string executed_quantity = 4;
+  string executed_price = 5;
+  int64 timestamp = 6;
+}
+
+message ExecutionHistoryResponse {
+  repeated ExecutionRecord executions = 1;
+}
+
+message SubscribeExecutionsRequest {
+  string user_id = 1;
+}
+
+message ExecutionUpdate {
+  string execution_id = 1;
+  string order_id = 2;
+  string status = 3;
+  int64 timestamp = 4;
+}

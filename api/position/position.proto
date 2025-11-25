@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package position;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/position;position";
+
+// 持仓服务
+service PositionService {
+  // 获取持仓列表
+  rpc GetPositions(GetPositionsRequest) returns (PositionsResponse);
+  // 获取持仓详情
+  rpc GetPosition(GetPositionRequest) returns (PositionResponse);
+  // 获取持仓汇总
+  rpc GetPositionSummary(GetPositionSummaryRequest) returns (PositionSummaryResponse);
+  // 平仓
+  rpc ClosePosition(ClosePositionRequest) returns (PositionResponse);
+}
+
+message GetPositionsRequest {
+  string user_id = 1;
+  string symbol = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message PositionResponse {
+  string position_id = 1;
+  string user_id = 2;
+  string symbol = 3;
+  string side = 4;
+  string quantity = 5;
+  string entry_price = 6;
+  string current_price = 7;
+  string unrealized_pnl = 8;
+  string realized_pnl = 9;
+  int64 opened_at = 10;
+  int64 closed_at = 11;
+}
+
+message PositionsResponse {
+  repeated PositionResponse positions = 1;
+  int64 total = 2;
+}
+
+message GetPositionRequest {
+  string position_id = 1;
+  string user_id = 2;
+}
+
+message GetPositionSummaryRequest {
+  string user_id = 1;
+}
+
+message PositionSummaryResponse {
+  int64 total_positions = 1;
+  string total_unrealized_pnl = 2;
+  string total_realized_pnl = 3;
+  repeated PositionResponse positions = 4;
+}
+
+message ClosePositionRequest {
+  string position_id = 1;
+  string user_id = 2;
+  string close_price = 3;
+}

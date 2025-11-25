@@ -1,0 +1,67 @@
+# OrderService 配置文件
+
+service_name = "order-service"
+version = "1.0.0"
+environment = "dev"
+
+[http]
+host = "0.0.0.0"
+port = 8081
+read_timeout = 30
+write_timeout = 30
+max_connections = 1000
+
+[grpc]
+host = "0.0.0.0"
+port = 50052
+max_concurrent_streams = 1000
+idle_timeout = 300
+
+[database]
+driver = "mysql"
+dsn = "root:password@tcp(localhost:3306)/trading_system?charset=utf8mb4&parseTime=True&loc=Local"
+max_open_conns = 25
+max_idle_conns = 5
+conn_max_lifetime = 300
+log_enabled = false
+slow_query_threshold = 1000
+
+[redis]
+host = "localhost"
+port = 6379
+password = ""
+db = 1
+max_pool_size = 10
+conn_timeout = 5
+read_timeout = 3
+write_timeout = 3
+
+[kafka]
+brokers = ["localhost:9092"]
+group_id = "order-service"
+partitions = 3
+replication = 1
+session_timeout = 10
+
+[logger]
+level = "info"
+format = "json"
+output = "stdout"
+file_path = "logs/order-service.log"
+max_size = 100
+max_backups = 10
+max_age = 30
+compress = true
+with_caller = true
+with_stacktrace = false
+
+[tracing]
+enabled = true
+type = "jaeger"
+jaeger_endpoint = "http://localhost:14268/api/traces"
+sampling_rate = 0.1
+
+[metrics]
+enabled = true
+port = 9091
+path = "/metrics"

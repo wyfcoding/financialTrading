@@ -1,0 +1,159 @@
+// Package application 包含市场数据服务的用例逻辑、DTO、事务边界与补偿策略
+package application
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/fynnwu/FinancialTrading/internal/market-data/domain"
+	"github.com/fynnwu/FinancialTrading/pkg/logger"
+	"github.com/shopspring/decimal"
+	"go.uber.org/zap"
+)
+
+// GetLatestQuoteRequest 获取最新行情请求 DTO
+type GetLatestQuoteRequest struct {
+	Symbol string
+}
+
+// QuoteDTO 行情数据 DTO
+type QuoteDTO struct {
+	Symbol    string
+	BidPrice  string
+	AskPrice  string
+	BidSize   string
+	AskSize   string
+	LastPrice string
+	LastSize  string
+	Timestamp int64
+	Source    string
+}
+
+// QuoteApplicationService 行情应用服务
+// 处理行情相关的用例逻辑
+type QuoteApplicationService struct {
+	quoteRepo domain.QuoteRepository
+}
+
+// NewQuoteApplicationService 创建行情应用服务
+func NewQuoteApplicationService(quoteRepo domain.QuoteRepository) *QuoteApplicationService {
+	return &QuoteApplicationService{
+		quoteRepo: quoteRepo,
+	}
+}
+
+// GetLatestQuote 获取最新行情
+// 用例流程：
+// 1. 验证交易对符号
+// 2. 从仓储获取最新行情
+// 3. 转换为 DTO 返回
+func (qas *QuoteApplicationService) GetLatestQuote(ctx context.Context, req *GetLatestQuoteRequest) (*QuoteDTO, error) {
+	// 记录操作开始
+	defer logger.WithContext(ctx).Info("GetLatestQuote completed", zap.String("symbol", req.Symbol))
+
+	// 验证输入
+	if req.Symbol == "" {
+		return nil, fmt.Errorf("symbol is required")
+	}
+
+	// 从仓储获取最新行情
+	quote, err := qas.quoteRepo.GetLatest(req.Symbol)
+	if err != nil {
+		logger.WithContext(ctx).Error("Failed to get latest quote",
+			zap.String("symbol", req.Symbol),
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to get latest quote: %w", err)
+	}
+
+	if quote == nil {
+		return nil, fmt.Errorf("quote not found for symbol: %s", req.Symbol)
+	}
+
+	// 转换为 DTO
+	return &QuoteDTO{
+		Symbol:    quote.Symbol,
+		BidPrice:  quote.BidPrice.String(),
+		AskPrice:  quote.AskPrice.String(),
+		BidSize:   quote.BidSize.String(),
+		AskSize:   quote.AskSize.String(),
+		LastPrice: quote.LastPrice.String(),
+		LastSize:  quote.LastSize.String(),
+		Timestamp: quote.Timestamp,
+		Source:    quote.Source,
+	}, nil
+}
+
+// SaveQuote 保存行情数据
+// 用例流程：
+// 1. 验证行情数据
+// 2. 创建领域对象
+// 3. 保存到仓储
+func (qas *QuoteApplicationService) SaveQuote(ctx context.Context, symbol string, bidPrice, askPrice, bidSize, askSize, lastPrice, lastSize decimal.Decimal, timestamp int64, source string) error {
+	// 验证输入
+	if symbol == "" {
+		return fmt.Errorf("symbol is required")
+	}
+
+	// 创建领域对象
+	quote := domain.NewQuote(symbol, bidPrice, askPrice, bidSize, askSize, lastPrice, lastSize, timestamp, source)
+
+	// 保存到仓储
+	if err := qas.quoteRepo.Save(quote); err != nil {
+		logger.WithContext(ctx).Error("Failed to save quote",
+			zap.String("symbol", symbol),
+			zap.Error(err),
+		)
+		return fmt.Errorf("failed to save quote: %w", err)
+	}
+
+	logger.WithContext(ctx).Debug("Quote saved successfully",
+		zap.String("symbol", symbol),
+		zap.Int64("timestamp", timestamp),
+	)
+
+	return nil
+}
+
+// GetHistoricalQuotes 获取历史行情
+// 用例流程：
+// 1. 验证时间范围
+// 2. 从仓储获取历史行情
+// 3. 转换为 DTO 列表返回
+func (qas *QuoteApplicationService) GetHistoricalQuotes(ctx context.Context, symbol string, startTime, endTime int64) ([]*QuoteDTO, error) {
+	// 验证输入
+	if symbol == "" {
+		return nil, fmt.Errorf("symbol is required")
+	}
+	if startTime >= endTime {
+		return nil, fmt.Errorf("startTime must be less than endTime")
+	}
+
+	// 从仓储获取历史行情
+	quotes, err := qas.quoteRepo.GetHistory(symbol, startTime, endTime)
+	if err != nil {
+		logger.WithContext(ctx).Error("Failed to get historical quotes",
+			zap.String("symbol", symbol),
+			zap.Error(err),
+		)
+		return nil, fmt.Errorf("failed to get historical quotes: %w", err)
+	}
+
+	// 转换为 DTO 列表
+	dtos := make([]*QuoteDTO, 0, len(quotes))
+	for _, quote := range quotes {
+		dtos = append(dtos, &QuoteDTO{
+			Symbol:    quote.Symbol,
+			BidPrice:  quote.BidPrice.String(),
+			AskPrice:  quote.AskPrice.String(),
+			BidSize:   quote.BidSize.String(),
+			AskSize:   quote.AskSize.String(),
+			LastPrice: quote.LastPrice.String(),
+			LastSize:  quote.LastSize.String(),
+			Timestamp: quote.Timestamp,
+			Source:    quote.Source,
+		})
+	}
+
+	return dtos, nil
+}

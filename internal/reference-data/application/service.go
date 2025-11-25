@@ -1,0 +1,73 @@
+package application
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/fynnwu/FinancialTrading/internal/reference-data/domain"
+	"github.com/fynnwu/FinancialTrading/pkg/logger"
+)
+
+// ReferenceDataService 应用服务
+type ReferenceDataService struct {
+	symbolRepo   domain.SymbolRepository
+	exchangeRepo domain.ExchangeRepository
+}
+
+// NewReferenceDataService 创建应用服务实例
+func NewReferenceDataService(symbolRepo domain.SymbolRepository, exchangeRepo domain.ExchangeRepository) *ReferenceDataService {
+	return &ReferenceDataService{
+		symbolRepo:   symbolRepo,
+		exchangeRepo: exchangeRepo,
+	}
+}
+
+// GetSymbol 获取交易对
+func (s *ReferenceDataService) GetSymbol(ctx context.Context, id string) (*domain.Symbol, error) {
+	symbol, err := s.symbolRepo.GetByID(ctx, id)
+	if err != nil {
+		logger.Error(ctx, "Failed to get symbol",
+			"symbol_id", id,
+			"error", err,
+		)
+		return nil, fmt.Errorf("failed to get symbol: %w", err)
+	}
+	return symbol, nil
+}
+
+// ListSymbols 列出交易对
+func (s *ReferenceDataService) ListSymbols(ctx context.Context, exchangeID string, status string, limit int, offset int) ([]*domain.Symbol, error) {
+	symbols, err := s.symbolRepo.List(ctx, exchangeID, status, limit, offset)
+	if err != nil {
+		logger.Error(ctx, "Failed to list symbols",
+			"exchange_id", exchangeID,
+			"status", status,
+			"error", err,
+		)
+		return nil, fmt.Errorf("failed to list symbols: %w", err)
+	}
+	return symbols, nil
+}
+
+// GetExchange 获取交易所
+func (s *ReferenceDataService) GetExchange(ctx context.Context, id string) (*domain.Exchange, error) {
+	exchange, err := s.exchangeRepo.GetByID(ctx, id)
+	if err != nil {
+		logger.Error(ctx, "Failed to get exchange",
+			"exchange_id", id,
+			"error", err,
+		)
+		return nil, fmt.Errorf("failed to get exchange: %w", err)
+	}
+	return exchange, nil
+}
+
+// ListExchanges 列出交易所
+func (s *ReferenceDataService) ListExchanges(ctx context.Context, limit int, offset int) ([]*domain.Exchange, error) {
+	exchanges, err := s.exchangeRepo.List(ctx, limit, offset)
+	if err != nil {
+		logger.Error(ctx, "Failed to list exchanges", "error", err)
+		return nil, fmt.Errorf("failed to list exchanges: %w", err)
+	}
+	return exchanges, nil
+}

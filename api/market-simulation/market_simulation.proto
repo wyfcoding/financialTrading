@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package market_simulation;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/market-simulation;market_simulation";
+
+import "google/protobuf/timestamp.proto";
+
+// MarketSimulationService 提供市场模拟服务
+service MarketSimulationService {
+  // 启动模拟
+  rpc StartSimulation (StartSimulationRequest) returns (StartSimulationResponse);
+  // 停止模拟
+  rpc StopSimulation (StopSimulationRequest) returns (StopSimulationResponse);
+  // 获取模拟状态
+  rpc GetSimulationStatus (GetSimulationStatusRequest) returns (GetSimulationStatusResponse);
+}
+
+message SimulationScenario {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string symbol = 4;
+  string type = 5; // RANDOM_WALK, REPLAY, SHOCK
+  string parameters = 6; // JSON string
+  string status = 7; // RUNNING, STOPPED
+  google.protobuf.Timestamp start_time = 8;
+  google.protobuf.Timestamp end_time = 9;
+}
+
+message StartSimulationRequest {
+  string name = 1;
+  string symbol = 2;
+  string type = 3;
+  string parameters = 4;
+}
+
+message StartSimulationResponse {
+  string simulation_id = 1;
+}
+
+message StopSimulationRequest {
+  string simulation_id = 1;
+}
+
+message StopSimulationResponse {
+  bool success = 1;
+}
+
+message GetSimulationStatusRequest {
+  string simulation_id = 1;
+}
+
+message GetSimulationStatusResponse {
+  SimulationScenario scenario = 1;
+}

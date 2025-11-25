@@ -1,0 +1,24 @@
+[server]
+name = "pricing-service"
+grpc_port = 50055
+http_port = 8084
+mode = "debug"
+
+[log]
+level = "info"
+format = "json"
+output = "stdout"
+
+[redis]
+addr = "localhost:6379"
+password = ""
+db = 0
+
+[etcd]
+endpoints = ["localhost:2379"]
+
+[jaeger]
+agent_host = "localhost"
+agent_port = 6831
+sampler_type = "const"
+sampler_param = 1.0

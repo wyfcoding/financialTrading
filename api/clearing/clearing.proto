@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package clearing;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/clearing;clearing";
+
+// 清算服务
+service ClearingService {
+  // 清算交易
+  rpc SettleTrade(SettleTradeRequest) returns (SettlementResponse);
+  // 获取清算记录
+  rpc GetSettlements(GetSettlementsRequest) returns (SettlementsResponse);
+  // 执行日终清算
+  rpc ExecuteEODClearing(ExecuteEODClearingRequest) returns (EODClearingResponse);
+  // 获取清算状态
+  rpc GetClearingStatus(GetClearingStatusRequest) returns (ClearingStatusResponse);
+}
+
+message SettleTradeRequest {
+  string trade_id = 1;
+  string buy_user_id = 2;
+  string sell_user_id = 3;
+  string symbol = 4;
+  string quantity = 5;
+  string price = 6;
+}
+
+message SettlementResponse {
+  string settlement_id = 1;
+  string trade_id = 2;
+  string status = 3;
+  int64 settlement_time = 4;
+  string error_message = 5;
+}
+
+message GetSettlementsRequest {
+  string user_id = 1;
+  int32 limit = 2;
+}
+
+message Settlement {
+  string settlement_id = 1;
+  string trade_id = 2;
+  string status = 3;
+  int64 settlement_time = 4;
+}
+
+message SettlementsResponse {
+  repeated Settlement settlements = 1;
+}
+
+message ExecuteEODClearingRequest {
+  string clearing_date = 1;
+}
+
+message EODClearingResponse {
+  string clearing_id = 1;
+  string status = 2;
+  int64 start_time = 3;
+  int64 end_time = 4;
+  int64 trades_settled = 5;
+}
+
+message GetClearingStatusRequest {
+  string clearing_id = 1;
+}
+
+message ClearingStatusResponse {
+  string clearing_id = 1;
+  string status = 2;
+  int64 progress_percentage = 3;
+  int64 trades_processed = 4;
+  int64 trades_total = 5;
+}
