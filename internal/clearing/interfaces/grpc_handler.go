@@ -3,8 +3,8 @@ package interfaces
 import (
 	"context"
 
-	pb "github.com/fynnwu/FinancialTrading/go-api/clearing"
-	"github.com/fynnwu/FinancialTrading/internal/clearing/application"
+	pb "github.com/wyfcoding/financialTrading/go-api/clearing"
+	"github.com/wyfcoding/financialTrading/internal/clearing/application"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

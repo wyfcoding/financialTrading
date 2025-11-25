@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/fynnwu/FinancialTrading/internal/market-making/domain"
-	"github.com/fynnwu/FinancialTrading/pkg/logger"
+	"github.com/wyfcoding/financialTrading/internal/market-making/domain"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/google/uuid"
 )
 

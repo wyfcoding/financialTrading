@@ -475,7 +475,7 @@ const file_api_monitoring_analytics_monitoring_analytics_proto_rawDesc = "" +
 	"\fRecordMetric\x12).monitoring_analytics.RecordMetricRequest\x1a*.monitoring_analytics.RecordMetricResponse\x12_\n" +
 	"\n" +
 	"GetMetrics\x12'.monitoring_analytics.GetMetricsRequest\x1a(.monitoring_analytics.GetMetricsResponse\x12n\n" +
-	"\x0fGetSystemHealth\x12,.monitoring_analytics.GetSystemHealthRequest\x1a-.monitoring_analytics.GetSystemHealthResponseBUZSgithub.com/fynnwu/FinancialTrading/go-api/monitoring-analytics;monitoring_analyticsb\x06proto3"
+	"\x0fGetSystemHealth\x12,.monitoring_analytics.GetSystemHealthRequest\x1a-.monitoring_analytics.GetSystemHealthResponseBUZSgithub.com/wyfcoding/financialTrading/go-api/monitoring-analytics;monitoring_analyticsb\x06proto3"
 
 var (
 	file_api_monitoring_analytics_monitoring_analytics_proto_rawDescOnce sync.Once

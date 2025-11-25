@@ -4,8 +4,8 @@ package http
 import (
 	"net/http"
 
-	"github.com/fynnwu/FinancialTrading/internal/market-data/application"
-	"github.com/fynnwu/FinancialTrading/pkg/logger"
+	"github.com/wyfcoding/financialTrading/internal/market-data/application"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/gin-gonic/gin"
 )
 

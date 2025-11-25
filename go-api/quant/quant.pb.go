@@ -699,7 +699,7 @@ const file_api_quant_quant_proto_rawDesc = "" +
 	"\x0eCreateStrategy\x12\x1c.quant.CreateStrategyRequest\x1a\x1d.quant.CreateStrategyResponse\x12D\n" +
 	"\vGetStrategy\x12\x19.quant.GetStrategyRequest\x1a\x1a.quant.GetStrategyResponse\x12D\n" +
 	"\vRunBacktest\x12\x19.quant.RunBacktestRequest\x1a\x1a.quant.RunBacktestResponse\x12V\n" +
-	"\x11GetBacktestResult\x12\x1f.quant.GetBacktestResultRequest\x1a .quant.GetBacktestResultResponseB7Z5github.com/fynnwu/FinancialTrading/go-api/quant;quantb\x06proto3"
+	"\x11GetBacktestResult\x12\x1f.quant.GetBacktestResultRequest\x1a .quant.GetBacktestResultResponseB7Z5github.com/wyfcoding/financialTrading/go-api/quant;quantb\x06proto3"
 
 var (
 	file_api_quant_quant_proto_rawDescOnce sync.Once

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/fynnwu/FinancialTrading/pkg/logger"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/fynnwu/FinancialTrading/internal/market-simulation/domain"
+	"github.com/wyfcoding/financialTrading/internal/market-simulation/domain"
 )
 
 // MockMarketDataPublisher 模拟市场数据发布者

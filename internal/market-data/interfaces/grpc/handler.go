@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strconv"
 
-	pb "github.com/fynnwu/FinancialTrading/go-api/market-data"
-	"github.com/fynnwu/FinancialTrading/internal/market-data/application"
-	"github.com/fynnwu/FinancialTrading/pkg/logger"
+	pb "github.com/wyfcoding/financialTrading/go-api/market-data"
+	"github.com/wyfcoding/financialTrading/internal/market-data/application"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/fynnwu/FinancialTrading/internal/market-data/domain"
-	"github.com/fynnwu/FinancialTrading/pkg/logger"
+	"github.com/wyfcoding/financialTrading/internal/market-data/domain"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/shopspring/decimal"
 )
 

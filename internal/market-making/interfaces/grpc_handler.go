@@ -3,9 +3,9 @@ package interfaces
 import (
 	"context"
 
-	pb "github.com/fynnwu/FinancialTrading/go-api/market-making"
-	"github.com/fynnwu/FinancialTrading/internal/market-making/application"
-	"github.com/fynnwu/FinancialTrading/internal/market-making/domain"
+	pb "github.com/wyfcoding/financialTrading/go-api/market-making"
+	"github.com/wyfcoding/financialTrading/internal/market-making/application"
+	"github.com/wyfcoding/financialTrading/internal/market-making/domain"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

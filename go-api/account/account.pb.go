@@ -916,7 +916,7 @@ const file_api_account_account_proto_rawDesc = "" +
 	"GetBalance\x12\x1a.account.GetBalanceRequest\x1a\x18.account.BalanceResponse\x12@\n" +
 	"\aDeposit\x12\x17.account.DepositRequest\x1a\x1c.account.TransactionResponse\x12B\n" +
 	"\bWithdraw\x12\x18.account.WithdrawRequest\x1a\x1c.account.TransactionResponse\x12c\n" +
-	"\x15GetTransactionHistory\x12%.account.GetTransactionHistoryRequest\x1a#.account.TransactionHistoryResponseB;Z9github.com/fynnwu/FinancialTrading/go-api/account;accountb\x06proto3"
+	"\x15GetTransactionHistory\x12%.account.GetTransactionHistoryRequest\x1a#.account.TransactionHistoryResponseB;Z9github.com/wyfcoding/financialTrading/go-api/account;accountb\x06proto3"
 
 var (
 	file_api_account_account_proto_rawDescOnce sync.Once

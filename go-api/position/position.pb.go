@@ -538,7 +538,7 @@ const file_api_position_position_proto_rawDesc = "" +
 	"\fGetPositions\x12\x1d.position.GetPositionsRequest\x1a\x1b.position.PositionsResponse\x12G\n" +
 	"\vGetPosition\x12\x1c.position.GetPositionRequest\x1a\x1a.position.PositionResponse\x12\\\n" +
 	"\x12GetPositionSummary\x12#.position.GetPositionSummaryRequest\x1a!.position.PositionSummaryResponse\x12K\n" +
-	"\rClosePosition\x12\x1e.position.ClosePositionRequest\x1a\x1a.position.PositionResponseB=Z;github.com/fynnwu/FinancialTrading/go-api/position;positionb\x06proto3"
+	"\rClosePosition\x12\x1e.position.ClosePositionRequest\x1a\x1a.position.PositionResponseB=Z;github.com/wyfcoding/financialTrading/go-api/position;positionb\x06proto3"
 
 var (
 	file_api_position_position_proto_rawDescOnce sync.Once

@@ -642,7 +642,7 @@ const file_api_risk_risk_proto_rawDesc = "" +
 	"AssessRisk\x12\x17.risk.AssessRiskRequest\x1a\x1c.risk.RiskAssessmentResponse\x12H\n" +
 	"\x0eGetRiskMetrics\x12\x1b.risk.GetRiskMetricsRequest\x1a\x19.risk.RiskMetricsResponse\x12F\n" +
 	"\x0eCheckRiskLimit\x12\x1b.risk.CheckRiskLimitRequest\x1a\x17.risk.RiskLimitResponse\x12E\n" +
-	"\rGetRiskAlerts\x12\x1a.risk.GetRiskAlertsRequest\x1a\x18.risk.RiskAlertsResponseB5Z3github.com/fynnwu/FinancialTrading/go-api/risk;riskb\x06proto3"
+	"\rGetRiskAlerts\x12\x1a.risk.GetRiskAlertsRequest\x1a\x18.risk.RiskAlertsResponseB5Z3github.com/wyfcoding/financialTrading/go-api/risk;riskb\x06proto3"
 
 var (
 	file_api_risk_risk_proto_rawDescOnce sync.Once

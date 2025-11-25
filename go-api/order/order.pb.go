@@ -794,7 +794,7 @@ const file_api_order_order_proto_rawDesc = "" +
 	"\bGetOrder\x12\x16.order.GetOrderRequest\x1a\x14.order.OrderResponse\x12A\n" +
 	"\n" +
 	"ListOrders\x12\x18.order.ListOrdersRequest\x1a\x19.order.ListOrdersResponse\x12F\n" +
-	"\x0fSubscribeOrders\x12\x1d.order.SubscribeOrdersRequest\x1a\x12.order.OrderUpdate0\x01B7Z5github.com/fynnwu/FinancialTrading/go-api/order;orderb\x06proto3"
+	"\x0fSubscribeOrders\x12\x1d.order.SubscribeOrdersRequest\x1a\x12.order.OrderUpdate0\x01B7Z5github.com/wyfcoding/financialTrading/go-api/order;orderb\x06proto3"
 
 var (
 	file_api_order_order_proto_rawDescOnce sync.Once

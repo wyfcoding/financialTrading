@@ -445,7 +445,7 @@ const file_api_pricing_pricing_proto_rawDesc = "" +
 	"\x10calculation_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x0fcalculationTime2\xa7\x01\n" +
 	"\x0ePricingService\x12Q\n" +
 	"\x0eGetOptionPrice\x12\x1e.pricing.GetOptionPriceRequest\x1a\x1f.pricing.GetOptionPriceResponse\x12B\n" +
-	"\tGetGreeks\x12\x19.pricing.GetGreeksRequest\x1a\x1a.pricing.GetGreeksResponseB;Z9github.com/fynnwu/FinancialTrading/go-api/pricing;pricingb\x06proto3"
+	"\tGetGreeks\x12\x19.pricing.GetGreeksRequest\x1a\x1a.pricing.GetGreeksResponseB;Z9github.com/wyfcoding/financialTrading/go-api/pricing;pricingb\x06proto3"
 
 var (
 	file_api_pricing_pricing_proto_rawDescOnce sync.Once

@@ -405,7 +405,7 @@ const file_api_notification_notification_proto_rawDesc = "" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken2\xed\x01\n" +
 	"\x13NotificationService\x12a\n" +
 	"\x10SendNotification\x12%.notification.SendNotificationRequest\x1a&.notification.SendNotificationResponse\x12s\n" +
-	"\x16GetNotificationHistory\x12+.notification.GetNotificationHistoryRequest\x1a,.notification.GetNotificationHistoryResponseBEZCgithub.com/fynnwu/FinancialTrading/go-api/notification;notificationb\x06proto3"
+	"\x16GetNotificationHistory\x12+.notification.GetNotificationHistoryRequest\x1a,.notification.GetNotificationHistoryResponseBEZCgithub.com/wyfcoding/financialTrading/go-api/notification;notificationb\x06proto3"
 
 var (
 	file_api_notification_notification_proto_rawDescOnce sync.Once

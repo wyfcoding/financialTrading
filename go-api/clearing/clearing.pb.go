@@ -639,7 +639,7 @@ const file_api_clearing_clearing_proto_rawDesc = "" +
 	"\vSettleTrade\x12\x1c.clearing.SettleTradeRequest\x1a\x1c.clearing.SettlementResponse\x12P\n" +
 	"\x0eGetSettlements\x12\x1f.clearing.GetSettlementsRequest\x1a\x1d.clearing.SettlementsResponse\x12X\n" +
 	"\x12ExecuteEODClearing\x12#.clearing.ExecuteEODClearingRequest\x1a\x1d.clearing.EODClearingResponse\x12Y\n" +
-	"\x11GetClearingStatus\x12\".clearing.GetClearingStatusRequest\x1a .clearing.ClearingStatusResponseB=Z;github.com/fynnwu/FinancialTrading/go-api/clearing;clearingb\x06proto3"
+	"\x11GetClearingStatus\x12\".clearing.GetClearingStatusRequest\x1a .clearing.ClearingStatusResponseB=Z;github.com/wyfcoding/financialTrading/go-api/clearing;clearingb\x06proto3"
 
 var (
 	file_api_clearing_clearing_proto_rawDescOnce sync.Once

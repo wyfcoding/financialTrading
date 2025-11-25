@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/fynnwu/FinancialTrading/internal/reference-data/domain"
-	"github.com/fynnwu/FinancialTrading/pkg/logger"
+	"github.com/wyfcoding/financialTrading/internal/reference-data/domain"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 )
 
 // ReferenceDataService 应用服务

@@ -709,7 +709,7 @@ const file_api_reference_data_reference_data_proto_rawDesc = "" +
 	"\tGetSymbol\x12 .reference_data.GetSymbolRequest\x1a!.reference_data.GetSymbolResponse\x12V\n" +
 	"\vListSymbols\x12\".reference_data.ListSymbolsRequest\x1a#.reference_data.ListSymbolsResponse\x12V\n" +
 	"\vGetExchange\x12\".reference_data.GetExchangeRequest\x1a#.reference_data.GetExchangeResponse\x12\\\n" +
-	"\rListExchanges\x12$.reference_data.ListExchangesRequest\x1a%.reference_data.ListExchangesResponseBIZGgithub.com/fynnwu/FinancialTrading/go-api/reference-data;reference_datab\x06proto3"
+	"\rListExchanges\x12$.reference_data.ListExchangesRequest\x1a%.reference_data.ListExchangesResponseBIZGgithub.com/wyfcoding/financialTrading/go-api/reference-data;reference_datab\x06proto3"
 
 var (
 	file_api_reference_data_reference_data_proto_rawDescOnce sync.Once

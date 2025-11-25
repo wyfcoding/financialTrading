@@ -456,7 +456,7 @@ const file_api_market_simulation_market_simulation_proto_rawDesc = "" +
 	"\x17MarketSimulationService\x12h\n" +
 	"\x0fStartSimulation\x12).market_simulation.StartSimulationRequest\x1a*.market_simulation.StartSimulationResponse\x12e\n" +
 	"\x0eStopSimulation\x12(.market_simulation.StopSimulationRequest\x1a).market_simulation.StopSimulationResponse\x12t\n" +
-	"\x13GetSimulationStatus\x12-.market_simulation.GetSimulationStatusRequest\x1a..market_simulation.GetSimulationStatusResponseBOZMgithub.com/fynnwu/FinancialTrading/go-api/market-simulation;market_simulationb\x06proto3"
+	"\x13GetSimulationStatus\x12-.market_simulation.GetSimulationStatusRequest\x1a..market_simulation.GetSimulationStatusResponseBOZMgithub.com/wyfcoding/financialTrading/go-api/market-simulation;market_simulationb\x06proto3"
 
 var (
 	file_api_market_simulation_market_simulation_proto_rawDescOnce sync.Once

@@ -5,7 +5,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/fynnwu/FinancialTrading/pkg/logger"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"

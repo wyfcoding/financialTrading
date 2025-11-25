@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/fynnwu/FinancialTrading/internal/notification/domain"
+	"github.com/wyfcoding/financialTrading/internal/notification/domain"
 )
 
 // MockEmailSender 模拟邮件发送器

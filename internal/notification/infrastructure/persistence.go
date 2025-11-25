@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/fynnwu/FinancialTrading/internal/notification/domain"
-	"github.com/fynnwu/FinancialTrading/pkg/logger"
+	"github.com/wyfcoding/financialTrading/internal/notification/domain"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"gorm.io/gorm"
 )
 

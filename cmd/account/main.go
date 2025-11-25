@@ -12,15 +12,16 @@ import (
 	"syscall"
 	"time"
 
-	pb "github.com/fynnwu/FinancialTrading/go-api/account"
-	"github.com/fynnwu/FinancialTrading/internal/account/application"
-	"github.com/fynnwu/FinancialTrading/internal/account/infrastructure/repository"
-	interfaces "github.com/fynnwu/FinancialTrading/internal/account/interfaces"
-	"github.com/fynnwu/FinancialTrading/pkg/config"
-	"github.com/fynnwu/FinancialTrading/pkg/db"
-	"github.com/fynnwu/FinancialTrading/pkg/logger"
-	"github.com/fynnwu/FinancialTrading/pkg/metrics"
-	"github.com/fynnwu/FinancialTrading/pkg/middleware"
+	pb "github.com/wyfcoding/financialTrading/go-api/account"
+	"github.com/wyfcoding/financialTrading/internal/account/application"
+	"github.com/wyfcoding/financialTrading/internal/account/infrastructure/repository"
+	interfaces "github.com/wyfcoding/financialTrading/internal/account/interfaces"
+	httphandler "github.com/wyfcoding/financialTrading/internal/account/interfaces/http"
+	"github.com/wyfcoding/financialTrading/pkg/config"
+	"github.com/wyfcoding/financialTrading/pkg/db"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/financialTrading/pkg/metrics"
+	"github.com/wyfcoding/financialTrading/pkg/middleware"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 )
@@ -91,7 +92,7 @@ func main() {
 	}
 
 	// 7. 创建 HTTP 服务器
-	httpServer := createHTTPServer(cfg)
+	httpServer := createHTTPServer(cfg, accountAppService)
 
 	// 8. 创建 gRPC 服务器
 	grpcServer := createGRPCServer(cfg, accountAppService)
@@ -139,13 +140,17 @@ func main() {
 }
 
 // createHTTPServer 创建 HTTP 服务器
-func createHTTPServer(cfg *config.Config) *http.Server {
+func createHTTPServer(cfg *config.Config, accountAppService *application.AccountApplicationService) *http.Server {
 	router := gin.Default()
 
 	// 添加中间件
 	router.Use(middleware.GinLoggingMiddleware())
 	router.Use(middleware.GinRecoveryMiddleware())
 	router.Use(middleware.GinCORSMiddleware())
+
+	// 注册路由
+	httpHandler := httphandler.NewAccountHandler(accountAppService)
+	httpHandler.RegisterRoutes(router)
 
 	// 健康检查
 	router.GET("/health", func(c *gin.Context) {

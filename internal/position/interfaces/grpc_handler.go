@@ -3,8 +3,8 @@ package interfaces
 import (
 	"context"
 
-	pb "github.com/fynnwu/FinancialTrading/go-api/position"
-	"github.com/fynnwu/FinancialTrading/internal/position/application"
+	pb "github.com/wyfcoding/financialTrading/go-api/position"
+	"github.com/wyfcoding/financialTrading/internal/position/application"
 	"github.com/shopspring/decimal"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

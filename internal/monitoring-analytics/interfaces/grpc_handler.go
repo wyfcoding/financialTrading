@@ -3,8 +3,8 @@ package interfaces
 import (
 	"context"
 
-	pb "github.com/fynnwu/FinancialTrading/go-api/monitoring-analytics"
-	"github.com/fynnwu/FinancialTrading/internal/monitoring-analytics/application"
+	pb "github.com/wyfcoding/financialTrading/go-api/monitoring-analytics"
+	"github.com/wyfcoding/financialTrading/internal/monitoring-analytics/application"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

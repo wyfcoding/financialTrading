@@ -6,8 +6,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/fynnwu/FinancialTrading/internal/market-simulation/domain"
-	"github.com/fynnwu/FinancialTrading/pkg/logger"
+	"github.com/wyfcoding/financialTrading/internal/market-simulation/domain"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/google/uuid"
 )
 

@@ -5,9 +5,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/fynnwu/FinancialTrading/internal/order/domain"
-	"github.com/fynnwu/FinancialTrading/pkg/logger"
-	"github.com/fynnwu/FinancialTrading/pkg/utils"
+	"github.com/wyfcoding/financialTrading/internal/order/domain"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/financialTrading/pkg/utils"
 	"github.com/shopspring/decimal"
 )
 

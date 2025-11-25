@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/fynnwu/FinancialTrading/internal/position/domain"
-	"github.com/fynnwu/FinancialTrading/pkg/db"
-	"github.com/fynnwu/FinancialTrading/pkg/logger"
+	"github.com/wyfcoding/financialTrading/internal/position/domain"
+	"github.com/wyfcoding/financialTrading/pkg/db"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )

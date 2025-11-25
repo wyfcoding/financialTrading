@@ -592,7 +592,7 @@ const file_api_market_making_market_making_proto_rawDesc = "" +
 	"\x13MarketMakingService\x12T\n" +
 	"\vSetStrategy\x12!.market_making.SetStrategyRequest\x1a\".market_making.SetStrategyResponse\x12T\n" +
 	"\vGetStrategy\x12!.market_making.GetStrategyRequest\x1a\".market_making.GetStrategyResponse\x12]\n" +
-	"\x0eGetPerformance\x12$.market_making.GetPerformanceRequest\x1a%.market_making.GetPerformanceResponseBGZEgithub.com/fynnwu/FinancialTrading/go-api/market-making;market_makingb\x06proto3"
+	"\x0eGetPerformance\x12$.market_making.GetPerformanceRequest\x1a%.market_making.GetPerformanceResponseBGZEgithub.com/wyfcoding/financialTrading/go-api/market-making;market_makingb\x06proto3"
 
 var (
 	file_api_market_making_market_making_proto_rawDescOnce sync.Once

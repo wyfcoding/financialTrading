@@ -542,7 +542,7 @@ const file_api_execution_execution_proto_rawDesc = "" +
 	"\x10ExecutionService\x12L\n" +
 	"\fExecuteOrder\x12\x1e.execution.ExecuteOrderRequest\x1a\x1c.execution.ExecutionResponse\x12a\n" +
 	"\x13GetExecutionHistory\x12%.execution.GetExecutionHistoryRequest\x1a#.execution.ExecutionHistoryResponse\x12Z\n" +
-	"\x13SubscribeExecutions\x12%.execution.SubscribeExecutionsRequest\x1a\x1a.execution.ExecutionUpdate0\x01B?Z=github.com/fynnwu/FinancialTrading/go-api/execution;executionb\x06proto3"
+	"\x13SubscribeExecutions\x12%.execution.SubscribeExecutionsRequest\x1a\x1a.execution.ExecutionUpdate0\x01B?Z=github.com/wyfcoding/financialTrading/go-api/execution;executionb\x06proto3"
 
 var (
 	file_api_execution_execution_proto_rawDescOnce sync.Once

@@ -698,7 +698,7 @@ const file_api_matching_engine_matching_proto_rawDesc = "" +
 	"\vSubmitOrder\x12#.matching_engine.SubmitOrderRequest\x1a\x1c.matching_engine.MatchResult\x12X\n" +
 	"\fGetOrderBook\x12$.matching_engine.GetOrderBookRequest\x1a\".matching_engine.OrderBookSnapshot\x12O\n" +
 	"\tGetTrades\x12!.matching_engine.GetTradesRequest\x1a\x1f.matching_engine.TradesResponse\x12Z\n" +
-	"\x0fSubscribeTrades\x12'.matching_engine.SubscribeTradesRequest\x1a\x1c.matching_engine.TradeUpdate0\x01BKZIgithub.com/fynnwu/FinancialTrading/go-api/matching-engine;matching_engineb\x06proto3"
+	"\x0fSubscribeTrades\x12'.matching_engine.SubscribeTradesRequest\x1a\x1c.matching_engine.TradeUpdate0\x01BKZIgithub.com/wyfcoding/financialTrading/go-api/matching-engine;matching_engineb\x06proto3"
 
 var (
 	file_api_matching_engine_matching_proto_rawDescOnce sync.Once

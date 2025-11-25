@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	pkgLogger "github.com/fynnwu/FinancialTrading/pkg/logger"
+	pkgLogger "github.com/wyfcoding/financialTrading/pkg/logger"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

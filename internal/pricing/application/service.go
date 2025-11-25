@@ -5,8 +5,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/fynnwu/FinancialTrading/internal/pricing/domain"
-	"github.com/fynnwu/FinancialTrading/pkg/logger"
+	"github.com/wyfcoding/financialTrading/internal/pricing/domain"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 )
 
 // PricingService 应用服务

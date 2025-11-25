@@ -9,12 +9,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	pb "github.com/fynnwu/FinancialTrading/go-api/pricing"
-	"github.com/fynnwu/FinancialTrading/internal/pricing/application"
-	"github.com/fynnwu/FinancialTrading/internal/pricing/infrastructure"
-	"github.com/fynnwu/FinancialTrading/internal/pricing/interfaces"
-	"github.com/fynnwu/FinancialTrading/pkg/config"
-	"github.com/fynnwu/FinancialTrading/pkg/logger"
+	pb "github.com/wyfcoding/financialTrading/go-api/pricing"
+	"github.com/wyfcoding/financialTrading/internal/pricing/application"
+	"github.com/wyfcoding/financialTrading/internal/pricing/infrastructure"
+	"github.com/wyfcoding/financialTrading/internal/pricing/interfaces"
+	"github.com/wyfcoding/financialTrading/pkg/config"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )

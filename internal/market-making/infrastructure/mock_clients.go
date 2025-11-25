@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/fynnwu/FinancialTrading/internal/market-making/domain"
+	"github.com/wyfcoding/financialTrading/internal/market-making/domain"
 )
 
 // MockOrderClient 模拟订单服务客户端

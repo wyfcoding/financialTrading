@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/fynnwu/FinancialTrading/internal/quant/domain"
+	"github.com/wyfcoding/financialTrading/internal/quant/domain"
 )
 
 // MockMarketDataClient 模拟市场数据客户端

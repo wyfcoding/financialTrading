@@ -4,7 +4,7 @@ package domain
 import (
 	"context"
 
-	"github.com/fynnwu/FinancialTrading/pkg/algos"
+	"github.com/wyfcoding/financialTrading/pkg/algos"
 	"github.com/shopspring/decimal"
 )
 

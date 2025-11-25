@@ -969,7 +969,7 @@ const file_api_market_data_market_data_proto_rawDesc = "" +
 	"\tGetKlines\x12\x1d.market_data.GetKlinesRequest\x1a\x1b.market_data.KlinesResponse\x12P\n" +
 	"\fGetOrderBook\x12 .market_data.GetOrderBookRequest\x1a\x1e.market_data.OrderBookResponse\x12R\n" +
 	"\x0fSubscribeQuotes\x12#.market_data.SubscribeQuotesRequest\x1a\x18.market_data.QuoteUpdate0\x01\x12G\n" +
-	"\tGetTrades\x12\x1d.market_data.GetTradesRequest\x1a\x1b.market_data.TradesResponseBCZAgithub.com/fynnwu/FinancialTrading/go-api/market-data;market_datab\x06proto3"
+	"\tGetTrades\x12\x1d.market_data.GetTradesRequest\x1a\x1b.market_data.TradesResponseBCZAgithub.com/wyfcoding/financialTrading/go-api/market-data;market_datab\x06proto3"
 
 var (
 	file_api_market_data_market_data_proto_rawDescOnce sync.Once

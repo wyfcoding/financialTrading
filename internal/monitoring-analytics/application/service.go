@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/fynnwu/FinancialTrading/internal/monitoring-analytics/domain"
-	"github.com/fynnwu/FinancialTrading/pkg/logger"
+	"github.com/wyfcoding/financialTrading/internal/monitoring-analytics/domain"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 )
 
 // MonitoringAnalyticsService 应用服务

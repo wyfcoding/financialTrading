@@ -3,9 +3,9 @@ package interfaces
 import (
 	"context"
 
-	pb "github.com/fynnwu/FinancialTrading/go-api/quant"
-	"github.com/fynnwu/FinancialTrading/internal/quant/application"
-	"github.com/fynnwu/FinancialTrading/internal/quant/domain"
+	pb "github.com/wyfcoding/financialTrading/go-api/quant"
+	"github.com/wyfcoding/financialTrading/internal/quant/application"
+	"github.com/wyfcoding/financialTrading/internal/quant/domain"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

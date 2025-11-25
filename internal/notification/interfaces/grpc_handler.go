@@ -3,9 +3,9 @@ package interfaces
 import (
 	"context"
 
-	pb "github.com/fynnwu/FinancialTrading/go-api/notification"
-	"github.com/fynnwu/FinancialTrading/internal/notification/application"
-	"github.com/fynnwu/FinancialTrading/internal/notification/domain"
+	pb "github.com/wyfcoding/financialTrading/go-api/notification"
+	"github.com/wyfcoding/financialTrading/internal/notification/application"
+	"github.com/wyfcoding/financialTrading/internal/notification/domain"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
