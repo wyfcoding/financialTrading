@@ -98,16 +98,13 @@ func NewClient(cfg ClientConfig) (*grpc.ClientConn, error) {
 	)
 
 	// 创建连接
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.ConnTimeout)*time.Second)
-	defer cancel()
-
-	conn, err := grpc.DialContext(ctx, cfg.Target, opts...)
+	conn, err := grpc.NewClient(cfg.Target, opts...)
 	if err != nil {
-		logger.Error(ctx, "Failed to create gRPC client", "target", cfg.Target, "error", err)
+		logger.Error(context.Background(), "Failed to create gRPC client", "target", cfg.Target, "error", err)
 		return nil, err
 	}
 
-	logger.Info(ctx, "gRPC client created successfully", "target", cfg.Target)
+	logger.Info(context.Background(), "gRPC client created successfully", "target", cfg.Target)
 	return conn, nil
 }
 

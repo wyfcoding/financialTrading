@@ -3,11 +3,12 @@ package grpc
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 
 	pb "github.com/fynnwu/FinancialTrading/go-api/market-data"
 	"github.com/fynnwu/FinancialTrading/internal/market-data/application"
 	"github.com/fynnwu/FinancialTrading/pkg/logger"
-	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -29,7 +30,7 @@ func NewMarketDataHandler(quoteService *application.QuoteApplicationService) *Ma
 func (h *MarketDataHandler) GetLatestQuote(ctx context.Context, req *pb.GetLatestQuoteRequest) (*pb.QuoteResponse, error) {
 	// 验证输入
 	if req.Symbol == "" {
-		logger.WithContext(ctx).Warn("Invalid request: symbol is required")
+		logger.Warn(ctx, "Invalid request: symbol is required")
 		return nil, status.Error(codes.InvalidArgument, "symbol is required")
 	}
 
@@ -40,9 +41,9 @@ func (h *MarketDataHandler) GetLatestQuote(ctx context.Context, req *pb.GetLates
 
 	quoteDTO, err := h.quoteService.GetLatestQuote(ctx, appReq)
 	if err != nil {
-		logger.WithContext(ctx).Error("Failed to get latest quote",
-			zap.String("symbol", req.Symbol),
-			zap.Error(err),
+		logger.Error(ctx, "Failed to get latest quote",
+			"symbol", req.Symbol,
+			"error", err,
 		)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -72,10 +73,10 @@ func (h *MarketDataHandler) GetKlines(ctx context.Context, req *pb.GetKlinesRequ
 		return nil, status.Error(codes.InvalidArgument, "interval is required")
 	}
 
-	logger.WithContext(ctx).Debug("GetKlines called",
-		zap.String("symbol", req.Symbol),
-		zap.String("interval", req.Interval),
-		zap.Int32("limit", req.Limit),
+	logger.Debug(ctx, "GetKlines called",
+		"symbol", req.Symbol,
+		"interval", req.Interval,
+		"limit", req.Limit,
 	)
 
 	// 返回空响应（实现待补充）
@@ -98,9 +99,9 @@ func (h *MarketDataHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBo
 		depth = 20
 	}
 
-	logger.WithContext(ctx).Debug("GetOrderBook called",
-		zap.String("symbol", req.Symbol),
-		zap.Int32("depth", depth),
+	logger.Debug(ctx, "GetOrderBook called",
+		"symbol", req.Symbol,
+		"depth", depth,
 	)
 
 	// 返回空响应（实现待补充）
@@ -119,8 +120,10 @@ func (h *MarketDataHandler) SubscribeQuotes(req *pb.SubscribeQuotesRequest, stre
 		return status.Error(codes.InvalidArgument, "symbols is required")
 	}
 
-	logger.Debug("SubscribeQuotes called",
-		zap.Strings("symbols", req.Symbols),
+	// Note: stream.Context() is available
+	ctx := stream.Context()
+	logger.Debug(ctx, "SubscribeQuotes called",
+		"symbols", fmt.Sprintf("%v", req.Symbols),
 	)
 
 	// 实现待补充（需要实现实时推送机制）
@@ -139,9 +142,9 @@ func (h *MarketDataHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequ
 		limit = 100
 	}
 
-	logger.WithContext(ctx).Debug("GetTrades called",
-		zap.String("symbol", req.Symbol),
-		zap.Int32("limit", limit),
+	logger.Debug(ctx, "GetTrades called",
+		"symbol", req.Symbol,
+		"limit", limit,
 	)
 
 	// 返回空响应（实现待补充）
@@ -153,6 +156,6 @@ func (h *MarketDataHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequ
 
 // parseFloat 解析浮点数
 func parseFloat(s string) float64 {
-	// 实际应用中应使用 strconv.ParseFloat
-	return 0.0
+	f, _ := strconv.ParseFloat(s, 64)
+	return f
 }

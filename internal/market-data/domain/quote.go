@@ -2,6 +2,8 @@
 package domain
 
 import (
+	"context"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -213,49 +215,49 @@ func (t *Trade) GetTradeValue() decimal.Decimal {
 // QuoteRepository 行情数据仓储接口
 type QuoteRepository interface {
 	// 保存行情数据
-	Save(quote *Quote) error
+	Save(ctx context.Context, quote *Quote) error
 	// 获取最新行情
-	GetLatest(symbol string) (*Quote, error)
+	GetLatest(ctx context.Context, symbol string) (*Quote, error)
 	// 获取历史行情
-	GetHistory(symbol string, startTime, endTime int64) ([]*Quote, error)
+	GetHistory(ctx context.Context, symbol string, startTime, endTime int64) ([]*Quote, error)
 	// 删除过期行情
-	DeleteExpired(beforeTime int64) error
+	DeleteExpired(ctx context.Context, beforeTime int64) error
 }
 
 // KlineRepository K 线数据仓储接口
 type KlineRepository interface {
 	// 保存 K 线数据
-	Save(kline *Kline) error
+	Save(ctx context.Context, kline *Kline) error
 	// 获取 K 线数据
-	Get(symbol, interval string, startTime, endTime int64) ([]*Kline, error)
+	Get(ctx context.Context, symbol, interval string, startTime, endTime int64) ([]*Kline, error)
 	// 获取最新 K 线
-	GetLatest(symbol, interval string, limit int) ([]*Kline, error)
+	GetLatest(ctx context.Context, symbol, interval string, limit int) ([]*Kline, error)
 	// 删除过期 K 线
-	DeleteExpired(beforeTime int64) error
+	DeleteExpired(ctx context.Context, beforeTime int64) error
 }
 
 // OrderBookRepository 订单簿仓储接口
 type OrderBookRepository interface {
 	// 保存订单簿快照
-	Save(orderBook *OrderBook) error
+	Save(ctx context.Context, orderBook *OrderBook) error
 	// 获取最新订单簿
-	GetLatest(symbol string) (*OrderBook, error)
+	GetLatest(ctx context.Context, symbol string) (*OrderBook, error)
 	// 获取历史订单簿
-	GetHistory(symbol string, startTime, endTime int64) ([]*OrderBook, error)
+	GetHistory(ctx context.Context, symbol string, startTime, endTime int64) ([]*OrderBook, error)
 	// 删除过期订单簿
-	DeleteExpired(beforeTime int64) error
+	DeleteExpired(ctx context.Context, beforeTime int64) error
 }
 
 // TradeRepository 交易记录仓储接口
 type TradeRepository interface {
 	// 保存交易记录
-	Save(trade *Trade) error
+	Save(ctx context.Context, trade *Trade) error
 	// 获取交易历史
-	GetHistory(symbol string, startTime, endTime int64, limit int) ([]*Trade, error)
+	GetHistory(ctx context.Context, symbol string, startTime, endTime int64, limit int) ([]*Trade, error)
 	// 获取最新交易
-	GetLatest(symbol string, limit int) ([]*Trade, error)
+	GetLatest(ctx context.Context, symbol string, limit int) ([]*Trade, error)
 	// 删除过期交易记录
-	DeleteExpired(beforeTime int64) error
+	DeleteExpired(ctx context.Context, beforeTime int64) error
 }
 
 // MarketDataService 市场数据领域服务

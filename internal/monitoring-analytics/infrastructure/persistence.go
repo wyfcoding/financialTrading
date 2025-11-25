@@ -3,9 +3,11 @@ package infrastructure
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/fynnwu/FinancialTrading/internal/monitoring-analytics/domain"
+	"github.com/fynnwu/FinancialTrading/pkg/logger"
 	"gorm.io/gorm"
 )
 
@@ -28,9 +30,11 @@ func (m *MetricModel) ToDomain() *domain.Metric {
 	var tags map[string]string
 	_ = json.Unmarshal([]byte(m.Tags), &tags)
 	return &domain.Metric{
+		Model:     m.Model,
 		Name:      m.Name,
 		Value:     m.Value,
 		Tags:      tags,
+		TagsJSON:  m.Tags,
 		Timestamp: m.Timestamp,
 	}
 }
@@ -47,18 +51,35 @@ func NewMetricRepository(db *gorm.DB) domain.MetricRepository {
 func (r *MetricRepositoryImpl) Save(ctx context.Context, metric *domain.Metric) error {
 	tagsJSON, _ := json.Marshal(metric.Tags)
 	model := &MetricModel{
+		Model:     metric.Model,
 		Name:      metric.Name,
 		Value:     metric.Value,
 		Tags:      string(tagsJSON),
 		Timestamp: metric.Timestamp,
 	}
-	return r.db.WithContext(ctx).Create(model).Error
+	if err := r.db.WithContext(ctx).Create(model).Error; err != nil {
+		logger.Error(ctx, "Failed to save metric",
+			"name", metric.Name,
+			"error", err,
+		)
+		return fmt.Errorf("failed to save metric: %w", err)
+	}
+
+	metric.Model = model.Model
+	metric.TagsJSON = string(tagsJSON)
+	return nil
 }
 
 func (r *MetricRepositoryImpl) GetMetrics(ctx context.Context, name string, startTime, endTime time.Time) ([]*domain.Metric, error) {
 	var models []MetricModel
 	if err := r.db.WithContext(ctx).Where("name = ? AND timestamp BETWEEN ? AND ?", name, startTime, endTime).Find(&models).Error; err != nil {
-		return nil, err
+		logger.Error(ctx, "Failed to get metrics",
+			"name", name,
+			"start_time", startTime,
+			"end_time", endTime,
+			"error", err,
+		)
+		return nil, fmt.Errorf("failed to get metrics: %w", err)
 	}
 
 	metrics := make([]*domain.Metric, len(models))
@@ -85,6 +106,7 @@ func (SystemHealthModel) TableName() string {
 // ToDomain 转换为领域实体
 func (m *SystemHealthModel) ToDomain() *domain.SystemHealth {
 	return &domain.SystemHealth{
+		Model:       m.Model,
 		ServiceName: m.ServiceName,
 		Status:      m.Status,
 		Message:     m.Message,
@@ -103,12 +125,22 @@ func NewSystemHealthRepository(db *gorm.DB) domain.SystemHealthRepository {
 
 func (r *SystemHealthRepositoryImpl) Save(ctx context.Context, health *domain.SystemHealth) error {
 	model := &SystemHealthModel{
+		Model:       health.Model,
 		ServiceName: health.ServiceName,
 		Status:      health.Status,
 		Message:     health.Message,
 		LastChecked: health.LastChecked,
 	}
-	return r.db.WithContext(ctx).Create(model).Error
+	if err := r.db.WithContext(ctx).Create(model).Error; err != nil {
+		logger.Error(ctx, "Failed to save system health",
+			"service_name", health.ServiceName,
+			"error", err,
+		)
+		return fmt.Errorf("failed to save system health: %w", err)
+	}
+
+	health.Model = model.Model
+	return nil
 }
 
 func (r *SystemHealthRepositoryImpl) GetLatestHealth(ctx context.Context, serviceName string) ([]*domain.SystemHealth, error) {
@@ -121,7 +153,11 @@ func (r *SystemHealthRepositoryImpl) GetLatestHealth(ctx context.Context, servic
 	// 获取每个服务的最新状态（简化实现：直接获取所有记录，实际应分组取最新）
 	// 这里为了演示简单，只获取最近的100条
 	if err := query.Order("last_checked desc").Limit(100).Find(&models).Error; err != nil {
-		return nil, err
+		logger.Error(ctx, "Failed to get latest health",
+			"service_name", serviceName,
+			"error", err,
+		)
+		return nil, fmt.Errorf("failed to get latest health: %w", err)
 	}
 
 	healths := make([]*domain.SystemHealth, len(models))

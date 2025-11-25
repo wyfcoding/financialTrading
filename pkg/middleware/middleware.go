@@ -22,6 +22,14 @@ const TraceIDKey = "trace_id"
 // SpanIDKey context key for span ID
 const SpanIDKey = "span_id"
 
+type contextKey string
+
+const (
+	requestIDContextKey contextKey = "request_id"
+	traceIDContextKey   contextKey = "trace_id"
+	spanIDContextKey    contextKey = "span_id"
+)
+
 // GinLoggingMiddleware Gin 日志中间件
 func GinLoggingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -45,8 +53,9 @@ func GinLoggingMiddleware() gin.HandlerFunc {
 		clientIP := c.ClientIP()
 
 		// 创建带有 trace info 的 context
-		ctx := context.WithValue(c.Request.Context(), "trace_id", traceID)
-		ctx = context.WithValue(ctx, "span_id", spanID)
+		ctx := context.WithValue(c.Request.Context(), traceIDContextKey, traceID)
+		ctx = context.WithValue(ctx, spanIDContextKey, spanID)
+		ctx = context.WithValue(ctx, requestIDContextKey, requestID)
 
 		logger.Info(ctx, "HTTP request started",
 			"request_id", requestID,
@@ -83,8 +92,9 @@ func GinRecoveryMiddleware() gin.HandlerFunc {
 				traceID, _ := c.Get(TraceIDKey)
 				spanID, _ := c.Get(SpanIDKey)
 
-				ctx := context.WithValue(c.Request.Context(), "trace_id", traceID)
-				ctx = context.WithValue(ctx, "span_id", spanID)
+				ctx := context.WithValue(c.Request.Context(), traceIDContextKey, traceID)
+				ctx = context.WithValue(ctx, spanIDContextKey, spanID)
+				ctx = context.WithValue(ctx, requestIDContextKey, requestID)
 
 				logger.Error(ctx, "HTTP request panicked",
 					"request_id", requestID,
@@ -130,9 +140,9 @@ func GRPCLoggingInterceptor() grpc.UnaryServerInterceptor {
 		spanID := uuid.New().String()
 
 		// 将 ID 存储到 context
-		ctx = context.WithValue(ctx, RequestIDKey, requestID)
-		ctx = context.WithValue(ctx, "trace_id", traceID) // 使用 logger 识别的 key
-		ctx = context.WithValue(ctx, "span_id", spanID)
+		ctx = context.WithValue(ctx, requestIDContextKey, requestID)
+		ctx = context.WithValue(ctx, traceIDContextKey, traceID)
+		ctx = context.WithValue(ctx, spanIDContextKey, spanID)
 
 		// 记录请求开始
 		start := time.Now()
@@ -174,7 +184,7 @@ func GRPCRecoveryInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		defer func() {
 			if err := recover(); err != nil {
-				requestID := ctx.Value(RequestIDKey)
+				requestID := ctx.Value(requestIDContextKey)
 
 				logger.Error(ctx, "gRPC request panicked",
 					"request_id", requestID,
@@ -190,7 +200,7 @@ func GRPCRecoveryInterceptor() grpc.UnaryServerInterceptor {
 // extractTraceID 从 context 中提取 trace ID
 func extractTraceID(ctx context.Context) string {
 	// 尝试从 context value 获取
-	if traceID, ok := ctx.Value(TraceIDKey).(string); ok {
+	if traceID, ok := ctx.Value(traceIDContextKey).(string); ok {
 		return traceID
 	}
 	// TODO: 尝试从 metadata 获取

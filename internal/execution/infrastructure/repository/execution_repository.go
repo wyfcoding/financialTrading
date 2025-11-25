@@ -1,14 +1,13 @@
-// Package repository 包含仓储实现
 package repository
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/fynnwu/FinancialTrading/internal/execution/domain"
 	"github.com/fynnwu/FinancialTrading/pkg/db"
 	"github.com/fynnwu/FinancialTrading/pkg/logger"
 	"github.com/shopspring/decimal"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -51,7 +50,7 @@ func NewExecutionRepository(database *db.DB) domain.ExecutionRepository {
 }
 
 // Save 保存执行记录
-func (er *ExecutionRepositoryImpl) Save(execution *domain.Execution) error {
+func (er *ExecutionRepositoryImpl) Save(ctx context.Context, execution *domain.Execution) error {
 	model := &ExecutionModel{
 		ExecutionID:      execution.ExecutionID,
 		OrderID:          execution.OrderID,
@@ -63,10 +62,10 @@ func (er *ExecutionRepositoryImpl) Save(execution *domain.Execution) error {
 		Status:           string(execution.Status),
 	}
 
-	if err := er.db.Create(model).Error; err != nil {
-		logger.Error("Failed to save execution",
-			zap.String("execution_id", execution.ExecutionID),
-			zap.Error(err),
+	if err := er.db.WithContext(ctx).Create(model).Error; err != nil {
+		logger.Error(ctx, "Failed to save execution",
+			"execution_id", execution.ExecutionID,
+			"error", err,
 		)
 		return fmt.Errorf("failed to save execution: %w", err)
 	}
@@ -75,16 +74,16 @@ func (er *ExecutionRepositoryImpl) Save(execution *domain.Execution) error {
 }
 
 // Get 获取执行记录
-func (er *ExecutionRepositoryImpl) Get(executionID string) (*domain.Execution, error) {
+func (er *ExecutionRepositoryImpl) Get(ctx context.Context, executionID string) (*domain.Execution, error) {
 	var model ExecutionModel
 
-	if err := er.db.Where("execution_id = ?", executionID).First(&model).Error; err != nil {
+	if err := er.db.WithContext(ctx).Where("execution_id = ?", executionID).First(&model).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		logger.Error("Failed to get execution",
-			zap.String("execution_id", executionID),
-			zap.Error(err),
+		logger.Error(ctx, "Failed to get execution",
+			"execution_id", executionID,
+			"error", err,
 		)
 		return nil, fmt.Errorf("failed to get execution: %w", err)
 	}
@@ -93,13 +92,13 @@ func (er *ExecutionRepositoryImpl) Get(executionID string) (*domain.Execution, e
 }
 
 // GetByOrder 获取订单执行历史
-func (er *ExecutionRepositoryImpl) GetByOrder(orderID string) ([]*domain.Execution, error) {
+func (er *ExecutionRepositoryImpl) GetByOrder(ctx context.Context, orderID string) ([]*domain.Execution, error) {
 	var models []ExecutionModel
 
-	if err := er.db.Where("order_id = ?", orderID).Order("created_at DESC").Find(&models).Error; err != nil {
-		logger.Error("Failed to get executions by order",
-			zap.String("order_id", orderID),
-			zap.Error(err),
+	if err := er.db.WithContext(ctx).Where("order_id = ?", orderID).Order("created_at DESC").Find(&models).Error; err != nil {
+		logger.Error(ctx, "Failed to get executions by order",
+			"order_id", orderID,
+			"error", err,
 		)
 		return nil, fmt.Errorf("failed to get executions by order: %w", err)
 	}
@@ -113,20 +112,20 @@ func (er *ExecutionRepositoryImpl) GetByOrder(orderID string) ([]*domain.Executi
 }
 
 // GetByUser 获取用户执行历史
-func (er *ExecutionRepositoryImpl) GetByUser(userID string, limit, offset int) ([]*domain.Execution, int64, error) {
+func (er *ExecutionRepositoryImpl) GetByUser(ctx context.Context, userID string, limit, offset int) ([]*domain.Execution, int64, error) {
 	var models []ExecutionModel
 	var total int64
 
-	query := er.db.Where("user_id = ?", userID)
+	query := er.db.WithContext(ctx).Where("user_id = ?", userID)
 
 	if err := query.Model(&ExecutionModel{}).Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to count executions: %w", err)
 	}
 
 	if err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&models).Error; err != nil {
-		logger.Error("Failed to get executions by user",
-			zap.String("user_id", userID),
-			zap.Error(err),
+		logger.Error(ctx, "Failed to get executions by user",
+			"user_id", userID,
+			"error", err,
 		)
 		return nil, 0, fmt.Errorf("failed to get executions by user: %w", err)
 	}

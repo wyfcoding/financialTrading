@@ -1,14 +1,13 @@
-// Package repository 包含仓储实现
 package repository
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/fynnwu/FinancialTrading/internal/market-data/domain"
 	"github.com/fynnwu/FinancialTrading/pkg/db"
 	"github.com/fynnwu/FinancialTrading/pkg/logger"
 	"github.com/shopspring/decimal"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -53,7 +52,7 @@ func NewQuoteRepository(database *db.DB) domain.QuoteRepository {
 }
 
 // Save 保存行情数据
-func (qr *QuoteRepositoryImpl) Save(quote *domain.Quote) error {
+func (qr *QuoteRepositoryImpl) Save(ctx context.Context, quote *domain.Quote) error {
 	model := &QuoteModel{
 		Symbol:    quote.Symbol,
 		BidPrice:  quote.BidPrice.String(),
@@ -66,10 +65,10 @@ func (qr *QuoteRepositoryImpl) Save(quote *domain.Quote) error {
 		Source:    quote.Source,
 	}
 
-	if err := qr.db.Create(model).Error; err != nil {
-		logger.Error("Failed to save quote",
-			zap.String("symbol", quote.Symbol),
-			zap.Error(err),
+	if err := qr.db.WithContext(ctx).Create(model).Error; err != nil {
+		logger.Error(ctx, "Failed to save quote",
+			"symbol", quote.Symbol,
+			"error", err,
 		)
 		return fmt.Errorf("failed to save quote: %w", err)
 	}
@@ -78,16 +77,16 @@ func (qr *QuoteRepositoryImpl) Save(quote *domain.Quote) error {
 }
 
 // GetLatest 获取最新行情
-func (qr *QuoteRepositoryImpl) GetLatest(symbol string) (*domain.Quote, error) {
+func (qr *QuoteRepositoryImpl) GetLatest(ctx context.Context, symbol string) (*domain.Quote, error) {
 	var model QuoteModel
 
-	if err := qr.db.Where("symbol = ?", symbol).Order("timestamp DESC").First(&model).Error; err != nil {
+	if err := qr.db.WithContext(ctx).Where("symbol = ?", symbol).Order("timestamp DESC").First(&model).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		logger.Error("Failed to get latest quote",
-			zap.String("symbol", symbol),
-			zap.Error(err),
+		logger.Error(ctx, "Failed to get latest quote",
+			"symbol", symbol,
+			"error", err,
 		)
 		return nil, fmt.Errorf("failed to get latest quote: %w", err)
 	}
@@ -96,15 +95,15 @@ func (qr *QuoteRepositoryImpl) GetLatest(symbol string) (*domain.Quote, error) {
 }
 
 // GetHistory 获取历史行情
-func (qr *QuoteRepositoryImpl) GetHistory(symbol string, startTime, endTime int64) ([]*domain.Quote, error) {
+func (qr *QuoteRepositoryImpl) GetHistory(ctx context.Context, symbol string, startTime, endTime int64) ([]*domain.Quote, error) {
 	var models []QuoteModel
 
-	if err := qr.db.Where("symbol = ? AND timestamp >= ? AND timestamp <= ?", symbol, startTime, endTime).
+	if err := qr.db.WithContext(ctx).Where("symbol = ? AND timestamp >= ? AND timestamp <= ?", symbol, startTime, endTime).
 		Order("timestamp DESC").
 		Find(&models).Error; err != nil {
-		logger.Error("Failed to get historical quotes",
-			zap.String("symbol", symbol),
-			zap.Error(err),
+		logger.Error(ctx, "Failed to get historical quotes",
+			"symbol", symbol,
+			"error", err,
 		)
 		return nil, fmt.Errorf("failed to get historical quotes: %w", err)
 	}
@@ -118,11 +117,11 @@ func (qr *QuoteRepositoryImpl) GetHistory(symbol string, startTime, endTime int6
 }
 
 // DeleteExpired 删除过期行情
-func (qr *QuoteRepositoryImpl) DeleteExpired(beforeTime int64) error {
-	if err := qr.db.Where("timestamp < ?", beforeTime).Delete(&QuoteModel{}).Error; err != nil {
-		logger.Error("Failed to delete expired quotes",
-			zap.Int64("before_time", beforeTime),
-			zap.Error(err),
+func (qr *QuoteRepositoryImpl) DeleteExpired(ctx context.Context, beforeTime int64) error {
+	if err := qr.db.WithContext(ctx).Where("timestamp < ?", beforeTime).Delete(&QuoteModel{}).Error; err != nil {
+		logger.Error(ctx, "Failed to delete expired quotes",
+			"before_time", beforeTime,
+			"error", err,
 		)
 		return fmt.Errorf("failed to delete expired quotes: %w", err)
 	}

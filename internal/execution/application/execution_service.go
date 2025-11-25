@@ -1,16 +1,14 @@
-// Package application 包含执行服务的用例逻辑
 package application
 
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/fynnwu/FinancialTrading/internal/execution/domain"
 	"github.com/fynnwu/FinancialTrading/pkg/logger"
 	"github.com/fynnwu/FinancialTrading/pkg/utils"
 	"github.com/shopspring/decimal"
-	"go.uber.org/zap"
-	"time"
 )
 
 // ExecuteOrderRequest 执行订单请求 DTO
@@ -93,17 +91,17 @@ func (eas *ExecutionApplicationService) ExecuteOrder(ctx context.Context, req *E
 	}
 
 	// 保存到仓储
-	if err := eas.executionRepo.Save(execution); err != nil {
-		logger.WithContext(ctx).Error("Failed to save execution",
-			zap.String("execution_id", executionID),
-			zap.Error(err),
+	if err := eas.executionRepo.Save(ctx, execution); err != nil {
+		logger.Error(ctx, "Failed to save execution",
+			"execution_id", executionID,
+			"error", err,
 		)
 		return nil, fmt.Errorf("failed to save execution: %w", err)
 	}
 
-	logger.WithContext(ctx).Debug("Order executed successfully",
-		zap.String("execution_id", executionID),
-		zap.String("order_id", req.OrderID),
+	logger.Debug(ctx, "Order executed successfully",
+		"execution_id", executionID,
+		"order_id", req.OrderID,
 	)
 
 	// 转换为 DTO
@@ -129,11 +127,11 @@ func (eas *ExecutionApplicationService) GetExecutionHistory(ctx context.Context,
 	}
 
 	// 获取执行历史
-	executions, total, err := eas.executionRepo.GetByUser(userID, limit, offset)
+	executions, total, err := eas.executionRepo.GetByUser(ctx, userID, limit, offset)
 	if err != nil {
-		logger.WithContext(ctx).Error("Failed to get execution history",
-			zap.String("user_id", userID),
-			zap.Error(err),
+		logger.Error(ctx, "Failed to get execution history",
+			"user_id", userID,
+			"error", err,
 		)
 		return nil, 0, fmt.Errorf("failed to get execution history: %w", err)
 	}

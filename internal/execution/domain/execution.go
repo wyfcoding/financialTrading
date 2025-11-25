@@ -2,6 +2,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -44,11 +45,11 @@ type Execution struct {
 // ExecutionRepository 执行记录仓储接口
 type ExecutionRepository interface {
 	// 保存执行记录
-	Save(execution *Execution) error
+	Save(ctx context.Context, execution *Execution) error
 	// 获取执行记录
-	Get(executionID string) (*Execution, error)
+	Get(ctx context.Context, executionID string) (*Execution, error)
 	// 获取订单执行历史
-	GetByOrder(orderID string) ([]*Execution, error)
+	GetByOrder(ctx context.Context, orderID string) ([]*Execution, error)
 	// 获取用户执行历史
-	GetByUser(userID string, limit, offset int) ([]*Execution, int64, error)
+	GetByUser(ctx context.Context, userID string, limit, offset int) ([]*Execution, int64, error)
 }

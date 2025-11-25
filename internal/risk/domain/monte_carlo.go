@@ -29,7 +29,7 @@ type MonteCarloResult struct {
 
 // CalculateVaR 使用蒙特卡洛模拟计算 VaR
 func CalculateVaR(input MonteCarloInput) *MonteCarloResult {
-	rand.Seed(time.Now().UnixNano())
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	dt := input.T / float64(input.Steps)
 	finalPrices := make([]float64, input.Iterations)
@@ -39,7 +39,7 @@ func CalculateVaR(input MonteCarloInput) *MonteCarloResult {
 		for j := 0; j < input.Steps; j++ {
 			// 几何布朗运动 (GBM): dS = S * (mu * dt + sigma * dW)
 			// S(t+dt) = S(t) * exp((mu - 0.5 * sigma^2) * dt + sigma * sqrt(dt) * Z)
-			z := rand.NormFloat64()
+			z := r.NormFloat64()
 			price *= math.Exp((input.Mu-0.5*input.Sigma*input.Sigma)*dt + input.Sigma*math.Sqrt(dt)*z)
 		}
 		finalPrices[i] = price

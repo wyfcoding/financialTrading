@@ -1,4 +1,3 @@
-// Package application 包含市场数据服务的用例逻辑、DTO、事务边界与补偿策略
 package application
 
 import (
@@ -8,7 +7,6 @@ import (
 	"github.com/fynnwu/FinancialTrading/internal/market-data/domain"
 	"github.com/fynnwu/FinancialTrading/pkg/logger"
 	"github.com/shopspring/decimal"
-	"go.uber.org/zap"
 )
 
 // GetLatestQuoteRequest 获取最新行情请求 DTO
@@ -49,7 +47,7 @@ func NewQuoteApplicationService(quoteRepo domain.QuoteRepository) *QuoteApplicat
 // 3. 转换为 DTO 返回
 func (qas *QuoteApplicationService) GetLatestQuote(ctx context.Context, req *GetLatestQuoteRequest) (*QuoteDTO, error) {
 	// 记录操作开始
-	defer logger.WithContext(ctx).Info("GetLatestQuote completed", zap.String("symbol", req.Symbol))
+	defer logger.Info(ctx, "GetLatestQuote completed", "symbol", req.Symbol)
 
 	// 验证输入
 	if req.Symbol == "" {
@@ -57,11 +55,11 @@ func (qas *QuoteApplicationService) GetLatestQuote(ctx context.Context, req *Get
 	}
 
 	// 从仓储获取最新行情
-	quote, err := qas.quoteRepo.GetLatest(req.Symbol)
+	quote, err := qas.quoteRepo.GetLatest(ctx, req.Symbol)
 	if err != nil {
-		logger.WithContext(ctx).Error("Failed to get latest quote",
-			zap.String("symbol", req.Symbol),
-			zap.Error(err),
+		logger.Error(ctx, "Failed to get latest quote",
+			"symbol", req.Symbol,
+			"error", err,
 		)
 		return nil, fmt.Errorf("failed to get latest quote: %w", err)
 	}
@@ -99,17 +97,17 @@ func (qas *QuoteApplicationService) SaveQuote(ctx context.Context, symbol string
 	quote := domain.NewQuote(symbol, bidPrice, askPrice, bidSize, askSize, lastPrice, lastSize, timestamp, source)
 
 	// 保存到仓储
-	if err := qas.quoteRepo.Save(quote); err != nil {
-		logger.WithContext(ctx).Error("Failed to save quote",
-			zap.String("symbol", symbol),
-			zap.Error(err),
+	if err := qas.quoteRepo.Save(ctx, quote); err != nil {
+		logger.Error(ctx, "Failed to save quote",
+			"symbol", symbol,
+			"error", err,
 		)
 		return fmt.Errorf("failed to save quote: %w", err)
 	}
 
-	logger.WithContext(ctx).Debug("Quote saved successfully",
-		zap.String("symbol", symbol),
-		zap.Int64("timestamp", timestamp),
+	logger.Debug(ctx, "Quote saved successfully",
+		"symbol", symbol,
+		"timestamp", timestamp,
 	)
 
 	return nil
@@ -130,11 +128,11 @@ func (qas *QuoteApplicationService) GetHistoricalQuotes(ctx context.Context, sym
 	}
 
 	// 从仓储获取历史行情
-	quotes, err := qas.quoteRepo.GetHistory(symbol, startTime, endTime)
+	quotes, err := qas.quoteRepo.GetHistory(ctx, symbol, startTime, endTime)
 	if err != nil {
-		logger.WithContext(ctx).Error("Failed to get historical quotes",
-			zap.String("symbol", symbol),
-			zap.Error(err),
+		logger.Error(ctx, "Failed to get historical quotes",
+			"symbol", symbol,
+			"error", err,
 		)
 		return nil, fmt.Errorf("failed to get historical quotes: %w", err)
 	}

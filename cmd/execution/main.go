@@ -22,7 +22,6 @@ import (
 	"github.com/fynnwu/FinancialTrading/pkg/metrics"
 	"github.com/fynnwu/FinancialTrading/pkg/middleware"
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
@@ -37,27 +36,27 @@ func main() {
 
 	// 2. 初始化日志
 	loggerCfg := logger.Config{
-		Level:          cfg.Logger.Level,
-		Format:         cfg.Logger.Format,
-		Output:         cfg.Logger.Output,
-		FilePath:       cfg.Logger.FilePath,
-		MaxSize:        cfg.Logger.MaxSize,
-		MaxBackups:     cfg.Logger.MaxBackups,
-		MaxAge:         cfg.Logger.MaxAge,
-		Compress:       cfg.Logger.Compress,
-		WithCaller:     cfg.Logger.WithCaller,
-		WithStacktrace: cfg.Logger.WithStacktrace,
+		Level:      cfg.Logger.Level,
+		Format:     cfg.Logger.Format,
+		Output:     cfg.Logger.Output,
+		FilePath:   cfg.Logger.FilePath,
+		MaxSize:    cfg.Logger.MaxSize,
+		MaxBackups: cfg.Logger.MaxBackups,
+		MaxAge:     cfg.Logger.MaxAge,
+		Compress:   cfg.Logger.Compress,
+		WithCaller: cfg.Logger.WithCaller,
 	}
 	if err := logger.Init(loggerCfg); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
 		os.Exit(1)
 	}
-	defer logger.Sync()
 
-	logger.Info("Starting ExecutionService",
-		zap.String("service", cfg.ServiceName),
-		zap.String("version", cfg.Version),
-		zap.String("environment", cfg.Environment),
+	ctx := context.Background()
+
+	logger.Info(ctx, "Starting ExecutionService",
+		"service", cfg.ServiceName,
+		"version", cfg.Version,
+		"environment", cfg.Environment,
 	)
 
 	// 3. 初始化数据库
@@ -72,7 +71,7 @@ func main() {
 	}
 	database, err := db.Init(dbCfg)
 	if err != nil {
-		logger.Fatal("Failed to initialize database", zap.Error(err))
+		logger.Fatal(ctx, "Failed to initialize database", "error", err)
 	}
 	defer database.Close()
 
@@ -85,10 +84,10 @@ func main() {
 	// 6. 初始化指标
 	metricsInstance := metrics.New(cfg.ServiceName)
 	if err := metricsInstance.Register(); err != nil {
-		logger.Fatal("Failed to register metrics", zap.Error(err))
+		logger.Fatal(ctx, "Failed to register metrics", "error", err)
 	}
 	if err := metrics.StartHTTPServer(cfg.Metrics.Port, cfg.Metrics.Path); err != nil {
-		logger.Fatal("Failed to start metrics HTTP server", zap.Error(err))
+		logger.Fatal(ctx, "Failed to start metrics HTTP server", "error", err)
 	}
 
 	// 7. 创建 HTTP 服务器
@@ -100,9 +99,9 @@ func main() {
 	// 9. 启动 HTTP 服务器
 	go func() {
 		addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
-		logger.Info("Starting HTTP server", zap.String("addr", addr))
+		logger.Info(ctx, "Starting HTTP server", "addr", addr)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal("HTTP server error", zap.Error(err))
+			logger.Fatal(ctx, "HTTP server error", "error", err)
 		}
 	}()
 
@@ -111,11 +110,11 @@ func main() {
 		addr := fmt.Sprintf("%s:%d", cfg.GRPC.Host, cfg.GRPC.Port)
 		listener, err := net.Listen("tcp", addr)
 		if err != nil {
-			logger.Fatal("Failed to listen on gRPC address", zap.Error(err))
+			logger.Fatal(ctx, "Failed to listen on gRPC address", "error", err)
 		}
-		logger.Info("Starting gRPC server", zap.String("addr", addr))
+		logger.Info(ctx, "Starting gRPC server", "addr", addr)
 		if err := grpcServer.Serve(listener); err != nil {
-			logger.Fatal("gRPC server error", zap.Error(err))
+			logger.Fatal(ctx, "gRPC server error", "error", err)
 		}
 	}()
 
@@ -124,19 +123,19 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
 
-	logger.Info("Shutting down ExecutionService")
+	logger.Info(ctx, "Shutting down ExecutionService")
 
 	// 关闭 HTTP 服务器
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := httpServer.Shutdown(ctx); err != nil {
-		logger.Error("HTTP server shutdown error", zap.Error(err))
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		logger.Error(ctx, "HTTP server shutdown error", "error", err)
 	}
 
 	// 关闭 gRPC 服务器
 	grpcServer.GracefulStop()
 
-	logger.Info("ExecutionService stopped")
+	logger.Info(ctx, "ExecutionService stopped")
 }
 
 // createHTTPServer 创建 HTTP 服务器

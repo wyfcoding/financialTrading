@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -15,7 +16,6 @@ import (
 	"github.com/fynnwu/FinancialTrading/pkg/config"
 	"github.com/fynnwu/FinancialTrading/pkg/db"
 	"github.com/fynnwu/FinancialTrading/pkg/logger"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -29,7 +29,7 @@ func main() {
 	}
 
 	// 初始化日志
-	logger.Init(logger.Config{
+	loggerCfg := logger.Config{
 		Level:      cfg.Logger.Level,
 		Format:     cfg.Logger.Format,
 		Output:     cfg.Logger.Output,
@@ -39,10 +39,14 @@ func main() {
 		MaxAge:     cfg.Logger.MaxAge,
 		Compress:   cfg.Logger.Compress,
 		WithCaller: cfg.Logger.WithCaller,
-	})
-	defer logger.Sync()
+	}
+	if err := logger.Init(loggerCfg); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
+		os.Exit(1)
+	}
 
-	logger.Info("Starting MonitoringAnalyticsService", zap.String("version", cfg.Version))
+	ctx := context.Background()
+	logger.Info(ctx, "Starting MonitoringAnalyticsService", "version", cfg.Version)
 
 	// 初始化数据库
 	dbConfig := db.Config{
@@ -56,12 +60,12 @@ func main() {
 	}
 	gormDB, err := db.Init(dbConfig)
 	if err != nil {
-		logger.Fatal("Failed to connect to database", zap.Error(err))
+		logger.Fatal(ctx, "Failed to connect to database", "error", err)
 	}
 
 	// 自动迁移
 	if err := gormDB.AutoMigrate(&infrastructure.MetricModel{}, &infrastructure.SystemHealthModel{}); err != nil {
-		logger.Fatal("Failed to migrate database", zap.Error(err))
+		logger.Fatal(ctx, "Failed to migrate database", "error", err)
 	}
 
 	// 初始化依赖
@@ -73,7 +77,7 @@ func main() {
 	// 启动 gRPC 服务
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.GRPC.Port))
 	if err != nil {
-		logger.Fatal("Failed to listen", zap.Error(err))
+		logger.Fatal(ctx, "Failed to listen", "error", err)
 	}
 
 	s := grpc.NewServer()
@@ -83,9 +87,9 @@ func main() {
 
 	// 启动 gRPC 服务
 	go func() {
-		logger.Info("Starting gRPC server", zap.Int("port", cfg.GRPC.Port))
+		logger.Info(ctx, "Starting gRPC server", "port", cfg.GRPC.Port)
 		if err := s.Serve(lis); err != nil {
-			logger.Fatal("Failed to serve", zap.Error(err))
+			logger.Fatal(ctx, "Failed to serve", "error", err)
 		}
 	}()
 
@@ -93,8 +97,9 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	logger.Info("Shutting down server...")
+	logger.Info(ctx, "Shutting down server...")
 
 	s.GracefulStop()
-	logger.Info("Server exited")
+	// gormDB.Close() // gorm.DB doesn't have Close()
+	logger.Info(ctx, "Server exited")
 }

@@ -1,4 +1,3 @@
-// Package application 包含撮合引擎的用例逻辑
 package application
 
 import (
@@ -9,7 +8,6 @@ import (
 	"github.com/fynnwu/FinancialTrading/pkg/algos"
 	"github.com/fynnwu/FinancialTrading/pkg/logger"
 	"github.com/shopspring/decimal"
-	"go.uber.org/zap"
 )
 
 // SubmitOrderRequest 提交订单请求 DTO
@@ -76,10 +74,10 @@ func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *Sub
 
 	// 保存成交记录
 	for _, trade := range trades {
-		if err := mas.tradeRepo.Save(trade); err != nil {
-			logger.WithContext(ctx).Error("Failed to save trade",
-				zap.String("trade_id", trade.TradeID),
-				zap.Error(err),
+		if err := mas.tradeRepo.Save(ctx, trade); err != nil {
+			logger.Error(ctx, "Failed to save trade",
+				"trade_id", trade.TradeID,
+				"error", err,
 			)
 		}
 	}
@@ -92,9 +90,9 @@ func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *Sub
 		Status:            "MATCHED",
 	}
 
-	logger.WithContext(ctx).Debug("Order matched successfully",
-		zap.String("order_id", req.OrderID),
-		zap.Int("trades_count", len(trades)),
+	logger.Debug(ctx, "Order matched successfully",
+		"order_id", req.OrderID,
+		"trades_count", len(trades),
 	)
 
 	return result, nil
@@ -137,10 +135,10 @@ func (mas *MatchingApplicationService) GetOrderBook(ctx context.Context, symbol 
 	}
 
 	// 保存快照
-	if err := mas.orderBookRepo.SaveSnapshot(snapshot); err != nil {
-		logger.WithContext(ctx).Error("Failed to save order book snapshot",
-			zap.String("symbol", symbol),
-			zap.Error(err),
+	if err := mas.orderBookRepo.SaveSnapshot(ctx, snapshot); err != nil {
+		logger.Error(ctx, "Failed to save order book snapshot",
+			"symbol", symbol,
+			"error", err,
 		)
 	}
 
@@ -157,11 +155,11 @@ func (mas *MatchingApplicationService) GetTrades(ctx context.Context, symbol str
 		limit = 100
 	}
 
-	trades, err := mas.tradeRepo.GetLatest(symbol, limit)
+	trades, err := mas.tradeRepo.GetLatest(ctx, symbol, limit)
 	if err != nil {
-		logger.WithContext(ctx).Error("Failed to get trades",
-			zap.String("symbol", symbol),
-			zap.Error(err),
+		logger.Error(ctx, "Failed to get trades",
+			"symbol", symbol,
+			"error", err,
 		)
 		return nil, fmt.Errorf("failed to get trades: %w", err)
 	}

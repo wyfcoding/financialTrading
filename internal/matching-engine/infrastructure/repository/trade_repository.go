@@ -1,7 +1,7 @@
-// Package repository 包含仓储实现
 package repository
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/fynnwu/FinancialTrading/internal/matching-engine/domain"
@@ -9,7 +9,6 @@ import (
 	"github.com/fynnwu/FinancialTrading/pkg/db"
 	"github.com/fynnwu/FinancialTrading/pkg/logger"
 	"github.com/shopspring/decimal"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -50,7 +49,7 @@ func NewTradeRepository(database *db.DB) domain.TradeRepository {
 }
 
 // Save 保存成交记录
-func (tr *TradeRepositoryImpl) Save(trade *algos.Trade) error {
+func (tr *TradeRepositoryImpl) Save(ctx context.Context, trade *algos.Trade) error {
 	model := &TradeModel{
 		TradeID:     trade.TradeID,
 		Symbol:      trade.Symbol,
@@ -61,10 +60,10 @@ func (tr *TradeRepositoryImpl) Save(trade *algos.Trade) error {
 		Timestamp:   trade.Timestamp,
 	}
 
-	if err := tr.db.Create(model).Error; err != nil {
-		logger.Error("Failed to save trade",
-			zap.String("trade_id", trade.TradeID),
-			zap.Error(err),
+	if err := tr.db.WithContext(ctx).Create(model).Error; err != nil {
+		logger.Error(ctx, "Failed to save trade",
+			"trade_id", trade.TradeID,
+			"error", err,
 		)
 		return fmt.Errorf("failed to save trade: %w", err)
 	}
@@ -73,13 +72,13 @@ func (tr *TradeRepositoryImpl) Save(trade *algos.Trade) error {
 }
 
 // GetHistory 获取成交历史
-func (tr *TradeRepositoryImpl) GetHistory(symbol string, limit int) ([]*algos.Trade, error) {
+func (tr *TradeRepositoryImpl) GetHistory(ctx context.Context, symbol string, limit int) ([]*algos.Trade, error) {
 	var models []TradeModel
 
-	if err := tr.db.Where("symbol = ?", symbol).Order("timestamp DESC").Limit(limit).Find(&models).Error; err != nil {
-		logger.Error("Failed to get trade history",
-			zap.String("symbol", symbol),
-			zap.Error(err),
+	if err := tr.db.WithContext(ctx).Where("symbol = ?", symbol).Order("timestamp DESC").Limit(limit).Find(&models).Error; err != nil {
+		logger.Error(ctx, "Failed to get trade history",
+			"symbol", symbol,
+			"error", err,
 		)
 		return nil, fmt.Errorf("failed to get trade history: %w", err)
 	}
@@ -103,8 +102,8 @@ func (tr *TradeRepositoryImpl) GetHistory(symbol string, limit int) ([]*algos.Tr
 }
 
 // GetLatest 获取最新成交
-func (tr *TradeRepositoryImpl) GetLatest(symbol string, limit int) ([]*algos.Trade, error) {
-	return tr.GetHistory(symbol, limit)
+func (tr *TradeRepositoryImpl) GetLatest(ctx context.Context, symbol string, limit int) ([]*algos.Trade, error) {
+	return tr.GetHistory(ctx, symbol, limit)
 }
 
 // OrderBookRepositoryImpl 订单簿仓储实现
@@ -120,18 +119,18 @@ func NewOrderBookRepository(database *db.DB) domain.OrderBookRepository {
 }
 
 // SaveSnapshot 保存订单簿快照
-func (obr *OrderBookRepositoryImpl) SaveSnapshot(snapshot *domain.OrderBookSnapshot) error {
+func (obr *OrderBookRepositoryImpl) SaveSnapshot(ctx context.Context, snapshot *domain.OrderBookSnapshot) error {
 	// 实现待补充：保存订单簿快照到数据库或缓存
-	logger.Debug("Order book snapshot saved",
-		zap.String("symbol", snapshot.Symbol),
-		zap.Int("bids_count", len(snapshot.Bids)),
-		zap.Int("asks_count", len(snapshot.Asks)),
+	logger.Debug(ctx, "Order book snapshot saved",
+		"symbol", snapshot.Symbol,
+		"bids_count", len(snapshot.Bids),
+		"asks_count", len(snapshot.Asks),
 	)
 	return nil
 }
 
 // GetLatest 获取最新订单簿
-func (obr *OrderBookRepositoryImpl) GetLatest(symbol string) (*domain.OrderBookSnapshot, error) {
+func (obr *OrderBookRepositoryImpl) GetLatest(ctx context.Context, symbol string) (*domain.OrderBookSnapshot, error) {
 	// 实现待补充：从数据库或缓存获取最新订单簿
 	return &domain.OrderBookSnapshot{
 		Symbol:    symbol,

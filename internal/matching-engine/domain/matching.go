@@ -2,6 +2,8 @@
 package domain
 
 import (
+	"context"
+
 	"github.com/fynnwu/FinancialTrading/pkg/algos"
 	"github.com/shopspring/decimal"
 )
@@ -51,17 +53,17 @@ type MatchingEngine interface {
 // TradeRepository 成交记录仓储接口
 type TradeRepository interface {
 	// 保存成交记录
-	Save(trade *algos.Trade) error
+	Save(ctx context.Context, trade *algos.Trade) error
 	// 获取成交历史
-	GetHistory(symbol string, limit int) ([]*algos.Trade, error)
+	GetHistory(ctx context.Context, symbol string, limit int) ([]*algos.Trade, error)
 	// 获取最新成交
-	GetLatest(symbol string, limit int) ([]*algos.Trade, error)
+	GetLatest(ctx context.Context, symbol string, limit int) ([]*algos.Trade, error)
 }
 
 // OrderBookRepository 订单簿仓储接口
 type OrderBookRepository interface {
 	// 保存订单簿快照
-	SaveSnapshot(snapshot *OrderBookSnapshot) error
+	SaveSnapshot(ctx context.Context, snapshot *OrderBookSnapshot) error
 	// 获取最新订单簿
-	GetLatest(symbol string) (*OrderBookSnapshot, error)
+	GetLatest(ctx context.Context, symbol string) (*OrderBookSnapshot, error)
 }
