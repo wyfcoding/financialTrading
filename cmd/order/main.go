@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	pb "github.com/wyfcoding/financialTrading/go-api/order"
 	"github.com/wyfcoding/financialTrading/internal/order/application"
 	"github.com/wyfcoding/financialTrading/internal/order/infrastructure/repository"
@@ -22,7 +23,6 @@ import (
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/wyfcoding/financialTrading/pkg/metrics"
 	"github.com/wyfcoding/financialTrading/pkg/middleware"
-	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 )
 

@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 )
 
 // Metrics 指标集合

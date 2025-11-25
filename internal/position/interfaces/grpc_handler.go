@@ -3,9 +3,9 @@ package interfaces
 import (
 	"context"
 
+	"github.com/shopspring/decimal"
 	pb "github.com/wyfcoding/financialTrading/go-api/position"
 	"github.com/wyfcoding/financialTrading/internal/position/application"
-	"github.com/shopspring/decimal"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

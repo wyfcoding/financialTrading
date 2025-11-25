@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/position/domain"
 	"github.com/wyfcoding/financialTrading/pkg/db"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
-	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 

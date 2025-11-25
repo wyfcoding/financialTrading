@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/segmentio/kafka-go"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 )
 
 // KafkaConfig Kafka 配置

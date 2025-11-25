@@ -4,8 +4,8 @@ package domain
 import (
 	"context"
 
-	"github.com/wyfcoding/financialTrading/pkg/algos"
 	"github.com/shopspring/decimal"
+	"github.com/wyfcoding/financialTrading/pkg/algos"
 )
 
 // MatchingResult 撮合结果

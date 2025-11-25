@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wyfcoding/financialTrading/internal/market-making/domain"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
-	"github.com/google/uuid"
 )
 
 // MarketMakingService 应用服务

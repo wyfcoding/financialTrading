@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/matching-engine/domain"
 	"github.com/wyfcoding/financialTrading/pkg/algos"
 	"github.com/wyfcoding/financialTrading/pkg/db"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
-	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 

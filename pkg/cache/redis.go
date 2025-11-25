@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/redis/go-redis/v9"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 )
 
 // Config Redis 配置

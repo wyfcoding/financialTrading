@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/risk/domain"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/wyfcoding/financialTrading/pkg/utils"
-	"github.com/shopspring/decimal"
 )
 
 // AssessRiskRequest 风险评估请求 DTO

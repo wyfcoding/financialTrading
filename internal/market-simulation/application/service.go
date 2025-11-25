@@ -6,9 +6,9 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wyfcoding/financialTrading/internal/market-simulation/domain"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
-	"github.com/google/uuid"
 )
 
 // MarketSimulationService 应用服务

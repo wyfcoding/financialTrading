@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wyfcoding/financialTrading/internal/quant/domain"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
-	"github.com/google/uuid"
 )
 
 // QuantService 应用服务

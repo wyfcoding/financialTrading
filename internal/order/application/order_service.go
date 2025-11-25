@@ -5,10 +5,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/order/domain"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/wyfcoding/financialTrading/pkg/utils"
-	"github.com/shopspring/decimal"
 )
 
 // CreateOrderRequest 创建订单请求 DTO

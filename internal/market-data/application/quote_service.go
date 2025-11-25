@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/market-data/domain"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
-	"github.com/shopspring/decimal"
 )
 
 // GetLatestQuoteRequest 获取最新行情请求 DTO

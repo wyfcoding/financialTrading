@@ -4,9 +4,9 @@ package http
 import (
 	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialTrading/internal/market-data/application"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
-	"github.com/gin-gonic/gin"
 )
 
 // Handler HTTP 处理器
