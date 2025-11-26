@@ -16,7 +16,7 @@ import (
 	pb "github.com/wyfcoding/financialTrading/go-api/account"
 	"github.com/wyfcoding/financialTrading/internal/account/application"
 	"github.com/wyfcoding/financialTrading/internal/account/infrastructure/repository"
-	interfaces "github.com/wyfcoding/financialTrading/internal/account/interfaces"
+	grpchandler "github.com/wyfcoding/financialTrading/internal/account/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialTrading/internal/account/interfaces/http"
 	"github.com/wyfcoding/financialTrading/pkg/config"
 	"github.com/wyfcoding/financialTrading/pkg/db"
@@ -180,7 +180,7 @@ func createGRPCServer(cfg *config.Config, accountAppService *application.Account
 	server := grpc.NewServer(opts...)
 
 	// 注册服务
-	handler := interfaces.NewGRPCHandler(accountAppService)
+	handler := grpchandler.NewGRPCHandler(accountAppService)
 	pb.RegisterAccountServiceServer(server, handler)
 
 	return server

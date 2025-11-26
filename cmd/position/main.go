@@ -16,7 +16,8 @@ import (
 	pb "github.com/wyfcoding/financialTrading/go-api/position"
 	"github.com/wyfcoding/financialTrading/internal/position/application"
 	"github.com/wyfcoding/financialTrading/internal/position/infrastructure/repository"
-	"github.com/wyfcoding/financialTrading/internal/position/interfaces"
+	grpchandler "github.com/wyfcoding/financialTrading/internal/position/interfaces/grpc"
+	httphandler "github.com/wyfcoding/financialTrading/internal/position/interfaces/http"
 	"github.com/wyfcoding/financialTrading/pkg/config"
 	"github.com/wyfcoding/financialTrading/pkg/db"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
@@ -90,7 +91,7 @@ func main() {
 	}
 
 	// 7. 创建 HTTP 服务器
-	httpServer := createHTTPServer(cfg)
+	httpServer := createHTTPServer(cfg, positionAppService)
 
 	// 8. 创建 gRPC 服务器
 	grpcServer := createGRPCServer(cfg, positionAppService)
@@ -138,13 +139,17 @@ func main() {
 }
 
 // createHTTPServer 创建 HTTP 服务器
-func createHTTPServer(cfg *config.Config) *http.Server {
+func createHTTPServer(cfg *config.Config, positionAppService *application.PositionApplicationService) *http.Server {
 	router := gin.Default()
 
 	// 添加中间件
 	router.Use(middleware.GinLoggingMiddleware())
 	router.Use(middleware.GinRecoveryMiddleware())
 	router.Use(middleware.GinCORSMiddleware())
+
+	// 注册路由
+	httpHandler := httphandler.NewPositionHandler(positionAppService)
+	httpHandler.RegisterRoutes(router)
 
 	// 健康检查
 	router.GET("/health", func(c *gin.Context) {
@@ -174,7 +179,7 @@ func createGRPCServer(cfg *config.Config, positionAppService *application.Positi
 	server := grpc.NewServer(opts...)
 
 	// 注册服务
-	handler := interfaces.NewGRPCHandler(positionAppService)
+	handler := grpchandler.NewGRPCHandler(positionAppService)
 	pb.RegisterPositionServiceServer(server, handler)
 
 	return server

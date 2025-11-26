@@ -17,7 +17,8 @@ import (
 	pb "github.com/wyfcoding/financialTrading/go-api/matching-engine"
 	"github.com/wyfcoding/financialTrading/internal/matching-engine/application"
 	"github.com/wyfcoding/financialTrading/internal/matching-engine/infrastructure/repository"
-	"github.com/wyfcoding/financialTrading/internal/matching-engine/interfaces"
+	grpchandler "github.com/wyfcoding/financialTrading/internal/matching-engine/interfaces/grpc"
+	httphandler "github.com/wyfcoding/financialTrading/internal/matching-engine/interfaces/http"
 	"github.com/wyfcoding/financialTrading/pkg/config"
 	"github.com/wyfcoding/financialTrading/pkg/db"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
@@ -51,11 +52,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
 		os.Exit(1)
 	}
-	// defer logger.Sync() // slog doesn't need explicit sync usually, but if wrapper has it, keep it. Our wrapper might not have it exposed directly or it's different.
-	// Checking logger package, it seems we don't need to defer Sync for slog as strictly as zap, but if we want to ensure flush...
-	// The previous logger.Init returned error.
-	// Let's assume logger.Sync() is not needed or removed in new logger pkg if it was zap specific.
-	// Actually, looking at previous files, I removed defer logger.Sync().
 
 	ctx := context.Background()
 
@@ -98,7 +94,7 @@ func main() {
 	}
 
 	// 7. 创建 HTTP 服务器
-	httpServer := createHTTPServer(cfg)
+	httpServer := createHTTPServer(cfg, matchingAppService)
 
 	// 8. 创建 gRPC 服务器
 	grpcServer := createGRPCServer(cfg, matchingAppService)
@@ -146,13 +142,17 @@ func main() {
 }
 
 // createHTTPServer 创建 HTTP 服务器
-func createHTTPServer(cfg *config.Config) *http.Server {
+func createHTTPServer(cfg *config.Config, matchingAppService *application.MatchingApplicationService) *http.Server {
 	router := gin.Default()
 
 	// 添加中间件
 	router.Use(middleware.GinLoggingMiddleware())
 	router.Use(middleware.GinRecoveryMiddleware())
 	router.Use(middleware.GinCORSMiddleware())
+
+	// 注册路由
+	httpHandler := httphandler.NewMatchingHandler(matchingAppService)
+	httpHandler.RegisterRoutes(router)
 
 	// 健康检查
 	router.GET("/health", func(c *gin.Context) {
@@ -182,7 +182,7 @@ func createGRPCServer(cfg *config.Config, matchingAppService *application.Matchi
 	server := grpc.NewServer(opts...)
 
 	// 注册服务
-	handler := interfaces.NewGRPCHandler(matchingAppService)
+	handler := grpchandler.NewGRPCHandler(matchingAppService)
 	pb.RegisterMatchingEngineServiceServer(server, handler)
 
 	return server

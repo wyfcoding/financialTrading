@@ -1,0 +1,99 @@
+package http
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/wyfcoding/financialTrading/internal/order/application"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
+)
+
+// OrderHandler HTTP 处理器
+type OrderHandler struct {
+	orderService *application.OrderApplicationService
+}
+
+// NewOrderHandler 创建 HTTP 处理器
+func NewOrderHandler(orderService *application.OrderApplicationService) *OrderHandler {
+	return &OrderHandler{
+		orderService: orderService,
+	}
+}
+
+// RegisterRoutes 注册路由
+func (h *OrderHandler) RegisterRoutes(router *gin.Engine) {
+	api := router.Group("/api/v1/orders")
+	{
+		api.POST("", h.CreateOrder)
+		api.DELETE("/:id", h.CancelOrder)
+		api.GET("/:id", h.GetOrder)
+	}
+}
+
+// CreateOrder 创建订单
+func (h *OrderHandler) CreateOrder(c *gin.Context) {
+	var req application.CreateOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	dto, err := h.orderService.CreateOrder(c.Request.Context(), &req)
+	if err != nil {
+		logger.WithContext(c.Request.Context()).Error("Failed to create order", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto)
+}
+
+// CancelOrder 取消订单
+func (h *OrderHandler) CancelOrder(c *gin.Context) {
+	orderID := c.Param("id")
+	if orderID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "order_id is required"})
+		return
+	}
+
+	// Assuming user_id is passed in header or context (e.g. from auth middleware)
+	// For now, we'll try to get it from query param for simplicity if not in context
+	userID := c.Query("user_id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
+		return
+	}
+
+	dto, err := h.orderService.CancelOrder(c.Request.Context(), orderID, userID)
+	if err != nil {
+		logger.WithContext(c.Request.Context()).Error("Failed to cancel order", "order_id", orderID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto)
+}
+
+// GetOrder 获取订单
+func (h *OrderHandler) GetOrder(c *gin.Context) {
+	orderID := c.Param("id")
+	if orderID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "order_id is required"})
+		return
+	}
+
+	userID := c.Query("user_id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
+		return
+	}
+
+	dto, err := h.orderService.GetOrder(c.Request.Context(), orderID, userID)
+	if err != nil {
+		logger.WithContext(c.Request.Context()).Error("Failed to get order", "order_id", orderID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto)
+}

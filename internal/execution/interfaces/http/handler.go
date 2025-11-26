@@ -1,0 +1,84 @@
+package http
+
+import (
+	"net/http"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+	"github.com/wyfcoding/financialTrading/internal/execution/application"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
+)
+
+// ExecutionHandler HTTP 处理器
+type ExecutionHandler struct {
+	executionService *application.ExecutionApplicationService
+}
+
+// NewExecutionHandler 创建 HTTP 处理器
+func NewExecutionHandler(executionService *application.ExecutionApplicationService) *ExecutionHandler {
+	return &ExecutionHandler{
+		executionService: executionService,
+	}
+}
+
+// RegisterRoutes 注册路由
+func (h *ExecutionHandler) RegisterRoutes(router *gin.Engine) {
+	api := router.Group("/api/v1/execution")
+	{
+		api.POST("/orders", h.ExecuteOrder)
+		api.GET("/history", h.GetExecutionHistory)
+	}
+}
+
+// ExecuteOrder 执行订单
+func (h *ExecutionHandler) ExecuteOrder(c *gin.Context) {
+	var req application.ExecuteOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	dto, err := h.executionService.ExecuteOrder(c.Request.Context(), &req)
+	if err != nil {
+		logger.Error(c.Request.Context(), "Failed to execute order", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto)
+}
+
+// GetExecutionHistory 获取执行历史
+func (h *ExecutionHandler) GetExecutionHistory(c *gin.Context) {
+	userID := c.Query("user_id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
+		return
+	}
+
+	limitStr := c.DefaultQuery("limit", "20")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit"})
+		return
+	}
+
+	offsetStr := c.DefaultQuery("offset", "0")
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset"})
+		return
+	}
+
+	dtos, total, err := h.executionService.GetExecutionHistory(c.Request.Context(), userID, limit, offset)
+	if err != nil {
+		logger.Error(c.Request.Context(), "Failed to get execution history", "user_id", userID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":  dtos,
+		"total": total,
+	})
+}

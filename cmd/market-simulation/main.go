@@ -5,17 +5,22 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/gin-gonic/gin"
 	pb "github.com/wyfcoding/financialTrading/go-api/market-simulation"
 	"github.com/wyfcoding/financialTrading/internal/market-simulation/application"
 	"github.com/wyfcoding/financialTrading/internal/market-simulation/infrastructure"
-	"github.com/wyfcoding/financialTrading/internal/market-simulation/interfaces"
+	grpchandler "github.com/wyfcoding/financialTrading/internal/market-simulation/interfaces/grpc"
+	httphandler "github.com/wyfcoding/financialTrading/internal/market-simulation/interfaces/http"
 	"github.com/wyfcoding/financialTrading/pkg/config"
 	"github.com/wyfcoding/financialTrading/pkg/db"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/financialTrading/pkg/middleware"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -72,24 +77,32 @@ func main() {
 	publisher := infrastructure.NewMockMarketDataPublisher() // Changed to NewMockMarketDataPublisher
 	repo := infrastructure.NewSimulationScenarioRepository(gormDB.DB)
 	svc := application.NewMarketSimulationService(repo, publisher)
-	handler := interfaces.NewGRPCHandler(svc)
 
-	// 启动 gRPC 服务
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.GRPC.Port))
-	if err != nil {
-		logger.Fatal(ctx, "Failed to listen", "error", err)
-	}
+	// 6. 创建 HTTP 服务器
+	httpServer := createHTTPServer(cfg, svc)
 
-	s := grpc.NewServer()
-	pb.RegisterMarketSimulationServiceServer(s, handler)
-	// 注册反射服务
-	reflection.Register(s)
+	// 7. 创建 gRPC 服务器
+	grpcServer := createGRPCServer(cfg, svc)
 
-	// 启动 gRPC 服务
+	// 8. 启动 HTTP 服务器
 	go func() {
-		logger.Info(ctx, "Starting gRPC server", "port", cfg.GRPC.Port)
-		if err := s.Serve(lis); err != nil {
-			logger.Fatal(ctx, "Failed to serve", "error", err)
+		addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
+		logger.Info(ctx, "Starting HTTP server", "addr", addr)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatal(ctx, "HTTP server error", "error", err)
+		}
+	}()
+
+	// 9. 启动 gRPC 服务器
+	go func() {
+		addr := fmt.Sprintf("%s:%d", cfg.GRPC.Host, cfg.GRPC.Port)
+		lis, err := net.Listen("tcp", addr)
+		if err != nil {
+			logger.Fatal(ctx, "Failed to listen on gRPC address", "error", err)
+		}
+		logger.Info(ctx, "Starting gRPC server", "addr", addr)
+		if err := grpcServer.Serve(lis); err != nil {
+			logger.Fatal(ctx, "gRPC server error", "error", err)
 		}
 	}()
 
@@ -97,9 +110,64 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	logger.Info(ctx, "Shutting down server...")
+	logger.Info(ctx, "Shutting down MarketSimulationService")
 
-	s.GracefulStop()
-	// gormDB.Close() // Close DB connection - removed as gormDB.DB is *gorm.DB which doesn't have Close() directly, and sqlDB is not exposed easily here without getting it. GORM handles connection pool.
+	// 关闭 HTTP 服务器
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		logger.Error(ctx, "HTTP server shutdown error", "error", err)
+	}
+
+	// 关闭 gRPC 服务器
+	grpcServer.GracefulStop()
 	logger.Info(ctx, "Server exited")
+}
+
+// createHTTPServer 创建 HTTP 服务器
+func createHTTPServer(cfg *config.Config, app *application.MarketSimulationService) *http.Server {
+	router := gin.Default()
+
+	// 添加中间件
+	router.Use(middleware.GinLoggingMiddleware())
+	router.Use(middleware.GinRecoveryMiddleware())
+	router.Use(middleware.GinCORSMiddleware())
+
+	// 注册路由
+	httpHandler := httphandler.NewMarketSimulationHandler(app)
+	httpHandler.RegisterRoutes(router)
+
+	// 健康检查
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "healthy",
+			"service":   cfg.ServiceName,
+			"timestamp": time.Now().Unix(),
+		})
+	})
+
+	return &http.Server{
+		Addr:         fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port),
+		Handler:      router,
+		ReadTimeout:  time.Duration(cfg.HTTP.ReadTimeout) * time.Second,
+		WriteTimeout: time.Duration(cfg.HTTP.WriteTimeout) * time.Second,
+	}
+}
+
+// createGRPCServer 创建 gRPC 服务器
+func createGRPCServer(cfg *config.Config, app *application.MarketSimulationService) *grpc.Server {
+	// 创建 gRPC 服务器选项
+	opts := []grpc.ServerOption{
+		grpc.UnaryInterceptor(middleware.GRPCLoggingInterceptor()),
+		grpc.MaxConcurrentStreams(uint32(cfg.GRPC.MaxConcurrentStreams)),
+	}
+
+	server := grpc.NewServer(opts...)
+
+	// 注册服务
+	handler := grpchandler.NewGRPCHandler(app)
+	pb.RegisterMarketSimulationServiceServer(server, handler)
+	reflection.Register(server)
+
+	return server
 }
