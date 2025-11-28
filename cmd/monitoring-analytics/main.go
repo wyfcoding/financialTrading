@@ -17,10 +17,15 @@ import (
 	"github.com/wyfcoding/financialTrading/internal/monitoring-analytics/infrastructure"
 	grpchandler "github.com/wyfcoding/financialTrading/internal/monitoring-analytics/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialTrading/internal/monitoring-analytics/interfaces/http"
+	"github.com/wyfcoding/financialTrading/pkg/cache"
 	"github.com/wyfcoding/financialTrading/pkg/config"
 	"github.com/wyfcoding/financialTrading/pkg/db"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/wyfcoding/financialTrading/pkg/middleware"
+	"github.com/wyfcoding/financialTrading/pkg/ratelimit"
+	"github.com/wyfcoding/financialTrading/pkg/trace"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -53,6 +58,21 @@ func main() {
 	ctx := context.Background()
 	logger.Info(ctx, "Starting MonitoringAnalyticsService", "version", cfg.Version)
 
+	// 初始化追踪
+	if cfg.Tracing.Enabled {
+		shutdown, err := trace.InitTracer(cfg.ServiceName, cfg.Tracing.CollectorEndpoint)
+		if err != nil {
+			logger.Error(ctx, "Failed to initialize tracer", "error", err)
+		} else {
+			defer func() {
+				if err := shutdown(context.Background()); err != nil {
+					logger.Error(ctx, "Failed to shutdown tracer", "error", err)
+				}
+			}()
+			logger.Info(ctx, "Tracer initialized", "endpoint", cfg.Tracing.CollectorEndpoint)
+		}
+	}
+
 	// 初始化数据库
 	dbConfig := db.Config{
 		Driver:             cfg.Database.Driver,
@@ -73,13 +93,33 @@ func main() {
 		logger.Fatal(ctx, "Failed to migrate database", "error", err)
 	}
 
+	// 初始化 Redis
+	redisCfg := cache.Config{
+		Host:         cfg.Redis.Host,
+		Port:         cfg.Redis.Port,
+		Password:     cfg.Redis.Password,
+		DB:           cfg.Redis.DB,
+		MaxPoolSize:  cfg.Redis.MaxPoolSize,
+		ConnTimeout:  cfg.Redis.ConnTimeout,
+		ReadTimeout:  cfg.Redis.ReadTimeout,
+		WriteTimeout: cfg.Redis.WriteTimeout,
+	}
+	redisCache, err := cache.New(redisCfg)
+	if err != nil {
+		logger.Fatal(ctx, "Failed to initialize Redis", "error", err)
+	}
+	defer redisCache.Close()
+
+	// 初始化限流器
+	rateLimiter := ratelimit.NewRedisRateLimiter(redisCache.GetClient())
+
 	// 初始化依赖
 	metricRepo := infrastructure.NewMetricRepository(gormDB.DB)
 	healthRepo := infrastructure.NewSystemHealthRepository(gormDB.DB)
 	svc := application.NewMonitoringAnalyticsService(metricRepo, healthRepo)
 
 	// 6. 创建 HTTP 服务器
-	httpServer := createHTTPServer(cfg, svc)
+	httpServer := createHTTPServer(cfg, svc, rateLimiter)
 
 	// 7. 创建 gRPC 服务器
 	grpcServer := createGRPCServer(cfg, svc)
@@ -125,13 +165,15 @@ func main() {
 }
 
 // createHTTPServer 创建 HTTP 服务器
-func createHTTPServer(cfg *config.Config, app *application.MonitoringAnalyticsService) *http.Server {
+func createHTTPServer(cfg *config.Config, app *application.MonitoringAnalyticsService, rateLimiter ratelimit.RateLimiter) *http.Server {
 	router := gin.Default()
 
 	// 添加中间件
+	router.Use(otelgin.Middleware(cfg.ServiceName))
 	router.Use(middleware.GinLoggingMiddleware())
 	router.Use(middleware.GinRecoveryMiddleware())
 	router.Use(middleware.GinCORSMiddleware())
+	router.Use(middleware.RateLimitMiddleware(rateLimiter, cfg.RateLimit))
 
 	// 注册路由
 	httpHandler := httphandler.NewMonitoringAnalyticsHandler(app)
@@ -158,7 +200,11 @@ func createHTTPServer(cfg *config.Config, app *application.MonitoringAnalyticsSe
 func createGRPCServer(cfg *config.Config, app *application.MonitoringAnalyticsService) *grpc.Server {
 	// 创建 gRPC 服务器选项
 	opts := []grpc.ServerOption{
-		grpc.UnaryInterceptor(middleware.GRPCLoggingInterceptor()),
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+		grpc.ChainUnaryInterceptor(
+			middleware.GRPCLoggingInterceptor(),
+			middleware.GRPCRecoveryInterceptor(),
+		),
 		grpc.MaxConcurrentStreams(uint32(cfg.GRPC.MaxConcurrentStreams)),
 	}
 

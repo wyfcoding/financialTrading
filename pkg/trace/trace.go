@@ -31,9 +31,8 @@ func InitTracer(serviceName string, collectorEndpoint string) (func(context.Cont
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
-	conn, err := grpc.DialContext(ctx, collectorEndpoint,
+	conn, err := grpc.NewClient(collectorEndpoint,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC connection to collector: %w", err)

@@ -19,11 +19,13 @@ import (
 	"github.com/wyfcoding/financialTrading/internal/order/infrastructure/repository"
 	grpchandler "github.com/wyfcoding/financialTrading/internal/order/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialTrading/internal/order/interfaces/http"
+	"github.com/wyfcoding/financialTrading/pkg/cache"
 	"github.com/wyfcoding/financialTrading/pkg/config"
 	"github.com/wyfcoding/financialTrading/pkg/db"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/wyfcoding/financialTrading/pkg/metrics"
 	"github.com/wyfcoding/financialTrading/pkg/middleware"
+	"github.com/wyfcoding/financialTrading/pkg/ratelimit"
 	"github.com/wyfcoding/financialTrading/pkg/trace"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -94,13 +96,33 @@ func main() {
 	}
 	defer database.Close()
 
-	// 5. 初始化仓储
+	// 5. 初始化 Redis
+	redisCfg := cache.Config{
+		Host:         cfg.Redis.Host,
+		Port:         cfg.Redis.Port,
+		Password:     cfg.Redis.Password,
+		DB:           cfg.Redis.DB,
+		MaxPoolSize:  cfg.Redis.MaxPoolSize,
+		ConnTimeout:  cfg.Redis.ConnTimeout,
+		ReadTimeout:  cfg.Redis.ReadTimeout,
+		WriteTimeout: cfg.Redis.WriteTimeout,
+	}
+	redisCache, err := cache.New(redisCfg)
+	if err != nil {
+		logger.Fatal(ctx, "Failed to initialize Redis", "error", err)
+	}
+	defer redisCache.Close()
+
+	// 6. 初始化限流器
+	rateLimiter := ratelimit.NewRedisRateLimiter(redisCache.GetClient())
+
+	// 7. 初始化仓储
 	orderRepo := repository.NewOrderRepository(database)
 
-	// 6. 初始化应用服务
+	// 8. 初始化应用服务
 	orderAppService := application.NewOrderApplicationService(orderRepo)
 
-	// 7. 初始化指标
+	// 9. 初始化指标
 	metricsInstance := metrics.New(cfg.ServiceName)
 	if err := metricsInstance.Register(); err != nil {
 		logger.Fatal(ctx, "Failed to register metrics", "error", err)
@@ -109,13 +131,13 @@ func main() {
 		logger.Fatal(ctx, "Failed to start metrics HTTP server", "error", err)
 	}
 
-	// 8. 创建 HTTP 服务器
-	httpServer := createHTTPServer(cfg, orderAppService)
+	// 10. 创建 HTTP 服务器
+	httpServer := createHTTPServer(cfg, orderAppService, rateLimiter)
 
-	// 9. 创建 gRPC 服务器
+	// 11. 创建 gRPC 服务器
 	grpcServer := createGRPCServer(cfg, orderAppService)
 
-	// 10. 启动 HTTP 服务器
+	// 12. 启动 HTTP 服务器
 	go func() {
 		addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
 		logger.Info(ctx, "Starting HTTP server", "addr", addr)
@@ -124,7 +146,7 @@ func main() {
 		}
 	}()
 
-	// 11. 启动 gRPC 服务器
+	// 13. 启动 gRPC 服务器
 	go func() {
 		addr := fmt.Sprintf("%s:%d", cfg.GRPC.Host, cfg.GRPC.Port)
 		listener, err := net.Listen("tcp", addr)
@@ -137,7 +159,7 @@ func main() {
 		}
 	}()
 
-	// 12. 优雅关停
+	// 14. 优雅关停
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
@@ -158,7 +180,7 @@ func main() {
 }
 
 // createHTTPServer 创建 HTTP 服务器
-func createHTTPServer(cfg *config.Config, orderAppService *application.OrderApplicationService) *http.Server {
+func createHTTPServer(cfg *config.Config, orderAppService *application.OrderApplicationService, rateLimiter ratelimit.RateLimiter) *http.Server {
 	router := gin.Default()
 
 	// 添加中间件
@@ -166,6 +188,7 @@ func createHTTPServer(cfg *config.Config, orderAppService *application.OrderAppl
 	router.Use(middleware.GinLoggingMiddleware())
 	router.Use(middleware.GinRecoveryMiddleware())
 	router.Use(middleware.GinCORSMiddleware())
+	router.Use(middleware.RateLimitMiddleware(rateLimiter, cfg.RateLimit))
 
 	// 注册路由
 	httpHandler := httphandler.NewOrderHandler(orderAppService)

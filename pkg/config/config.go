@@ -33,6 +33,8 @@ type Config struct {
 	Tracing TracingConfig `mapstructure:"tracing"`
 	// 指标配置
 	Metrics MetricsConfig `mapstructure:"metrics"`
+	// 限流配置
+	RateLimit RateLimitConfig `mapstructure:"rate_limit"`
 }
 
 // HTTPConfig HTTP 服务配置
@@ -157,6 +159,16 @@ type MetricsConfig struct {
 	Port int `mapstructure:"port" default:"9090"`
 	// 指标路径
 	Path string `mapstructure:"path" default:"/metrics"`
+}
+
+// RateLimitConfig 限流配置
+type RateLimitConfig struct {
+	// 是否启用
+	Enabled bool `mapstructure:"enabled" default:"true"`
+	// QPS
+	QPS int `mapstructure:"qps" default:"100"`
+	// 突发值
+	Burst int `mapstructure:"burst" default:"200"`
 }
 
 // Load 从 TOML 文件加载配置，支持环境变量覆盖
@@ -292,6 +304,10 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("metrics.enabled", true)
 	v.SetDefault("metrics.port", 9090)
 	v.SetDefault("metrics.path", "/metrics")
+
+	v.SetDefault("rate_limit.enabled", true)
+	v.SetDefault("rate_limit.qps", 100)
+	v.SetDefault("rate_limit.burst", 200)
 }
 
 // GetEnv 获取环境变量，支持默认值

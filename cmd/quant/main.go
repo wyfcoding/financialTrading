@@ -17,10 +17,12 @@ import (
 	"github.com/wyfcoding/financialTrading/internal/quant/infrastructure"
 	grpchandler "github.com/wyfcoding/financialTrading/internal/quant/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialTrading/internal/quant/interfaces/http"
+	"github.com/wyfcoding/financialTrading/pkg/cache"
 	"github.com/wyfcoding/financialTrading/pkg/config"
 	"github.com/wyfcoding/financialTrading/pkg/db"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/wyfcoding/financialTrading/pkg/middleware"
+	"github.com/wyfcoding/financialTrading/pkg/ratelimit"
 	"github.com/wyfcoding/financialTrading/pkg/trace"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -91,6 +93,26 @@ func main() {
 		logger.Fatal(ctx, "Failed to migrate database", "error", err)
 	}
 
+	// 初始化 Redis
+	redisCfg := cache.Config{
+		Host:         cfg.Redis.Host,
+		Port:         cfg.Redis.Port,
+		Password:     cfg.Redis.Password,
+		DB:           cfg.Redis.DB,
+		MaxPoolSize:  cfg.Redis.MaxPoolSize,
+		ConnTimeout:  cfg.Redis.ConnTimeout,
+		ReadTimeout:  cfg.Redis.ReadTimeout,
+		WriteTimeout: cfg.Redis.WriteTimeout,
+	}
+	redisCache, err := cache.New(redisCfg)
+	if err != nil {
+		logger.Fatal(ctx, "Failed to initialize Redis", "error", err)
+	}
+	defer redisCache.Close()
+
+	// 初始化限流器
+	rateLimiter := ratelimit.NewRedisRateLimiter(redisCache.GetClient())
+
 	// 初始化依赖
 	marketDataClient := infrastructure.NewMockMarketDataClient()
 	strategyRepo := infrastructure.NewStrategyRepository(gormDB.DB)
@@ -98,7 +120,7 @@ func main() {
 	svc := application.NewQuantService(strategyRepo, backtestRepo, marketDataClient)
 
 	// 6. 创建 HTTP 服务器
-	httpServer := createHTTPServer(cfg, svc)
+	httpServer := createHTTPServer(cfg, svc, rateLimiter)
 
 	// 7. 创建 gRPC 服务器
 	grpcServer := createGRPCServer(cfg, svc)
@@ -144,7 +166,7 @@ func main() {
 }
 
 // createHTTPServer 创建 HTTP 服务器
-func createHTTPServer(cfg *config.Config, app *application.QuantService) *http.Server {
+func createHTTPServer(cfg *config.Config, app *application.QuantService, rateLimiter ratelimit.RateLimiter) *http.Server {
 	router := gin.Default()
 
 	// 添加中间件
@@ -152,6 +174,7 @@ func createHTTPServer(cfg *config.Config, app *application.QuantService) *http.S
 	router.Use(middleware.GinLoggingMiddleware())
 	router.Use(middleware.GinRecoveryMiddleware())
 	router.Use(middleware.GinCORSMiddleware())
+	router.Use(middleware.RateLimitMiddleware(rateLimiter, cfg.RateLimit))
 
 	// 注册路由
 	httpHandler := httphandler.NewQuantHandler(app)

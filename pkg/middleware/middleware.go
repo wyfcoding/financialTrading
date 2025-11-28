@@ -221,20 +221,6 @@ func GRPCRecoveryInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
-// extractTraceID 从 context 中提取 trace ID
-func extractTraceID(ctx context.Context) string {
-	// 优先从 OpenTelemetry span 获取
-	span := trace.SpanFromContext(ctx)
-	if span.SpanContext().IsValid() {
-		return span.SpanContext().TraceID().String()
-	}
-	// 尝试从 context value 获取
-	if traceID, ok := ctx.Value(traceIDContextKey).(string); ok {
-		return traceID
-	}
-	return ""
-}
-
 // RateLimitMiddleware 限流中间件（基于令牌桶算法）
 type RateLimiter struct {
 	tokens     float64
