@@ -21,6 +21,9 @@ import (
 	"github.com/wyfcoding/financialTrading/pkg/db"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/wyfcoding/financialTrading/pkg/middleware"
+	"github.com/wyfcoding/financialTrading/pkg/trace"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -52,6 +55,21 @@ func main() {
 
 	ctx := context.Background()
 	logger.Info(ctx, "Starting QuantService", "version", cfg.Version)
+
+	// 初始化追踪
+	if cfg.Tracing.Enabled {
+		shutdown, err := trace.InitTracer(cfg.ServiceName, cfg.Tracing.CollectorEndpoint)
+		if err != nil {
+			logger.Error(ctx, "Failed to initialize tracer", "error", err)
+		} else {
+			defer func() {
+				if err := shutdown(context.Background()); err != nil {
+					logger.Error(ctx, "Failed to shutdown tracer", "error", err)
+				}
+			}()
+			logger.Info(ctx, "Tracer initialized", "endpoint", cfg.Tracing.CollectorEndpoint)
+		}
+	}
 
 	// 初始化数据库
 	dbConfig := db.Config{
@@ -130,6 +148,7 @@ func createHTTPServer(cfg *config.Config, app *application.QuantService) *http.S
 	router := gin.Default()
 
 	// 添加中间件
+	router.Use(otelgin.Middleware(cfg.ServiceName))
 	router.Use(middleware.GinLoggingMiddleware())
 	router.Use(middleware.GinRecoveryMiddleware())
 	router.Use(middleware.GinCORSMiddleware())
@@ -159,7 +178,11 @@ func createHTTPServer(cfg *config.Config, app *application.QuantService) *http.S
 func createGRPCServer(cfg *config.Config, app *application.QuantService) *grpc.Server {
 	// 创建 gRPC 服务器选项
 	opts := []grpc.ServerOption{
-		grpc.UnaryInterceptor(middleware.GRPCLoggingInterceptor()),
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+		grpc.ChainUnaryInterceptor(
+			middleware.GRPCLoggingInterceptor(),
+			middleware.GRPCRecoveryInterceptor(),
+		),
 		grpc.MaxConcurrentStreams(uint32(cfg.GRPC.MaxConcurrentStreams)),
 	}
 

@@ -142,11 +142,11 @@ type TracingConfig struct {
 	// 是否启用
 	Enabled bool `mapstructure:"enabled" default:"true"`
 	// 追踪器类型：jaeger, otlp
-	Type string `mapstructure:"type" default:"jaeger"`
-	// Jaeger 端点
-	JaegerEndpoint string `mapstructure:"jaeger_endpoint" default:"http://localhost:14268/api/traces"`
+	Type string `mapstructure:"type" default:"otlp"`
+	// OTel 收集器端点
+	CollectorEndpoint string `mapstructure:"collector_endpoint" default:"localhost:4317"`
 	// 采样率
-	SamplingRate float64 `mapstructure:"sampling_rate" default:"0.1"`
+	SamplingRate float64 `mapstructure:"sampling_rate" default:"1.0"`
 }
 
 // MetricsConfig 指标配置
@@ -285,9 +285,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("logger.with_stacktrace", false)
 
 	v.SetDefault("tracing.enabled", true)
-	v.SetDefault("tracing.type", "jaeger")
-	v.SetDefault("tracing.jaeger_endpoint", "http://localhost:14268/api/traces")
-	v.SetDefault("tracing.sampling_rate", 0.1)
+	v.SetDefault("tracing.type", "otlp")
+	v.SetDefault("tracing.collector_endpoint", "localhost:4317")
+	v.SetDefault("tracing.sampling_rate", 1.0)
 
 	v.SetDefault("metrics.enabled", true)
 	v.SetDefault("metrics.port", 9090)

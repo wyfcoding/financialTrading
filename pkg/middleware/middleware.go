@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -33,13 +34,19 @@ const (
 // GinLoggingMiddleware Gin 日志中间件
 func GinLoggingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 生成 request ID 和 trace ID
-		requestID := uuid.New().String()
-		traceID := c.GetHeader("X-Trace-ID")
-		if traceID == "" {
+		// 获取 OpenTelemetry Trace ID
+		span := trace.SpanFromContext(c.Request.Context())
+		var traceID, spanID string
+		if span.SpanContext().IsValid() {
+			traceID = span.SpanContext().TraceID().String()
+			spanID = span.SpanContext().SpanID().String()
+		} else {
+			// Fallback if OTel middleware is not used or sampling is off
 			traceID = uuid.New().String()
+			spanID = uuid.New().String()
 		}
-		spanID := uuid.New().String()
+
+		requestID := uuid.New().String()
 
 		// 将 ID 存储到 context
 		c.Set(RequestIDKey, requestID)
@@ -59,6 +66,8 @@ func GinLoggingMiddleware() gin.HandlerFunc {
 
 		logger.Info(ctx, "HTTP request started",
 			"request_id", requestID,
+			"trace_id", traceID,
+			"span_id", spanID,
 			"method", method,
 			"path", path,
 			"client_ip", clientIP,
@@ -74,6 +83,8 @@ func GinLoggingMiddleware() gin.HandlerFunc {
 
 		logger.Info(ctx, "HTTP request completed",
 			"request_id", requestID,
+			"trace_id", traceID,
+			"span_id", spanID,
 			"method", method,
 			"path", path,
 			"status_code", statusCode,
@@ -98,12 +109,14 @@ func GinRecoveryMiddleware() gin.HandlerFunc {
 
 				logger.Error(ctx, "HTTP request panicked",
 					"request_id", requestID,
+					"trace_id", traceID,
 					"panic", err,
 				)
 
 				c.JSON(500, gin.H{
 					"error":      "Internal server error",
 					"request_id": requestID,
+					"trace_id":   traceID,
 				})
 			}
 		}()
@@ -116,7 +129,7 @@ func GinCORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, X-Trace-ID")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, X-Trace-ID, traceparent")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
 
 		if c.Request.Method == "OPTIONS" {
@@ -131,13 +144,18 @@ func GinCORSMiddleware() gin.HandlerFunc {
 // GRPCLoggingInterceptor gRPC 日志拦截器
 func GRPCLoggingInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		// 生成 request ID 和 trace ID
-		requestID := uuid.New().String()
-		traceID := extractTraceID(ctx)
-		if traceID == "" {
+		// 获取 OpenTelemetry Trace ID
+		span := trace.SpanFromContext(ctx)
+		var traceID, spanID string
+		if span.SpanContext().IsValid() {
+			traceID = span.SpanContext().TraceID().String()
+			spanID = span.SpanContext().SpanID().String()
+		} else {
 			traceID = uuid.New().String()
+			spanID = uuid.New().String()
 		}
-		spanID := uuid.New().String()
+
+		requestID := uuid.New().String()
 
 		// 将 ID 存储到 context
 		ctx = context.WithValue(ctx, requestIDContextKey, requestID)
@@ -150,6 +168,8 @@ func GRPCLoggingInterceptor() grpc.UnaryServerInterceptor {
 
 		logger.Info(ctx, "gRPC request started",
 			"request_id", requestID,
+			"trace_id", traceID,
+			"span_id", spanID,
 			"method", method,
 		)
 
@@ -162,6 +182,7 @@ func GRPCLoggingInterceptor() grpc.UnaryServerInterceptor {
 			st, _ := status.FromError(err)
 			logger.Error(ctx, "gRPC request failed",
 				"request_id", requestID,
+				"trace_id", traceID,
 				"method", method,
 				"error_code", st.Code().String(),
 				"error_message", st.Message(),
@@ -170,6 +191,7 @@ func GRPCLoggingInterceptor() grpc.UnaryServerInterceptor {
 		} else {
 			logger.Info(ctx, "gRPC request completed",
 				"request_id", requestID,
+				"trace_id", traceID,
 				"method", method,
 				"duration", duration,
 			)
@@ -185,9 +207,11 @@ func GRPCRecoveryInterceptor() grpc.UnaryServerInterceptor {
 		defer func() {
 			if err := recover(); err != nil {
 				requestID := ctx.Value(requestIDContextKey)
+				traceID := ctx.Value(traceIDContextKey)
 
 				logger.Error(ctx, "gRPC request panicked",
 					"request_id", requestID,
+					"trace_id", traceID,
 					"method", info.FullMethod,
 					"panic", err,
 				)
@@ -199,11 +223,15 @@ func GRPCRecoveryInterceptor() grpc.UnaryServerInterceptor {
 
 // extractTraceID 从 context 中提取 trace ID
 func extractTraceID(ctx context.Context) string {
+	// 优先从 OpenTelemetry span 获取
+	span := trace.SpanFromContext(ctx)
+	if span.SpanContext().IsValid() {
+		return span.SpanContext().TraceID().String()
+	}
 	// 尝试从 context value 获取
 	if traceID, ok := ctx.Value(traceIDContextKey).(string); ok {
 		return traceID
 	}
-	// TODO: 尝试从 metadata 获取
 	return ""
 }
 

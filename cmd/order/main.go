@@ -24,6 +24,9 @@ import (
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/wyfcoding/financialTrading/pkg/metrics"
 	"github.com/wyfcoding/financialTrading/pkg/middleware"
+	"github.com/wyfcoding/financialTrading/pkg/trace"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 )
 
@@ -60,7 +63,22 @@ func main() {
 		"environment", cfg.Environment,
 	)
 
-	// 3. 初始化数据库
+	// 3. 初始化追踪
+	if cfg.Tracing.Enabled {
+		shutdown, err := trace.InitTracer(cfg.ServiceName, cfg.Tracing.CollectorEndpoint)
+		if err != nil {
+			logger.Error(ctx, "Failed to initialize tracer", "error", err)
+		} else {
+			defer func() {
+				if err := shutdown(context.Background()); err != nil {
+					logger.Error(ctx, "Failed to shutdown tracer", "error", err)
+				}
+			}()
+			logger.Info(ctx, "Tracer initialized", "endpoint", cfg.Tracing.CollectorEndpoint)
+		}
+	}
+
+	// 4. 初始化数据库
 	dbCfg := db.Config{
 		Driver:             cfg.Database.Driver,
 		DSN:                cfg.Database.DSN,
@@ -76,13 +94,13 @@ func main() {
 	}
 	defer database.Close()
 
-	// 4. 初始化仓储
+	// 5. 初始化仓储
 	orderRepo := repository.NewOrderRepository(database)
 
-	// 5. 初始化应用服务
+	// 6. 初始化应用服务
 	orderAppService := application.NewOrderApplicationService(orderRepo)
 
-	// 6. 初始化指标
+	// 7. 初始化指标
 	metricsInstance := metrics.New(cfg.ServiceName)
 	if err := metricsInstance.Register(); err != nil {
 		logger.Fatal(ctx, "Failed to register metrics", "error", err)
@@ -91,13 +109,13 @@ func main() {
 		logger.Fatal(ctx, "Failed to start metrics HTTP server", "error", err)
 	}
 
-	// 7. 创建 HTTP 服务器
+	// 8. 创建 HTTP 服务器
 	httpServer := createHTTPServer(cfg, orderAppService)
 
-	// 8. 创建 gRPC 服务器
+	// 9. 创建 gRPC 服务器
 	grpcServer := createGRPCServer(cfg, orderAppService)
 
-	// 9. 启动 HTTP 服务器
+	// 10. 启动 HTTP 服务器
 	go func() {
 		addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
 		logger.Info(ctx, "Starting HTTP server", "addr", addr)
@@ -106,7 +124,7 @@ func main() {
 		}
 	}()
 
-	// 10. 启动 gRPC 服务器
+	// 11. 启动 gRPC 服务器
 	go func() {
 		addr := fmt.Sprintf("%s:%d", cfg.GRPC.Host, cfg.GRPC.Port)
 		listener, err := net.Listen("tcp", addr)
@@ -119,7 +137,7 @@ func main() {
 		}
 	}()
 
-	// 11. 优雅关停
+	// 12. 优雅关停
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
@@ -144,6 +162,7 @@ func createHTTPServer(cfg *config.Config, orderAppService *application.OrderAppl
 	router := gin.Default()
 
 	// 添加中间件
+	router.Use(otelgin.Middleware(cfg.ServiceName))
 	router.Use(middleware.GinLoggingMiddleware())
 	router.Use(middleware.GinRecoveryMiddleware())
 	router.Use(middleware.GinCORSMiddleware())
@@ -173,7 +192,11 @@ func createHTTPServer(cfg *config.Config, orderAppService *application.OrderAppl
 func createGRPCServer(cfg *config.Config, orderAppService *application.OrderApplicationService) *grpc.Server {
 	// 创建 gRPC 服务器选项
 	opts := []grpc.ServerOption{
-		grpc.UnaryInterceptor(middleware.GRPCLoggingInterceptor()),
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+		grpc.ChainUnaryInterceptor(
+			middleware.GRPCLoggingInterceptor(),
+			middleware.GRPCRecoveryInterceptor(),
+		),
 		grpc.MaxConcurrentStreams(uint32(cfg.GRPC.MaxConcurrentStreams)),
 	}
 

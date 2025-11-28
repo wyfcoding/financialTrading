@@ -1,0 +1,13 @@
+apiVersion: v2
+name: position-service
+description: Position Service for Financial Trading System
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - trading
+  - position
+  - financial
+maintainers:
+  - name: Trading System Team
+    email: team@trading-system.com

@@ -1,0 +1,39 @@
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: {{ include "market-data-service.fullname" . }}
+  labels:
+    {{- include "market-data-service.labels" . | nindent 4 }}
+spec:
+  host: {{ include "market-data-service.fullname" . }}
+  trafficPolicy:
+    # 连接池配置
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 2
+    # 离群检测
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minRequestVolume: 5
+      splitExternalLocalOriginErrors: true
+    # 负载均衡
+    loadBalancer:
+      simple: ROUND_ROBIN
+    # TLS 配置
+    tls:
+      mode: ISTIO_MUTUAL
+  # 子集定义（用于金丝雀部署）
+  subsets:
+    - name: v1
+      labels:
+        version: v1
+    - name: v2
+      labels:
+        version: v2

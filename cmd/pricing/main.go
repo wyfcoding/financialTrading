@@ -20,6 +20,9 @@ import (
 	"github.com/wyfcoding/financialTrading/pkg/config"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/wyfcoding/financialTrading/pkg/middleware"
+	"github.com/wyfcoding/financialTrading/pkg/trace"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -52,7 +55,22 @@ func main() {
 	ctx := context.Background()
 	logger.Info(ctx, "Starting PricingService", "version", cfg.Version) // Access cfg.Version
 
-	// 3. 初始化层级依赖
+	// 3. 初始化追踪
+	if cfg.Tracing.Enabled {
+		shutdown, err := trace.InitTracer(cfg.ServiceName, cfg.Tracing.CollectorEndpoint)
+		if err != nil {
+			logger.Error(ctx, "Failed to initialize tracer", "error", err)
+		} else {
+			defer func() {
+				if err := shutdown(context.Background()); err != nil {
+					logger.Error(ctx, "Failed to shutdown tracer", "error", err)
+				}
+			}()
+			logger.Info(ctx, "Tracer initialized", "endpoint", cfg.Tracing.CollectorEndpoint)
+		}
+	}
+
+	// 4. 初始化层级依赖
 	// Infrastructure
 	// PricingService 主要是计算服务，可能不需要数据库，或者只需要读取市场数据
 	marketDataClient := infrastructure.NewMockMarketDataClient()
@@ -111,6 +129,7 @@ func createHTTPServer(cfg *config.Config, app *application.PricingService) *http
 	router := gin.Default()
 
 	// 添加中间件
+	router.Use(otelgin.Middleware(cfg.ServiceName))
 	router.Use(middleware.GinLoggingMiddleware())
 	router.Use(middleware.GinRecoveryMiddleware())
 	router.Use(middleware.GinCORSMiddleware())
@@ -140,7 +159,11 @@ func createHTTPServer(cfg *config.Config, app *application.PricingService) *http
 func createGRPCServer(cfg *config.Config, app *application.PricingService) *grpc.Server {
 	// 创建 gRPC 服务器选项
 	opts := []grpc.ServerOption{
-		grpc.UnaryInterceptor(middleware.GRPCLoggingInterceptor()),
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+		grpc.ChainUnaryInterceptor(
+			middleware.GRPCLoggingInterceptor(),
+			middleware.GRPCRecoveryInterceptor(),
+		),
 		grpc.MaxConcurrentStreams(uint32(cfg.GRPC.MaxConcurrentStreams)),
 	}
 
