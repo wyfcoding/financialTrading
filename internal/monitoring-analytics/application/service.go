@@ -1,3 +1,4 @@
+// Package application 包含监控分析服务的用例逻辑
 package application
 
 import (
@@ -9,13 +10,16 @@ import (
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 )
 
-// MonitoringAnalyticsService 应用服务
+// MonitoringAnalyticsService 监控分析应用服务
+// 负责收集、存储和查询系统监控指标及健康状态
 type MonitoringAnalyticsService struct {
-	metricRepo domain.MetricRepository
-	healthRepo domain.SystemHealthRepository
+	metricRepo domain.MetricRepository       // 指标仓储接口
+	healthRepo domain.SystemHealthRepository // 健康状态仓储接口
 }
 
-// NewMonitoringAnalyticsService 创建应用服务实例
+// NewMonitoringAnalyticsService 创建监控分析应用服务实例
+// metricRepo: 注入的指标仓储实现
+// healthRepo: 注入的健康状态仓储实现
 func NewMonitoringAnalyticsService(metricRepo domain.MetricRepository, healthRepo domain.SystemHealthRepository) *MonitoringAnalyticsService {
 	return &MonitoringAnalyticsService{
 		metricRepo: metricRepo,

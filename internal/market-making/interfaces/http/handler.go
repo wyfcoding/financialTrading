@@ -9,16 +9,19 @@ import (
 )
 
 // MarketMakingHandler HTTP 处理器
+// 负责处理与做市相关的 HTTP 请求
 type MarketMakingHandler struct {
-	app *application.MarketMakingService
+	app *application.MarketMakingService // 做市应用服务
 }
 
 // NewMarketMakingHandler 创建 HTTP 处理器实例
+// app: 注入的做市应用服务
 func NewMarketMakingHandler(app *application.MarketMakingService) *MarketMakingHandler {
 	return &MarketMakingHandler{app: app}
 }
 
 // RegisterRoutes 注册路由
+// 将处理器方法绑定到 Gin 路由引擎
 func (h *MarketMakingHandler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1/market-making")
 	{

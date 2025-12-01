@@ -12,13 +12,14 @@ import (
 )
 
 // OrderModel 订单数据库模型
+// 对应数据库中的 orders 表
 type OrderModel struct {
 	gorm.Model
-	// 订单 ID
+	// 订单 ID，业务主键，唯一索引
 	OrderID string `gorm:"column:order_id;type:varchar(50);uniqueIndex;not null" json:"order_id"`
-	// 用户 ID
+	// 用户 ID，普通索引
 	UserID string `gorm:"column:user_id;type:varchar(50);index;not null" json:"user_id"`
-	// 交易对符号
+	// 交易对符号，普通索引
 	Symbol string `gorm:"column:symbol;type:varchar(50);index;not null" json:"symbol"`
 	// 买卖方向
 	Side string `gorm:"column:side;type:varchar(10);not null" json:"side"`

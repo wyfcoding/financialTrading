@@ -1,3 +1,4 @@
+// Package grpc 包含 gRPC 处理器实现
 package grpc
 
 import (
@@ -9,18 +10,22 @@ import (
 )
 
 // GRPCHandler gRPC 处理器
+// 负责处理与监控分析相关的 gRPC 请求
 type GRPCHandler struct {
 	pb.UnimplementedMonitoringAnalyticsServiceServer
-	app *application.MonitoringAnalyticsService
+	app *application.MonitoringAnalyticsService // 监控分析应用服务
 }
 
 // NewGRPCHandler 创建 gRPC 处理器实例
+// app: 注入的监控分析应用服务
 func NewGRPCHandler(app *application.MonitoringAnalyticsService) *GRPCHandler {
 	return &GRPCHandler{app: app}
 }
 
 // RecordMetric 记录指标
+// 处理 gRPC RecordMetric 请求
 func (h *GRPCHandler) RecordMetric(ctx context.Context, req *pb.RecordMetricRequest) (*pb.RecordMetricResponse, error) {
+	// 调用应用服务记录指标
 	err := h.app.RecordMetric(ctx, req.Metric.Name, req.Metric.Value, req.Metric.Tags, req.Metric.Timestamp.AsTime())
 	if err != nil {
 		return nil, err

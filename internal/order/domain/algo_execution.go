@@ -10,21 +10,21 @@ import (
 type AlgoStrategy string
 
 const (
-	AlgoStrategyTWAP AlgoStrategy = "TWAP"
-	AlgoStrategyVWAP AlgoStrategy = "VWAP"
+	AlgoStrategyTWAP AlgoStrategy = "TWAP" // 时间加权平均价格策略
+	AlgoStrategyVWAP AlgoStrategy = "VWAP" // 成交量加权平均价格策略
 )
 
 // AlgoOrder 算法订单
+// 用于执行复杂交易策略的订单结构
 type AlgoOrder struct {
-	OrderID       string
-	Symbol        string
-	Side          string
-	TotalQuantity decimal.Decimal
-	Strategy      AlgoStrategy
-	StartTime     time.Time
-	EndTime       time.Time
-	// VWAP 特有参数：预测的成交量分布
-	VolumeProfile []decimal.Decimal
+	OrderID       string            // 订单 ID
+	Symbol        string            // 交易对符号
+	Side          string            // 买卖方向
+	TotalQuantity decimal.Decimal   // 总委托数量
+	Strategy      AlgoStrategy      // 算法策略类型
+	StartTime     time.Time         // 策略开始时间
+	EndTime       time.Time         // 策略结束时间
+	VolumeProfile []decimal.Decimal // VWAP 特有参数：预测的成交量分布（归一化比例）
 }
 
 // Slice 订单切片

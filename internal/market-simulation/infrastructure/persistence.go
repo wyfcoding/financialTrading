@@ -1,3 +1,4 @@
+// Package infrastructure 包含基础设施层实现
 package infrastructure
 
 import (
@@ -11,6 +12,7 @@ import (
 )
 
 // SimulationScenarioModel 模拟场景数据库模型
+// 对应数据库中的 simulation_scenarios 表
 type SimulationScenarioModel struct {
 	gorm.Model
 	ID          string `gorm:"column:id;type:varchar(36);primaryKey;comment:场景ID"`
@@ -27,7 +29,7 @@ func (SimulationScenarioModel) TableName() string {
 	return "simulation_scenarios"
 }
 
-// ToDomain 转换为领域实体
+// ToDomain 将数据库模型转换为领域实体
 func (m *SimulationScenarioModel) ToDomain() *domain.SimulationScenario {
 	return &domain.SimulationScenario{
 		Model:       m.Model,

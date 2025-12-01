@@ -1,3 +1,4 @@
+// Package application 包含通知服务的用例逻辑
 package application
 
 import (
@@ -10,14 +11,18 @@ import (
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 )
 
-// NotificationService 应用服务
+// NotificationService 通知应用服务
+// 负责处理通知的创建、发送和历史查询
 type NotificationService struct {
-	repo        domain.NotificationRepository
-	emailSender domain.Sender
-	smsSender   domain.Sender
+	repo        domain.NotificationRepository // 通知仓储接口
+	emailSender domain.Sender                 // 邮件发送器
+	smsSender   domain.Sender                 // 短信发送器
 }
 
-// NewNotificationService 创建应用服务实例
+// NewNotificationService 创建通知应用服务实例
+// repo: 注入的通知仓储实现
+// emailSender: 注入的邮件发送器实现
+// smsSender: 注入的短信发送器实现
 func NewNotificationService(repo domain.NotificationRepository, emailSender domain.Sender, smsSender domain.Sender) *NotificationService {
 	return &NotificationService{
 		repo:        repo,

@@ -12,27 +12,29 @@ import (
 )
 
 // ExecuteOrderRequest 执行订单请求 DTO
+// 用于接收来自上层（如 API 层）的订单执行请求参数
 type ExecuteOrderRequest struct {
-	OrderID  string
-	UserID   string
-	Symbol   string
-	Side     string
-	Price    string
-	Quantity string
+	OrderID  string // 订单 ID，全局唯一
+	UserID   string // 用户 ID
+	Symbol   string // 交易对符号，例如 "BTC/USD"
+	Side     string // 买卖方向，"buy" 或 "sell"
+	Price    string // 执行价格，使用字符串避免精度丢失
+	Quantity string // 执行数量，使用字符串避免精度丢失
 }
 
 // ExecutionDTO 执行记录 DTO
+// 用于向外层返回执行结果数据
 type ExecutionDTO struct {
-	ExecutionID      string
-	OrderID          string
-	UserID           string
-	Symbol           string
-	Side             string
-	ExecutedPrice    string
-	ExecutedQuantity string
-	Status           string
-	CreatedAt        int64
-	UpdatedAt        int64
+	ExecutionID      string // 执行记录 ID，全局唯一
+	OrderID          string // 关联的订单 ID
+	UserID           string // 用户 ID
+	Symbol           string // 交易对符号
+	Side             string // 买卖方向
+	ExecutedPrice    string // 成交价格
+	ExecutedQuantity string // 成交数量
+	Status           string // 执行状态
+	CreatedAt        int64  // 创建时间戳（秒）
+	UpdatedAt        int64  // 更新时间戳（秒）
 }
 
 // ExecutionApplicationService 执行应用服务

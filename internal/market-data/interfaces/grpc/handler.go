@@ -14,12 +14,14 @@ import (
 )
 
 // MarketDataHandler gRPC 处理器
+// 负责处理与市场数据相关的 gRPC 请求
 type MarketDataHandler struct {
 	pb.UnimplementedMarketDataServiceServer
-	quoteService *application.QuoteApplicationService
+	quoteService *application.QuoteApplicationService // 行情应用服务
 }
 
-// NewMarketDataHandler 创建 gRPC 处理器
+// NewMarketDataHandler 创建 gRPC 处理器实例
+// quoteService: 注入的行情应用服务
 func NewMarketDataHandler(quoteService *application.QuoteApplicationService) *MarketDataHandler {
 	return &MarketDataHandler{
 		quoteService: quoteService,

@@ -1,3 +1,4 @@
+// Package grpc 包含 gRPC 处理器实现
 package grpc
 
 import (
@@ -10,18 +11,22 @@ import (
 )
 
 // GRPCHandler gRPC 处理器
+// 负责处理与做市相关的 gRPC 请求
 type GRPCHandler struct {
 	pb.UnimplementedMarketMakingServiceServer
-	app *application.MarketMakingService
+	app *application.MarketMakingService // 做市应用服务
 }
 
 // NewGRPCHandler 创建 gRPC 处理器实例
+// app: 注入的做市应用服务
 func NewGRPCHandler(app *application.MarketMakingService) *GRPCHandler {
 	return &GRPCHandler{app: app}
 }
 
 // SetStrategy 设置做市策略
+// 处理 gRPC SetStrategy 请求
 func (h *GRPCHandler) SetStrategy(ctx context.Context, req *pb.SetStrategyRequest) (*pb.SetStrategyResponse, error) {
+	// 调用应用服务设置策略
 	id, err := h.app.SetStrategy(ctx, req.Symbol, req.Spread, req.MinOrderSize, req.MaxOrderSize, req.MaxPosition, req.Status)
 	if err != nil {
 		return nil, err

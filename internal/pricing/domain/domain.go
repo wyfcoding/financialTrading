@@ -1,3 +1,4 @@
+// Package domain 包含定价服务的领域模型
 package domain
 
 import (
@@ -9,16 +10,17 @@ import (
 type OptionType string
 
 const (
-	OptionTypeCall OptionType = "CALL"
-	OptionTypePut  OptionType = "PUT"
+	OptionTypeCall OptionType = "CALL" // 看涨期权
+	OptionTypePut  OptionType = "PUT"  // 看跌期权
 )
 
 // OptionContract 期权合约
+// 定义期权的基本属性
 type OptionContract struct {
-	Symbol      string
-	Type        OptionType
-	StrikePrice float64
-	ExpiryDate  time.Time
+	Symbol      string     // 标的资产代码
+	Type        OptionType // 期权类型 (CALL/PUT)
+	StrikePrice float64    // 行权价
+	ExpiryDate  time.Time  // 到期日
 }
 
 // Greeks 希腊字母

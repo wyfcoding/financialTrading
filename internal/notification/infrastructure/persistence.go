@@ -1,3 +1,4 @@
+// Package infrastructure 包含基础设施层实现
 package infrastructure
 
 import (
@@ -11,6 +12,7 @@ import (
 )
 
 // NotificationModel 通知数据库模型
+// 对应数据库中的 notifications 表
 type NotificationModel struct {
 	gorm.Model
 	ID           string `gorm:"column:id;type:varchar(36);primaryKey;comment:通知ID"`
@@ -28,7 +30,7 @@ func (NotificationModel) TableName() string {
 	return "notifications"
 }
 
-// ToDomain 转换为领域实体
+// ToDomain 将数据库模型转换为领域实体
 func (m *NotificationModel) ToDomain() *domain.Notification {
 	return &domain.Notification{
 		Model:        m.Model,

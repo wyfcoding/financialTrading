@@ -10,16 +10,19 @@ import (
 )
 
 // MonitoringAnalyticsHandler HTTP 处理器
+// 负责处理与监控分析相关的 HTTP 请求
 type MonitoringAnalyticsHandler struct {
-	app *application.MonitoringAnalyticsService
+	app *application.MonitoringAnalyticsService // 监控分析应用服务
 }
 
 // NewMonitoringAnalyticsHandler 创建 HTTP 处理器实例
+// app: 注入的监控分析应用服务
 func NewMonitoringAnalyticsHandler(app *application.MonitoringAnalyticsService) *MonitoringAnalyticsHandler {
 	return &MonitoringAnalyticsHandler{app: app}
 }
 
 // RegisterRoutes 注册路由
+// 将处理器方法绑定到 Gin 路由引擎
 func (h *MonitoringAnalyticsHandler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1/monitoring")
 	{

@@ -10,21 +10,23 @@ import (
 )
 
 // GetLatestQuoteRequest 获取最新行情请求 DTO
+// 用于接收获取最新行情的请求参数
 type GetLatestQuoteRequest struct {
-	Symbol string
+	Symbol string // 交易对符号，例如 "BTC/USD"
 }
 
 // QuoteDTO 行情数据 DTO
+// 用于向外层返回行情数据
 type QuoteDTO struct {
-	Symbol    string
-	BidPrice  string
-	AskPrice  string
-	BidSize   string
-	AskSize   string
-	LastPrice string
-	LastSize  string
-	Timestamp int64
-	Source    string
+	Symbol    string // 交易对符号
+	BidPrice  string // 买一价
+	AskPrice  string // 卖一价
+	BidSize   string // 买一量
+	AskSize   string // 卖一量
+	LastPrice string // 最新成交价
+	LastSize  string // 最新成交量
+	Timestamp int64  // 时间戳（毫秒）
+	Source    string // 数据来源
 }
 
 // QuoteApplicationService 行情应用服务

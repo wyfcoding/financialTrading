@@ -1,3 +1,4 @@
+// Package domain 包含监控分析服务的领域模型
 package domain
 
 import (
@@ -8,16 +9,23 @@ import (
 )
 
 // Metric 指标实体
+// 代表一个时间点上的监控指标数据
 type Metric struct {
 	gorm.Model
-	Name      string            `gorm:"column:name;type:varchar(100);index;not null" json:"name"`
-	Value     float64           `gorm:"column:value;type:decimal(20,8);not null" json:"value"`
-	Tags      map[string]string `gorm:"-" json:"tags"`
-	TagsJSON  string            `gorm:"column:tags;type:text" json:"-"`
-	Timestamp time.Time         `gorm:"column:timestamp;index;not null" json:"timestamp"`
+	// 指标名称
+	Name string `gorm:"column:name;type:varchar(100);index;not null" json:"name"`
+	// 指标值
+	Value float64 `gorm:"column:value;type:decimal(20,8);not null" json:"value"`
+	// 标签 (内存中 Map 表示)
+	Tags map[string]string `gorm:"-" json:"tags"`
+	// 标签 (数据库存储 JSON 字符串)
+	TagsJSON string `gorm:"column:tags;type:text" json:"-"`
+	// 时间戳
+	Timestamp time.Time `gorm:"column:timestamp;index;not null" json:"timestamp"`
 }
 
 // SystemHealth 系统健康状态实体
+// 记录各个微服务的健康检查结果
 type SystemHealth struct {
 	gorm.Model
 	ServiceName string    `gorm:"column:service_name;type:varchar(100);index;not null" json:"service_name"`

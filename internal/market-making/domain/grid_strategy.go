@@ -5,14 +5,15 @@ import (
 )
 
 // GridStrategy 网格交易策略
+// 包含网格策略的配置参数和运行时状态
 type GridStrategy struct {
-	StrategyID      string
-	Symbol          string
-	UpperPrice      decimal.Decimal
-	LowerPrice      decimal.Decimal
-	GridNumber      int
-	QuantityPerGrid decimal.Decimal
-	Grids           []Grid
+	StrategyID      string          // 策略 ID
+	Symbol          string          // 交易对符号
+	UpperPrice      decimal.Decimal // 网格上限价格
+	LowerPrice      decimal.Decimal // 网格下限价格
+	GridNumber      int             // 网格数量
+	QuantityPerGrid decimal.Decimal // 每个网格的交易数量
+	Grids           []Grid          // 网格列表
 }
 
 // Grid 单个网格

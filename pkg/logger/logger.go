@@ -10,14 +10,18 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // Logger 是全局日志实例
 var globalLogger *slog.Logger
+var serviceName string
 
 // Config 日志配置
 type Config struct {
+	// 服务名称
+	ServiceName string `toml:"service_name"`
 	// 日志级别：debug, info, warn, error
 	Level string `toml:"level" default:"info"`
 	// 输出格式：json 或 text
@@ -40,6 +44,7 @@ type Config struct {
 
 // Init 初始化全局日志实例
 func Init(cfg Config) error {
+	serviceName = cfg.ServiceName
 	var handler slog.Handler
 	var output io.Writer
 
@@ -90,7 +95,7 @@ func Init(cfg Config) error {
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			// 可以在这里自定义字段，例如把 time 格式化
 			if a.Key == slog.TimeKey {
-				a.Value = slog.StringValue(a.Value.Time().Format(time.RFC3339))
+				a.Value = slog.StringValue(a.Value.Time().Format(time.RFC3339Nano))
 			}
 			return a
 		},
@@ -103,7 +108,10 @@ func Init(cfg Config) error {
 		handler = slog.NewTextHandler(output, opts)
 	}
 
-	globalLogger = slog.New(handler)
+	// 添加默认字段
+	globalLogger = slog.New(handler).With(
+		slog.String("service", serviceName),
+	)
 	slog.SetDefault(globalLogger)
 
 	return nil
@@ -118,7 +126,6 @@ func Get() *slog.Logger {
 }
 
 // WithContext 从 context 中提取 trace_id 和 span_id，返回带有这些字段的 logger
-// 建议直接使用 InfoContext 等方法，此方法用于兼容旧习惯或链式调用
 func WithContext(ctx context.Context) *slog.Logger {
 	logger := Get()
 
@@ -138,6 +145,11 @@ func WithContext(ctx context.Context) *slog.Logger {
 	}
 
 	return logger
+}
+
+// WithModule 返回带有 module 字段的 logger
+func WithModule(module string) *slog.Logger {
+	return Get().With(slog.String("module", module))
 }
 
 // Debug 输出 debug 级别日志
@@ -181,10 +193,15 @@ func extractTraceID(ctx context.Context) string {
 	if ctx == nil {
 		return ""
 	}
+	// 优先从 OpenTelemetry 提取
+	span := trace.SpanFromContext(ctx)
+	if span.SpanContext().IsValid() {
+		return span.SpanContext().TraceID().String()
+	}
+	// 兼容旧的 context key
 	if traceID, ok := ctx.Value("trace_id").(string); ok && traceID != "" {
 		return traceID
 	}
-	// TODO: 集成 OpenTelemetry
 	return ""
 }
 
@@ -193,9 +210,14 @@ func extractSpanID(ctx context.Context) string {
 	if ctx == nil {
 		return ""
 	}
+	// 优先从 OpenTelemetry 提取
+	span := trace.SpanFromContext(ctx)
+	if span.SpanContext().IsValid() {
+		return span.SpanContext().SpanID().String()
+	}
+	// 兼容旧的 context key
 	if spanID, ok := ctx.Value("span_id").(string); ok && spanID != "" {
 		return spanID
 	}
-	// TODO: 集成 OpenTelemetry
 	return ""
 }

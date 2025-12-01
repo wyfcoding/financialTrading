@@ -1,3 +1,4 @@
+// Package application 包含做市服务的用例逻辑
 package application
 
 import (
@@ -10,15 +11,20 @@ import (
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 )
 
-// MarketMakingService 应用服务
+// MarketMakingService 做市应用服务
+// 负责管理做市策略、执行做市逻辑以及监控做市绩效
 type MarketMakingService struct {
-	strategyRepo     domain.QuoteStrategyRepository
-	performanceRepo  domain.PerformanceRepository
-	orderClient      domain.OrderClient
-	marketDataClient domain.MarketDataClient
+	strategyRepo     domain.QuoteStrategyRepository // 策略仓储接口
+	performanceRepo  domain.PerformanceRepository   // 绩效仓储接口
+	orderClient      domain.OrderClient             // 订单服务客户端
+	marketDataClient domain.MarketDataClient        // 市场数据服务客户端
 }
 
-// NewMarketMakingService 创建应用服务实例
+// NewMarketMakingService 创建做市应用服务实例
+// strategyRepo: 注入的策略仓储实现
+// performanceRepo: 注入的绩效仓储实现
+// orderClient: 注入的订单服务客户端
+// marketDataClient: 注入的市场数据服务客户端
 func NewMarketMakingService(
 	strategyRepo domain.QuoteStrategyRepository,
 	performanceRepo domain.PerformanceRepository,

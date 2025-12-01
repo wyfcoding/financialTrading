@@ -9,17 +9,18 @@ import (
 )
 
 // Account 账户实体
+// 代表用户的资金账户，包含余额和状态信息
 type Account struct {
 	gorm.Model
-	// 账户 ID (业务主键)
+	// 账户 ID (业务主键)，全局唯一
 	AccountID string `gorm:"column:account_id;type:varchar(32);uniqueIndex;not null" json:"account_id"`
-	// 用户 ID
+	// 用户 ID，关联的用户
 	UserID string `gorm:"column:user_id;type:varchar(32);index;not null" json:"user_id"`
-	// 账户类型（SPOT, MARGIN, FUTURES）
+	// 账户类型（SPOT: 现货, MARGIN: 杠杆, FUTURES: 合约）
 	AccountType string `gorm:"column:account_type;type:varchar(20);not null" json:"account_type"`
-	// 货币
+	// 货币（如 USD, BTC, ETH）
 	Currency string `gorm:"column:currency;type:varchar(10);not null" json:"currency"`
-	// 余额
+	// 总余额 = 可用余额 + 冻结余额
 	Balance decimal.Decimal `gorm:"column:balance;type:decimal(32,18);default:0;not null" json:"balance"`
 	// 可用余额
 	AvailableBalance decimal.Decimal `gorm:"column:available_balance;type:decimal(32,18);default:0;not null" json:"available_balance"`

@@ -12,15 +12,16 @@ import (
 )
 
 // CreateOrderRequest 创建订单请求 DTO
+// 用于接收创建订单的请求参数
 type CreateOrderRequest struct {
-	UserID        string
-	Symbol        string
-	Side          string
-	OrderType     string
-	Price         string
-	Quantity      string
-	TimeInForce   string
-	ClientOrderID string
+	UserID        string // 用户 ID
+	Symbol        string // 交易对符号
+	Side          string // 买卖方向
+	OrderType     string // 订单类型
+	Price         string // 价格（限价单必填）
+	Quantity      string // 数量
+	TimeInForce   string // 有效期策略
+	ClientOrderID string // 客户端订单 ID（幂等性）
 }
 
 // OrderDTO 订单 DTO

@@ -40,15 +40,16 @@ func main() {
 
 	// 初始化日志
 	loggerCfg := logger.Config{
-		Level:      cfg.Logger.Level,
-		Format:     cfg.Logger.Format,
-		Output:     cfg.Logger.Output,
-		FilePath:   cfg.Logger.FilePath,
-		MaxSize:    cfg.Logger.MaxSize,
-		MaxBackups: cfg.Logger.MaxBackups,
-		MaxAge:     cfg.Logger.MaxAge,
-		Compress:   cfg.Logger.Compress,
-		WithCaller: cfg.Logger.WithCaller,
+		ServiceName: cfg.ServiceName,
+		Level:       cfg.Logger.Level,
+		Format:      cfg.Logger.Format,
+		Output:      cfg.Logger.Output,
+		FilePath:    cfg.Logger.FilePath,
+		MaxSize:     cfg.Logger.MaxSize,
+		MaxBackups:  cfg.Logger.MaxBackups,
+		MaxAge:      cfg.Logger.MaxAge,
+		Compress:    cfg.Logger.Compress,
+		WithCaller:  cfg.Logger.WithCaller,
 	}
 	if err := logger.Init(loggerCfg); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
@@ -56,20 +57,22 @@ func main() {
 	}
 
 	ctx := context.Background()
-	logger.Info(ctx, "Starting NotificationService", "version", cfg.Version)
+	log := logger.WithModule("main")
+
+	log.InfoContext(ctx, "Starting NotificationService", "version", cfg.Version)
 
 	// 初始化追踪
 	if cfg.Tracing.Enabled {
 		shutdown, err := trace.InitTracer(cfg.ServiceName, cfg.Tracing.CollectorEndpoint)
 		if err != nil {
-			logger.Error(ctx, "Failed to initialize tracer", "error", err)
+			log.ErrorContext(ctx, "Failed to initialize tracer", "error", err)
 		} else {
 			defer func() {
 				if err := shutdown(context.Background()); err != nil {
-					logger.Error(ctx, "Failed to shutdown tracer", "error", err)
+					log.ErrorContext(ctx, "Failed to shutdown tracer", "error", err)
 				}
 			}()
-			logger.Info(ctx, "Tracer initialized", "endpoint", cfg.Tracing.CollectorEndpoint)
+			log.InfoContext(ctx, "Tracer initialized", "endpoint", cfg.Tracing.CollectorEndpoint)
 		}
 	}
 
@@ -85,12 +88,14 @@ func main() {
 	}
 	gormDB, err := db.Init(dbConfig)
 	if err != nil {
-		logger.Fatal(ctx, "Failed to connect to database", "error", err)
+		log.ErrorContext(ctx, "Failed to connect to database", "error", err)
+		os.Exit(1)
 	}
 
 	// 自动迁移
 	if err := gormDB.AutoMigrate(&infrastructure.NotificationModel{}); err != nil {
-		logger.Fatal(ctx, "Failed to migrate database", "error", err)
+		log.ErrorContext(ctx, "Failed to migrate database", "error", err)
+		os.Exit(1)
 	}
 
 	// 初始化 Redis
@@ -106,7 +111,8 @@ func main() {
 	}
 	redisCache, err := cache.New(redisCfg)
 	if err != nil {
-		logger.Fatal(ctx, "Failed to initialize Redis", "error", err)
+		log.ErrorContext(ctx, "Failed to initialize Redis", "error", err)
+		os.Exit(1)
 	}
 	defer redisCache.Close()
 
@@ -128,9 +134,10 @@ func main() {
 	// 8. 启动 HTTP 服务器
 	go func() {
 		addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
-		logger.Info(ctx, "Starting HTTP server", "addr", addr)
+		log.InfoContext(ctx, "Starting HTTP server", "addr", addr)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal(ctx, "HTTP server error", "error", err)
+			log.ErrorContext(ctx, "HTTP server error", "error", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -139,11 +146,13 @@ func main() {
 		addr := fmt.Sprintf("%s:%d", cfg.GRPC.Host, cfg.GRPC.Port)
 		lis, err := net.Listen("tcp", addr)
 		if err != nil {
-			logger.Fatal(ctx, "Failed to listen on gRPC address", "error", err)
+			log.ErrorContext(ctx, "Failed to listen on gRPC address", "error", err)
+			os.Exit(1)
 		}
-		logger.Info(ctx, "Starting gRPC server", "addr", addr)
+		log.InfoContext(ctx, "Starting gRPC server", "addr", addr)
 		if err := grpcServer.Serve(lis); err != nil {
-			logger.Fatal(ctx, "gRPC server error", "error", err)
+			log.ErrorContext(ctx, "gRPC server error", "error", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -151,18 +160,18 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	logger.Info(ctx, "Shutting down NotificationService")
+	log.InfoContext(ctx, "Shutting down NotificationService")
 
 	// 关闭 HTTP 服务器
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
-		logger.Error(ctx, "HTTP server shutdown error", "error", err)
+		log.ErrorContext(ctx, "HTTP server shutdown error", "error", err)
 	}
 
 	// 关闭 gRPC 服务器
 	grpcServer.GracefulStop()
-	logger.Info(ctx, "Server exited")
+	log.InfoContext(ctx, "Server exited")
 }
 
 // createHTTPServer 创建 HTTP 服务器

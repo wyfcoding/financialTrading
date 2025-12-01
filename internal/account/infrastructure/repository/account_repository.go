@@ -13,21 +13,22 @@ import (
 )
 
 // AccountModel 账户数据库模型
+// 对应数据库中的 accounts 表
 type AccountModel struct {
 	gorm.Model
-	// 账户 ID
+	// 账户 ID，业务主键，唯一索引
 	AccountID string `gorm:"column:account_id;type:varchar(50);uniqueIndex;not null" json:"account_id"`
-	// 用户 ID
+	// 用户 ID，普通索引
 	UserID string `gorm:"column:user_id;type:varchar(50);index;not null" json:"user_id"`
 	// 账户类型
 	AccountType string `gorm:"column:account_type;type:varchar(20);not null" json:"account_type"`
 	// 货币
 	Currency string `gorm:"column:currency;type:varchar(10);not null" json:"currency"`
-	// 余额
+	// 余额，高精度小数
 	Balance string `gorm:"column:balance;type:decimal(20,8);not null" json:"balance"`
-	// 可用余额
+	// 可用余额，高精度小数
 	AvailableBalance string `gorm:"column:available_balance;type:decimal(20,8);not null" json:"available_balance"`
-	// 冻结余额
+	// 冻结余额，高精度小数
 	FrozenBalance string `gorm:"column:frozen_balance;type:decimal(20,8);not null" json:"frozen_balance"`
 }
 

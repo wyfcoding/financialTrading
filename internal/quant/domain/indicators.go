@@ -7,8 +7,10 @@ import (
 )
 
 // IndicatorService 指标计算服务
+// 提供常用技术指标的计算方法
 type IndicatorService struct{}
 
+// NewIndicatorService 创建指标计算服务实例
 func NewIndicatorService() *IndicatorService {
 	return &IndicatorService{}
 }
@@ -16,6 +18,7 @@ func NewIndicatorService() *IndicatorService {
 // CalculateRSI 计算相对强弱指数 (Relative Strength Index)
 // prices: 价格序列，按时间升序排列（最新的在最后）
 // period: 计算周期，通常为 14
+// 返回: RSI 值 (0-100)
 func (s *IndicatorService) CalculateRSI(prices []decimal.Decimal, period int) (decimal.Decimal, error) {
 	if len(prices) < period+1 {
 		return decimal.Zero, fmt.Errorf("not enough data points for RSI calculation")

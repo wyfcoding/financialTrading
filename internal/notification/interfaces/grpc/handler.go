@@ -1,3 +1,4 @@
+// Package grpc 包含 gRPC 处理器实现
 package grpc
 
 import (
@@ -10,18 +11,22 @@ import (
 )
 
 // GRPCHandler gRPC 处理器
+// 负责处理与通知相关的 gRPC 请求
 type GRPCHandler struct {
 	pb.UnimplementedNotificationServiceServer
-	app *application.NotificationService
+	app *application.NotificationService // 通知应用服务
 }
 
 // NewGRPCHandler 创建 gRPC 处理器实例
+// app: 注入的通知应用服务
 func NewGRPCHandler(app *application.NotificationService) *GRPCHandler {
 	return &GRPCHandler{app: app}
 }
 
 // SendNotification 发送通知
+// 处理 gRPC SendNotification 请求
 func (h *GRPCHandler) SendNotification(ctx context.Context, req *pb.SendNotificationRequest) (*pb.SendNotificationResponse, error) {
+	// 调用应用服务发送通知
 	id, err := h.app.SendNotification(ctx, req.UserId, req.Type, req.Subject, req.Content, req.Target)
 	if err != nil {
 		return nil, err

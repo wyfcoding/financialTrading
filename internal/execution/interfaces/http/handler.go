@@ -10,11 +10,13 @@ import (
 )
 
 // ExecutionHandler HTTP 处理器
+// 负责处理与订单执行相关的 HTTP 请求
 type ExecutionHandler struct {
-	executionService *application.ExecutionApplicationService
+	executionService *application.ExecutionApplicationService // 执行应用服务
 }
 
-// NewExecutionHandler 创建 HTTP 处理器
+// NewExecutionHandler 创建 HTTP 处理器实例
+// executionService: 注入的执行应用服务
 func NewExecutionHandler(executionService *application.ExecutionApplicationService) *ExecutionHandler {
 	return &ExecutionHandler{
 		executionService: executionService,

@@ -1,3 +1,4 @@
+// Package application 包含定价服务的用例逻辑
 package application
 
 import (
@@ -9,12 +10,14 @@ import (
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 )
 
-// PricingService 应用服务
+// PricingService 定价应用服务
+// 负责期权定价和希腊字母计算 (基于 Black-Scholes 模型)
 type PricingService struct {
-	marketDataClient domain.MarketDataClient
+	marketDataClient domain.MarketDataClient // 市场数据客户端
 }
 
-// NewPricingService 创建应用服务实例
+// NewPricingService 创建定价应用服务实例
+// marketDataClient: 注入的市场数据客户端
 func NewPricingService(marketDataClient domain.MarketDataClient) *PricingService {
 	return &PricingService{
 		marketDataClient: marketDataClient,

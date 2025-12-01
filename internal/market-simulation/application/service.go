@@ -1,3 +1,4 @@
+// Package application 包含市场模拟服务的用例逻辑
 package application
 
 import (
@@ -11,13 +12,16 @@ import (
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 )
 
-// MarketSimulationService 应用服务
+// MarketSimulationService 市场模拟应用服务
+// 负责管理模拟场景、生成模拟市场数据并发布
 type MarketSimulationService struct {
-	repo      domain.SimulationScenarioRepository
-	publisher domain.MarketDataPublisher
+	repo      domain.SimulationScenarioRepository // 场景仓储接口
+	publisher domain.MarketDataPublisher          // 市场数据发布接口
 }
 
-// NewMarketSimulationService 创建应用服务实例
+// NewMarketSimulationService 创建市场模拟应用服务实例
+// repo: 注入的场景仓储实现
+// publisher: 注入的市场数据发布实现
 func NewMarketSimulationService(repo domain.SimulationScenarioRepository, publisher domain.MarketDataPublisher) *MarketSimulationService {
 	return &MarketSimulationService{
 		repo:      repo,

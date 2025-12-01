@@ -12,17 +12,18 @@ import (
 )
 
 // QuoteModel 行情数据数据库模型
+// 对应数据库中的 market_quotes 表
 type QuoteModel struct {
 	gorm.Model
-	// 交易对符号
+	// 交易对符号，普通索引
 	Symbol string `gorm:"column:symbol;type:varchar(50);index;not null" json:"symbol"`
-	// 买价
+	// 买价，高精度小数
 	BidPrice string `gorm:"column:bid_price;type:decimal(20,8);not null" json:"bid_price"`
-	// 卖价
+	// 卖价，高精度小数
 	AskPrice string `gorm:"column:ask_price;type:decimal(20,8);not null" json:"ask_price"`
-	// 买量
+	// 买量，高精度小数
 	BidSize string `gorm:"column:bid_size;type:decimal(20,8);not null" json:"bid_size"`
-	// 卖量
+	// 卖量，高精度小数
 	AskSize string `gorm:"column:ask_size;type:decimal(20,8);not null" json:"ask_size"`
 	// 最后成交价
 	LastPrice string `gorm:"column:last_price;type:decimal(20,8);not null" json:"last_price"`

@@ -9,18 +9,26 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// GRPCHandler gRPC 处理器
+// 负责处理与订单执行相关的 gRPC 请求
 type GRPCHandler struct {
 	pb.UnimplementedExecutionServiceServer
-	appService *application.ExecutionApplicationService
+	appService *application.ExecutionApplicationService // 执行应用服务
 }
 
+// NewGRPCHandler 创建 gRPC 处理器实例
+// appService: 注入的执行应用服务
 func NewGRPCHandler(appService *application.ExecutionApplicationService) *GRPCHandler {
 	return &GRPCHandler{
 		appService: appService,
 	}
 }
 
+// ExecuteOrder 执行订单
+// 处理 gRPC ExecuteOrder 请求
+// 接收 Proto 定义的订单参数，调用应用服务执行订单，并返回 Proto 定义的响应
 func (h *GRPCHandler) ExecuteOrder(ctx context.Context, req *pb.ExecuteOrderRequest) (*pb.ExecutionResponse, error) {
+	// 调用应用服务执行订单
 	dto, err := h.appService.ExecuteOrder(ctx, &application.ExecuteOrderRequest{
 		OrderID:  req.OrderId,
 		UserID:   req.UserId,

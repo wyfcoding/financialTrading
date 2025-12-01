@@ -11,16 +11,19 @@ import (
 )
 
 // PricingHandler HTTP 处理器
+// 负责处理与定价相关的 HTTP 请求
 type PricingHandler struct {
-	app *application.PricingService
+	app *application.PricingService // 定价应用服务
 }
 
 // NewPricingHandler 创建 HTTP 处理器实例
+// app: 注入的定价应用服务
 func NewPricingHandler(app *application.PricingService) *PricingHandler {
 	return &PricingHandler{app: app}
 }
 
 // RegisterRoutes 注册路由
+// 将处理器方法绑定到 Gin 路由引擎
 func (h *PricingHandler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1/pricing")
 	{

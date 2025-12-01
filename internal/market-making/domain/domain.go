@@ -1,3 +1,4 @@
+// Package domain 包含做市服务的领域模型
 package domain
 
 import (
@@ -11,11 +12,12 @@ import (
 type StrategyStatus string
 
 const (
-	StrategyStatusActive StrategyStatus = "ACTIVE"
-	StrategyStatusPaused StrategyStatus = "PAUSED"
+	StrategyStatusActive StrategyStatus = "ACTIVE" // 激活
+	StrategyStatusPaused StrategyStatus = "PAUSED" // 暂停
 )
 
 // QuoteStrategy 报价策略实体
+// 定义了针对特定交易对的做市参数
 type QuoteStrategy struct {
 	gorm.Model
 	ID           string         `gorm:"column:id;type:varchar(36);primaryKey" json:"id"`

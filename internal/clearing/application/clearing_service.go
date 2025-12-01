@@ -13,16 +13,18 @@ import (
 )
 
 // SettleTradeRequest 清算交易请求 DTO
+// 用于接收清算交易的请求参数
 type SettleTradeRequest struct {
-	TradeID    string
-	BuyUserID  string
-	SellUserID string
-	Symbol     string
-	Quantity   string
-	Price      string
+	TradeID    string // 交易 ID
+	BuyUserID  string // 买方用户 ID
+	SellUserID string // 卖方用户 ID
+	Symbol     string // 交易对符号
+	Quantity   string // 数量
+	Price      string // 价格
 }
 
 // ClearingApplicationService 清算应用服务
+// 负责处理清算相关的业务逻辑，包括实时清算和日终清算
 type ClearingApplicationService struct {
 	settlementRepo domain.SettlementRepository
 	eodRepo        domain.EODClearingRepository

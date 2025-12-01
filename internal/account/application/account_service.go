@@ -12,23 +12,25 @@ import (
 )
 
 // CreateAccountRequest 创建账户请求 DTO
+// 用于接收创建账户的请求参数
 type CreateAccountRequest struct {
-	UserID      string
-	AccountType string
-	Currency    string
+	UserID      string // 用户 ID
+	AccountType string // 账户类型（如 SPOT, MARGIN）
+	Currency    string // 币种（如 USD, BTC）
 }
 
 // AccountDTO 账户 DTO
+// 用于向外层返回账户详情
 type AccountDTO struct {
-	AccountID        string
-	UserID           string
-	AccountType      string
-	Currency         string
-	Balance          string
-	AvailableBalance string
-	FrozenBalance    string
-	CreatedAt        int64
-	UpdatedAt        int64
+	AccountID        string // 账户 ID
+	UserID           string // 用户 ID
+	AccountType      string // 账户类型
+	Currency         string // 币种
+	Balance          string // 总余额
+	AvailableBalance string // 可用余额
+	FrozenBalance    string // 冻结余额
+	CreatedAt        int64  // 创建时间戳（秒）
+	UpdatedAt        int64  // 更新时间戳（秒）
 }
 
 // AccountApplicationService 账户应用服务

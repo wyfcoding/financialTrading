@@ -14,17 +14,18 @@ import (
 )
 
 // SettlementModel 清算记录数据库模型
+// 对应数据库中的 settlements 表
 type SettlementModel struct {
 	gorm.Model
-	// 清算 ID
+	// 清算 ID，业务主键，唯一索引
 	SettlementID string `gorm:"column:settlement_id;type:varchar(50);uniqueIndex;not null" json:"settlement_id"`
-	// 交易 ID
+	// 交易 ID，普通索引
 	TradeID string `gorm:"column:trade_id;type:varchar(50);index;not null" json:"trade_id"`
-	// 买方用户 ID
+	// 买方用户 ID，普通索引
 	BuyUserID string `gorm:"column:buy_user_id;type:varchar(50);index;not null" json:"buy_user_id"`
-	// 卖方用户 ID
+	// 卖方用户 ID，普通索引
 	SellUserID string `gorm:"column:sell_user_id;type:varchar(50);index;not null" json:"sell_user_id"`
-	// 交易对
+	// 交易对符号
 	Symbol string `gorm:"column:symbol;type:varchar(50);not null" json:"symbol"`
 	// 成交数量
 	Quantity string `gorm:"column:quantity;type:decimal(20,8);not null" json:"quantity"`

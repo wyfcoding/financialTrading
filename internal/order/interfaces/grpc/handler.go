@@ -9,18 +9,25 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// GRPCHandler gRPC 处理器
+// 负责处理与订单相关的 gRPC 请求
 type GRPCHandler struct {
 	pb.UnimplementedOrderServiceServer
-	appService *application.OrderApplicationService
+	appService *application.OrderApplicationService // 订单应用服务
 }
 
+// NewGRPCHandler 创建 gRPC 处理器实例
+// appService: 注入的订单应用服务
 func NewGRPCHandler(appService *application.OrderApplicationService) *GRPCHandler {
 	return &GRPCHandler{
 		appService: appService,
 	}
 }
 
+// CreateOrder 创建订单
+// 处理 gRPC CreateOrder 请求
 func (h *GRPCHandler) CreateOrder(ctx context.Context, req *pb.CreateOrderRequest) (*pb.OrderResponse, error) {
+	// 调用应用服务创建订单
 	dto, err := h.appService.CreateOrder(ctx, &application.CreateOrderRequest{
 		UserID:        req.UserId,
 		Symbol:        req.Symbol,

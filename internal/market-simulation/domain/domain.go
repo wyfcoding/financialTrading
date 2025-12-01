@@ -1,3 +1,4 @@
+// Package domain 包含市场模拟服务的领域模型
 package domain
 
 import (
@@ -11,9 +12,9 @@ import (
 type SimulationType string
 
 const (
-	SimulationTypeRandomWalk SimulationType = "RANDOM_WALK"
-	SimulationTypeReplay     SimulationType = "REPLAY"
-	SimulationTypeShock      SimulationType = "SHOCK"
+	SimulationTypeRandomWalk SimulationType = "RANDOM_WALK" // 随机漫步
+	SimulationTypeReplay     SimulationType = "REPLAY"      // 历史回放
+	SimulationTypeShock      SimulationType = "SHOCK"       // 市场冲击
 )
 
 // SimulationStatus 模拟状态

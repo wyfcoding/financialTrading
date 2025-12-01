@@ -1,3 +1,4 @@
+// Package domain 包含通知服务的领域模型
 package domain
 
 import (
@@ -11,9 +12,9 @@ import (
 type NotificationType string
 
 const (
-	NotificationTypeEmail   NotificationType = "EMAIL"
-	NotificationTypeSMS     NotificationType = "SMS"
-	NotificationTypeWebhook NotificationType = "WEBHOOK"
+	NotificationTypeEmail   NotificationType = "EMAIL"   // 邮件通知
+	NotificationTypeSMS     NotificationType = "SMS"     // 短信通知
+	NotificationTypeWebhook NotificationType = "WEBHOOK" // Webhook 通知
 )
 
 // NotificationStatus 通知状态

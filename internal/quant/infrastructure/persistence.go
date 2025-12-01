@@ -1,3 +1,4 @@
+// Package infrastructure 包含基础设施层实现
 package infrastructure
 
 import (
@@ -11,6 +12,7 @@ import (
 )
 
 // StrategyModel 策略数据库模型
+// 对应数据库中的 strategies 表
 type StrategyModel struct {
 	gorm.Model
 	ID          string `gorm:"column:id;type:varchar(36);primaryKey;comment:策略ID"`
@@ -25,7 +27,7 @@ func (StrategyModel) TableName() string {
 	return "strategies"
 }
 
-// ToDomain 转换为领域实体
+// ToDomain 将数据库模型转换为领域实体
 func (m *StrategyModel) ToDomain() *domain.Strategy {
 	return &domain.Strategy{
 		Model:       m.Model,

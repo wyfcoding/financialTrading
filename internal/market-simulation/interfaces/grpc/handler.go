@@ -1,3 +1,4 @@
+// Package grpc 包含 gRPC 处理器实现
 package grpc
 
 import (
@@ -10,18 +11,22 @@ import (
 )
 
 // GRPCHandler gRPC 处理器
+// 负责处理与市场模拟相关的 gRPC 请求
 type GRPCHandler struct {
 	pb.UnimplementedMarketSimulationServiceServer
-	app *application.MarketSimulationService
+	app *application.MarketSimulationService // 市场模拟应用服务
 }
 
 // NewGRPCHandler 创建 gRPC 处理器实例
+// app: 注入的市场模拟应用服务
 func NewGRPCHandler(app *application.MarketSimulationService) *GRPCHandler {
 	return &GRPCHandler{app: app}
 }
 
 // StartSimulation 启动模拟
+// 处理 gRPC StartSimulation 请求
 func (h *GRPCHandler) StartSimulation(ctx context.Context, req *pb.StartSimulationRequest) (*pb.StartSimulationResponse, error) {
+	// 调用应用服务启动模拟
 	id, err := h.app.StartSimulation(ctx, req.Name, req.Symbol, req.Type, req.Parameters)
 	if err != nil {
 		return nil, err

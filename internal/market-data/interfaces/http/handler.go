@@ -1,4 +1,3 @@
-// Package http 包含 HTTP 处理器、入参出参转换、校验与中间件接入
 package http
 
 import (
@@ -10,11 +9,13 @@ import (
 )
 
 // Handler HTTP 处理器
+// 负责处理与市场数据相关的 HTTP 请求
 type Handler struct {
-	quoteService *application.QuoteApplicationService
+	quoteService *application.QuoteApplicationService // 行情应用服务
 }
 
-// NewHandler 创建 HTTP 处理器
+// NewHandler 创建 HTTP 处理器实例
+// quoteService: 注入的行情应用服务
 func NewHandler(quoteService *application.QuoteApplicationService) *Handler {
 	return &Handler{
 		quoteService: quoteService,

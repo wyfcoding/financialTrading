@@ -1,3 +1,4 @@
+// Package infrastructure 包含基础设施层实现
 package infrastructure
 
 import (
@@ -11,6 +12,7 @@ import (
 )
 
 // QuoteStrategyModel 报价策略数据库模型
+// 对应数据库中的 quote_strategies 表
 type QuoteStrategyModel struct {
 	gorm.Model
 	ID           string  `gorm:"column:id;type:varchar(36);primaryKey;comment:策略ID"`
@@ -27,7 +29,7 @@ func (QuoteStrategyModel) TableName() string {
 	return "quote_strategies"
 }
 
-// ToDomain 转换为领域实体
+// ToDomain 将数据库模型转换为领域实体
 func (m *QuoteStrategyModel) ToDomain() *domain.QuoteStrategy {
 	return &domain.QuoteStrategy{
 		Model:        m.Model,

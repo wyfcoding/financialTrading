@@ -10,16 +10,19 @@ import (
 )
 
 // NotificationHandler HTTP 处理器
+// 负责处理与通知相关的 HTTP 请求
 type NotificationHandler struct {
-	app *application.NotificationService
+	app *application.NotificationService // 通知应用服务
 }
 
 // NewNotificationHandler 创建 HTTP 处理器实例
+// app: 注入的通知应用服务
 func NewNotificationHandler(app *application.NotificationService) *NotificationHandler {
 	return &NotificationHandler{app: app}
 }
 
 // RegisterRoutes 注册路由
+// 将处理器方法绑定到 Gin 路由引擎
 func (h *NotificationHandler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1/notifications")
 	{

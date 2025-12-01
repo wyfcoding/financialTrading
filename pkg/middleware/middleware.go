@@ -64,10 +64,10 @@ func GinLoggingMiddleware() gin.HandlerFunc {
 		ctx = context.WithValue(ctx, spanIDContextKey, spanID)
 		ctx = context.WithValue(ctx, requestIDContextKey, requestID)
 
-		logger.Info(ctx, "HTTP request started",
+		log := logger.WithModule("http_middleware")
+
+		log.InfoContext(ctx, "HTTP request started",
 			"request_id", requestID,
-			"trace_id", traceID,
-			"span_id", spanID,
 			"method", method,
 			"path", path,
 			"client_ip", clientIP,
@@ -81,10 +81,8 @@ func GinLoggingMiddleware() gin.HandlerFunc {
 		statusCode := c.Writer.Status()
 		responseSize := c.Writer.Size()
 
-		logger.Info(ctx, "HTTP request completed",
+		log.InfoContext(ctx, "HTTP request completed",
 			"request_id", requestID,
-			"trace_id", traceID,
-			"span_id", spanID,
 			"method", method,
 			"path", path,
 			"status_code", statusCode,
@@ -107,9 +105,8 @@ func GinRecoveryMiddleware() gin.HandlerFunc {
 				ctx = context.WithValue(ctx, spanIDContextKey, spanID)
 				ctx = context.WithValue(ctx, requestIDContextKey, requestID)
 
-				logger.Error(ctx, "HTTP request panicked",
+				logger.WithModule("http_middleware").ErrorContext(ctx, "HTTP request panicked",
 					"request_id", requestID,
-					"trace_id", traceID,
 					"panic", err,
 				)
 
@@ -166,10 +163,10 @@ func GRPCLoggingInterceptor() grpc.UnaryServerInterceptor {
 		start := time.Now()
 		method := info.FullMethod
 
-		logger.Info(ctx, "gRPC request started",
+		log := logger.WithModule("grpc_middleware")
+
+		log.InfoContext(ctx, "gRPC request started",
 			"request_id", requestID,
-			"trace_id", traceID,
-			"span_id", spanID,
 			"method", method,
 		)
 
@@ -180,18 +177,16 @@ func GRPCLoggingInterceptor() grpc.UnaryServerInterceptor {
 		duration := time.Since(start)
 		if err != nil {
 			st, _ := status.FromError(err)
-			logger.Error(ctx, "gRPC request failed",
+			log.ErrorContext(ctx, "gRPC request failed",
 				"request_id", requestID,
-				"trace_id", traceID,
 				"method", method,
 				"error_code", st.Code().String(),
 				"error_message", st.Message(),
 				"duration", duration,
 			)
 		} else {
-			logger.Info(ctx, "gRPC request completed",
+			log.InfoContext(ctx, "gRPC request completed",
 				"request_id", requestID,
-				"trace_id", traceID,
 				"method", method,
 				"duration", duration,
 			)
@@ -207,11 +202,9 @@ func GRPCRecoveryInterceptor() grpc.UnaryServerInterceptor {
 		defer func() {
 			if err := recover(); err != nil {
 				requestID := ctx.Value(requestIDContextKey)
-				traceID := ctx.Value(traceIDContextKey)
 
-				logger.Error(ctx, "gRPC request panicked",
+				logger.WithModule("grpc_middleware").ErrorContext(ctx, "gRPC request panicked",
 					"request_id", requestID,
-					"trace_id", traceID,
 					"method", info.FullMethod,
 					"panic", err,
 				)

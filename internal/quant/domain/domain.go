@@ -1,3 +1,4 @@
+// Package domain 包含量化服务的领域模型
 package domain
 
 import (
@@ -11,11 +12,12 @@ import (
 type StrategyStatus string
 
 const (
-	StrategyStatusActive   StrategyStatus = "ACTIVE"
-	StrategyStatusInactive StrategyStatus = "INACTIVE"
+	StrategyStatusActive   StrategyStatus = "ACTIVE"   // 活跃
+	StrategyStatusInactive StrategyStatus = "INACTIVE" // 非活跃
 )
 
 // Strategy 策略实体
+// 定义量化交易策略
 type Strategy struct {
 	gorm.Model
 	ID          string         `gorm:"column:id;type:varchar(36);primaryKey" json:"id"`

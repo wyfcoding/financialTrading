@@ -31,6 +31,15 @@ type Quote struct {
 }
 
 // NewQuote 创建行情数据
+// symbol: 交易对符号
+// bidPrice: 买价
+// askPrice: 卖价
+// bidSize: 买量
+// askSize: 卖量
+// lastPrice: 最后成交价
+// lastSize: 最后成交量
+// timestamp: 时间戳
+// source: 数据来源
 func NewQuote(symbol string, bidPrice, askPrice, bidSize, askSize, lastPrice, lastSize decimal.Decimal, timestamp int64, source string) *Quote {
 	return &Quote{
 		Symbol:    symbol,

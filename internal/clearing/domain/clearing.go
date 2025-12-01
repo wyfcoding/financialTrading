@@ -10,17 +10,18 @@ import (
 )
 
 // Settlement 清算记录实体
+// 记录每一笔交易的清算结果
 type Settlement struct {
 	gorm.Model
-	// 清算 ID
+	// 清算 ID，全局唯一标识
 	SettlementID string `gorm:"column:settlement_id;type:varchar(50);uniqueIndex;not null" json:"settlement_id"`
-	// 交易 ID
+	// 交易 ID，关联的原始交易
 	TradeID string `gorm:"column:trade_id;type:varchar(50);index;not null" json:"trade_id"`
 	// 买方用户 ID
 	BuyUserID string `gorm:"column:buy_user_id;type:varchar(50);index;not null" json:"buy_user_id"`
 	// 卖方用户 ID
 	SellUserID string `gorm:"column:sell_user_id;type:varchar(50);index;not null" json:"sell_user_id"`
-	// 交易对
+	// 交易对符号
 	Symbol string `gorm:"column:symbol;type:varchar(50);not null" json:"symbol"`
 	// 成交数量
 	Quantity decimal.Decimal `gorm:"column:quantity;type:decimal(20,8);not null" json:"quantity"`

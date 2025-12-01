@@ -1,3 +1,4 @@
+// Package application 包含量化服务的用例逻辑
 package application
 
 import (
@@ -10,14 +11,18 @@ import (
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 )
 
-// QuantService 应用服务
+// QuantService 量化应用服务
+// 负责量化策略的管理和回测执行
 type QuantService struct {
-	strategyRepo     domain.StrategyRepository
-	backtestRepo     domain.BacktestResultRepository
-	marketDataClient domain.MarketDataClient
+	strategyRepo     domain.StrategyRepository       // 策略仓储接口
+	backtestRepo     domain.BacktestResultRepository // 回测结果仓储接口
+	marketDataClient domain.MarketDataClient         // 市场数据客户端
 }
 
-// NewQuantService 创建应用服务实例
+// NewQuantService 创建量化应用服务实例
+// strategyRepo: 注入的策略仓储实现
+// backtestRepo: 注入的回测结果仓储实现
+// marketDataClient: 注入的市场数据客户端
 func NewQuantService(strategyRepo domain.StrategyRepository, backtestRepo domain.BacktestResultRepository, marketDataClient domain.MarketDataClient) *QuantService {
 	return &QuantService{
 		strategyRepo:     strategyRepo,

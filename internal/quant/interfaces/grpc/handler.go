@@ -1,3 +1,4 @@
+// Package grpc 包含 gRPC 处理器实现
 package grpc
 
 import (
@@ -10,18 +11,22 @@ import (
 )
 
 // GRPCHandler gRPC 处理器
+// 负责处理与量化策略和回测相关的 gRPC 请求
 type GRPCHandler struct {
 	pb.UnimplementedQuantServiceServer
-	app *application.QuantService
+	app *application.QuantService // 量化应用服务
 }
 
 // NewGRPCHandler 创建 gRPC 处理器实例
+// app: 注入的量化应用服务
 func NewGRPCHandler(app *application.QuantService) *GRPCHandler {
 	return &GRPCHandler{app: app}
 }
 
 // CreateStrategy 创建策略
+// 处理 gRPC CreateStrategy 请求
 func (h *GRPCHandler) CreateStrategy(ctx context.Context, req *pb.CreateStrategyRequest) (*pb.CreateStrategyResponse, error) {
+	// 调用应用服务创建策略
 	id, err := h.app.CreateStrategy(ctx, req.Name, req.Description, req.Script)
 	if err != nil {
 		return nil, err

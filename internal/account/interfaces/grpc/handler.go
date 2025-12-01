@@ -1,3 +1,4 @@
+// Package grpc 包含 gRPC 处理器实现
 package grpc
 
 import (
@@ -10,18 +11,25 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// GRPCHandler gRPC 处理器
+// 负责处理与账户相关的 gRPC 请求
 type GRPCHandler struct {
 	pb.UnimplementedAccountServiceServer
-	appService *application.AccountApplicationService
+	appService *application.AccountApplicationService // 账户应用服务
 }
 
+// NewGRPCHandler 创建 gRPC 处理器实例
+// appService: 注入的账户应用服务
 func NewGRPCHandler(appService *application.AccountApplicationService) *GRPCHandler {
 	return &GRPCHandler{
 		appService: appService,
 	}
 }
 
+// CreateAccount 创建账户
+// 处理 gRPC CreateAccount 请求
 func (h *GRPCHandler) CreateAccount(ctx context.Context, req *pb.CreateAccountRequest) (*pb.AccountResponse, error) {
+	// 调用应用服务创建账户
 	dto, err := h.appService.CreateAccount(ctx, &application.CreateAccountRequest{
 		UserID:      req.UserId,
 		AccountType: req.AccountType,

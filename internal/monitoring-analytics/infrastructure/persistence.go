@@ -1,3 +1,4 @@
+// Package infrastructure 包含基础设施层实现
 package infrastructure
 
 import (
@@ -12,6 +13,7 @@ import (
 )
 
 // MetricModel 指标数据库模型
+// 对应数据库中的 metrics 表
 type MetricModel struct {
 	gorm.Model
 	Name      string    `gorm:"column:name;type:varchar(100);index;not null;comment:指标名称"`
@@ -25,7 +27,7 @@ func (MetricModel) TableName() string {
 	return "metrics"
 }
 
-// ToDomain 转换为领域实体
+// ToDomain 将数据库模型转换为领域实体
 func (m *MetricModel) ToDomain() *domain.Metric {
 	var tags map[string]string
 	_ = json.Unmarshal([]byte(m.Tags), &tags)

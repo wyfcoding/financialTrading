@@ -12,12 +12,12 @@ import (
 type OrderStatus string
 
 const (
-	OrderStatusPending         OrderStatus = "PENDING"
-	OrderStatusOpen            OrderStatus = "OPEN"
-	OrderStatusPartiallyFilled OrderStatus = "PARTIALLY_FILLED"
-	OrderStatusFilled          OrderStatus = "FILLED"
-	OrderStatusCancelled       OrderStatus = "CANCELLED"
-	OrderStatusRejected        OrderStatus = "REJECTED"
+	OrderStatusPending         OrderStatus = "PENDING"          // 等待处理
+	OrderStatusOpen            OrderStatus = "OPEN"             // 订单已开启（挂单中）
+	OrderStatusPartiallyFilled OrderStatus = "PARTIALLY_FILLED" // 部分成交
+	OrderStatusFilled          OrderStatus = "FILLED"           // 全部成交
+	OrderStatusCancelled       OrderStatus = "CANCELLED"        // 已取消
+	OrderStatusRejected        OrderStatus = "REJECTED"         // 已拒绝
 )
 
 // OrderSide 订单方向

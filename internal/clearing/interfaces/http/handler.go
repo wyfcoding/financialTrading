@@ -9,11 +9,13 @@ import (
 )
 
 // ClearingHandler HTTP 处理器
+// 负责处理与清算相关的 HTTP 请求
 type ClearingHandler struct {
-	clearingService *application.ClearingApplicationService
+	clearingService *application.ClearingApplicationService // 清算应用服务
 }
 
-// NewClearingHandler 创建 HTTP 处理器
+// NewClearingHandler 创建 HTTP 处理器实例
+// clearingService: 注入的清算应用服务
 func NewClearingHandler(clearingService *application.ClearingApplicationService) *ClearingHandler {
 	return &ClearingHandler{
 		clearingService: clearingService,

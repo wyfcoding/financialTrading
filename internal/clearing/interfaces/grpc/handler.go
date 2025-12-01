@@ -1,3 +1,4 @@
+// Package grpc 包含 gRPC 处理器实现
 package grpc
 
 import (
@@ -9,18 +10,25 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// GRPCHandler gRPC 处理器
+// 负责处理与清算相关的 gRPC 请求
 type GRPCHandler struct {
 	pb.UnimplementedClearingServiceServer
-	appService *application.ClearingApplicationService
+	appService *application.ClearingApplicationService // 清算应用服务
 }
 
+// NewGRPCHandler 创建 gRPC 处理器实例
+// appService: 注入的清算应用服务
 func NewGRPCHandler(appService *application.ClearingApplicationService) *GRPCHandler {
 	return &GRPCHandler{
 		appService: appService,
 	}
 }
 
+// SettleTrade 清算交易
+// 处理 gRPC SettleTrade 请求
 func (h *GRPCHandler) SettleTrade(ctx context.Context, req *pb.SettleTradeRequest) (*pb.SettlementResponse, error) {
+	// 调用应用服务进行清算
 	err := h.appService.SettleTrade(ctx, &application.SettleTradeRequest{
 		TradeID:    req.TradeId,
 		BuyUserID:  req.BuyUserId,
