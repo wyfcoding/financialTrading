@@ -16,6 +16,7 @@ service MatchingEngineService {
   rpc SubscribeTrades(SubscribeTradesRequest) returns (stream TradeUpdate);
 }
 
+// 提交订单请求
 message SubmitOrderRequest {
   string order_id = 1;
   string symbol = 2;
@@ -24,6 +25,7 @@ message SubmitOrderRequest {
   string quantity = 5;
 }
 
+// 撮合结果
 message MatchResult {
   string order_id = 1;
   repeated Trade matched_trades = 2;
@@ -31,6 +33,7 @@ message MatchResult {
   string status = 4;
 }
 
+// 成交记录
 message Trade {
   string trade_id = 1;
   string buy_order_id = 2;
@@ -40,16 +43,19 @@ message Trade {
   int64 timestamp = 6;
 }
 
+// 获取订单簿请求
 message GetOrderBookRequest {
   string symbol = 1;
   int32 depth = 2;
 }
 
+// 订单簿层级
 message OrderBookLevel {
   string price = 1;
   string quantity = 2;
 }
 
+// 订单簿快照
 message OrderBookSnapshot {
   string symbol = 1;
   repeated OrderBookLevel bids = 2;
@@ -57,20 +63,24 @@ message OrderBookSnapshot {
   int64 timestamp = 4;
 }
 
+// 获取成交记录请求
 message GetTradesRequest {
   string symbol = 1;
   int32 limit = 2;
 }
 
+// 成交记录响应
 message TradesResponse {
   string symbol = 1;
   repeated Trade trades = 2;
 }
 
+// 订阅成交更新请求
 message SubscribeTradesRequest {
   repeated string symbols = 1;
 }
 
+// 成交更新
 message TradeUpdate {
   string trade_id = 1;
   string symbol = 2;

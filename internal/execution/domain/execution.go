@@ -21,16 +21,11 @@ const (
 // Execution 执行记录实体
 // 代表一次订单的执行结果
 type Execution struct {
-	// 执行 ID，全局唯一标识
-	ExecutionID string
-	// 订单 ID，关联的订单
-	OrderID string
-	// 用户 ID，发起订单的用户
-	UserID string
-	// 交易对符号，例如 "BTC/USD"
-	Symbol string
-	// 买卖方向，"buy" 或 "sell"
-	Side string
+	ExecutionID string // 执行 ID，全局唯一标识
+	OrderID     string // 订单 ID，关联的订单
+	UserID      string // 用户 ID，发起订单的用户
+	Symbol      string // 交易对符号，例如 "BTC/USD"
+	Side        string // 买卖方向，"buy" 或 "sell"
 	// 执行价格，成交的单价
 	ExecutedPrice decimal.Decimal
 	// 执行数量，成交的数量

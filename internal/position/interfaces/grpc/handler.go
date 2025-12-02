@@ -1,3 +1,4 @@
+// Package grpc 包含 gRPC 处理器实现
 package grpc
 
 import (
@@ -10,18 +11,25 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// GRPCHandler gRPC 处理器
+// 负责处理与持仓管理相关的 gRPC 请求
 type GRPCHandler struct {
 	pb.UnimplementedPositionServiceServer
-	appService *application.PositionApplicationService
+	appService *application.PositionApplicationService // 持仓应用服务
 }
 
+// NewGRPCHandler 创建 gRPC 处理器实例
+// appService: 注入的持仓应用服务
 func NewGRPCHandler(appService *application.PositionApplicationService) *GRPCHandler {
 	return &GRPCHandler{
 		appService: appService,
 	}
 }
 
+// GetPositions 获取持仓列表
+// 处理 gRPC GetPositions 请求
 func (h *GRPCHandler) GetPositions(ctx context.Context, req *pb.GetPositionsRequest) (*pb.PositionsResponse, error) {
+	// 解析分页参数
 	limit := int(req.PageSize)
 	if limit <= 0 {
 		limit = 20
@@ -47,6 +55,8 @@ func (h *GRPCHandler) GetPositions(ctx context.Context, req *pb.GetPositionsRequ
 	}, nil
 }
 
+// GetPosition 获取持仓详情
+// 处理 gRPC GetPosition 请求
 func (h *GRPCHandler) GetPosition(ctx context.Context, req *pb.GetPositionRequest) (*pb.PositionResponse, error) {
 	dto, err := h.appService.GetPosition(ctx, req.PositionId)
 	if err != nil {
@@ -56,6 +66,8 @@ func (h *GRPCHandler) GetPosition(ctx context.Context, req *pb.GetPositionReques
 	return h.toProtoResponse(dto), nil
 }
 
+// ClosePosition 平仓
+// 处理 gRPC ClosePosition 请求
 func (h *GRPCHandler) ClosePosition(ctx context.Context, req *pb.ClosePositionRequest) (*pb.PositionResponse, error) {
 	closePrice, err := decimal.NewFromString(req.ClosePrice)
 	if err != nil {

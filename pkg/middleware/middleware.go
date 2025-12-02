@@ -14,13 +14,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// RequestIDKey context key for request ID
+// RequestIDKey 请求 ID 的上下文键
 const RequestIDKey = "request_id"
 
-// TraceIDKey context key for trace ID
+// TraceIDKey 追踪 ID 的上下文键
 const TraceIDKey = "trace_id"
 
-// SpanIDKey context key for span ID
+// SpanIDKey 跨度 ID 的上下文键
 const SpanIDKey = "span_id"
 
 type contextKey string
@@ -32,6 +32,7 @@ const (
 )
 
 // GinLoggingMiddleware Gin 日志中间件
+// 记录 HTTP 请求的详细信息，包括请求 ID、Trace ID、耗时等
 func GinLoggingMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 获取 OpenTelemetry Trace ID

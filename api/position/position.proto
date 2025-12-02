@@ -16,6 +16,7 @@ service PositionService {
   rpc ClosePosition(ClosePositionRequest) returns (PositionResponse);
 }
 
+// 获取持仓列表请求
 message GetPositionsRequest {
   string user_id = 1;
   string symbol = 2;
@@ -23,6 +24,7 @@ message GetPositionsRequest {
   int32 page_size = 4;
 }
 
+// 持仓响应
 message PositionResponse {
   string position_id = 1;
   string user_id = 2;
@@ -37,20 +39,24 @@ message PositionResponse {
   int64 closed_at = 11;
 }
 
+// 持仓列表响应
 message PositionsResponse {
   repeated PositionResponse positions = 1;
   int64 total = 2;
 }
 
+// 获取持仓请求
 message GetPositionRequest {
   string position_id = 1;
   string user_id = 2;
 }
 
+// 获取持仓汇总请求
 message GetPositionSummaryRequest {
   string user_id = 1;
 }
 
+// 持仓汇总响应
 message PositionSummaryResponse {
   int64 total_positions = 1;
   string total_unrealized_pnl = 2;
@@ -58,6 +64,7 @@ message PositionSummaryResponse {
   repeated PositionResponse positions = 4;
 }
 
+// 平仓请求
 message ClosePositionRequest {
   string position_id = 1;
   string user_id = 2;

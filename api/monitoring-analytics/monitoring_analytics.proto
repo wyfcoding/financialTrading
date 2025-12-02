@@ -16,6 +16,7 @@ service MonitoringAnalyticsService {
   rpc GetSystemHealth (GetSystemHealthRequest) returns (GetSystemHealthResponse);
 }
 
+// 指标
 message Metric {
   string name = 1;
   double value = 2;
@@ -23,6 +24,7 @@ message Metric {
   google.protobuf.Timestamp timestamp = 4;
 }
 
+// 系统健康状态
 message SystemHealth {
   string service_name = 1;
   string status = 2; // UP, DOWN, DEGRADED
@@ -30,28 +32,34 @@ message SystemHealth {
   google.protobuf.Timestamp last_checked = 4;
 }
 
+// 记录指标请求
 message RecordMetricRequest {
   Metric metric = 1;
 }
 
+// 记录指标响应
 message RecordMetricResponse {
   bool success = 1;
 }
 
+// 获取指标请求
 message GetMetricsRequest {
   string name = 1;
   google.protobuf.Timestamp start_time = 2;
   google.protobuf.Timestamp end_time = 3;
 }
 
+// 获取指标响应
 message GetMetricsResponse {
   repeated Metric metrics = 1;
 }
 
+// 获取系统健康请求
 message GetSystemHealthRequest {
   string service_name = 1; // Optional, if empty return all
 }
 
+// 获取系统健康响应
 message GetSystemHealthResponse {
   repeated SystemHealth health_statuses = 1;
 }

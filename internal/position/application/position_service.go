@@ -11,27 +11,30 @@ import (
 )
 
 // PositionDTO 持仓 DTO
+// 用于在应用层和接口层之间传输持仓数据
 type PositionDTO struct {
-	PositionID    string
-	UserID        string
-	Symbol        string
-	Side          string
-	Quantity      string
-	EntryPrice    string
-	CurrentPrice  string
-	UnrealizedPnL string
-	RealizedPnL   string
-	OpenedAt      int64
-	ClosedAt      *int64
-	Status        string
+	PositionID    string // 持仓 ID
+	UserID        string // 用户 ID
+	Symbol        string // 交易对
+	Side          string // 买卖方向
+	Quantity      string // 持仓数量
+	EntryPrice    string // 开仓价格
+	CurrentPrice  string // 当前价格
+	UnrealizedPnL string // 未实现盈亏
+	RealizedPnL   string // 已实现盈亏
+	OpenedAt      int64  // 开仓时间戳
+	ClosedAt      *int64 // 平仓时间戳 (可选)
+	Status        string // 状态 (OPEN, CLOSED)
 }
 
 // PositionApplicationService 持仓应用服务
+// 负责处理持仓查询、平仓等业务逻辑
 type PositionApplicationService struct {
-	positionRepo domain.PositionRepository
+	positionRepo domain.PositionRepository // 持仓仓储接口
 }
 
 // NewPositionApplicationService 创建持仓应用服务
+// positionRepo: 注入的持仓仓储实现
 func NewPositionApplicationService(positionRepo domain.PositionRepository) *PositionApplicationService {
 	return &PositionApplicationService{
 		positionRepo: positionRepo,

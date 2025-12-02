@@ -16,6 +16,7 @@ service MarketSimulationService {
   rpc GetSimulationStatus (GetSimulationStatusRequest) returns (GetSimulationStatusResponse);
 }
 
+// 模拟场景
 message SimulationScenario {
   string id = 1;
   string name = 2;
@@ -28,6 +29,7 @@ message SimulationScenario {
   google.protobuf.Timestamp end_time = 9;
 }
 
+// 启动模拟请求
 message StartSimulationRequest {
   string name = 1;
   string symbol = 2;
@@ -35,22 +37,27 @@ message StartSimulationRequest {
   string parameters = 4;
 }
 
+// 启动模拟响应
 message StartSimulationResponse {
   string simulation_id = 1;
 }
 
+// 停止模拟请求
 message StopSimulationRequest {
   string simulation_id = 1;
 }
 
+// 停止模拟响应
 message StopSimulationResponse {
   bool success = 1;
 }
 
+// 获取模拟状态请求
 message GetSimulationStatusRequest {
   string simulation_id = 1;
 }
 
+// 获取模拟状态响应
 message GetSimulationStatusResponse {
   SimulationScenario scenario = 1;
 }

@@ -19,6 +19,7 @@ service ReferenceDataService {
   rpc ListExchanges (ListExchangesRequest) returns (ListExchangesResponse);
 }
 
+// 交易对信息
 message Symbol {
   string id = 1;
   string base_currency = 2;
@@ -32,6 +33,7 @@ message Symbol {
   google.protobuf.Timestamp updated_at = 10;
 }
 
+// 交易所信息
 message Exchange {
   string id = 1;
   string name = 2;
@@ -42,15 +44,18 @@ message Exchange {
   google.protobuf.Timestamp updated_at = 7;
 }
 
+// 获取交易对请求
 message GetSymbolRequest {
   string id = 1;
   string symbol_code = 2;
 }
 
+// 获取交易对响应
 message GetSymbolResponse {
   Symbol symbol = 1;
 }
 
+// 列出交易对请求
 message ListSymbolsRequest {
   string exchange_id = 1;
   string status = 2;
@@ -58,25 +63,30 @@ message ListSymbolsRequest {
   string page_token = 4;
 }
 
+// 列出交易对响应
 message ListSymbolsResponse {
   repeated Symbol symbols = 1;
   string next_page_token = 2;
 }
 
+// 获取交易所请求
 message GetExchangeRequest {
   string id = 1;
   string name = 2;
 }
 
+// 获取交易所响应
 message GetExchangeResponse {
   Exchange exchange = 1;
 }
 
+// 列出交易所请求
 message ListExchangesRequest {
   int32 page_size = 1;
   string page_token = 2;
 }
 
+// 列出交易所响应
 message ListExchangesResponse {
   repeated Exchange exchanges = 1;
   string next_page_token = 2;

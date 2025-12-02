@@ -48,6 +48,8 @@ func (h *GRPCHandler) SettleTrade(ctx context.Context, req *pb.SettleTradeReques
 	}, nil
 }
 
+// ExecuteEODClearing 执行日终清算
+// 处理 gRPC ExecuteEODClearing 请求
 func (h *GRPCHandler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEODClearingRequest) (*pb.EODClearingResponse, error) {
 	err := h.appService.ExecuteEODClearing(ctx, req.ClearingDate)
 	if err != nil {
@@ -60,6 +62,8 @@ func (h *GRPCHandler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEOD
 	}, nil
 }
 
+// GetClearingStatus 获取清算状态
+// 处理 gRPC GetClearingStatus 请求
 func (h *GRPCHandler) GetClearingStatus(ctx context.Context, req *pb.GetClearingStatusRequest) (*pb.ClearingStatusResponse, error) {
 	clearing, err := h.appService.GetClearingStatus(ctx, req.ClearingId)
 	if err != nil {

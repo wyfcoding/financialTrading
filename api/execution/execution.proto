@@ -14,6 +14,7 @@ service ExecutionService {
   rpc SubscribeExecutions(SubscribeExecutionsRequest) returns (stream ExecutionUpdate);
 }
 
+// 执行订单请求
 message ExecuteOrderRequest {
   string order_id = 1;
   string user_id = 2;
@@ -23,6 +24,7 @@ message ExecuteOrderRequest {
   string quantity = 6;
 }
 
+// 执行响应
 message ExecutionResponse {
   string execution_id = 1;
   string order_id = 2;
@@ -33,12 +35,14 @@ message ExecutionResponse {
   string error_message = 7;
 }
 
+// 获取执行历史请求
 message GetExecutionHistoryRequest {
   string user_id = 1;
   string symbol = 2;
   int32 limit = 3;
 }
 
+// 执行记录
 message ExecutionRecord {
   string execution_id = 1;
   string order_id = 2;
@@ -48,14 +52,17 @@ message ExecutionRecord {
   int64 timestamp = 6;
 }
 
+// 执行历史响应
 message ExecutionHistoryResponse {
   repeated ExecutionRecord executions = 1;
 }
 
+// 订阅执行更新请求
 message SubscribeExecutionsRequest {
   string user_id = 1;
 }
 
+// 执行更新
 message ExecutionUpdate {
   string execution_id = 1;
   string order_id = 2;

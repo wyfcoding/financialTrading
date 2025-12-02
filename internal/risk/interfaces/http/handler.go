@@ -10,11 +10,13 @@ import (
 )
 
 // RiskHandler HTTP 处理器
+// 负责处理与风险管理相关的 HTTP 请求
 type RiskHandler struct {
-	riskService *application.RiskApplicationService
+	riskService *application.RiskApplicationService // 风险应用服务
 }
 
 // NewRiskHandler 创建 HTTP 处理器
+// riskService: 注入的风险应用服务
 func NewRiskHandler(riskService *application.RiskApplicationService) *RiskHandler {
 	return &RiskHandler{
 		riskService: riskService,

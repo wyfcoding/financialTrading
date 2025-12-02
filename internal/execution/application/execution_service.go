@@ -1,3 +1,4 @@
+// Package application 包含执行服务的用例逻辑
 package application
 
 import (
@@ -38,12 +39,14 @@ type ExecutionDTO struct {
 }
 
 // ExecutionApplicationService 执行应用服务
+// 负责处理订单执行的核心业务逻辑
 type ExecutionApplicationService struct {
-	executionRepo domain.ExecutionRepository
-	snowflake     *utils.SnowflakeID
+	executionRepo domain.ExecutionRepository // 执行记录仓储接口
+	snowflake     *utils.SnowflakeID         // 雪花算法 ID 生成器
 }
 
 // NewExecutionApplicationService 创建执行应用服务
+// executionRepo: 注入的执行记录仓储实现
 func NewExecutionApplicationService(executionRepo domain.ExecutionRepository) *ExecutionApplicationService {
 	return &ExecutionApplicationService{
 		executionRepo: executionRepo,

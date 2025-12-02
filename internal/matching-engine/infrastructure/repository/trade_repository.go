@@ -1,3 +1,4 @@
+// Package repository 包含仓储实现
 package repository
 
 import (
@@ -13,18 +14,19 @@ import (
 )
 
 // TradeModel 成交记录数据库模型
+// 对应数据库中的 trades 表
 type TradeModel struct {
 	gorm.Model
 	// 成交 ID
-	TradeID string `gorm:"column:trade_id;type:varchar(50);uniqueIndex;not null" json:"trade_id"`
+	TradeID string `gorm:"column:trade_id;type:varchar(50);uniqueIndex;not null;comment:成交ID" json:"trade_id"`
 	// 交易对
-	Symbol string `gorm:"column:symbol;type:varchar(50);index;not null" json:"symbol"`
+	Symbol string `gorm:"column:symbol;type:varchar(50);index;not null;comment:交易对" json:"symbol"`
 	// 买方订单 ID
-	BuyOrderID string `gorm:"column:buy_order_id;type:varchar(50);index;not null" json:"buy_order_id"`
+	BuyOrderID string `gorm:"column:buy_order_id;type:varchar(50);index;not null;comment:买方订单ID" json:"buy_order_id"`
 	// 卖方订单 ID
-	SellOrderID string `gorm:"column:sell_order_id;type:varchar(50);index;not null" json:"sell_order_id"`
+	SellOrderID string `gorm:"column:sell_order_id;type:varchar(50);index;not null;comment:卖方订单ID" json:"sell_order_id"`
 	// 成交价格
-	Price string `gorm:"column:price;type:decimal(20,8);not null" json:"price"`
+	Price string `gorm:"column:price;type:decimal(20,8);not null;comment:成交价格" json:"price"`
 	// 成交数量
 	Quantity string `gorm:"column:quantity;type:decimal(20,8);not null" json:"quantity"`
 	// 时间戳

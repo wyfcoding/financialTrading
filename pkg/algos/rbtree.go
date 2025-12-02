@@ -71,7 +71,7 @@ func (t *RBTree) Compare(a, b *Order) int {
 	return cmp
 }
 
-// Less returns true if a has higher priority than b
+// Less 判断 a 是否比 b 优先级更高 (返回 true)
 func (t *RBTree) Less(a, b *Order) bool {
 	cmp := a.Price.Cmp(b.Price)
 	if cmp == 0 {

@@ -37,6 +37,7 @@ type Slice struct {
 // AlgoExecutionService 算法执行服务
 type AlgoExecutionService struct{}
 
+// NewAlgoExecutionService 创建算法执行服务
 func NewAlgoExecutionService() *AlgoExecutionService {
 	return &AlgoExecutionService{}
 }

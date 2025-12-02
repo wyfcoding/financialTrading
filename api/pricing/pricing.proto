@@ -14,6 +14,7 @@ service PricingService {
   rpc GetGreeks (GetGreeksRequest) returns (GetGreeksResponse);
 }
 
+// 期权合约
 message OptionContract {
   string symbol = 1;
   string type = 2; // CALL, PUT
@@ -21,6 +22,7 @@ message OptionContract {
   google.protobuf.Timestamp expiry_date = 4;
 }
 
+// 希腊字母
 message Greeks {
   double delta = 1;
   double gamma = 2;
@@ -29,6 +31,7 @@ message Greeks {
   double rho = 5;
 }
 
+// 获取期权价格请求
 message GetOptionPriceRequest {
   OptionContract contract = 1;
   double underlying_price = 2;
@@ -36,11 +39,13 @@ message GetOptionPriceRequest {
   double risk_free_rate = 4;
 }
 
+// 获取期权价格响应
 message GetOptionPriceResponse {
   double price = 1;
   google.protobuf.Timestamp calculation_time = 2;
 }
 
+// 获取希腊字母请求
 message GetGreeksRequest {
   OptionContract contract = 1;
   double underlying_price = 2;
@@ -48,6 +53,7 @@ message GetGreeksRequest {
   double risk_free_rate = 4;
 }
 
+// 获取希腊字母响应
 message GetGreeksResponse {
   Greeks greeks = 1;
   google.protobuf.Timestamp calculation_time = 2;

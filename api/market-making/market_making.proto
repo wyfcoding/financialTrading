@@ -16,6 +16,7 @@ service MarketMakingService {
   rpc GetPerformance (GetPerformanceRequest) returns (GetPerformanceResponse);
 }
 
+// 报价策略
 message QuoteStrategy {
   string id = 1;
   string symbol = 2;
@@ -28,6 +29,7 @@ message QuoteStrategy {
   google.protobuf.Timestamp updated_at = 9;
 }
 
+// 做市绩效
 message MarketMakingPerformance {
   string symbol = 1;
   double total_pnl = 2;
@@ -38,6 +40,7 @@ message MarketMakingPerformance {
   google.protobuf.Timestamp end_time = 7;
 }
 
+// 设置策略请求
 message SetStrategyRequest {
   string symbol = 1;
   double spread = 2;
@@ -47,24 +50,29 @@ message SetStrategyRequest {
   string status = 6;
 }
 
+// 设置策略响应
 message SetStrategyResponse {
   string strategy_id = 1;
 }
 
+// 获取策略请求
 message GetStrategyRequest {
   string symbol = 1;
 }
 
+// 获取策略响应
 message GetStrategyResponse {
   QuoteStrategy strategy = 1;
 }
 
+// 获取绩效请求
 message GetPerformanceRequest {
   string symbol = 1;
   google.protobuf.Timestamp start_time = 2;
   google.protobuf.Timestamp end_time = 3;
 }
 
+// 获取绩效响应
 message GetPerformanceResponse {
   MarketMakingPerformance performance = 1;
 }

@@ -16,6 +16,7 @@ service ClearingService {
   rpc GetClearingStatus(GetClearingStatusRequest) returns (ClearingStatusResponse);
 }
 
+// 清算交易请求
 message SettleTradeRequest {
   string trade_id = 1;
   string buy_user_id = 2;
@@ -25,6 +26,7 @@ message SettleTradeRequest {
   string price = 6;
 }
 
+// 清算响应
 message SettlementResponse {
   string settlement_id = 1;
   string trade_id = 2;
@@ -33,11 +35,13 @@ message SettlementResponse {
   string error_message = 5;
 }
 
+// 获取清算记录请求
 message GetSettlementsRequest {
   string user_id = 1;
   int32 limit = 2;
 }
 
+// 清算记录
 message Settlement {
   string settlement_id = 1;
   string trade_id = 2;
@@ -45,14 +49,17 @@ message Settlement {
   int64 settlement_time = 4;
 }
 
+// 清算记录响应
 message SettlementsResponse {
   repeated Settlement settlements = 1;
 }
 
+// 执行日终清算请求
 message ExecuteEODClearingRequest {
   string clearing_date = 1;
 }
 
+// 日终清算响应
 message EODClearingResponse {
   string clearing_id = 1;
   string status = 2;
@@ -61,10 +68,12 @@ message EODClearingResponse {
   int64 trades_settled = 5;
 }
 
+// 获取清算状态请求
 message GetClearingStatusRequest {
   string clearing_id = 1;
 }
 
+// 清算状态响应
 message ClearingStatusResponse {
   string clearing_id = 1;
   string status = 2;

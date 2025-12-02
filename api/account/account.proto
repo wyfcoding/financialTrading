@@ -22,12 +22,14 @@ service AccountService {
   rpc GetTransactionHistory(GetTransactionHistoryRequest) returns (TransactionHistoryResponse);
 }
 
+// 创建账户请求
 message CreateAccountRequest {
   string user_id = 1;
   string account_type = 2;
   string currency = 3;
 }
 
+// 账户响应
 message AccountResponse {
   string account_id = 1;
   string user_id = 2;
@@ -39,22 +41,26 @@ message AccountResponse {
   int64 updated_at = 8;
 }
 
+// 获取账户请求
 message GetAccountRequest {
   string account_id = 1;
   string user_id = 2;
 }
 
+// 更新账户请求
 message UpdateAccountRequest {
   string account_id = 1;
   string user_id = 2;
   map<string, string> updates = 3;
 }
 
+// 获取余额请求
 message GetBalanceRequest {
   string account_id = 1;
   string user_id = 2;
 }
 
+// 余额响应
 message BalanceResponse {
   string account_id = 1;
   string balance = 2;
@@ -63,6 +69,7 @@ message BalanceResponse {
   int64 timestamp = 5;
 }
 
+// 充值请求
 message DepositRequest {
   string account_id = 1;
   string user_id = 2;
@@ -70,6 +77,7 @@ message DepositRequest {
   string currency = 4;
 }
 
+// 提现请求
 message WithdrawRequest {
   string account_id = 1;
   string user_id = 2;
@@ -78,6 +86,7 @@ message WithdrawRequest {
   string address = 5;
 }
 
+// 交易响应
 message TransactionResponse {
   string transaction_id = 1;
   string account_id = 2;
@@ -87,12 +96,14 @@ message TransactionResponse {
   int64 timestamp = 6;
 }
 
+// 获取交易历史请求
 message GetTransactionHistoryRequest {
   string account_id = 1;
   string user_id = 2;
   int32 limit = 3;
 }
 
+// 交易记录
 message Transaction {
   string transaction_id = 1;
   string type = 2;
@@ -101,6 +112,7 @@ message Transaction {
   int64 timestamp = 5;
 }
 
+// 交易历史响应
 message TransactionHistoryResponse {
   repeated Transaction transactions = 1;
 }

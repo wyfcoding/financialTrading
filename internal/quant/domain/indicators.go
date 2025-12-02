@@ -56,8 +56,8 @@ func (s *IndicatorService) CalculateRSI(prices []decimal.Decimal, period int) (d
 			currentLoss = change.Abs()
 		}
 
-		// Wilder's Smoothing Method
-		// AvgGain = ((Previous AvgGain * (period - 1)) + Current Gain) / period
+		// Wilder 平滑法
+		// 平均涨幅 = ((上一次平均涨幅 * (周期 - 1)) + 当前涨幅) / 周期
 		avgGain = avgGain.Mul(decimal.NewFromInt(int64(period - 1))).Add(currentGain).Div(decimal.NewFromInt(int64(period)))
 		avgLoss = avgLoss.Mul(decimal.NewFromInt(int64(period - 1))).Add(currentLoss).Div(decimal.NewFromInt(int64(period)))
 	}
@@ -83,15 +83,15 @@ func (s *IndicatorService) CalculateMACD(prices []decimal.Decimal, fastPeriod, s
 		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("not enough data points for MACD calculation")
 	}
 
-	// 注意：这里简化了 EMA 计算，实际 MACD 需要基于 EMA 序列计算 Signal Line
+	// 注意：这里简化了 EMA 计算，实际 MACD 需要基于 EMA 序列计算信号线 (Signal Line)
 	// 为了准确计算，我们需要计算出 EMA 序列，而不仅仅是最后一个点的 EMA
 
 	// 重新实现：计算 EMA 序列
 	fastEMAs := CalculateEMASeries(prices, fastPeriod)
 	slowEMAs := CalculateEMASeries(prices, slowPeriod)
 
-	// MACD Line = Fast EMA - Slow EMA
-	// 我们需要 MACD Line 的序列来计算 Signal Line
+	// MACD 线 = 快线 EMA - 慢线 EMA
+	// 我们需要 MACD 线的序列来计算信号线
 	// 序列长度取决于较短的 slowEMAs
 	// slowEMAs 的起始点比 fastEMAs 晚 (slowPeriod - fastPeriod)
 
@@ -107,8 +107,8 @@ func (s *IndicatorService) CalculateMACD(prices []decimal.Decimal, fastPeriod, s
 		macdLineSeries[i] = fastEMAs[i].Sub(slowEMAs[i])
 	}
 
-	// Signal Line = EMA(MACD Line, signalPeriod)
-	// 注意：MACD Line 前 slowPeriod-1 个无效，计算 Signal Line 时要跳过
+	// 信号线 = EMA(MACD 线, 信号线周期)
+	// 注意：MACD 线前 slowPeriod-1 个无效，计算信号线时要跳过
 	validMACDSeries := macdLineSeries[slowPeriod-1:]
 	signalLineSeries := CalculateEMASeries(validMACDSeries, signalPeriod)
 

@@ -13,16 +13,17 @@ import (
 )
 
 // RiskAssessmentModel 风险评估数据库模型
+// 对应数据库中的 risk_assessments 表
 type RiskAssessmentModel struct {
 	gorm.Model
 	// 评估 ID
-	AssessmentID string `gorm:"column:assessment_id;type:varchar(50);uniqueIndex;not null" json:"assessment_id"`
+	AssessmentID string `gorm:"column:assessment_id;type:varchar(50);uniqueIndex;not null;comment:评估ID" json:"assessment_id"`
 	// 用户 ID
-	UserID string `gorm:"column:user_id;type:varchar(50);index;not null" json:"user_id"`
+	UserID string `gorm:"column:user_id;type:varchar(50);index;not null;comment:用户ID" json:"user_id"`
 	// 交易对
-	Symbol string `gorm:"column:symbol;type:varchar(50);not null" json:"symbol"`
+	Symbol string `gorm:"column:symbol;type:varchar(50);not null;comment:交易对" json:"symbol"`
 	// 买卖方向
-	Side string `gorm:"column:side;type:varchar(10);not null" json:"side"`
+	Side string `gorm:"column:side;type:varchar(10);not null;comment:买卖方向" json:"side"`
 	// 数量
 	Quantity string `gorm:"column:quantity;type:decimal(20,8);not null" json:"quantity"`
 	// 价格

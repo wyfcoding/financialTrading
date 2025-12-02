@@ -1,3 +1,4 @@
+// Package grpc 包含 gRPC 处理器实现
 package grpc
 
 import (
@@ -12,8 +13,10 @@ import (
 // GRPCHandler gRPC 处理器
 // 负责处理与订单相关的 gRPC 请求
 type GRPCHandler struct {
+	// 嵌入 UnimplementedOrderServiceServer 以实现向前兼容
 	pb.UnimplementedOrderServiceServer
-	appService *application.OrderApplicationService // 订单应用服务
+	// 订单应用服务，处理业务逻辑
+	appService *application.OrderApplicationService
 }
 
 // NewGRPCHandler 创建 gRPC 处理器实例
@@ -42,10 +45,14 @@ func (h *GRPCHandler) CreateOrder(ctx context.Context, req *pb.CreateOrderReques
 		return nil, status.Errorf(codes.Internal, "failed to create order: %v", err)
 	}
 
+	// 返回创建成功的订单
 	return h.toProtoResponse(dto), nil
 }
 
+// CancelOrder 取消订单
+// 处理 gRPC CancelOrder 请求
 func (h *GRPCHandler) CancelOrder(ctx context.Context, req *pb.CancelOrderRequest) (*pb.OrderResponse, error) {
+	// 调用应用服务取消订单
 	dto, err := h.appService.CancelOrder(ctx, req.OrderId, req.UserId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to cancel order: %v", err)
@@ -54,6 +61,8 @@ func (h *GRPCHandler) CancelOrder(ctx context.Context, req *pb.CancelOrderReques
 	return h.toProtoResponse(dto), nil
 }
 
+// GetOrder 获取订单详情
+// 处理 gRPC GetOrder 请求
 func (h *GRPCHandler) GetOrder(ctx context.Context, req *pb.GetOrderRequest) (*pb.OrderResponse, error) {
 	dto, err := h.appService.GetOrder(ctx, req.OrderId, req.UserId)
 	if err != nil {

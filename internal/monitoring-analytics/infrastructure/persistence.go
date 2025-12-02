@@ -46,10 +46,12 @@ type MetricRepositoryImpl struct {
 	db *gorm.DB
 }
 
+// NewMetricRepository 创建指标仓储实例
 func NewMetricRepository(db *gorm.DB) domain.MetricRepository {
 	return &MetricRepositoryImpl{db: db}
 }
 
+// Save 保存指标
 func (r *MetricRepositoryImpl) Save(ctx context.Context, metric *domain.Metric) error {
 	tagsJSON, _ := json.Marshal(metric.Tags)
 	model := &MetricModel{
@@ -72,6 +74,7 @@ func (r *MetricRepositoryImpl) Save(ctx context.Context, metric *domain.Metric) 
 	return nil
 }
 
+// GetMetrics 获取指标列表
 func (r *MetricRepositoryImpl) GetMetrics(ctx context.Context, name string, startTime, endTime time.Time) ([]*domain.Metric, error) {
 	var models []MetricModel
 	if err := r.db.WithContext(ctx).Where("name = ? AND timestamp BETWEEN ? AND ?", name, startTime, endTime).Find(&models).Error; err != nil {
@@ -121,10 +124,12 @@ type SystemHealthRepositoryImpl struct {
 	db *gorm.DB
 }
 
+// NewSystemHealthRepository 创建系统健康仓储实例
 func NewSystemHealthRepository(db *gorm.DB) domain.SystemHealthRepository {
 	return &SystemHealthRepositoryImpl{db: db}
 }
 
+// Save 保存系统健康状态
 func (r *SystemHealthRepositoryImpl) Save(ctx context.Context, health *domain.SystemHealth) error {
 	model := &SystemHealthModel{
 		Model:       health.Model,
@@ -145,6 +150,7 @@ func (r *SystemHealthRepositoryImpl) Save(ctx context.Context, health *domain.Sy
 	return nil
 }
 
+// GetLatestHealth 获取最新系统健康状态
 func (r *SystemHealthRepositoryImpl) GetLatestHealth(ctx context.Context, serviceName string) ([]*domain.SystemHealth, error) {
 	var models []SystemHealthModel
 	query := r.db.WithContext(ctx)

@@ -23,12 +23,13 @@ func NewOrderHandler(orderService *application.OrderApplicationService) *OrderHa
 }
 
 // RegisterRoutes 注册路由
+// 将处理器方法绑定到 Gin 路由引擎
 func (h *OrderHandler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1/orders")
 	{
-		api.POST("", h.CreateOrder)
-		api.DELETE("/:id", h.CancelOrder)
-		api.GET("/:id", h.GetOrder)
+		api.POST("", h.CreateOrder)       // 创建订单
+		api.DELETE("/:id", h.CancelOrder) // 取消订单
+		api.GET("/:id", h.GetOrder)       // 获取订单详情
 	}
 }
 

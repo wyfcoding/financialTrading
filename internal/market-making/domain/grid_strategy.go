@@ -24,6 +24,7 @@ type Grid struct {
 	Side     string     // BUY, SELL
 }
 
+// GridStatus 网格状态
 type GridStatus string
 
 const (

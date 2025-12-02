@@ -8,11 +8,11 @@ import (
 
 // BlackScholesInput Black-Scholes 模型输入
 type BlackScholesInput struct {
-	S float64 // 标的资产价格 (Spot Price)
-	K float64 // 执行价格 (Strike Price)
-	T float64 // 到期时间 (Time to Maturity, in years)
-	R float64 // 无风险利率 (Risk-free Rate)
-	V float64 // 波动率 (Volatility)
+	S float64 // 标的资产价格
+	K float64 // 执行价格
+	T float64 // 到期时间 (年)
+	R float64 // 无风险利率
+	V float64 // 波动率
 }
 
 // BlackScholesResult Black-Scholes 模型输出

@@ -11,10 +11,12 @@ import (
 // MockMarketDataClient 模拟市场数据客户端
 type MockMarketDataClient struct{}
 
+// NewMockMarketDataClient 创建模拟市场数据客户端
 func NewMockMarketDataClient() domain.MarketDataClient {
 	return &MockMarketDataClient{}
 }
 
+// GetHistoricalData 获取历史数据
 func (c *MockMarketDataClient) GetHistoricalData(ctx context.Context, symbol string, start, end time.Time) ([]float64, error) {
 	// 模拟生成一些随机价格数据
 	days := int(end.Sub(start).Hours() / 24)

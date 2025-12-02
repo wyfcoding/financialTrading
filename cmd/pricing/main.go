@@ -38,7 +38,7 @@ func main() {
 	}
 
 	// 2. 初始化日志
-	loggerCfg := logger.Config{ // Detailed logger initialization
+	loggerCfg := logger.Config{ // 详细的日志初始化配置
 		ServiceName: cfg.ServiceName,
 		Level:       cfg.Logger.Level,
 		Format:      cfg.Logger.Format,
@@ -58,7 +58,7 @@ func main() {
 	ctx := context.Background()
 	log := logger.WithModule("main")
 
-	log.InfoContext(ctx, "Starting PricingService", "version", cfg.Version) // Access cfg.Version
+	log.InfoContext(ctx, "Starting PricingService", "version", cfg.Version) // 访问 cfg.Version
 
 	// 3. 初始化追踪
 	if cfg.Tracing.Enabled {
@@ -97,12 +97,12 @@ func main() {
 	rateLimiter := ratelimit.NewRedisRateLimiter(redisCache.GetClient())
 
 	// 6. 初始化层级依赖
-	// Infrastructure
+	// 基础设施层
 	// PricingService 主要是计算服务，可能不需要数据库，或者只需要读取市场数据
 	marketDataClient := infrastructure.NewMockMarketDataClient()
 
-	// Application
-	svc := application.NewPricingService(marketDataClient) // Renamed pricingApp to svc
+	// 应用层
+	svc := application.NewPricingService(marketDataClient) // 将 pricingApp 重命名为 svc
 
 	// 7. 创建 HTTP 服务器
 	httpServer := createHTTPServer(cfg, svc, rateLimiter)

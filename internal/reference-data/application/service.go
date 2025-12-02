@@ -1,3 +1,4 @@
+// Package application 包含参考数据服务的用例逻辑
 package application
 
 import (
@@ -8,13 +9,16 @@ import (
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 )
 
-// ReferenceDataService 应用服务
+// ReferenceDataService 参考数据应用服务
+// 负责管理交易对和交易所等基础数据
 type ReferenceDataService struct {
-	symbolRepo   domain.SymbolRepository
-	exchangeRepo domain.ExchangeRepository
+	symbolRepo   domain.SymbolRepository   // 交易对仓储接口
+	exchangeRepo domain.ExchangeRepository // 交易所仓储接口
 }
 
 // NewReferenceDataService 创建应用服务实例
+// symbolRepo: 注入的交易对仓储实现
+// exchangeRepo: 注入的交易所仓储实现
 func NewReferenceDataService(symbolRepo domain.SymbolRepository, exchangeRepo domain.ExchangeRepository) *ReferenceDataService {
 	return &ReferenceDataService{
 		symbolRepo:   symbolRepo,

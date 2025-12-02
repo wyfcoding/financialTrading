@@ -1,3 +1,4 @@
+// Package domain 包含风险管理服务的领域模型
 package domain
 
 import (
@@ -9,21 +10,22 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// MonteCarloInput 蒙特卡洛模拟输入
+// MonteCarloInput 蒙特卡洛模拟输入参数
+// 用于计算 VaR 和 ES
 type MonteCarloInput struct {
-	S          float64 // 当前价格 (Spot Price)
-	Mu         float64 // 预期收益率 (Expected Return, annual)
-	Sigma      float64 // 波动率 (Volatility, annual)
-	T          float64 // 时间跨度 (Time Horizon, in years)
-	Iterations int     // 模拟次数
-	Steps      int     // 时间步数
+	S          float64 // 当前价格
+	Mu         float64 // 预期年化收益率
+	Sigma      float64 // 年化波动率
+	T          float64 // 时间跨度 (年)
+	Iterations int     // 模拟次数 (例如 10000)
+	Steps      int     // 时间步数 (例如 252)
 }
 
-// MonteCarloResult 蒙特卡洛模拟输出
+// MonteCarloResult 蒙特卡洛模拟输出结果
 type MonteCarloResult struct {
 	VaR95 decimal.Decimal // 95% 置信度 VaR
 	VaR99 decimal.Decimal // 99% 置信度 VaR
-	ES95  decimal.Decimal // 95% 置信度预期亏损 (Expected Shortfall)
+	ES95  decimal.Decimal // 95% 置信度预期亏损
 	ES99  decimal.Decimal // 99% 置信度预期亏损
 }
 

@@ -50,10 +50,12 @@ type SimulationScenarioRepositoryImpl struct {
 	db *gorm.DB
 }
 
+// NewSimulationScenarioRepository 创建模拟场景仓储实例
 func NewSimulationScenarioRepository(db *gorm.DB) domain.SimulationScenarioRepository {
 	return &SimulationScenarioRepositoryImpl{db: db}
 }
 
+// Save 保存模拟场景
 func (r *SimulationScenarioRepositoryImpl) Save(ctx context.Context, scenario *domain.SimulationScenario) error {
 	model := &SimulationScenarioModel{
 		Model:       scenario.Model,
@@ -78,6 +80,7 @@ func (r *SimulationScenarioRepositoryImpl) Save(ctx context.Context, scenario *d
 	return nil
 }
 
+// GetByID 根据 ID 获取模拟场景
 func (r *SimulationScenarioRepositoryImpl) GetByID(ctx context.Context, id string) (*domain.SimulationScenario, error) {
 	var model SimulationScenarioModel
 	if err := r.db.WithContext(ctx).First(&model, "id = ?", id).Error; err != nil {

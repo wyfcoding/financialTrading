@@ -9,15 +9,12 @@ import (
 )
 
 // MatchingResult 撮合结果
+// 包含撮合后的成交信息和订单状态
 type MatchingResult struct {
-	// 订单 ID
-	OrderID string
-	// 成交列表
-	Trades []*algos.Trade
-	// 剩余数量
-	RemainingQuantity decimal.Decimal
-	// 状态
-	Status string
+	OrderID           string          // 订单 ID
+	Trades            []*algos.Trade  // 成交列表
+	RemainingQuantity decimal.Decimal // 剩余数量
+	Status            string          // 状态 (MATCHED, PARTIALLY_MATCHED)
 }
 
 // OrderBookSnapshot 订单簿快照

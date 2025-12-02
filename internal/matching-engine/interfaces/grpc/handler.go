@@ -1,3 +1,4 @@
+// Package grpc 包含 gRPC 处理器实现
 package grpc
 
 import (
@@ -10,18 +11,25 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// GRPCHandler gRPC 处理器
+// 负责处理与撮合引擎相关的 gRPC 请求
 type GRPCHandler struct {
 	pb.UnimplementedMatchingEngineServiceServer
-	appService *application.MatchingApplicationService
+	appService *application.MatchingApplicationService // 撮合应用服务
 }
 
+// NewGRPCHandler 创建 gRPC 处理器实例
+// appService: 注入的撮合应用服务
 func NewGRPCHandler(appService *application.MatchingApplicationService) *GRPCHandler {
 	return &GRPCHandler{
 		appService: appService,
 	}
 }
 
+// SubmitOrder 提交订单
+// 处理 gRPC SubmitOrder 请求
 func (h *GRPCHandler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderRequest) (*pb.MatchResult, error) {
+	// 调用应用服务提交订单
 	result, err := h.appService.SubmitOrder(ctx, &application.SubmitOrderRequest{
 		OrderID:  req.OrderId,
 		Symbol:   req.Symbol,
@@ -46,6 +54,8 @@ func (h *GRPCHandler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderReques
 	}, nil
 }
 
+// GetOrderBook 获取订单簿
+// 处理 gRPC GetOrderBook 请求
 func (h *GRPCHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequest) (*pb.OrderBookSnapshot, error) {
 	snapshot, err := h.appService.GetOrderBook(ctx, req.Symbol, int(req.Depth))
 	if err != nil {
@@ -76,6 +86,8 @@ func (h *GRPCHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequ
 	}, nil
 }
 
+// GetTrades 获取成交记录
+// 处理 gRPC GetTrades 请求
 func (h *GRPCHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (*pb.TradesResponse, error) {
 	trades, err := h.appService.GetTrades(ctx, req.Symbol, int(req.Limit))
 	if err != nil {

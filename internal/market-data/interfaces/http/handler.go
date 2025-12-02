@@ -92,7 +92,7 @@ func (h *Handler) GetHistoricalQuotes(c *gin.Context) {
 	}
 
 	// 调用应用服务
-	// TODO: Parse startTime and endTime from string to int64
+	// TODO: 将 startTime 和 endTime 从字符串解析为 int64
 	// For now using 0, 0 as placeholders to fix compilation, assuming logic handles it or will be updated
 	quotes, err := h.quoteService.GetHistoricalQuotes(ctx, symbol, 0, 0)
 	if err != nil {

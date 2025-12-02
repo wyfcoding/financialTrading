@@ -10,6 +10,7 @@ import (
 )
 
 // Position 持仓实体
+// 代表用户在某个交易对上的持仓信息
 type Position struct {
 	gorm.Model
 	// 持仓 ID
@@ -18,11 +19,11 @@ type Position struct {
 	UserID string `gorm:"column:user_id;type:varchar(50);index;not null" json:"user_id"`
 	// 交易对
 	Symbol string `gorm:"column:symbol;type:varchar(50);index;not null" json:"symbol"`
-	// 买卖方向
+	// 买卖方向 (LONG/SHORT)
 	Side string `gorm:"column:side;type:varchar(10);not null" json:"side"`
 	// 持仓数量
 	Quantity decimal.Decimal `gorm:"column:quantity;type:decimal(20,8);not null" json:"quantity"`
-	// 开仓价格
+	// 开仓价格 (平均成本)
 	EntryPrice decimal.Decimal `gorm:"column:entry_price;type:decimal(20,8);not null" json:"entry_price"`
 	// 当前价格
 	CurrentPrice decimal.Decimal `gorm:"column:current_price;type:decimal(20,8);not null" json:"current_price"`

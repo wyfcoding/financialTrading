@@ -11,15 +11,18 @@ import (
 	"github.com/wyfcoding/financialTrading/pkg/ratelimit"
 )
 
-// RateLimitMiddleware creates a Gin middleware for rate limiting
+// RateLimitMiddleware 创建 Gin 限流中间件
+// limiter: 限流器接口实现
+// cfg: 限流配置
 func RateLimitMiddleware(limiter ratelimit.RateLimiter, cfg config.RateLimitConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 如果未启用限流，直接放行
 		if !cfg.Enabled {
 			c.Next()
 			return
 		}
 
-		// Use IP as the key for now. Can be extended to use UserID or API Key.
+		// 使用 IP 作为限流键。可以扩展为使用 UserID 或 API Key。
 		key := fmt.Sprintf("ratelimit:%s", c.ClientIP())
 		limit := ratelimit.Limit{
 			Rate:   cfg.QPS,

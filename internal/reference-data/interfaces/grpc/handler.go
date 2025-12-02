@@ -1,3 +1,4 @@
+// Package grpc 包含 gRPC 处理器实现
 package grpc
 
 import (
@@ -10,17 +11,20 @@ import (
 )
 
 // GRPCHandler gRPC 处理器
+// 负责处理与参考数据相关的 gRPC 请求
 type GRPCHandler struct {
 	pb.UnimplementedReferenceDataServiceServer
-	app *application.ReferenceDataService
+	app *application.ReferenceDataService // 参考数据应用服务
 }
 
 // NewGRPCHandler 创建 gRPC 处理器实例
+// app: 注入的参考数据应用服务
 func NewGRPCHandler(app *application.ReferenceDataService) *GRPCHandler {
 	return &GRPCHandler{app: app}
 }
 
 // GetSymbol 获取交易对
+// 处理 gRPC GetSymbol 请求
 func (h *GRPCHandler) GetSymbol(ctx context.Context, req *pb.GetSymbolRequest) (*pb.GetSymbolResponse, error) {
 	id := req.Id
 	if id == "" {

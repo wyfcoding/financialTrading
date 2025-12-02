@@ -1,3 +1,4 @@
+// Package grpc 包含 gRPC 处理器实现
 package grpc
 
 import (
@@ -41,6 +42,7 @@ func (h *GRPCHandler) ExecuteOrder(ctx context.Context, req *pb.ExecuteOrderRequ
 		return nil, status.Errorf(codes.Internal, "failed to execute order: %v", err)
 	}
 
+	// 返回执行结果
 	return &pb.ExecutionResponse{
 		ExecutionId:      dto.ExecutionID,
 		OrderId:          dto.OrderID,
@@ -51,8 +53,10 @@ func (h *GRPCHandler) ExecuteOrder(ctx context.Context, req *pb.ExecuteOrderRequ
 	}, nil
 }
 
+// GetExecutionHistory 获取执行历史
+// 处理 gRPC GetExecutionHistory 请求
 func (h *GRPCHandler) GetExecutionHistory(ctx context.Context, req *pb.GetExecutionHistoryRequest) (*pb.ExecutionHistoryResponse, error) {
-	// Default limit if not specified
+	// 如果未指定限制，则使用默认值
 	limit := int(req.Limit)
 	if limit <= 0 {
 		limit = 20

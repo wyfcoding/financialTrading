@@ -79,11 +79,11 @@ func (s *PricingService) GetGreeks(ctx context.Context, contract domain.OptionCo
 		greeks.Delta = normalCDF(d1) - 1
 	}
 
-	// Gamma (Same for Call and Put)
+	// Gamma (对于看涨和看跌期权相同)
 	greeks.Gamma = normalPDF(d1) / (underlyingPrice * volatility * math.Sqrt(timeToExpiry))
 
-	// Vega (Same for Call and Put)
-	greeks.Vega = underlyingPrice * normalPDF(d1) * math.Sqrt(timeToExpiry) / 100 // Usually expressed per 1% change
+	// Vega (对于看涨和看跌期权相同)
+	greeks.Vega = underlyingPrice * normalPDF(d1) * math.Sqrt(timeToExpiry) / 100 // 通常表示为每 1% 变化的敏感度
 
 	// Theta
 	if contract.Type == domain.OptionTypeCall {

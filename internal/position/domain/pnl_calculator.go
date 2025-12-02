@@ -1,3 +1,4 @@
+// Package domain 包含持仓服务的领域模型
 package domain
 
 import (
@@ -5,15 +6,18 @@ import (
 )
 
 // PnLCalculator PnL 计算器
+// 提供盈亏计算和均价更新的领域服务
 type PnLCalculator struct{}
 
+// NewPnLCalculator 创建 PnL 计算器实例
 func NewPnLCalculator() *PnLCalculator {
 	return &PnLCalculator{}
 }
 
 // CalculateUnrealizedPnL 计算未实现盈亏
-// position: 持仓
+// position: 持仓对象
 // currentPrice: 当前市场价格
+// 返回: 未实现盈亏金额
 func (c *PnLCalculator) CalculateUnrealizedPnL(position *Position, currentPrice decimal.Decimal) decimal.Decimal {
 	if position.Quantity.IsZero() {
 		return decimal.Zero

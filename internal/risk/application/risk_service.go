@@ -14,27 +14,27 @@ import (
 
 // AssessRiskRequest 风险评估请求 DTO
 type AssessRiskRequest struct {
-	UserID   string
-	Symbol   string
-	Side     string
-	Quantity string
-	Price    string
+	UserID   string // 用户 ID
+	Symbol   string // 交易对
+	Side     string // 买卖方向
+	Quantity string // 数量
+	Price    string // 价格
 }
 
 // RiskAssessmentDTO 风险评估 DTO
 type RiskAssessmentDTO struct {
-	AssessmentID      string
-	UserID            string
-	Symbol            string
-	Side              string
-	Quantity          string
-	Price             string
-	RiskLevel         string
-	RiskScore         string
-	MarginRequirement string
-	IsAllowed         bool
-	Reason            string
-	CreatedAt         int64
+	AssessmentID      string // 评估 ID
+	UserID            string // 用户 ID
+	Symbol            string // 交易对
+	Side              string // 买卖方向
+	Quantity          string // 数量
+	Price             string // 价格
+	RiskLevel         string // 风险等级
+	RiskScore         string // 风险评分
+	MarginRequirement string // 保证金要求
+	IsAllowed         bool   // 是否允许交易
+	Reason            string // 原因
+	CreatedAt         int64  // 创建时间戳
 }
 
 // RiskApplicationService 风险应用服务

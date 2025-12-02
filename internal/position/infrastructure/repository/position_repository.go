@@ -14,16 +14,17 @@ import (
 )
 
 // PositionModel 持仓数据库模型
+// 对应数据库中的 positions 表
 type PositionModel struct {
 	gorm.Model
 	// 持仓 ID
-	PositionID string `gorm:"column:position_id;type:varchar(50);uniqueIndex;not null" json:"position_id"`
+	PositionID string `gorm:"column:position_id;type:varchar(50);uniqueIndex;not null;comment:持仓ID" json:"position_id"`
 	// 用户 ID
-	UserID string `gorm:"column:user_id;type:varchar(50);index;not null" json:"user_id"`
+	UserID string `gorm:"column:user_id;type:varchar(50);index;not null;comment:用户ID" json:"user_id"`
 	// 交易对
-	Symbol string `gorm:"column:symbol;type:varchar(50);index;not null" json:"symbol"`
+	Symbol string `gorm:"column:symbol;type:varchar(50);index;not null;comment:交易对" json:"symbol"`
 	// 买卖方向
-	Side string `gorm:"column:side;type:varchar(10);not null" json:"side"`
+	Side string `gorm:"column:side;type:varchar(10);not null;comment:买卖方向" json:"side"`
 	// 持仓数量
 	Quantity string `gorm:"column:quantity;type:decimal(20,8);not null" json:"quantity"`
 	// 开仓价格

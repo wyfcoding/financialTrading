@@ -50,10 +50,12 @@ type QuoteStrategyRepositoryImpl struct {
 	db *gorm.DB
 }
 
+// NewQuoteStrategyRepository 创建报价策略仓储实例
 func NewQuoteStrategyRepository(db *gorm.DB) domain.QuoteStrategyRepository {
 	return &QuoteStrategyRepositoryImpl{db: db}
 }
 
+// Save 保存报价策略
 func (r *QuoteStrategyRepositoryImpl) Save(ctx context.Context, strategy *domain.QuoteStrategy) error {
 	model := &QuoteStrategyModel{
 		Model:        strategy.Model,
@@ -78,6 +80,7 @@ func (r *QuoteStrategyRepositoryImpl) Save(ctx context.Context, strategy *domain
 	return nil
 }
 
+// GetBySymbol 根据交易对获取报价策略
 func (r *QuoteStrategyRepositoryImpl) GetBySymbol(ctx context.Context, symbol string) (*domain.QuoteStrategy, error) {
 	var model QuoteStrategyModel
 	if err := r.db.WithContext(ctx).Where("symbol = ?", symbol).First(&model).Error; err != nil {
@@ -127,10 +130,12 @@ type PerformanceRepositoryImpl struct {
 	db *gorm.DB
 }
 
+// NewPerformanceRepository 创建绩效仓储实例
 func NewPerformanceRepository(db *gorm.DB) domain.PerformanceRepository {
 	return &PerformanceRepositoryImpl{db: db}
 }
 
+// Save 保存绩效
 func (r *PerformanceRepositoryImpl) Save(ctx context.Context, performance *domain.MarketMakingPerformance) error {
 	model := &PerformanceModel{
 		Model:       performance.Model,
@@ -152,6 +157,7 @@ func (r *PerformanceRepositoryImpl) Save(ctx context.Context, performance *domai
 	return nil
 }
 
+// GetBySymbol 根据交易对获取绩效
 func (r *PerformanceRepositoryImpl) GetBySymbol(ctx context.Context, symbol string) (*domain.MarketMakingPerformance, error) {
 	var model PerformanceModel
 	if err := r.db.WithContext(ctx).Where("symbol = ?", symbol).First(&model).Error; err != nil {

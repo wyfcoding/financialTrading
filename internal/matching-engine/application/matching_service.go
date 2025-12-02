@@ -1,3 +1,4 @@
+// Package application 包含撮合引擎服务的用例逻辑
 package application
 
 import (
@@ -12,18 +13,19 @@ import (
 
 // SubmitOrderRequest 提交订单请求 DTO
 type SubmitOrderRequest struct {
-	OrderID  string
-	Symbol   string
-	Side     string
-	Price    string
-	Quantity string
+	OrderID  string // 订单 ID
+	Symbol   string // 交易对
+	Side     string // 买卖方向
+	Price    string // 价格
+	Quantity string // 数量
 }
 
 // MatchingApplicationService 撮合应用服务
+// 负责协调撮合引擎、订单簿和成交记录的持久化
 type MatchingApplicationService struct {
-	engine        *algos.MatchingEngine
-	tradeRepo     domain.TradeRepository
-	orderBookRepo domain.OrderBookRepository
+	engine        *algos.MatchingEngine      // 撮合引擎核心
+	tradeRepo     domain.TradeRepository     // 成交记录仓储接口
+	orderBookRepo domain.OrderBookRepository // 订单簿仓储接口
 }
 
 // NewMatchingApplicationService 创建撮合应用服务

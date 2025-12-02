@@ -52,10 +52,12 @@ type NotificationRepositoryImpl struct {
 	db *gorm.DB
 }
 
+// NewNotificationRepository 创建通知仓储实例
 func NewNotificationRepository(db *gorm.DB) domain.NotificationRepository {
 	return &NotificationRepositoryImpl{db: db}
 }
 
+// Save 保存通知
 func (r *NotificationRepositoryImpl) Save(ctx context.Context, notification *domain.Notification) error {
 	model := &NotificationModel{
 		Model:        notification.Model,
@@ -81,6 +83,7 @@ func (r *NotificationRepositoryImpl) Save(ctx context.Context, notification *dom
 	return nil
 }
 
+// GetByID 根据 ID 获取通知
 func (r *NotificationRepositoryImpl) GetByID(ctx context.Context, id string) (*domain.Notification, error) {
 	var model NotificationModel
 	if err := r.db.WithContext(ctx).First(&model, "id = ?", id).Error; err != nil {
@@ -96,6 +99,7 @@ func (r *NotificationRepositoryImpl) GetByID(ctx context.Context, id string) (*d
 	return model.ToDomain(), nil
 }
 
+// ListByUserID 获取用户的通知列表
 func (r *NotificationRepositoryImpl) ListByUserID(ctx context.Context, userID string, limit int, offset int) ([]*domain.Notification, error) {
 	var models []NotificationModel
 	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Limit(limit).Offset(offset).Order("created_at desc").Find(&models).Error; err != nil {

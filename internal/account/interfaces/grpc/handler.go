@@ -51,6 +51,8 @@ func (h *GRPCHandler) CreateAccount(ctx context.Context, req *pb.CreateAccountRe
 	}, nil
 }
 
+// GetAccount 获取账户信息
+// 处理 gRPC GetAccount 请求
 func (h *GRPCHandler) GetAccount(ctx context.Context, req *pb.GetAccountRequest) (*pb.AccountResponse, error) {
 	dto, err := h.appService.GetAccount(ctx, req.AccountId)
 	if err != nil {
@@ -69,6 +71,8 @@ func (h *GRPCHandler) GetAccount(ctx context.Context, req *pb.GetAccountRequest)
 	}, nil
 }
 
+// Deposit 账户充值
+// 处理 gRPC Deposit 请求
 func (h *GRPCHandler) Deposit(ctx context.Context, req *pb.DepositRequest) (*pb.TransactionResponse, error) {
 	amount, err := decimal.NewFromString(req.Amount)
 	if err != nil {
@@ -89,6 +93,8 @@ func (h *GRPCHandler) Deposit(ctx context.Context, req *pb.DepositRequest) (*pb.
 	}, nil
 }
 
+// GetBalance 获取账户余额
+// 处理 gRPC GetBalance 请求
 func (h *GRPCHandler) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb.BalanceResponse, error) {
 	dto, err := h.appService.GetAccount(ctx, req.AccountId)
 	if err != nil {

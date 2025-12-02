@@ -80,10 +80,12 @@ type StrategyRepositoryImpl struct {
 	db *gorm.DB
 }
 
+// NewStrategyRepository 创建策略仓储
 func NewStrategyRepository(db *gorm.DB) domain.StrategyRepository {
 	return &StrategyRepositoryImpl{db: db}
 }
 
+// Save 保存策略
 func (r *StrategyRepositoryImpl) Save(ctx context.Context, strategy *domain.Strategy) error {
 	model := &StrategyModel{
 		Model:       strategy.Model,
@@ -105,6 +107,7 @@ func (r *StrategyRepositoryImpl) Save(ctx context.Context, strategy *domain.Stra
 	return nil
 }
 
+// GetByID 根据 ID 获取策略
 func (r *StrategyRepositoryImpl) GetByID(ctx context.Context, id string) (*domain.Strategy, error) {
 	var model StrategyModel
 	if err := r.db.WithContext(ctx).First(&model, "id = ?", id).Error; err != nil {
@@ -125,10 +128,12 @@ type BacktestResultRepositoryImpl struct {
 	db *gorm.DB
 }
 
+// NewBacktestResultRepository 创建回测结果仓储
 func NewBacktestResultRepository(db *gorm.DB) domain.BacktestResultRepository {
 	return &BacktestResultRepositoryImpl{db: db}
 }
 
+// Save 保存回测结果
 func (r *BacktestResultRepositoryImpl) Save(ctx context.Context, result *domain.BacktestResult) error {
 	model := &BacktestResultModel{
 		Model:       result.Model,
@@ -153,6 +158,7 @@ func (r *BacktestResultRepositoryImpl) Save(ctx context.Context, result *domain.
 	return nil
 }
 
+// GetByID 根据 ID 获取回测结果
 func (r *BacktestResultRepositoryImpl) GetByID(ctx context.Context, id string) (*domain.BacktestResult, error) {
 	var model BacktestResultModel
 	if err := r.db.WithContext(ctx).First(&model, "id = ?", id).Error; err != nil {

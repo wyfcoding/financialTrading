@@ -15,10 +15,14 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// InitTracer initializes the OpenTelemetry tracer provider
+// InitTracer 初始化 OpenTelemetry 追踪器提供者
+// serviceName: 服务名称
+// collectorEndpoint: OTel 收集器地址 (例如 localhost:4317)
+// 返回: 清理函数 (shutdown), 错误信息
 func InitTracer(serviceName string, collectorEndpoint string) (func(context.Context) error, error) {
 	ctx := context.Background()
 
+	// 创建资源属性
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
 			semconv.ServiceName(serviceName),
@@ -28,9 +32,11 @@ func InitTracer(serviceName string, collectorEndpoint string) (func(context.Cont
 		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
+	// 设置连接超时
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
+	// 创建 gRPC 连接
 	conn, err := grpc.NewClient(collectorEndpoint,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
