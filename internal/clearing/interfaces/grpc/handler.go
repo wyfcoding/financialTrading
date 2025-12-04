@@ -1,4 +1,6 @@
-// Package grpc 包含 gRPC 处理器实现
+// Package grpc 包含 gRPC 处理器（Handler）的实现。
+// 这一层是接口层（Interfaces Layer）的一部分，负责适配外部的 gRPC 请求，
+// 并将其转换为对应用层（Application Layer）的调用。
 package grpc
 
 import (
@@ -10,73 +12,89 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// GRPCHandler gRPC 处理器
-// 负责处理与清算相关的 gRPC 请求
+// GRPCHandler 是清算服务的 gRPC 处理器。
+// 它实现了由 apoch 生成的 `ClearingServiceServer` 接口。
+// 其核心职责是作为 gRPC 协议与内部应用逻辑之间的桥梁。
 type GRPCHandler struct {
-	pb.UnimplementedClearingServiceServer
-	appService *application.ClearingApplicationService // 清算应用服务
+	pb.UnimplementedClearingServiceServer                                         // 嵌入未实现的 apoch 服务，确保向前兼容
+	appService                            *application.ClearingApplicationService // 依赖注入的应用服务实例
 }
 
-// NewGRPCHandler 创建 gRPC 处理器实例
-// appService: 注入的清算应用服务
+// NewGRPCHandler 是 GRPCHandler 的构造函数。
+//
+// @param appService 注入的清算应用服务实例。
+// @return *GRPCHandler 返回一个新的 gRPC 处理器实例。
 func NewGRPCHandler(appService *application.ClearingApplicationService) *GRPCHandler {
 	return &GRPCHandler{
 		appService: appService,
 	}
 }
 
-// SettleTrade 清算交易
-// 处理 gRPC SettleTrade 请求
+// SettleTrade 实现了 gRPC 的 SettleTrade 方法。
+// 它接收 gRPC 请求，将其转换为应用层的 DTO，然后调用应用服务来处理。
 func (h *GRPCHandler) SettleTrade(ctx context.Context, req *pb.SettleTradeRequest) (*pb.SettlementResponse, error) {
-	// 调用应用服务进行清算
-	err := h.appService.SettleTrade(ctx, &application.SettleTradeRequest{
+	// 1. 将 gRPC 请求对象 (*pb.SettleTradeRequest) 转换为应用层 DTO (*application.SettleTradeRequest)。
+	//    这是接口层的核心职责之一：数据转换。
+	appReq := &application.SettleTradeRequest{
 		TradeID:    req.TradeId,
 		BuyUserID:  req.BuyUserId,
 		SellUserID: req.SellUserId,
 		Symbol:     req.Symbol,
 		Quantity:   req.Quantity,
 		Price:      req.Price,
-	})
+	}
+
+	// 2. 调用应用服务来执行核心业务逻辑。
+	//    gRPC handler 本身不包含业务逻辑。
+	err := h.appService.SettleTrade(ctx, appReq)
 	if err != nil {
+		// 3. 错误处理：如果应用层返回错误，将其转换为标准的 gRPC 错误。
+		//    使用 status.Errorf 可以附加 gRPC 状态码。
 		return nil, status.Errorf(codes.Internal, "failed to settle trade: %v", err)
 	}
 
+	// 4. 构建并返回 gRPC 响应。
+	//    TODO: 理想情况下，应用服务应返回清算结果（如 SettlementID），并在此处填充到响应中。
+	//    当前实现为简化版。
 	return &pb.SettlementResponse{
 		TradeId: req.TradeId,
-		Status:  "COMPLETED",
-		// SettlementID and SettlementTime would ideally be returned by the service
+		Status:  "COMPLETED", // 假设状态为已完成
 	}, nil
 }
 
-// ExecuteEODClearing 执行日终清算
-// 处理 gRPC ExecuteEODClearing 请求
+// ExecuteEODClearing 实现了 gRPC 的 ExecuteEODClearing 方法。
 func (h *GRPCHandler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEODClearingRequest) (*pb.EODClearingResponse, error) {
+	// 调用应用服务启动日终清算流程。
 	err := h.appService.ExecuteEODClearing(ctx, req.ClearingDate)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to execute EOD clearing: %v", err)
 	}
 
+	// 返回表示任务已开始的响应。
+	// TODO: 应用服务应返回唯一的 clearingID，并在此处填充到响应中。
 	return &pb.EODClearingResponse{
-		Status: "PROCESSING",
-		// ClearingID would ideally be returned by the service
+		Status: "PROCESSING", // 表示任务已开始处理
 	}, nil
 }
 
-// GetClearingStatus 获取清算状态
-// 处理 gRPC GetClearingStatus 请求
+// GetClearingStatus 实现了 gRPC 的 GetClearingStatus 方法。
 func (h *GRPCHandler) GetClearingStatus(ctx context.Context, req *pb.GetClearingStatusRequest) (*pb.ClearingStatusResponse, error) {
+	// 调用应用服务获取清算任务状态。
 	clearing, err := h.appService.GetClearingStatus(ctx, req.ClearingId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get clearing status: %v", err)
 	}
+	// 如果应用服务返回 nil（表示未找到），则返回 gRPC 的 NotFound 错误。
 	if clearing == nil {
-		return nil, status.Errorf(codes.NotFound, "clearing not found")
+		return nil, status.Errorf(codes.NotFound, "clearing task with id '%s' not found", req.ClearingId)
 	}
 
+	// 将从应用层获取的领域对象转换为 gRPC 响应对象。
 	return &pb.ClearingStatusResponse{
 		ClearingId:      clearing.ClearingID,
 		Status:          clearing.Status,
-		TradesProcessed: int64(clearing.TradesSettled),
-		TradesTotal:     int64(clearing.TotalTrades),
+		TradesProcessed: clearing.TradesSettled,
+		TradesTotal:     clearing.TotalTrades,
+		// TODO: 可以在这里计算并添加完成百分比
 	}, nil
 }

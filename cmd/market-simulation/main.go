@@ -14,7 +14,8 @@ import (
 	"github.com/gin-gonic/gin"
 	pb "github.com/wyfcoding/financialTrading/go-api/market-simulation"
 	"github.com/wyfcoding/financialTrading/internal/market-simulation/application"
-	"github.com/wyfcoding/financialTrading/internal/market-simulation/infrastructure"
+	"github.com/wyfcoding/financialTrading/internal/market-simulation/infrastructure/publisher"
+	"github.com/wyfcoding/financialTrading/internal/market-simulation/infrastructure/repository"
 	grpchandler "github.com/wyfcoding/financialTrading/internal/market-simulation/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialTrading/internal/market-simulation/interfaces/http"
 	"github.com/wyfcoding/financialTrading/pkg/cache"
@@ -93,7 +94,7 @@ func main() {
 	}
 
 	// 自动迁移
-	if err := gormDB.AutoMigrate(&infrastructure.SimulationScenarioModel{}); err != nil {
+	if err := gormDB.AutoMigrate(&repository.SimulationScenarioModel{}); err != nil {
 		log.ErrorContext(ctx, "Failed to migrate database", "error", err)
 		os.Exit(1)
 	}
@@ -120,9 +121,9 @@ func main() {
 	rateLimiter := ratelimit.NewRedisRateLimiter(redisCache.GetClient())
 
 	// 初始化依赖
-	publisher := infrastructure.NewMockMarketDataPublisher() // Changed to NewMockMarketDataPublisher
-	repo := infrastructure.NewSimulationScenarioRepository(gormDB.DB)
-	svc := application.NewMarketSimulationService(repo, publisher)
+	marketDataPublisher := publisher.NewMockMarketDataPublisher() // Changed to NewMockMarketDataPublisher
+	repo := repository.NewSimulationScenarioRepository(gormDB.DB)
+	svc := application.NewMarketSimulationService(repo, marketDataPublisher)
 
 	// 6. 创建 HTTP 服务器
 	httpServer := createHTTPServer(cfg, svc, rateLimiter)

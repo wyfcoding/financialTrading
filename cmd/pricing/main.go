@@ -14,11 +14,12 @@ import (
 	"github.com/gin-gonic/gin"
 	pb "github.com/wyfcoding/financialTrading/go-api/pricing"
 	"github.com/wyfcoding/financialTrading/internal/pricing/application"
-	"github.com/wyfcoding/financialTrading/internal/pricing/infrastructure"
+	"github.com/wyfcoding/financialTrading/internal/pricing/infrastructure/client"
 	grpchandler "github.com/wyfcoding/financialTrading/internal/pricing/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialTrading/internal/pricing/interfaces/http"
 	"github.com/wyfcoding/financialTrading/pkg/cache"
 	"github.com/wyfcoding/financialTrading/pkg/config"
+	"github.com/wyfcoding/financialTrading/pkg/grpcclient"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/wyfcoding/financialTrading/pkg/middleware"
 	"github.com/wyfcoding/financialTrading/pkg/ratelimit"
@@ -99,7 +100,19 @@ func main() {
 	// 6. 初始化层级依赖
 	// 基础设施层
 	// PricingService 主要是计算服务，可能不需要数据库，或者只需要读取市场数据
-	marketDataClient := infrastructure.NewMockMarketDataClient()
+	marketDataClientCfg := grpcclient.ClientConfig{
+		Target:          cfg.Services["market-data"].Address,
+		ConnTimeout:     5,
+		RequestTimeout:  5,
+		MaxRetries:      3,
+		RetryDelay:      100,
+		EnableKeepalive: true,
+	}
+	marketDataClient, err := client.NewMarketDataClient(marketDataClientCfg)
+	if err != nil {
+		log.ErrorContext(ctx, "Failed to create market data client", "error", err)
+		os.Exit(1)
+	}
 
 	// 应用层
 	svc := application.NewPricingService(marketDataClient) // 将 pricingApp 重命名为 svc

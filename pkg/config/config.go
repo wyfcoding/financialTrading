@@ -35,6 +35,13 @@ type Config struct {
 	Metrics MetricsConfig `mapstructure:"metrics"`
 	// 限流配置
 	RateLimit RateLimitConfig `mapstructure:"rate_limit"`
+	// 服务发现配置
+	Services map[string]ServiceConfig `mapstructure:"services"`
+}
+
+// ServiceConfig 服务配置
+type ServiceConfig struct {
+	Address string `mapstructure:"address"`
 }
 
 // HTTPConfig HTTP 服务配置

@@ -1,4 +1,5 @@
-// Package application 包含执行服务的用例逻辑
+// Package application 包含执行服务的用例逻辑 (Use Cases)。
+// 这一层负责编排领域对象、仓储和外部服务（如果需要），以完成具体的业务功能。
 package application
 
 import (
@@ -12,110 +13,117 @@ import (
 	"github.com/wyfcoding/financialTrading/pkg/utils"
 )
 
-// ExecuteOrderRequest 执行订单请求 DTO
-// 用于接收来自上层（如 API 层）的订单执行请求参数
+// ExecuteOrderRequest 是执行订单请求的数据传输对象 (DTO)。
+// 它用于从接口层（如 gRPC 或 HTTP handler）向应用层传递参数，实现了与内部领域模型的解耦。
 type ExecuteOrderRequest struct {
-	OrderID  string // 订单 ID，全局唯一
+	OrderID  string // 订单 ID，由客户端或上游服务提供
 	UserID   string // 用户 ID
-	Symbol   string // 交易对符号，例如 "BTC/USD"
-	Side     string // 买卖方向，"buy" 或 "sell"
-	Price    string // 执行价格，使用字符串避免精度丢失
-	Quantity string // 执行数量，使用字符串避免精度丢失
+	Symbol   string // 交易对符号，例如 "BTC/USDT"
+	Side     string // 买卖方向, "BUY" 或 "SELL"
+	Price    string // 订单价格 (使用字符串以保持高精度)
+	Quantity string // 订单数量 (使用字符串以保持高精度)
 }
 
-// ExecutionDTO 执行记录 DTO
-// 用于向外层返回执行结果数据
+// ExecutionDTO 是执行记录的数据传输对象 (DTO)。
+// 用于从应用层向接口层返回执行结果，避免直接暴露领域模型。
 type ExecutionDTO struct {
-	ExecutionID      string // 执行记录 ID，全局唯一
-	OrderID          string // 关联的订单 ID
-	UserID           string // 用户 ID
-	Symbol           string // 交易对符号
-	Side             string // 买卖方向
-	ExecutedPrice    string // 成交价格
-	ExecutedQuantity string // 成交数量
-	Status           string // 执行状态
-	CreatedAt        int64  // 创建时间戳（秒）
-	UpdatedAt        int64  // 更新时间戳（秒）
+	ExecutionID      string `json:"execution_id"`      // 执行记录 ID
+	OrderID          string `json:"order_id"`          // 关联的订单 ID
+	UserID           string `json:"user_id"`           // 用户 ID
+	Symbol           string `json:"symbol"`            // 交易对符号
+	Side             string `json:"side"`              // 买卖方向
+	ExecutedPrice    string `json:"executed_price"`    // 成交价格
+	ExecutedQuantity string `json:"executed_quantity"` // 成交数量
+	Status           string `json:"status"`            // 执行状态
+	CreatedAt        int64  `json:"created_at"`        // 创建时间戳 (Unix seconds)
+	UpdatedAt        int64  `json:"updated_at"`        // 更新时间戳 (Unix seconds)
 }
 
-// ExecutionApplicationService 执行应用服务
-// 负责处理订单执行的核心业务逻辑
+// ExecutionApplicationService 是执行应用服务。
+// 它封装了所有与订单执行相关的业务用例。
 type ExecutionApplicationService struct {
-	executionRepo domain.ExecutionRepository // 执行记录仓储接口
-	snowflake     *utils.SnowflakeID         // 雪花算法 ID 生成器
+	executionRepo domain.ExecutionRepository // 依赖注入的执行仓储接口
+	snowflake     *utils.SnowflakeID         // 雪花算法ID生成器
 }
 
-// NewExecutionApplicationService 创建执行应用服务
-// executionRepo: 注入的执行记录仓储实现
+// NewExecutionApplicationService 是 ExecutionApplicationService 的构造函数。
 func NewExecutionApplicationService(executionRepo domain.ExecutionRepository) *ExecutionApplicationService {
+	// 初始化雪花ID生成器，传入一个唯一的节点ID（此处为2）。
 	return &ExecutionApplicationService{
 		executionRepo: executionRepo,
 		snowflake:     utils.NewSnowflakeID(2),
 	}
 }
 
-// ExecuteOrder 执行订单
-// 用例流程：
-// 1. 验证订单参数
-// 2. 生成执行 ID
-// 3. 创建执行记录
-// 4. 保存到仓储
-// 5. 发布执行事件（待实现）
+// ExecuteOrder 是执行一个订单的业务用例。
+// 简化流程:
+// 1. 验证输入参数的有效性。
+// 2. 将字符串格式的价格和数量转换为高精度的 decimal 类型。
+// 3. 生成一个全局唯一的执行ID。
+// 4. 创建一个 `Execution` 领域实体。
+// 5. 通过仓储接口将该实体持久化。
+// 6. 将持久化后的实体转换为 DTO 并返回。
+//
+// 实际场景中可能更复杂，会包括：
+// - 与撮合引擎的交互。
+// - 订单状态的复杂管理（如部分成交）。
+// - 发布订单执行事件到消息队列（如 Kafka），供其他服务（如清算、通知）消费。
 func (eas *ExecutionApplicationService) ExecuteOrder(ctx context.Context, req *ExecuteOrderRequest) (*ExecutionDTO, error) {
-	// 验证输入
+	// 1. 输入校验
 	if req.OrderID == "" || req.UserID == "" || req.Symbol == "" {
-		return nil, fmt.Errorf("invalid request parameters")
+		return nil, fmt.Errorf("invalid request parameters: OrderID, UserID, and Symbol are required")
 	}
 
-	// 解析价格和数量
+	// 2. 数据转换和校验
 	price, err := decimal.NewFromString(req.Price)
 	if err != nil {
-		return nil, fmt.Errorf("invalid price: %w", err)
+		return nil, fmt.Errorf("invalid price format: %w", err)
 	}
 
 	quantity, err := decimal.NewFromString(req.Quantity)
 	if err != nil {
-		return nil, fmt.Errorf("invalid quantity: %w", err)
+		return nil, fmt.Errorf("invalid quantity format: %w", err)
 	}
 
-	// 生成执行 ID
+	// 3. 生成唯一ID
 	executionID := fmt.Sprintf("EXEC-%d", eas.snowflake.Generate())
 
-	// 创建执行记录
+	// 4. 创建领域实体
 	execution := &domain.Execution{
 		ExecutionID:      executionID,
 		OrderID:          req.OrderID,
 		UserID:           req.UserID,
 		Symbol:           req.Symbol,
-		Side:             req.Side,
+		Side:             domain.OrderSide(req.Side),
 		ExecutedPrice:    price,
 		ExecutedQuantity: quantity,
-		Status:           domain.ExecutionStatusCompleted,
+		Status:           domain.ExecutionStatusCompleted, // 简化处理，假设订单立即完全成交
 		CreatedAt:        time.Now(),
 		UpdatedAt:        time.Now(),
 	}
 
-	// 保存到仓储
+	// 5. 持久化
 	if err := eas.executionRepo.Save(ctx, execution); err != nil {
 		logger.Error(ctx, "Failed to save execution",
 			"execution_id", executionID,
+			"order_id", req.OrderID,
 			"error", err,
 		)
-		return nil, fmt.Errorf("failed to save execution: %w", err)
+		return nil, fmt.Errorf("failed to save execution record: %w", err)
 	}
 
-	logger.Debug(ctx, "Order executed successfully",
+	logger.Info(ctx, "Order executed successfully",
 		"execution_id", executionID,
 		"order_id", req.OrderID,
 	)
 
-	// 转换为 DTO
+	// 6. 转换为 DTO 并返回
 	return &ExecutionDTO{
 		ExecutionID:      execution.ExecutionID,
 		OrderID:          execution.OrderID,
 		UserID:           execution.UserID,
 		Symbol:           execution.Symbol,
-		Side:             execution.Side,
+		Side:             string(execution.Side),
 		ExecutedPrice:    execution.ExecutedPrice.String(),
 		ExecutedQuantity: execution.ExecutedQuantity.String(),
 		Status:           string(execution.Status),
@@ -124,14 +132,13 @@ func (eas *ExecutionApplicationService) ExecuteOrder(ctx context.Context, req *E
 	}, nil
 }
 
-// GetExecutionHistory 获取执行历史
+// GetExecutionHistory 是获取指定用户交易历史的业务用例。
 func (eas *ExecutionApplicationService) GetExecutionHistory(ctx context.Context, userID string, limit, offset int) ([]*ExecutionDTO, int64, error) {
-	// 验证输入
 	if userID == "" {
 		return nil, 0, fmt.Errorf("user_id is required")
 	}
 
-	// 获取执行历史
+	// 从仓储获取领域实体列表
 	executions, total, err := eas.executionRepo.GetByUser(ctx, userID, limit, offset)
 	if err != nil {
 		logger.Error(ctx, "Failed to get execution history",
@@ -141,7 +148,7 @@ func (eas *ExecutionApplicationService) GetExecutionHistory(ctx context.Context,
 		return nil, 0, fmt.Errorf("failed to get execution history: %w", err)
 	}
 
-	// 转换为 DTO 列表
+	// 将领域实体列表转换为 DTO 列表
 	dtos := make([]*ExecutionDTO, 0, len(executions))
 	for _, execution := range executions {
 		dtos = append(dtos, &ExecutionDTO{
@@ -149,7 +156,7 @@ func (eas *ExecutionApplicationService) GetExecutionHistory(ctx context.Context,
 			OrderID:          execution.OrderID,
 			UserID:           execution.UserID,
 			Symbol:           execution.Symbol,
-			Side:             execution.Side,
+			Side:             string(execution.Side),
 			ExecutedPrice:    execution.ExecutedPrice.String(),
 			ExecutedQuantity: execution.ExecutedQuantity.String(),
 			Status:           string(execution.Status),

@@ -14,7 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	pb "github.com/wyfcoding/financialTrading/go-api/reference-data"
 	"github.com/wyfcoding/financialTrading/internal/reference-data/application"
-	"github.com/wyfcoding/financialTrading/internal/reference-data/infrastructure"
+	"github.com/wyfcoding/financialTrading/internal/reference-data/infrastructure/repository"
 	grpchandler "github.com/wyfcoding/financialTrading/internal/reference-data/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialTrading/internal/reference-data/interfaces/http"
 	"github.com/wyfcoding/financialTrading/pkg/cache"
@@ -93,7 +93,7 @@ func main() {
 	}
 
 	// 5. 自动迁移数据库
-	if err := gormDB.AutoMigrate(&infrastructure.SymbolModel{}, &infrastructure.ExchangeModel{}); err != nil {
+	if err := gormDB.AutoMigrate(&repository.SymbolModel{}, &repository.ExchangeModel{}); err != nil {
 		log.ErrorContext(ctx, "Failed to migrate database", "error", err)
 		os.Exit(1)
 	}
@@ -121,8 +121,8 @@ func main() {
 
 	// 8. 初始化层级依赖
 	// Infrastructure
-	symbolRepo := infrastructure.NewSymbolRepository(gormDB.DB)
-	exchangeRepo := infrastructure.NewExchangeRepository(gormDB.DB)
+	symbolRepo := repository.NewSymbolRepository(gormDB.DB)
+	exchangeRepo := repository.NewExchangeRepository(gormDB.DB)
 
 	// Domain (如果需要领域服务，在此初始化)
 

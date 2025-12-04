@@ -1,67 +1,80 @@
 # AccountService 配置文件
+#
+# 本文件定义了账户服务的所有配置参数。
+# 支持通过环境变量覆盖：例如，要覆盖 HTTP 端口，可以设置环境变量 `ACCOUNTSERVICE_HTTP_PORT=8888`。
+# 命名规则：[SERVICE_NAME]_[SECTION]_[KEY] (全大写)。
 
-service_name = "account-service"
-version = "1.0.0"
-environment = "dev"
+# [service] 服务基本信息
+service_name = "account-service" # 服务名称，用于日志、追踪和监控
+version = "1.0.0"                # 服务版本号
+environment = "dev"              # 运行环境 (dev, test, prod)
 
+# [http] HTTP 服务器配置
 [http]
-host = "0.0.0.0"
-port = 8084
-read_timeout = 30
-write_timeout = 30
-max_connections = 1000
+host = "0.0.0.0"          # 监听的主机地址, "0.0.0.0" 表示监听所有网络接口
+port = 8084               # 监听的端口号
+read_timeout = 30         # 读取请求的超时时间 (秒)
+write_timeout = 30        # 写入响应的超时时间 (秒)
+max_connections = 1000    # 最大并发连接数
 
+# [grpc] gRPC 服务器配置
 [grpc]
-host = "0.0.0.0"
-port = 50055
-max_concurrent_streams = 1000
-idle_timeout = 300
+host = "0.0.0.0"                 # 监听的主机地址
+port = 50055                     # 监听的端口号
+max_concurrent_streams = 1000    # 每个连接的最大并发流数，用于防止资源耗尽
+idle_timeout = 300               # 连接空闲超时时间 (秒)，超时后连接将被关闭
 
+# [database] 数据库配置 (GORM)
 [database]
-driver = "mysql"
-dsn = "root:password@tcp(localhost:3306)/trading_system?charset=utf8mb4&parseTime=True&loc=Local"
-max_open_conns = 25
-max_idle_conns = 5
-conn_max_lifetime = 300
-log_enabled = false
-slow_query_threshold = 1000
+driver = "mysql"                                                                     # 数据库驱动类型 (e.g., "mysql", "postgres")
+dsn = "root:password@tcp(localhost:3306)/trading_system?charset=utf8mb4&parseTime=True&loc=Local" # 数据源名称 (Data Source Name)
+max_open_conns = 25                                                                  # 连接池最大打开连接数
+max_idle_conns = 5                                                                   # 连接池最大空闲连接数
+conn_max_lifetime = 300                                                              # 连接可被复用的最长时间 (秒)
+log_enabled = false                                                                  # 是否启用 GORM 的详细日志
+slow_query_threshold = 1000                                                          # 慢查询阈值 (毫秒)，超过此时间的查询将被记录
 
+# [redis] Redis 缓存配置
 [redis]
-host = "localhost"
-port = 6379
-password = ""
-db = 4
-max_pool_size = 10
-conn_timeout = 5
-read_timeout = 3
-write_timeout = 3
+host = "localhost"   # Redis 服务器主机地址
+port = 6379          # Redis 服务器端口
+password = ""        # 密码 (如果没有则留空)
+db = 4               # 使用的 Redis 数据库编号
+max_pool_size = 10   # 连接池大小
+conn_timeout = 5     # 连接超时时间 (秒)
+read_timeout = 3     # 读取超时时间 (秒)
+write_timeout = 3    # 写入超时时间 (秒)
 
+# [kafka] Kafka 消息队列配置 (如果服务需要)
 [kafka]
-brokers = ["localhost:9092"]
-group_id = "account-service"
-partitions = 3
-replication = 1
-session_timeout = 10
+brokers = ["localhost:9092"] # Kafka broker 地址列表
+group_id = "account-service" # Consumer group ID
+partitions = 3               # Topic 分区数
+replication = 1              # 副本因子
+session_timeout = 10         # Consumer session 超时时间 (秒)
 
+# [logger] 日志系统配置 (slog)
 [logger]
-level = "info"
-format = "json"
-output = "stdout"
-file_path = "logs/account-service.log"
-max_size = 100
-max_backups = 10
-max_age = 30
-compress = true
-with_caller = true
-with_stacktrace = false
+level = "info"                         # 日志级别 (debug, info, warn, error)
+format = "json"                        # 日志格式 (text, json)
+output = "stdout"                      # 日志输出位置 (stdout, stderr, file)
+file_path = "logs/account-service.log" # 日志文件路径 (当 output 为 "file" 时有效)
+max_size = 100                         # 日志文件最大尺寸 (MB)
+max_backups = 10                       # 保留的旧日志文件最大数量
+max_age = 30                           # 日志文件最大保留天数
+compress = true                        # 是否压缩旧日志文件 (gzip)
+with_caller = true                     # 是否记录调用者信息（文件名和行号）
+with_stacktrace = false                # 是否在 error 级别日志中记录堆栈信息
 
+# [tracing] 分布式追踪配置 (OpenTelemetry)
 [tracing]
-enabled = true
-type = "jaeger"
-jaeger_endpoint = "http://localhost:14268/api/traces"
-sampling_rate = 0.1
+enabled = true                                 # 是否启用追踪
+type = "jaeger"                                # 追踪系统类型 (e.g., "jaeger", "zipkin")
+jaeger_endpoint = "http://localhost:14268/api/traces" # Jaeger collector endpoint
+sampling_rate = 0.1                            # 采样率 (0.0 到 1.0, 1.0 表示全部采样)
 
+# [metrics] 指标监控配置 (Prometheus)
 [metrics]
-enabled = true
-port = 9094
-path = "/metrics"
+enabled = true       # 是否启用指标
+port = 9094          # 暴露 /metrics 端点的 HTTP 服务器端口
+path = "/metrics"    # 指标暴露的路径

@@ -1,5 +1,5 @@
 // ExecutionService 主程序
-// 功能：提供订单执行服务
+// 功能：提供订单执行服务，负责接收订单并将其路由至撮合引擎或交易所。
 package main
 
 import (
@@ -31,8 +31,11 @@ import (
 	"google.golang.org/grpc"
 )
 
+// main 是 ExecutionService 服务的入口函数。
+// 负责整个服务的生命周期管理，包括初始化、运行和优雅地关闭。
 func main() {
 	// 1. 加载配置
+	// 从 `configs/execution/config.toml` 加载服务配置。
 	configPath := "configs/execution/config.toml"
 	cfg, err := config.Load(configPath)
 	if err != nil {
@@ -41,6 +44,7 @@ func main() {
 	}
 
 	// 2. 初始化日志
+	// 初始化全局结构化日志记录器 (slog)。
 	loggerCfg := logger.Config{
 		ServiceName: cfg.ServiceName,
 		Level:       cfg.Logger.Level,
@@ -68,6 +72,7 @@ func main() {
 	)
 
 	// 3. 初始化追踪
+	// 如果配置中启用，则初始化 OpenTelemetry 分布式追踪。
 	if cfg.Tracing.Enabled {
 		shutdown, err := trace.InitTracer(cfg.ServiceName, cfg.Tracing.CollectorEndpoint)
 		if err != nil {
@@ -120,13 +125,14 @@ func main() {
 	// 6. 初始化限流器
 	rateLimiter := ratelimit.NewRedisRateLimiter(redisCache.GetClient())
 
-	// 7. 初始化仓储
+	// 7. 初始化仓储 (DDD - Infrastructure)
 	executionRepo := repository.NewExecutionRepository(database)
 
-	// 8. 初始化应用服务
+	// 8. 初始化应用服务 (DDD - Application)
 	executionAppService := application.NewExecutionApplicationService(executionRepo)
 
 	// 9. 初始化指标
+	// 初始化并启动 Prometheus 指标服务。
 	metricsInstance := metrics.New(cfg.ServiceName)
 	if err := metricsInstance.Register(); err != nil {
 		log.ErrorContext(ctx, "Failed to register metrics", "error", err)
@@ -143,7 +149,7 @@ func main() {
 	// 11. 创建 gRPC 服务器
 	grpcServer := createGRPCServer(cfg, executionAppService)
 
-	// 12. 启动 HTTP 服务器
+	// 12. 在独立的 goroutine 中启动 HTTP 服务器
 	go func() {
 		addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
 		log.InfoContext(ctx, "Starting HTTP server", "addr", addr)
@@ -153,7 +159,7 @@ func main() {
 		}
 	}()
 
-	// 13. 启动 gRPC 服务器
+	// 13. 在独立的 goroutine 中启动 gRPC 服务器
 	go func() {
 		addr := fmt.Sprintf("%s:%d", cfg.GRPC.Host, cfg.GRPC.Port)
 		listener, err := net.Listen("tcp", addr)
@@ -169,41 +175,42 @@ func main() {
 	}()
 
 	// 14. 优雅关停
+	// 监听系统信号，以触发平滑关停流程。
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
 
 	log.InfoContext(ctx, "Shutting down ExecutionService")
 
-	// 关闭 HTTP 服务器
+	// 优雅关闭 HTTP 服务器。
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		log.ErrorContext(ctx, "HTTP server shutdown error", "error", err)
 	}
 
-	// 关闭 gRPC 服务器
+	// 优雅关闭 gRPC 服务器。
 	grpcServer.GracefulStop()
 
 	log.InfoContext(ctx, "ExecutionService stopped")
 }
 
-// createHTTPServer 创建 HTTP 服务器
+// createHTTPServer 负责创建和配置 Gin HTTP 服务器。
 func createHTTPServer(cfg *config.Config, executionAppService *application.ExecutionApplicationService, rateLimiter ratelimit.RateLimiter) *http.Server {
 	router := gin.Default()
 
-	// 添加中间件
-	router.Use(otelgin.Middleware(cfg.ServiceName))
-	router.Use(middleware.GinLoggingMiddleware())
-	router.Use(middleware.GinRecoveryMiddleware())
-	router.Use(middleware.GinCORSMiddleware())
-	router.Use(middleware.RateLimitMiddleware(rateLimiter, cfg.RateLimit))
+	// 注册通用中间件。
+	router.Use(otelgin.Middleware(cfg.ServiceName))                        // OpenTelemetry 追踪
+	router.Use(middleware.GinLoggingMiddleware())                          // 结构化日志
+	router.Use(middleware.GinRecoveryMiddleware())                         // Panic 恢复
+	router.Use(middleware.GinCORSMiddleware())                             // 跨域资源共享
+	router.Use(middleware.RateLimitMiddleware(rateLimiter, cfg.RateLimit)) // API 限流
 
-	// 注册路由
+	// 注册该服务的业务路由。
 	httpHandler := httphandler.NewExecutionHandler(executionAppService)
 	httpHandler.RegisterRoutes(router)
 
-	// 健康检查
+	// 健康检查端点。
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":    "healthy",
@@ -212,6 +219,7 @@ func createHTTPServer(cfg *config.Config, executionAppService *application.Execu
 		})
 	})
 
+	// 返回配置好的 http.Server 实例。
 	return &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port),
 		Handler:      router,
@@ -220,21 +228,25 @@ func createHTTPServer(cfg *config.Config, executionAppService *application.Execu
 	}
 }
 
-// createGRPCServer 创建 gRPC 服务器
+// createGRPCServer 负责创建和配置 gRPC 服务器。
 func createGRPCServer(cfg *config.Config, executionAppService *application.ExecutionApplicationService) *grpc.Server {
-	// 创建 gRPC 服务器选项
+	// 配置 gRPC 服务器选项。
 	opts := []grpc.ServerOption{
+		// 添加 OpenTelemetry 拦截器。
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+		// 链式一元拦截器。
 		grpc.ChainUnaryInterceptor(
-			middleware.GRPCLoggingInterceptor(),
-			middleware.GRPCRecoveryInterceptor(),
+			middleware.GRPCLoggingInterceptor(),  // 日志记录
+			middleware.GRPCRecoveryInterceptor(), // Panic 恢复
 		),
+		// 设置服务器端的最大并发流数。
 		grpc.MaxConcurrentStreams(uint32(cfg.GRPC.MaxConcurrentStreams)),
 	}
 
+	// 创建 gRPC 服务器。
 	server := grpc.NewServer(opts...)
 
-	// 注册服务
+	// 创建并注册 gRPC 服务处理器。
 	handler := grpchandler.NewGRPCHandler(executionAppService)
 	pb.RegisterExecutionServiceServer(server, handler)
 

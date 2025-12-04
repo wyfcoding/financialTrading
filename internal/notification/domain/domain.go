@@ -52,3 +52,13 @@ type NotificationRepository interface {
 type Sender interface {
 	Send(ctx context.Context, target string, subject string, content string) error
 }
+
+// EmailSender 邮件发送接口
+type EmailSender interface {
+	SendEmail(ctx context.Context, to, subject, content string) error
+}
+
+// SMSSender 短信发送接口
+type SMSSender interface {
+	SendSMS(ctx context.Context, to, content string) error
+}

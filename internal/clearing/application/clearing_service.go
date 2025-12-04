@@ -1,4 +1,5 @@
-// Package application 包含清算服务的用例逻辑
+// Package application 包含清算服务的用例逻辑(Use Cases)。
+// 这一层负责编排领域对象和仓储，以完成具体的业务功能。
 package application
 
 import (
@@ -12,30 +13,37 @@ import (
 	"github.com/wyfcoding/financialTrading/pkg/utils"
 )
 
-// SettleTradeRequest 清算交易请求 DTO
-// 用于接收清算交易的请求参数
+// SettleTradeRequest 是清算交易请求的数据传输对象 (DTO - Data Transfer Object)。
+// 它用于从接口层（如 gRPC handler）向应用层传递参数，与领域模型解耦。
 type SettleTradeRequest struct {
 	TradeID    string // 交易 ID
 	BuyUserID  string // 买方用户 ID
 	SellUserID string // 卖方用户 ID
 	Symbol     string // 交易对符号
-	Quantity   string // 数量
-	Price      string // 价格
+	Quantity   string // 数量 (使用字符串以保持精度)
+	Price      string // 价格 (使用字符串以保持精度)
 }
 
-// ClearingApplicationService 清算应用服务
-// 负责处理清算相关的业务逻辑，包括实时清算和日终清算
+// ClearingApplicationService 是清算应用服务。
+// 它封装了清算相关的所有业务用例，是业务逻辑的核心协调者。
+// 它通过依赖注入的方式引用了领域层的仓储接口。
 type ClearingApplicationService struct {
-	settlementRepo domain.SettlementRepository
-	eodRepo        domain.EODClearingRepository
-	snowflake      *utils.SnowflakeID
+	settlementRepo domain.SettlementRepository  // 结算仓储接口，用于持久化结算信息
+	eodRepo        domain.EODClearingRepository // 日终清算仓储接口，用于持久化日终清算任务
+	snowflake      *utils.SnowflakeID           // 雪花算法ID生成器，用于生成唯一ID
 }
 
-// NewClearingApplicationService 创建清算应用服务
+// NewClearingApplicationService 是 ClearingApplicationService 的构造函数。
+//
+// @param settlementRepo 实现了 SettlementRepository 接口的实例。
+// @param eodRepo 实现了 EODClearingRepository 接口的实例。
+// @return *ClearingApplicationService 返回一个新的清算应用服务实例。
 func NewClearingApplicationService(
 	settlementRepo domain.SettlementRepository,
 	eodRepo domain.EODClearingRepository,
 ) *ClearingApplicationService {
+	// 初始化雪花ID生成器，传入特定的节点ID（此处为7）。
+	// 在分布式系统中，每个服务实例应有唯一的节点ID。
 	return &ClearingApplicationService{
 		settlementRepo: settlementRepo,
 		eodRepo:        eodRepo,
@@ -43,28 +51,36 @@ func NewClearingApplicationService(
 	}
 }
 
-// SettleTrade 清算交易
+// SettleTrade 是清算单笔交易的业务用例。
+//
+// @param ctx context.Context 用于传递请求上下文，例如 Trace ID。
+// @param req *SettleTradeRequest 包含清算所需的数据。
+// @return error 如果处理过程中发生错误，则返回错误信息。
 func (cas *ClearingApplicationService) SettleTrade(ctx context.Context, req *SettleTradeRequest) error {
-	// 验证输入
+	// 1. 输入参数校验
 	if req.TradeID == "" || req.BuyUserID == "" || req.SellUserID == "" {
-		return fmt.Errorf("invalid request parameters")
+		return fmt.Errorf("invalid request parameters: trade_id, buy_user_id, and sell_user_id are required")
 	}
 
-	// 解析数量和价格
+	// 2. 数据转换和校验
+	// 使用 decimal 包处理高精度的货币计算，避免浮点数误差。
 	quantity, err := decimal.NewFromString(req.Quantity)
 	if err != nil {
-		return fmt.Errorf("invalid quantity: %w", err)
+		return fmt.Errorf("invalid quantity format: %w", err)
 	}
 
 	price, err := decimal.NewFromString(req.Price)
 	if err != nil {
-		return fmt.Errorf("invalid price: %w", err)
+		return fmt.Errorf("invalid price format: %w", err)
 	}
 
-	// 生成清算 ID
+	// 3. 生成唯一的清算ID
 	settlementID := fmt.Sprintf("SETTLE-%d", cas.snowflake.Generate())
 
-	// 创建清算记录
+	// 4. 创建领域对象
+	// 这是业务逻辑的核心部分，在这里可以添加更复杂的领域规则，
+	// 例如检查账户余额、更新头寸、计算手续费等。
+	// 当前实现为简化版，直接创建清算完成的记录。
 	settlement := &domain.Settlement{
 		SettlementID:   settlementID,
 		TradeID:        req.TradeID,
@@ -73,21 +89,24 @@ func (cas *ClearingApplicationService) SettleTrade(ctx context.Context, req *Set
 		Symbol:         req.Symbol,
 		Quantity:       quantity,
 		Price:          price,
-		Status:         "COMPLETED",
+		Status:         domain.SettlementStatusCompleted, // 假设立即完成
 		SettlementTime: time.Now(),
 		CreatedAt:      time.Now(),
 	}
 
-	// 保存清算记录
+	// 5. 持久化领域对象
+	// 调用仓储接口将清算记录保存到数据库。
+	// 仓储的具体实现（如 GORM）对应用层是透明的。
 	if err := cas.settlementRepo.Save(ctx, settlement); err != nil {
 		logger.WithContext(ctx).Error("Failed to save settlement",
 			"settlement_id", settlementID,
+			"trade_id", req.TradeID,
 			"error", err,
 		)
-		return fmt.Errorf("failed to save settlement: %w", err)
+		return fmt.Errorf("failed to save settlement record: %w", err)
 	}
 
-	logger.WithContext(ctx).Debug("Trade settled successfully",
+	logger.WithContext(ctx).Info("Trade settled successfully",
 		"settlement_id", settlementID,
 		"trade_id", req.TradeID,
 	)
@@ -95,31 +114,41 @@ func (cas *ClearingApplicationService) SettleTrade(ctx context.Context, req *Set
 	return nil
 }
 
-// ExecuteEODClearing 执行日终清算
+// ExecuteEODClearing 是执行日终清算的业务用例。
+//
+// @param ctx context.Context 请求上下文。
+// @param clearingDate string 需要执行清算的日期。
+// @return error 如果处理过程中发生错误，则返回错误信息。
 func (cas *ClearingApplicationService) ExecuteEODClearing(ctx context.Context, clearingDate string) error {
-	// 生成清算 ID
+	// 1. 生成唯一的日终清算任务ID
 	clearingID := fmt.Sprintf("EOD-%d", cas.snowflake.Generate())
 
-	// 创建日终清算记录
+	// 2. 创建日终清算领域对象
+	// 在实际应用中，这里会触发一个长时间运行的后台任务。
+	// 任务会查询当天所有未结算的交易，并分批进行处理。
 	clearing := &domain.EODClearing{
 		ClearingID:    clearingID,
 		ClearingDate:  clearingDate,
-		Status:        "PROCESSING",
+		Status:        domain.ClearingStatusProcessing, // 设置初始状态为处理中
 		StartTime:     time.Now(),
 		TradesSettled: 0,
-		TotalTrades:   0,
+		TotalTrades:   0, // 总交易数可以在任务开始时查询得到
 	}
 
-	// 保存日终清算记录
+	// 3. 持久化任务状态
 	if err := cas.eodRepo.Save(ctx, clearing); err != nil {
-		logger.WithContext(ctx).Error("Failed to save EOD clearing",
+		logger.WithContext(ctx).Error("Failed to save EOD clearing task",
 			"clearing_id", clearingID,
 			"error", err,
 		)
-		return fmt.Errorf("failed to save EOD clearing: %w", err)
+		return fmt.Errorf("failed to save EOD clearing task: %w", err)
 	}
 
-	logger.WithContext(ctx).Debug("EOD clearing started",
+	// 4. 触发异步处理（示例）
+	// 在真实场景中，可以在这里向消息队列（如 Kafka）发送一个事件，
+	// 由后台的 worker 来消费并执行实际的清算逻辑。
+	// go cas.processEOD(ctx, clearing)
+	logger.WithContext(ctx).Info("EOD clearing task started",
 		"clearing_id", clearingID,
 		"clearing_date", clearingDate,
 	)
@@ -127,9 +156,14 @@ func (cas *ClearingApplicationService) ExecuteEODClearing(ctx context.Context, c
 	return nil
 }
 
-// GetClearingStatus 获取清算状态
+// GetClearingStatus 是获取日终清算任务状态的业务用例。
+//
+// @param ctx context.Context 请求上下文。
+// @param clearingID string 要查询的清算任务ID。
+// @return *domain.EODClearing 返回清算任务的详细信息。
+// @return error 如果查询失败，则返回错误。
 func (cas *ClearingApplicationService) GetClearingStatus(ctx context.Context, clearingID string) (*domain.EODClearing, error) {
-	// 获取清算记录
+	// 通过仓储接口从数据源获取清算任务的状态。
 	clearing, err := cas.eodRepo.Get(ctx, clearingID)
 	if err != nil {
 		logger.WithContext(ctx).Error("Failed to get clearing status",

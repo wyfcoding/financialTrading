@@ -14,12 +14,14 @@ import (
 	"github.com/gin-gonic/gin"
 	pb "github.com/wyfcoding/financialTrading/go-api/market-making"
 	"github.com/wyfcoding/financialTrading/internal/market-making/application"
-	"github.com/wyfcoding/financialTrading/internal/market-making/infrastructure"
+	"github.com/wyfcoding/financialTrading/internal/market-making/infrastructure/client"
+	"github.com/wyfcoding/financialTrading/internal/market-making/infrastructure/repository"
 	grpchandler "github.com/wyfcoding/financialTrading/internal/market-making/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialTrading/internal/market-making/interfaces/http"
 	"github.com/wyfcoding/financialTrading/pkg/cache"
 	"github.com/wyfcoding/financialTrading/pkg/config"
 	"github.com/wyfcoding/financialTrading/pkg/db"
+	"github.com/wyfcoding/financialTrading/pkg/grpcclient"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/wyfcoding/financialTrading/pkg/middleware"
 	"github.com/wyfcoding/financialTrading/pkg/ratelimit"
@@ -94,7 +96,7 @@ func main() {
 	// defer gormDB.Close() // gorm.DB doesn't have Close()
 
 	// 5. 自动迁移数据库
-	if err := gormDB.AutoMigrate(&infrastructure.QuoteStrategyModel{}, &infrastructure.PerformanceModel{}); err != nil {
+	if err := gormDB.AutoMigrate(&repository.QuoteStrategyModel{}, &repository.PerformanceModel{}); err != nil {
 		log.ErrorContext(ctx, "Failed to migrate database", "error", err)
 		os.Exit(1)
 	}
@@ -122,10 +124,37 @@ func main() {
 
 	// 8. 初始化层级依赖
 	// Infrastructure
-	strategyRepo := infrastructure.NewQuoteStrategyRepository(gormDB.DB)
-	performanceRepo := infrastructure.NewPerformanceRepository(gormDB.DB)
-	orderClient := infrastructure.NewMockOrderClient()
-	marketDataClient := infrastructure.NewMockMarketDataClient()
+	strategyRepo := repository.NewQuoteStrategyRepository(gormDB.DB)
+	performanceRepo := repository.NewPerformanceRepository(gormDB.DB)
+
+	// 初始化 gRPC 客户端
+	orderClientCfg := grpcclient.ClientConfig{
+		Target:          cfg.Services["order"].Address,
+		ConnTimeout:     5,
+		RequestTimeout:  5,
+		MaxRetries:      3,
+		RetryDelay:      100,
+		EnableKeepalive: true,
+	}
+	orderClient, err := client.NewOrderClient(orderClientCfg)
+	if err != nil {
+		log.ErrorContext(ctx, "Failed to create order client", "error", err)
+		os.Exit(1)
+	}
+
+	marketDataClientCfg := grpcclient.ClientConfig{
+		Target:          cfg.Services["market-data"].Address,
+		ConnTimeout:     5,
+		RequestTimeout:  5,
+		MaxRetries:      3,
+		RetryDelay:      100,
+		EnableKeepalive: true,
+	}
+	marketDataClient, err := client.NewMarketDataClient(marketDataClientCfg)
+	if err != nil {
+		log.ErrorContext(ctx, "Failed to create market data client", "error", err)
+		os.Exit(1)
+	}
 
 	// Application
 	marketMakingApp := application.NewMarketMakingService(strategyRepo, performanceRepo, orderClient, marketDataClient)

@@ -1,73 +1,91 @@
 # ClearingService 配置文件
+#
+# 本文件定义了清算服务的所有配置参数。
+# 支持通过环境变量覆盖。命名规则：[SERVICE_NAME]_[SECTION]_[KEY] (全大写)。
+# 例如: CLEARINGSERVICE_HTTP_PORT=8888
 
-service_name = "clearing-service"
-version = "1.0.0"
-environment = "dev"
+# [service] 服务基本信息
+service_name = "clearing-service" # 服务名称
+version = "1.0.0"                 # 服务版本号
+environment = "dev"               # 运行环境 (dev, test, prod)
 
+# [http] HTTP 服务器配置
 [http]
-host = "0.0.0.0"
-port = 8087
-read_timeout = 30
-write_timeout = 30
-max_connections = 1000
+host = "0.0.0.0"          # 监听的主机地址
+port = 8087               # 监听的端口号
+read_timeout = 30         # 读取请求的超时时间 (秒)
+write_timeout = 30        # 写入响应的超时时间 (秒)
+max_connections = 1000    # 最大并发连接数
 
+# [grpc] gRPC 服务器配置
 [grpc]
-host = "0.0.0.0"
-port = 50058
-max_concurrent_streams = 1000
-idle_timeout = 300
+host = "0.0.0.0"                 # 监听的主机地址
+port = 50058                     # 监听的端口号
+max_concurrent_streams = 1000    # 每个连接的最大并发流数
+idle_timeout = 300               # 连接空闲超时时间 (秒)
 
+# [database] 数据库配置
 [database]
-driver = "mysql"
-dsn = "root:password@tcp(localhost:3306)/trading_system?charset=utf8mb4&parseTime=True&loc=Local"
-max_open_conns = 25
-max_idle_conns = 5
-conn_max_lifetime = 300
-log_enabled = false
-slow_query_threshold = 1000
+driver = "mysql"                                                                     # 数据库驱动
+dsn = "root:password@tcp(localhost:3306)/trading_system?charset=utf8mb4&parseTime=True&loc=Local" # 数据源名称
+max_open_conns = 25                                                                  # 最大打开连接数
+max_idle_conns = 5                                                                   # 最大空闲连接数
+conn_max_lifetime = 300                                                              # 连接最大生命周期 (秒)
+log_enabled = false                                                                  # 是否启用 GORM 日志
+slow_query_threshold = 1000                                                          # 慢查询阈值 (毫秒)
 
+# [redis] Redis 缓存配置
 [redis]
-host = "localhost"
-port = 6379
-password = ""
-db = 7
-max_pool_size = 10
-conn_timeout = 5
-read_timeout = 3
-write_timeout = 3
+host = "localhost"   # Redis 主机地址
+port = 6379          # Redis 端口
+password = ""        # 密码
+db = 7               # 数据库编号
+max_pool_size = 10   # 连接池大小
+conn_timeout = 5     # 连接超时 (秒)
+read_timeout = 3     # 读取超时 (秒)
+write_timeout = 3    # 写入超时 (秒)
 
+# [kafka] Kafka 消息队列配置
 [kafka]
-brokers = ["localhost:9092"]
-group_id = "clearing-service"
-partitions = 3
-replication = 1
-session_timeout = 10
+brokers = ["localhost:9092"] # Kafka broker 地址列表
+group_id = "clearing-service" # Consumer group ID
+partitions = 3               # Topic 分区数
+replication = 1              # 副本因子
+session_timeout = 10         # Consumer session 超时 (秒)
 
+# [logger] 日志系统配置
 [logger]
-level = "info"
-format = "json"
-output = "stdout"
-file_path = "logs/clearing-service.log"
-max_size = 100
-max_backups = 10
-max_age = 30
-compress = true
-with_caller = true
-with_stacktrace = false
+level = "info"                         # 日志级别
+format = "json"                        # 日志格式
+output = "stdout"                      # 日志输出位置
+file_path = "logs/clearing-service.log" # 日志文件路径
+max_size = 100                         # 日志文件最大尺寸 (MB)
+max_backups = 10                       # 旧日志文件最大数量
+max_age = 30                           # 日志文件最大保留天数
+compress = true                        # 是否压缩旧日志
+with_caller = true                     # 是否记录调用者信息
+with_stacktrace = false                # 是否记录堆栈信息 (仅限 error 级别)
 
+# [tracing] 分布式追踪配置
 [tracing]
-enabled = true
-type = "jaeger"
-jaeger_endpoint = "http://localhost:14268/api/traces"
-sampling_rate = 0.1
+enabled = true                                 # 是否启用追踪
+type = "jaeger"                                # 追踪系统类型
+jaeger_endpoint = "http://localhost:14268/api/traces" # Jaeger collector endpoint
+sampling_rate = 0.1                            # 采样率
 
+# [metrics] 指标监控配置
 [metrics]
-enabled = true
-port = 9097
-path = "/metrics"
+enabled = true       # 是否启用指标
+port = 9097          # 指标暴露端口
+path = "/metrics"    # 指标暴露路径
 
+# [clearing] 清算特定配置
 [clearing]
-# 清算配置
+# 单笔交易清算的超时时间 (秒)。
 settlement_timeout = 3600
+
+# 每日执行日终清算 (EOD) 的预定时间 (24小时制, HH:mm:ss)。
 eod_clearing_time = "16:00:00"
+
+# 在日终清算过程中，每批处理的交易数量。
 max_batch_size = 1000

@@ -14,12 +14,14 @@ import (
 	"github.com/gin-gonic/gin"
 	pb "github.com/wyfcoding/financialTrading/go-api/quant"
 	"github.com/wyfcoding/financialTrading/internal/quant/application"
-	"github.com/wyfcoding/financialTrading/internal/quant/infrastructure"
+	"github.com/wyfcoding/financialTrading/internal/quant/infrastructure/client"
+	"github.com/wyfcoding/financialTrading/internal/quant/infrastructure/repository"
 	grpchandler "github.com/wyfcoding/financialTrading/internal/quant/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialTrading/internal/quant/interfaces/http"
 	"github.com/wyfcoding/financialTrading/pkg/cache"
 	"github.com/wyfcoding/financialTrading/pkg/config"
 	"github.com/wyfcoding/financialTrading/pkg/db"
+	"github.com/wyfcoding/financialTrading/pkg/grpcclient"
 	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"github.com/wyfcoding/financialTrading/pkg/middleware"
 	"github.com/wyfcoding/financialTrading/pkg/ratelimit"
@@ -93,7 +95,7 @@ func main() {
 	}
 
 	// 自动迁移
-	if err := gormDB.AutoMigrate(&infrastructure.StrategyModel{}, &infrastructure.BacktestResultModel{}); err != nil {
+	if err := gormDB.AutoMigrate(&repository.StrategyModel{}, &repository.BacktestResultModel{}); err != nil {
 		log.ErrorContext(ctx, "Failed to migrate database", "error", err)
 		os.Exit(1)
 	}
@@ -120,9 +122,21 @@ func main() {
 	rateLimiter := ratelimit.NewRedisRateLimiter(redisCache.GetClient())
 
 	// 初始化依赖
-	marketDataClient := infrastructure.NewMockMarketDataClient()
-	strategyRepo := infrastructure.NewStrategyRepository(gormDB.DB)
-	backtestRepo := infrastructure.NewBacktestResultRepository(gormDB.DB)
+	marketDataClientCfg := grpcclient.ClientConfig{
+		Target:          cfg.Services["market-data"].Address,
+		ConnTimeout:     5,
+		RequestTimeout:  5,
+		MaxRetries:      3,
+		RetryDelay:      100,
+		EnableKeepalive: true,
+	}
+	marketDataClient, err := client.NewMarketDataClient(marketDataClientCfg)
+	if err != nil {
+		log.ErrorContext(ctx, "Failed to create market data client", "error", err)
+		os.Exit(1)
+	}
+	strategyRepo := repository.NewStrategyRepository(gormDB)
+	backtestRepo := repository.NewBacktestResultRepository(gormDB)
 	svc := application.NewQuantService(strategyRepo, backtestRepo, marketDataClient)
 
 	// 6. 创建 HTTP 服务器

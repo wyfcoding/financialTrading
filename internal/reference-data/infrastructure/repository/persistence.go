@@ -1,5 +1,5 @@
 // Package infrastructure 包含基础设施层实现
-package infrastructure
+package repository
 
 import (
 	"context"

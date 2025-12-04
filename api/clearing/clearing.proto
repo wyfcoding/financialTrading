@@ -4,80 +4,127 @@ package clearing;
 
 option go_package = "github.com/fynnwu/FinancialTrading/go-api/clearing;clearing";
 
-// 清算服务
+// ClearingService 定义了交易清算相关的 gRPC 服务接口。
+// 该服务负责处理已执行交易的资金和资产的最终结算。
 service ClearingService {
-  // 清算交易
+  // SettleTrade 用于对单笔已达成的交易进行清算。
+  //
+  // @param SettleTradeRequest 包含待清算交易的详细信息。
+  // @return SettlementResponse 返回清算结果，包括成功状态或错误信息。
   rpc SettleTrade(SettleTradeRequest) returns (SettlementResponse);
-  // 获取清算记录
+
+  // GetSettlements 用于获取指定用户的清算历史记录。
+  //
+  // @param GetSettlementsRequest 包含用户ID和查询限制。
+  // @return SettlementsResponse 返回一个包含多条清算记录的列表。
   rpc GetSettlements(GetSettlementsRequest) returns (SettlementsResponse);
-  // 执行日终清算
+
+  // ExecuteEODClearing 用于执行指定日期的日终清算（End-of-Day Clearing）。
+  // 这通常是一个批量处理过程，用于清算当天所有未完成的交易。
+  //
+  // @param ExecuteEODClearingRequest 包含要执行清算的日期。
+  // @return EODClearingResponse 返回日终清算的摘要信息。
   rpc ExecuteEODClearing(ExecuteEODClearingRequest) returns (EODClearingResponse);
-  // 获取清算状态
+
+  // GetClearingStatus 用于查询特定清算任务（尤其是日终清算）的当前状态和进度。
+  //
+  // @param GetClearingStatusRequest 包含清算任务的ID。
+  // @return ClearingStatusResponse 返回清算任务的详细状态。
   rpc GetClearingStatus(GetClearingStatusRequest) returns (ClearingStatusResponse);
 }
 
-// 清算交易请求
+// SettleTradeRequest 消息定义了清算单笔交易时需要提供的参数。
 message SettleTradeRequest {
+  // trade_id 是待清算交易的唯一标识符。
   string trade_id = 1;
+  // buy_user_id 是买方的用户ID。
   string buy_user_id = 2;
+  // sell_user_id 是卖方的用户ID。
   string sell_user_id = 3;
+  // symbol 是交易的标的物，例如 "BTC/USDT"。
   string symbol = 4;
+  // quantity 是交易的数量。
   string quantity = 5;
+  // price 是交易的单价。
   string price = 6;
 }
 
-// 清算响应
+// SettlementResponse 消息返回单笔交易的清算结果。
 message SettlementResponse {
+  // settlement_id 是本次清算操作生成的唯一标识符。
   string settlement_id = 1;
+  // trade_id 是被清算的交易ID。
   string trade_id = 2;
+  // status 是清算的状态 (例如 "COMPLETED", "FAILED", "PENDING")。
   string status = 3;
+  // settlement_time 是清算完成的时间戳。
   int64 settlement_time = 4;
+  // error_message 如果清算失败，此处会包含错误信息。
   string error_message = 5;
 }
 
-// 获取清算记录请求
+// GetSettlementsRequest 消息定义了查询清算记录时需要提供的参数。
 message GetSettlementsRequest {
+  // user_id 是要查询的用户的ID。
   string user_id = 1;
+  // limit 用于限制返回的记录数量。
   int32 limit = 2;
 }
 
-// 清算记录
+// Settlement 消息定义了单条清算记录的结构。
 message Settlement {
+  // settlement_id 是清算记录的唯一标识符。
   string settlement_id = 1;
+  // trade_id 是关联的交易ID。
   string trade_id = 2;
+  // status 是清算的状态。
   string status = 3;
+  // settlement_time 是清算的时间戳。
   int64 settlement_time = 4;
 }
 
-// 清算记录响应
+// SettlementsResponse 消息返回一个包含多条清算记录的列表。
 message SettlementsResponse {
+  // settlements 是一个清算记录的列表。
   repeated Settlement settlements = 1;
 }
 
-// 执行日终清算请求
+// ExecuteEODClearingRequest 消息定义了执行日终清算时需要提供的参数。
 message ExecuteEODClearingRequest {
+  // clearing_date 是要执行清算的日期，格式通常为 "YYYY-MM-DD"。
   string clearing_date = 1;
 }
 
-// 日终清算响应
+// EODClearingResponse 消息返回日终清算的摘要结果。
 message EODClearingResponse {
+  // clearing_id 是本次日终清算任务的唯一标识符。
   string clearing_id = 1;
+  // status 是整个日终清算任务的状态 (例如 "IN_PROGRESS", "COMPLETED", "FAILED")。
   string status = 2;
+  // start_time 是任务开始的时间戳。
   int64 start_time = 3;
+  // end_time 是任务结束的时间戳。
   int64 end_time = 4;
+  // trades_settled 是成功清算的交易总数。
   int64 trades_settled = 5;
 }
 
-// 获取清算状态请求
+// GetClearingStatusRequest 消息定义了查询清算任务状态时需要提供的参数。
 message GetClearingStatusRequest {
+  // clearing_id 是要查询的清算任务ID（通常指日终清算任务）。
   string clearing_id = 1;
 }
 
-// 清算状态响应
+// ClearingStatusResponse 消息返回清算任务的当前状态和进度。
 message ClearingStatusResponse {
+  // clearing_id 是清算任务的ID。
   string clearing_id = 1;
+  // status 是任务的当前状态。
   string status = 2;
+  // progress_percentage 是任务完成的百分比。
   int64 progress_percentage = 3;
+  // trades_processed 是已处理的交易数量。
   int64 trades_processed = 4;
+  // trades_total 是需要处理的总交易数量。
   int64 trades_total = 5;
 }

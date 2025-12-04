@@ -1,4 +1,5 @@
-// Package repository 包含仓储实现
+// Package repository 包含了仓储接口的具体实现。
+// 这一层负责与具体的数据存储（如数据库、缓存）进行交互，实现了领域层定义的仓储接口。
 package repository
 
 import (
@@ -13,49 +14,43 @@ import (
 	"gorm.io/gorm"
 )
 
-// SettlementModel 清算记录数据库模型
-// 对应数据库中的 settlements 表
+// SettlementModel 是清算记录的数据库模型 (GORM Model)。
+// 它直接映射到数据库中的 `settlements` 表，用于数据的持久化。
+// 与领域实体 (domain.Settlement) 分离，使得数据库结构的变化不会直接影响核心领域逻辑。
 type SettlementModel struct {
 	gorm.Model
-	// 清算 ID，业务主键，唯一索引
-	SettlementID string `gorm:"column:settlement_id;type:varchar(50);uniqueIndex;not null" json:"settlement_id"`
-	// 交易 ID，普通索引
-	TradeID string `gorm:"column:trade_id;type:varchar(50);index;not null" json:"trade_id"`
-	// 买方用户 ID，普通索引
-	BuyUserID string `gorm:"column:buy_user_id;type:varchar(50);index;not null" json:"buy_user_id"`
-	// 卖方用户 ID，普通索引
-	SellUserID string `gorm:"column:sell_user_id;type:varchar(50);index;not null" json:"sell_user_id"`
-	// 交易对符号
-	Symbol string `gorm:"column:symbol;type:varchar(50);not null" json:"symbol"`
-	// 成交数量
-	Quantity string `gorm:"column:quantity;type:decimal(20,8);not null" json:"quantity"`
-	// 成交价格
-	Price string `gorm:"column:price;type:decimal(20,8);not null" json:"price"`
-	// 清算状态
-	Status string `gorm:"column:status;type:varchar(20);index;not null" json:"status"`
-	// 清算时间
-	SettlementTime int64 `gorm:"column:settlement_time;type:bigint;not null" json:"settlement_time"`
+	SettlementID   string `gorm:"column:settlement_id;type:varchar(50);uniqueIndex;not null"`
+	TradeID        string `gorm:"column:trade_id;type:varchar(50);index;not null"`
+	BuyUserID      string `gorm:"column:buy_user_id;type:varchar(50);index;not null"`
+	SellUserID     string `gorm:"column:sell_user_id;type:varchar(50);index;not null"`
+	Symbol         string `gorm:"column:symbol;type:varchar(50);not null"`
+	Quantity       string `gorm:"column:quantity;type:decimal(20,8);not null"` // 数据库中存字符串，保证精度
+	Price          string `gorm:"column:price;type:decimal(20,8);not null"`    // 数据库中存字符串，保证精度
+	Status         string `gorm:"column:status;type:varchar(20);index;not null"`
+	SettlementTime int64  `gorm:"column:settlement_time;type:bigint;not null"` // 存 Unix 时间戳
 }
 
-// TableName 指定表名
+// TableName 显式指定 GORM 应使用的表名。
 func (SettlementModel) TableName() string {
 	return "settlements"
 }
 
-// SettlementRepositoryImpl 清算记录仓储实现
+// SettlementRepositoryImpl 是 SettlementRepository 接口的 GORM 实现。
 type SettlementRepositoryImpl struct {
-	db *db.DB
+	db *db.DB // 依赖注入数据库连接实例
 }
 
-// NewSettlementRepository 创建清算记录仓储
+// NewSettlementRepository 是 SettlementRepositoryImpl 的构造函数。
 func NewSettlementRepository(database *db.DB) domain.SettlementRepository {
 	return &SettlementRepositoryImpl{
 		db: database,
 	}
 }
 
-// Save 保存清算记录
+// Save 实现了保存清算记录的接口。
+// 它将领域实体转换为数据库模型，然后执行数据库插入操作。
 func (sr *SettlementRepositoryImpl) Save(ctx context.Context, settlement *domain.Settlement) error {
+	// 将领域实体 (domain.Settlement) 转换为数据库模型 (SettlementModel)
 	model := &SettlementModel{
 		Model:          settlement.Model,
 		SettlementID:   settlement.SettlementID,
@@ -69,6 +64,7 @@ func (sr *SettlementRepositoryImpl) Save(ctx context.Context, settlement *domain
 		SettlementTime: settlement.SettlementTime.Unix(),
 	}
 
+	// 使用 GORM 的 Create 方法将记录插入数据库
 	if err := sr.db.WithContext(ctx).Create(model).Error; err != nil {
 		logger.Error(ctx, "Failed to save settlement",
 			"settlement_id", settlement.SettlementID,
@@ -77,15 +73,18 @@ func (sr *SettlementRepositoryImpl) Save(ctx context.Context, settlement *domain
 		return fmt.Errorf("failed to save settlement: %w", err)
 	}
 
+	// 回填 GORM 生成的 ID 和时间戳到领域实体中
 	settlement.Model = model.Model
 	return nil
 }
 
-// Get 获取清算记录
+// Get 实现了根据 ID 获取清算记录的接口。
 func (sr *SettlementRepositoryImpl) Get(ctx context.Context, settlementID string) (*domain.Settlement, error) {
 	var model SettlementModel
 
+	// 使用 GORM 的 First 方法查询记录
 	if err := sr.db.WithContext(ctx).Where("settlement_id = ?", settlementID).First(&model).Error; err != nil {
+		// 如果记录未找到，返回 nil, nil，符合业务预期
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
@@ -96,20 +95,23 @@ func (sr *SettlementRepositoryImpl) Get(ctx context.Context, settlementID string
 		return nil, fmt.Errorf("failed to get settlement: %w", err)
 	}
 
+	// 将查询到的数据库模型转换为领域实体
 	return sr.modelToDomain(&model), nil
 }
 
-// GetByUser 获取用户清算历史
+// GetByUser 实现了分页获取用户清算历史的接口。
 func (sr *SettlementRepositoryImpl) GetByUser(ctx context.Context, userID string, limit, offset int) ([]*domain.Settlement, int64, error) {
 	var models []SettlementModel
 	var total int64
 
 	query := sr.db.WithContext(ctx).Where("buy_user_id = ? OR sell_user_id = ?", userID, userID)
 
+	// 先计算总数
 	if err := query.Model(&SettlementModel{}).Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to count settlements: %w", err)
 	}
 
+	// 再执行分页查询
 	if err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&models).Error; err != nil {
 		logger.Error(ctx, "Failed to get settlements by user",
 			"user_id", userID,
@@ -118,15 +120,16 @@ func (sr *SettlementRepositoryImpl) GetByUser(ctx context.Context, userID string
 		return nil, 0, fmt.Errorf("failed to get settlements by user: %w", err)
 	}
 
+	// 批量将数据库模型转换为领域实体
 	settlements := make([]*domain.Settlement, 0, len(models))
-	for _, model := range models {
-		settlements = append(settlements, sr.modelToDomain(&model))
+	for i := range models {
+		settlements = append(settlements, sr.modelToDomain(&models[i]))
 	}
 
 	return settlements, total, nil
 }
 
-// GetByTrade 获取交易清算记录
+// GetByTrade 实现了根据交易 ID 获取清算记录的接口。
 func (sr *SettlementRepositoryImpl) GetByTrade(ctx context.Context, tradeID string) (*domain.Settlement, error) {
 	var model SettlementModel
 
@@ -144,8 +147,10 @@ func (sr *SettlementRepositoryImpl) GetByTrade(ctx context.Context, tradeID stri
 	return sr.modelToDomain(&model), nil
 }
 
-// modelToDomain 将数据库模型转换为领域对象
+// modelToDomain 是一个辅助函数，用于将数据库模型 (SettlementModel) 转换为领域实体 (domain.Settlement)。
+// 这是保持领域层纯粹性的关键。
 func (sr *SettlementRepositoryImpl) modelToDomain(model *SettlementModel) *domain.Settlement {
+	// 从字符串安全地转换回 decimal.Decimal 类型
 	quantity, _ := decimal.NewFromString(model.Quantity)
 	price, _ := decimal.NewFromString(model.Price)
 
@@ -164,44 +169,38 @@ func (sr *SettlementRepositoryImpl) modelToDomain(model *SettlementModel) *domai
 	}
 }
 
-// EODClearingModel 日终清算数据库模型
+// EODClearingModel 是日终清算的数据库模型。
 type EODClearingModel struct {
 	gorm.Model
-	// 清算 ID
-	ClearingID string `gorm:"column:clearing_id;type:varchar(50);uniqueIndex;not null" json:"clearing_id"`
-	// 清算日期
-	ClearingDate string `gorm:"column:clearing_date;type:varchar(20);index;not null" json:"clearing_date"`
-	// 清算状态
-	Status string `gorm:"column:status;type:varchar(20);index;not null" json:"status"`
-	// 开始时间
-	StartTime int64 `gorm:"column:start_time;type:bigint;not null" json:"start_time"`
-	// 结束时间
-	EndTime *int64 `gorm:"column:end_time;type:bigint" json:"end_time"`
-	// 已清算交易数
-	TradesSettled int64 `gorm:"column:trades_settled;type:bigint;not null" json:"trades_settled"`
-	// 总交易数
-	TotalTrades int64 `gorm:"column:total_trades;type:bigint;not null" json:"total_trades"`
+	ClearingID    string `gorm:"column:clearing_id;type:varchar(50);uniqueIndex;not null"`
+	ClearingDate  string `gorm:"column:clearing_date;type:varchar(20);index;not null"`
+	Status        string `gorm:"column:status;type:varchar(20);index;not null"`
+	StartTime     int64  `gorm:"column:start_time;type:bigint;not null"`
+	EndTime       *int64 `gorm:"column:end_time;type:bigint"` // 使用指针以支持 NULL 值
+	TradesSettled int64  `gorm:"column:trades_settled;type:bigint;not null"`
+	TotalTrades   int64  `gorm:"column:total_trades;type:bigint;not null"`
 }
 
-// TableName 指定表名
+// TableName 指定表名。
 func (EODClearingModel) TableName() string {
 	return "eod_clearings"
 }
 
-// EODClearingRepositoryImpl 日终清算仓储实现
+// EODClearingRepositoryImpl 是 EODClearingRepository 接口的 GORM 实现。
 type EODClearingRepositoryImpl struct {
 	db *db.DB
 }
 
-// NewEODClearingRepository 创建日终清算仓储
+// NewEODClearingRepository 是 EODClearingRepositoryImpl 的构造函数。
 func NewEODClearingRepository(database *db.DB) domain.EODClearingRepository {
 	return &EODClearingRepositoryImpl{
 		db: database,
 	}
 }
 
-// Save 保存日终清算
+// Save 实现了保存日终清算任务的接口。
 func (ecr *EODClearingRepositoryImpl) Save(ctx context.Context, clearing *domain.EODClearing) error {
+	// 领域实体到数据库模型的转换
 	model := &EODClearingModel{
 		Model:         clearing.Model,
 		ClearingID:    clearing.ClearingID,
@@ -229,7 +228,7 @@ func (ecr *EODClearingRepositoryImpl) Save(ctx context.Context, clearing *domain
 	return nil
 }
 
-// Get 获取日终清算
+// Get 实现了根据 ID 获取日终清算任务的接口。
 func (ecr *EODClearingRepositoryImpl) Get(ctx context.Context, clearingID string) (*domain.EODClearing, error) {
 	var model EODClearingModel
 
@@ -247,7 +246,7 @@ func (ecr *EODClearingRepositoryImpl) Get(ctx context.Context, clearingID string
 	return ecr.modelToDomain(&model), nil
 }
 
-// GetLatest 获取最新日终清算
+// GetLatest 实现了获取最新一次日终清算任务的接口。
 func (ecr *EODClearingRepositoryImpl) GetLatest(ctx context.Context) (*domain.EODClearing, error) {
 	var model EODClearingModel
 
@@ -262,8 +261,9 @@ func (ecr *EODClearingRepositoryImpl) GetLatest(ctx context.Context) (*domain.EO
 	return ecr.modelToDomain(&model), nil
 }
 
-// Update 更新日终清算
+// Update 实现了更新日终清算任务的接口。
 func (ecr *EODClearingRepositoryImpl) Update(ctx context.Context, clearing *domain.EODClearing) error {
+	// 使用 map 构建更新字段，只会更新非零值字段，更安全。
 	updates := map[string]interface{}{
 		"status":         clearing.Status,
 		"trades_settled": clearing.TradesSettled,
@@ -285,7 +285,7 @@ func (ecr *EODClearingRepositoryImpl) Update(ctx context.Context, clearing *doma
 	return nil
 }
 
-// modelToDomain 将数据库模型转换为领域对象
+// modelToDomain 是一个辅助函数，用于将 EODClearingModel 转换为 domain.EODClearing。
 func (ecr *EODClearingRepositoryImpl) modelToDomain(model *EODClearingModel) *domain.EODClearing {
 	var endTime *time.Time
 	if model.EndTime != nil {

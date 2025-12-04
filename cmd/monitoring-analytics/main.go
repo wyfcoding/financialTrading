@@ -14,7 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	pb "github.com/wyfcoding/financialTrading/go-api/monitoring-analytics"
 	"github.com/wyfcoding/financialTrading/internal/monitoring-analytics/application"
-	"github.com/wyfcoding/financialTrading/internal/monitoring-analytics/infrastructure"
+	"github.com/wyfcoding/financialTrading/internal/monitoring-analytics/infrastructure/repository"
 	grpchandler "github.com/wyfcoding/financialTrading/internal/monitoring-analytics/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialTrading/internal/monitoring-analytics/interfaces/http"
 	"github.com/wyfcoding/financialTrading/pkg/cache"
@@ -93,7 +93,7 @@ func main() {
 	}
 
 	// 自动迁移
-	if err := gormDB.AutoMigrate(&infrastructure.MetricModel{}, &infrastructure.SystemHealthModel{}); err != nil {
+	if err := gormDB.AutoMigrate(&repository.MetricModel{}, &repository.SystemHealthModel{}); err != nil {
 		log.ErrorContext(ctx, "Failed to migrate database", "error", err)
 		os.Exit(1)
 	}
@@ -120,8 +120,8 @@ func main() {
 	rateLimiter := ratelimit.NewRedisRateLimiter(redisCache.GetClient())
 
 	// 初始化依赖
-	metricRepo := infrastructure.NewMetricRepository(gormDB.DB)
-	healthRepo := infrastructure.NewSystemHealthRepository(gormDB.DB)
+	metricRepo := repository.NewMetricRepository(gormDB.DB)
+	healthRepo := repository.NewSystemHealthRepository(gormDB.DB)
 	svc := application.NewMonitoringAnalyticsService(metricRepo, healthRepo)
 
 	// 6. 创建 HTTP 服务器
