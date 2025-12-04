@@ -6,9 +6,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/fynnwu/FinancialTrading/internal/account/domain"
-	"github.com/fynnwu/FinancialTrading/pkg/logger"
 	"github.com/shopspring/decimal"
+	"github.com/wyfcoding/financialTrading/internal/account/domain"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -40,22 +40,28 @@ func (r *accountRepositoryImpl) fromDomainAccount(entity *domain.Account) *domai
 	return entity
 }
 
-// Create 实现了 domain.AccountRepository.Create 方法。
-func (r *accountRepositoryImpl) Create(ctx context.Context, account *domain.Account) error {
+// Save 实现了 domain.AccountRepository.Save 方法。
+// 使用 `clauses.OnConflict` 来实现 "Upsert" (Update or Insert) 逻辑。
+func (r *accountRepositoryImpl) Save(ctx context.Context, account *domain.Account) error {
 	log := logger.WithContext(ctx)
 	dbModel := r.fromDomainAccount(account)
 
-	if err := r.db.WithContext(ctx).Create(dbModel).Error; err != nil {
-		log.Error("Failed to create account in DB", "account_id", account.AccountID, "error", err)
+	// OnConflict: 如果 account_id 已存在，则更新所有字段。
+	if err := r.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "account_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"user_id", "account_type", "currency", "balance", "available_balance", "frozen_balance"}),
+	}).Create(dbModel).Error; err != nil {
+		log.Error("Failed to save account to DB", "account_id", account.AccountID, "error", err)
 		return err
 	}
+
 	// GORM 创建后会自动填充主键等信息，这里可以更新回原实体。
 	*account = *r.toDomainAccount(dbModel)
 	return nil
 }
 
-// GetByAccountID 实现了 domain.AccountRepository.GetByAccountID 方法。
-func (r *accountRepositoryImpl) GetByAccountID(ctx context.Context, accountID string) (*domain.Account, error) {
+// Get 实现了 domain.AccountRepository.Get 方法。
+func (r *accountRepositoryImpl) Get(ctx context.Context, accountID string) (*domain.Account, error) {
 	log := logger.WithContext(ctx)
 	var model domain.Account
 
@@ -70,8 +76,8 @@ func (r *accountRepositoryImpl) GetByAccountID(ctx context.Context, accountID st
 	return r.toDomainAccount(&model), nil
 }
 
-// GetByUserID 实现了 domain.AccountRepository.GetByUserID 方法。
-func (r *accountRepositoryImpl) GetByUserID(ctx context.Context, userID string) ([]*domain.Account, error) {
+// GetByUser 实现了 domain.AccountRepository.GetByUser 方法。
+func (r *accountRepositoryImpl) GetByUser(ctx context.Context, userID string) ([]*domain.Account, error) {
 	log := logger.WithContext(ctx)
 	var models []*domain.Account
 
@@ -90,14 +96,10 @@ func (r *accountRepositoryImpl) GetByUserID(ctx context.Context, userID string) 
 
 // UpdateBalance 实现了 domain.AccountRepository.UpdateBalance 方法。
 // 它使用 `clauses.Locking{Strength: "UPDATE"}` 来获取行锁，确保并发更新的原子性和一致性。
-func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, tx *gorm.DB, accountID string, newBalance, newAvailable, newFrozen decimal.Decimal) error {
+func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, accountID string, newBalance, newAvailable, newFrozen decimal.Decimal) error {
 	log := logger.WithContext(ctx)
-	db := r.db
-	if tx != nil {
-		db = tx // 如果在事务中，使用事务的 db handle
-	}
 
-	result := db.WithContext(ctx).Model(&domain.Account{}).Where("account_id = ?", accountID).Updates(map[string]interface{}{
+	result := r.db.WithContext(ctx).Model(&domain.Account{}).Where("account_id = ?", accountID).Updates(map[string]interface{}{
 		"balance":           newBalance,
 		"available_balance": newAvailable,
 		"frozen_balance":    newFrozen,
@@ -113,21 +115,6 @@ func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, tx *gorm.DB, 
 	return nil
 }
 
-// Save 实现了 domain.AccountRepository.Save 方法。
-// 使用 `clauses.OnConflict` 来实现 "Upsert" (Update or Insert) 逻辑。
-func (r *accountRepositoryImpl) Save(ctx context.Context, tx *gorm.DB, account *domain.Account) error {
-	db := r.db
-	if tx != nil {
-		db = tx
-	}
-	dbModel := r.fromDomainAccount(account)
-	// OnConflict: 如果 account_id 已存在，则更新所有字段。
-	return db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "account_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"user_id", "account_type", "currency", "balance", "available_balance", "frozen_balance"}),
-	}).Create(dbModel).Error
-}
-
 // --- TransactionRepository ---
 
 // transactionRepositoryImpl 是 domain.TransactionRepository 接口的 GORM 实现。
@@ -140,17 +127,13 @@ func NewTransactionRepository(db *gorm.DB) domain.TransactionRepository {
 	return &transactionRepositoryImpl{db: db}
 }
 
-// Create 实现了 domain.TransactionRepository.Create 方法。
-func (r *transactionRepositoryImpl) Create(ctx context.Context, tx *gorm.DB, transaction *domain.Transaction) error {
-	db := r.db
-	if tx != nil {
-		db = tx
-	}
-	return db.WithContext(ctx).Create(transaction).Error
+// Save 实现了 domain.TransactionRepository.Save 方法。
+func (r *transactionRepositoryImpl) Save(ctx context.Context, transaction *domain.Transaction) error {
+	return r.db.WithContext(ctx).Create(transaction).Error
 }
 
-// GetHistoryByAccountID 实现了 domain.TransactionRepository.GetHistoryByAccountID 方法。
-func (r *transactionRepositoryImpl) GetHistoryByAccountID(ctx context.Context, accountID string, limit, offset int) ([]*domain.Transaction, int64, error) {
+// GetHistory 实现了 domain.TransactionRepository.GetHistory 方法。
+func (r *transactionRepositoryImpl) GetHistory(ctx context.Context, accountID string, limit, offset int) ([]*domain.Transaction, int64, error) {
 	var transactions []*domain.Transaction
 	var total int64
 
