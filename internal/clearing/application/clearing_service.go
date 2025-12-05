@@ -56,22 +56,22 @@ func NewClearingApplicationService(
 // @param ctx context.Context 用于传递请求上下文，例如 Trace ID。
 // @param req *SettleTradeRequest 包含清算所需的数据。
 // @return error 如果处理过程中发生错误，则返回错误信息。
-func (cas *ClearingApplicationService) SettleTrade(ctx context.Context, req *SettleTradeRequest) error {
+func (cas *ClearingApplicationService) SettleTrade(ctx context.Context, req *SettleTradeRequest) (string, error) {
 	// 1. 输入参数校验
 	if req.TradeID == "" || req.BuyUserID == "" || req.SellUserID == "" {
-		return fmt.Errorf("invalid request parameters: trade_id, buy_user_id, and sell_user_id are required")
+		return "", fmt.Errorf("invalid request parameters: trade_id, buy_user_id, and sell_user_id are required")
 	}
 
 	// 2. 数据转换和校验
 	// 使用 decimal 包处理高精度的货币计算，避免浮点数误差。
 	quantity, err := decimal.NewFromString(req.Quantity)
 	if err != nil {
-		return fmt.Errorf("invalid quantity format: %w", err)
+		return "", fmt.Errorf("invalid quantity format: %w", err)
 	}
 
 	price, err := decimal.NewFromString(req.Price)
 	if err != nil {
-		return fmt.Errorf("invalid price format: %w", err)
+		return "", fmt.Errorf("invalid price format: %w", err)
 	}
 
 	// 3. 生成唯一的清算ID
@@ -103,7 +103,7 @@ func (cas *ClearingApplicationService) SettleTrade(ctx context.Context, req *Set
 			"trade_id", req.TradeID,
 			"error", err,
 		)
-		return fmt.Errorf("failed to save settlement record: %w", err)
+		return "", fmt.Errorf("failed to save settlement record: %w", err)
 	}
 
 	logger.WithContext(ctx).Info("Trade settled successfully",
@@ -111,7 +111,7 @@ func (cas *ClearingApplicationService) SettleTrade(ctx context.Context, req *Set
 		"trade_id", req.TradeID,
 	)
 
-	return nil
+	return settlementID, nil
 }
 
 // ExecuteEODClearing 是执行日终清算的业务用例。
@@ -119,7 +119,7 @@ func (cas *ClearingApplicationService) SettleTrade(ctx context.Context, req *Set
 // @param ctx context.Context 请求上下文。
 // @param clearingDate string 需要执行清算的日期。
 // @return error 如果处理过程中发生错误，则返回错误信息。
-func (cas *ClearingApplicationService) ExecuteEODClearing(ctx context.Context, clearingDate string) error {
+func (cas *ClearingApplicationService) ExecuteEODClearing(ctx context.Context, clearingDate string) (string, error) {
 	// 1. 生成唯一的日终清算任务ID
 	clearingID := fmt.Sprintf("EOD-%d", cas.snowflake.Generate())
 
@@ -141,7 +141,7 @@ func (cas *ClearingApplicationService) ExecuteEODClearing(ctx context.Context, c
 			"clearing_id", clearingID,
 			"error", err,
 		)
-		return fmt.Errorf("failed to save EOD clearing task: %w", err)
+		return "", fmt.Errorf("failed to save EOD clearing task: %w", err)
 	}
 
 	// 4. 触发异步处理（示例）
@@ -153,7 +153,7 @@ func (cas *ClearingApplicationService) ExecuteEODClearing(ctx context.Context, c
 		"clearing_date", clearingDate,
 	)
 
-	return nil
+	return clearingID, nil
 }
 
 // GetClearingStatus 是获取日终清算任务状态的业务用例。

@@ -44,36 +44,35 @@ func (h *GRPCHandler) SettleTrade(ctx context.Context, req *pb.SettleTradeReques
 		Price:      req.Price,
 	}
 
-	// 2. 调用应用服务来执行核心业务逻辑。
+	// 2. 调用应用服务来执行核心业务逻辑,接收返回的 settlementID。
 	//    gRPC handler 本身不包含业务逻辑。
-	err := h.appService.SettleTrade(ctx, appReq)
+	settlementID, err := h.appService.SettleTrade(ctx, appReq)
 	if err != nil {
 		// 3. 错误处理：如果应用层返回错误，将其转换为标准的 gRPC 错误。
 		//    使用 status.Errorf 可以附加 gRPC 状态码。
 		return nil, status.Errorf(codes.Internal, "failed to settle trade: %v", err)
 	}
 
-	// 4. 构建并返回 gRPC 响应。
-	//    TODO: 理想情况下，应用服务应返回清算结果（如 SettlementID），并在此处填充到响应中。
-	//    当前实现为简化版。
+	// 4. 构建并返回 gRPC 响应,填充从应用服务返回的 settlementID。
 	return &pb.SettlementResponse{
-		TradeId: req.TradeId,
-		Status:  "COMPLETED", // 假设状态为已完成
+		TradeId:      req.TradeId,
+		Status:       "COMPLETED", // 假设状态为已完成
+		SettlementId: settlementID,
 	}, nil
 }
 
 // ExecuteEODClearing 实现了 gRPC 的 ExecuteEODClearing 方法。
 func (h *GRPCHandler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEODClearingRequest) (*pb.EODClearingResponse, error) {
-	// 调用应用服务启动日终清算流程。
-	err := h.appService.ExecuteEODClearing(ctx, req.ClearingDate)
+	// 调用应用服务启动日终清算流程,接收返回的 clearingID。
+	clearingID, err := h.appService.ExecuteEODClearing(ctx, req.ClearingDate)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to execute EOD clearing: %v", err)
 	}
 
-	// 返回表示任务已开始的响应。
-	// TODO: 应用服务应返回唯一的 clearingID，并在此处填充到响应中。
+	// 返回包含 clearingID 的响应,表示任务已开始。
 	return &pb.EODClearingResponse{
-		Status: "PROCESSING", // 表示任务已开始处理
+		Status:     "PROCESSING", // 表示任务已开始处理
+		ClearingId: clearingID,
 	}, nil
 }
 
@@ -89,12 +88,18 @@ func (h *GRPCHandler) GetClearingStatus(ctx context.Context, req *pb.GetClearing
 		return nil, status.Errorf(codes.NotFound, "clearing task with id '%s' not found", req.ClearingId)
 	}
 
+	// 计算完成百分比
+	var completionPercentage float32
+	if clearing.TotalTrades > 0 {
+		completionPercentage = float32(clearing.TradesSettled) / float32(clearing.TotalTrades) * 100
+	}
+
 	// 将从应用层获取的领域对象转换为 gRPC 响应对象。
 	return &pb.ClearingStatusResponse{
-		ClearingId:      clearing.ClearingID,
-		Status:          clearing.Status,
-		TradesProcessed: clearing.TradesSettled,
-		TradesTotal:     clearing.TotalTrades,
-		// TODO: 可以在这里计算并添加完成百分比
+		ClearingId:         clearing.ClearingID,
+		Status:             clearing.Status,
+		TradesProcessed:    clearing.TradesSettled,
+		TradesTotal:        clearing.TotalTrades,
+		ProgressPercentage: int64(completionPercentage),
 	}, nil
 }

@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -64,7 +65,7 @@ func (s *AlgoExecutionService) GenerateSlices(order *AlgoOrder) ([]Slice, error)
 		sliceQty := order.TotalQuantity.Div(decimal.NewFromInt(int64(intervals)))
 		for i := 0; i < intervals; i++ {
 			slices = append(slices, Slice{
-				SliceID:   order.OrderID + "-" + string(rune(i)), // 简化 ID
+				SliceID:   fmt.Sprintf("%s-%d", order.OrderID, i), // 使用 fmt.Sprintf 生成正确的 ID
 				Quantity:  sliceQty,
 				ExecuteAt: order.StartTime.Add(time.Duration(i) * intervalDuration),
 			})
@@ -78,7 +79,7 @@ func (s *AlgoExecutionService) GenerateSlices(order *AlgoOrder) ([]Slice, error)
 			sliceQty := order.TotalQuantity.Div(decimal.NewFromInt(int64(intervals)))
 			for i := 0; i < intervals; i++ {
 				slices = append(slices, Slice{
-					SliceID:   order.OrderID + "-" + string(rune(i)),
+					SliceID:   fmt.Sprintf("%s-%d", order.OrderID, i),
 					Quantity:  sliceQty,
 					ExecuteAt: order.StartTime.Add(time.Duration(i) * intervalDuration),
 				})
@@ -87,7 +88,7 @@ func (s *AlgoExecutionService) GenerateSlices(order *AlgoOrder) ([]Slice, error)
 			for i, ratio := range order.VolumeProfile {
 				sliceQty := order.TotalQuantity.Mul(ratio)
 				slices = append(slices, Slice{
-					SliceID:   order.OrderID + "-" + string(rune(i)),
+					SliceID:   fmt.Sprintf("%s-%d", order.OrderID, i),
 					Quantity:  sliceQty,
 					ExecuteAt: order.StartTime.Add(time.Duration(i) * intervalDuration),
 				})

@@ -42,7 +42,22 @@ func (c *MarketDataClientImpl) GetPrice(ctx context.Context, symbol string) (flo
 		return 0, err
 	}
 
-	// TODO: Parse decimal
-	_ = resp
-	return 100.0, nil
+	// 从响应中获取最新价格
+	// protobuf 已定义为 float64，直接返回
+	price := resp.GetLastPrice()
+	if price == 0 {
+		// 如果没有最新成交价，使用中间价
+		bidPrice := resp.GetBidPrice()
+		askPrice := resp.GetAskPrice()
+		if bidPrice > 0 && askPrice > 0 {
+			price = (bidPrice + askPrice) / 2
+		}
+	}
+
+	logger.Info(ctx, "Retrieved latest price from market data",
+		"symbol", symbol,
+		"price", price,
+	)
+
+	return price, nil
 }

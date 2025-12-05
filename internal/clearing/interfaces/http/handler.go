@@ -55,16 +55,21 @@ func (h *ClearingHandler) SettleTrade(c *gin.Context) {
 		return
 	}
 
-	// 2. 调用应用服务执行核心业务逻辑。
+	// 2. 调用应用服务执行核心业务逻辑,接收返回的 settlementID。
 	//    从 Gin 的 context 中传递 `Request.Context()`，以支持 Trace 和超时控制。
-	if err := h.clearingService.SettleTrade(c.Request.Context(), &req); err != nil {
+	settlementID, err := h.clearingService.SettleTrade(c.Request.Context(), &req)
+	if err != nil {
 		logger.WithContext(c.Request.Context()).Error("Failed to settle trade", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to settle trade: " + err.Error()})
 		return
 	}
 
-	// 3. 返回成功的响应。
-	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Trade settlement initiated"})
+	// 3. 返回成功的响应,包含 settlementID。
+	c.JSON(http.StatusOK, gin.H{
+		"status":        "success",
+		"message":       "Trade settlement initiated",
+		"settlement_id": settlementID,
+	})
 }
 
 // ExecuteEODClearingRequest 是执行日终清算请求的专用结构体。
@@ -91,13 +96,18 @@ func (h *ClearingHandler) ExecuteEODClearing(c *gin.Context) {
 		return
 	}
 
-	if err := h.clearingService.ExecuteEODClearing(c.Request.Context(), req.ClearingDate); err != nil {
+	clearingID, err := h.clearingService.ExecuteEODClearing(c.Request.Context(), req.ClearingDate)
+	if err != nil {
 		logger.WithContext(c.Request.Context()).Error("Failed to execute EOD clearing", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to execute EOD clearing: " + err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "processing", "message": "EOD clearing process started"})
+	c.JSON(http.StatusOK, gin.H{
+		"status":      "processing",
+		"message":     "EOD clearing process started",
+		"clearing_id": clearingID,
+	})
 }
 
 // GetClearingStatus 处理获取清算任务状态的 HTTP GET 请求。

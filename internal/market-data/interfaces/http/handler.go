@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialTrading/internal/market-data/application"
@@ -91,10 +92,45 @@ func (h *Handler) GetHistoricalQuotes(c *gin.Context) {
 		return
 	}
 
+	// 解析 startTime 和 endTime 从字符串到 int64
+	startTimeInt, err := strconv.ParseInt(startTime, 10, 64)
+	if err != nil {
+		logger.Warn(ctx, "Invalid start_time format",
+			"start_time", startTime,
+			"error", err,
+		)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "start_time must be a valid int64 timestamp",
+		})
+		return
+	}
+
+	endTimeInt, err := strconv.ParseInt(endTime, 10, 64)
+	if err != nil {
+		logger.Warn(ctx, "Invalid end_time format",
+			"end_time", endTime,
+			"error", err,
+		)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "end_time must be a valid int64 timestamp",
+		})
+		return
+	}
+
+	// 验证时间范围合法性
+	if startTimeInt >= endTimeInt {
+		logger.Warn(ctx, "Invalid time range",
+			"start_time", startTimeInt,
+			"end_time", endTimeInt,
+		)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "start_time must be before end_time",
+		})
+		return
+	}
+
 	// 调用应用服务
-	// TODO: 将 startTime 和 endTime 从字符串解析为 int64
-	// For now using 0, 0 as placeholders to fix compilation, assuming logic handles it or will be updated
-	quotes, err := h.quoteService.GetHistoricalQuotes(ctx, symbol, 0, 0)
+	quotes, err := h.quoteService.GetHistoricalQuotes(ctx, symbol, startTimeInt, endTimeInt)
 	if err != nil {
 		logger.Error(ctx, "Failed to get historical quotes",
 			"symbol", symbol,
