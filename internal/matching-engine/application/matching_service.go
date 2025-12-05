@@ -45,19 +45,48 @@ func NewMatchingApplicationService(tradeRepo domain.TradeRepository, orderBookRe
 // 4. 保存成交记录
 // 5. 返回撮合结果
 func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *SubmitOrderRequest) (*domain.MatchingResult, error) {
+	// 记录性能监控
+	defer logger.LogDuration(ctx, "Order matching completed",
+		"order_id", req.OrderID,
+		"symbol", req.Symbol,
+	)()
+
+	logger.Info(ctx, "Order received for matching",
+		"order_id", req.OrderID,
+		"symbol", req.Symbol,
+		"side", req.Side,
+		"price", req.Price,
+		"quantity", req.Quantity,
+	)
+
 	// 验证输入
 	if req.OrderID == "" || req.Symbol == "" || req.Side == "" {
+		logger.Warn(ctx, "Invalid order parameters",
+			"order_id", req.OrderID,
+			"symbol", req.Symbol,
+			"side", req.Side,
+		)
 		return nil, fmt.Errorf("invalid request parameters")
 	}
 
 	// 解析价格和数量
 	price, err := decimal.NewFromString(req.Price)
 	if err != nil {
+		logger.Error(ctx, "Failed to parse price",
+			"order_id", req.OrderID,
+			"price", req.Price,
+			"error", err,
+		)
 		return nil, fmt.Errorf("invalid price: %w", err)
 	}
 
 	quantity, err := decimal.NewFromString(req.Quantity)
 	if err != nil {
+		logger.Error(ctx, "Failed to parse quantity",
+			"order_id", req.OrderID,
+			"quantity", req.Quantity,
+			"error", err,
+		)
 		return nil, fmt.Errorf("invalid quantity: %w", err)
 	}
 
@@ -71,15 +100,33 @@ func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *Sub
 		Timestamp: 0, // 实际应用中应使用当前时间戳
 	}
 
+	logger.Debug(ctx, "Starting order matching",
+		"order_id", req.OrderID,
+		"symbol", req.Symbol,
+	)
+
 	// 执行撮合
 	trades := mas.engine.Match(order)
+
+	logger.Info(ctx, "Order matched",
+		"order_id", req.OrderID,
+		"trades_count", len(trades),
+		"remaining_quantity", order.Quantity.String(),
+	)
 
 	// 保存成交记录
 	for _, trade := range trades {
 		if err := mas.tradeRepo.Save(ctx, trade); err != nil {
 			logger.Error(ctx, "Failed to save trade",
 				"trade_id", trade.TradeID,
+				"order_id", req.OrderID,
 				"error", err,
+			)
+		} else {
+			logger.Debug(ctx, "Trade saved successfully",
+				"trade_id", trade.TradeID,
+				"price", trade.Price.String(),
+				"quantity", trade.Quantity.String(),
 			)
 		}
 	}
@@ -91,11 +138,6 @@ func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *Sub
 		RemainingQuantity: order.Quantity,
 		Status:            "MATCHED",
 	}
-
-	logger.Debug(ctx, "Order matched successfully",
-		"order_id", req.OrderID,
-		"trades_count", len(trades),
-	)
 
 	return result, nil
 }

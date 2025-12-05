@@ -1,11 +1,12 @@
+// Package algos 提供红黑树数据结构和订单簿实现
 package algos
 
-// Color 节点颜色
+// Color 红黑树节点颜色
 type Color bool
 
 const (
-	Red   Color = true
-	Black Color = false
+	Red   Color = true  // Red 红色节点
+	Black Color = false // Black 黑色节点
 )
 
 // RBNode 红黑树节点
@@ -115,6 +116,7 @@ func (t *RBTree) Insert(order *Order) {
 	t.Size++
 }
 
+// insertFixup 插入后修复红黑树性质
 func (t *RBTree) insertFixup(z *RBNode) {
 	for z.Parent != nil && z.Parent.Color == Red {
 		if z.Parent == z.Parent.Parent.Left {
@@ -154,6 +156,7 @@ func (t *RBTree) insertFixup(z *RBNode) {
 	t.Root.Color = Black
 }
 
+// leftRotate 左旋操作
 func (t *RBTree) leftRotate(x *RBNode) {
 	y := x.Right
 	x.Right = y.Left
@@ -172,6 +175,7 @@ func (t *RBTree) leftRotate(x *RBNode) {
 	x.Parent = y
 }
 
+// rightRotate 右旋操作
 func (t *RBTree) rightRotate(y *RBNode) {
 	x := y.Left
 	y.Left = x.Right
@@ -200,6 +204,7 @@ func (t *RBTree) Delete(order *Order) {
 	t.Size--
 }
 
+// find 查找指定订单的节点
 func (t *RBTree) find(order *Order) *RBNode {
 	x := t.Root
 	for x != nil {
@@ -215,6 +220,7 @@ func (t *RBTree) find(order *Order) *RBNode {
 	return nil
 }
 
+// deleteNode 删除指定节点
 func (t *RBTree) deleteNode(z *RBNode) {
 	var y, x *RBNode
 	if z.Left == nil || z.Right == nil {
@@ -250,6 +256,7 @@ func (t *RBTree) deleteNode(z *RBNode) {
 	}
 }
 
+// successor 查找后继节点
 func (t *RBTree) successor(x *RBNode) *RBNode {
 	if x.Right != nil {
 		return t.minimum(x.Right)
@@ -262,6 +269,7 @@ func (t *RBTree) successor(x *RBNode) *RBNode {
 	return y
 }
 
+// minimum 查找子树中的最小节点
 func (t *RBTree) minimum(x *RBNode) *RBNode {
 	for x.Left != nil {
 		x = x.Left
@@ -269,6 +277,7 @@ func (t *RBTree) minimum(x *RBNode) *RBNode {
 	return x
 }
 
+// deleteFixup 删除后修复红黑树性质
 func (t *RBTree) deleteFixup(x *RBNode) {
 	for x != t.Root && x.Color == Black {
 		if x == x.Parent.Left {
@@ -353,6 +362,7 @@ func (t *RBTree) NewIterator() *Iterator {
 	return it
 }
 
+// pushLeft 将节点及其所有左子节点压入栈
 func (it *Iterator) pushLeft(x *RBNode) {
 	for x != nil {
 		it.stack = append(it.stack, x)

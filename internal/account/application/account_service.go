@@ -50,14 +50,25 @@ func NewAccountApplicationService(accountRepo domain.AccountRepository, transact
 }
 
 // CreateAccount 创建账户
-// 用例流程：
+// 用例涁程：
 // 1. 验证输入参数
-// 2. 生成账户 ID
+// 2. 生溦账户 ID
 // 3. 创建账户对象
 // 4. 保存到仓储
 func (aas *AccountApplicationService) CreateAccount(ctx context.Context, req *CreateAccountRequest) (*AccountDTO, error) {
+	logger.Info(ctx, "Creating new account",
+		"user_id", req.UserID,
+		"account_type", req.AccountType,
+		"currency", req.Currency,
+	)
+
 	// 验证输入
 	if req.UserID == "" || req.AccountType == "" || req.Currency == "" {
+		logger.Warn(ctx, "Invalid account creation parameters",
+			"user_id", req.UserID,
+			"account_type", req.AccountType,
+			"currency", req.Currency,
+		)
 		return nil, fmt.Errorf("invalid request parameters")
 	}
 
@@ -77,16 +88,19 @@ func (aas *AccountApplicationService) CreateAccount(ctx context.Context, req *Cr
 
 	// 保存到仓储
 	if err := aas.accountRepo.Save(ctx, account); err != nil {
-		logger.Error(ctx, "Failed to save account",
+		logger.Error(ctx, "Failed to save account to repository",
 			"account_id", accountID,
+			"user_id", req.UserID,
 			"error", err,
 		)
 		return nil, fmt.Errorf("failed to save account: %w", err)
 	}
 
-	logger.Debug(ctx, "Account created successfully",
+	logger.Info(ctx, "Account created successfully",
 		"account_id", accountID,
 		"user_id", req.UserID,
+		"account_type", req.AccountType,
+		"currency", req.Currency,
 	)
 
 	// 转换为 DTO
@@ -144,18 +158,34 @@ func (aas *AccountApplicationService) GetAccount(ctx context.Context, accountID 
 // 2. 更新余额
 // 3. 创建交易记录
 func (aas *AccountApplicationService) Deposit(ctx context.Context, accountID string, amount decimal.Decimal) error {
+	logger.Info(ctx, "Processing deposit",
+		"account_id", accountID,
+		"amount", amount.String(),
+	)
+
 	// 验证输入
 	if accountID == "" || amount.LessThanOrEqual(decimal.Zero) {
+		logger.Warn(ctx, "Invalid deposit parameters",
+			"account_id", accountID,
+			"amount", amount.String(),
+		)
 		return fmt.Errorf("invalid request parameters")
 	}
 
 	// 获取账户
 	account, err := aas.accountRepo.Get(ctx, accountID)
 	if err != nil {
+		logger.Error(ctx, "Failed to retrieve account for deposit",
+			"account_id", accountID,
+			"error", err,
+		)
 		return fmt.Errorf("failed to get account: %w", err)
 	}
 
 	if account == nil {
+		logger.Warn(ctx, "Account not found for deposit",
+			"account_id", accountID,
+		)
 		return fmt.Errorf("account not found: %s", accountID)
 	}
 
@@ -164,8 +194,10 @@ func (aas *AccountApplicationService) Deposit(ctx context.Context, accountID str
 	newAvailableBalance := account.AvailableBalance.Add(amount)
 
 	if err := aas.accountRepo.UpdateBalance(ctx, accountID, newBalance, newAvailableBalance, account.FrozenBalance); err != nil {
-		logger.Error(ctx, "Failed to update balance",
+		logger.Error(ctx, "Failed to update balance for deposit",
 			"account_id", accountID,
+			"old_balance", account.Balance.String(),
+			"new_balance", newBalance.String(),
 			"error", err,
 		)
 		return fmt.Errorf("failed to update balance: %w", err)
@@ -181,15 +213,18 @@ func (aas *AccountApplicationService) Deposit(ctx context.Context, accountID str
 	}
 
 	if err := aas.transactionRepo.Save(ctx, transaction); err != nil {
-		logger.Error(ctx, "Failed to save transaction",
+		logger.Error(ctx, "Failed to save deposit transaction",
 			"transaction_id", transaction.TransactionID,
+			"account_id", accountID,
 			"error", err,
 		)
 	}
 
-	logger.Debug(ctx, "Deposit completed",
+	logger.Info(ctx, "Deposit completed successfully",
 		"account_id", accountID,
 		"amount", amount.String(),
+		"new_balance", newBalance.String(),
+		"transaction_id", transaction.TransactionID,
 	)
 
 	return nil

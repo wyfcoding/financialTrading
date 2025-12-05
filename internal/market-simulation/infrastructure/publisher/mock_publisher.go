@@ -2,9 +2,9 @@ package publisher
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/wyfcoding/financialTrading/internal/market-simulation/domain"
+	"github.com/wyfcoding/financialTrading/pkg/logger"
 )
 
 // MockMarketDataPublisher 模拟市场数据发布者
@@ -15,8 +15,12 @@ func NewMockMarketDataPublisher() domain.MarketDataPublisher {
 	return &MockMarketDataPublisher{}
 }
 
-// Publish 发布市场数据
+// Publish 发布市场数据（模拟实现）
 func (p *MockMarketDataPublisher) Publish(ctx context.Context, symbol string, price float64) error {
-	fmt.Printf("[MockMarketDataPublisher] Publishing price for %s: %f\n", symbol, price)
+	logger.Info(ctx, "Publishing market data",
+		"publisher", "MockMarketDataPublisher",
+		"symbol", symbol,
+		"price", price,
+	)
 	return nil
 }

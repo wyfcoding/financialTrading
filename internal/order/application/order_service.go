@@ -62,30 +62,57 @@ func NewOrderApplicationService(orderRepo domain.OrderRepository) *OrderApplicat
 // 4. 保存到仓储
 // 5. 发布订单创建事件（待实现）
 func (oas *OrderApplicationService) CreateOrder(ctx context.Context, req *CreateOrderRequest) (*OrderDTO, error) {
-	// 记录操作开始
-	defer logger.WithContext(ctx).Info("CreateOrder completed",
+	// 记录性能监控
+	defer logger.LogDuration(ctx, "Order creation completed",
 		"user_id", req.UserID,
 		"symbol", req.Symbol,
+	)()
+
+	logger.Info(ctx, "Creating new order",
+		"user_id", req.UserID,
+		"symbol", req.Symbol,
+		"side", req.Side,
+		"order_type", req.OrderType,
 	)
 
 	// 验证输入
 	if req.UserID == "" || req.Symbol == "" || req.Side == "" {
+		logger.Warn(ctx, "Invalid order creation parameters",
+			"user_id", req.UserID,
+			"symbol", req.Symbol,
+			"side", req.Side,
+		)
 		return nil, fmt.Errorf("invalid request parameters")
 	}
 
 	// 解析价格和数量
 	price, err := decimal.NewFromString(req.Price)
 	if err != nil {
+		logger.Error(ctx, "Failed to parse order price",
+			"user_id", req.UserID,
+			"price", req.Price,
+			"error", err,
+		)
 		return nil, fmt.Errorf("invalid price: %w", err)
 	}
 
 	quantity, err := decimal.NewFromString(req.Quantity)
 	if err != nil {
+		logger.Error(ctx, "Failed to parse order quantity",
+			"user_id", req.UserID,
+			"quantity", req.Quantity,
+			"error", err,
+		)
 		return nil, fmt.Errorf("invalid quantity: %w", err)
 	}
 
 	// 生成订单 ID
 	orderID := fmt.Sprintf("ORD-%d", oas.snowflake.Generate())
+
+	logger.Debug(ctx, "Generated order ID",
+		"order_id", orderID,
+		"user_id", req.UserID,
+	)
 
 	// 创建订单领域对象
 	order := domain.NewOrder(
@@ -102,17 +129,22 @@ func (oas *OrderApplicationService) CreateOrder(ctx context.Context, req *Create
 
 	// 保存到仓储
 	if err := oas.orderRepo.Save(ctx, order); err != nil {
-		logger.WithContext(ctx).Error("Failed to save order",
+		logger.Error(ctx, "Failed to save order to repository",
 			"order_id", orderID,
+			"user_id", req.UserID,
+			"symbol", req.Symbol,
 			"error", err,
 		)
 		return nil, fmt.Errorf("failed to save order: %w", err)
 	}
 
-	logger.WithContext(ctx).Debug("Order created successfully",
+	logger.Info(ctx, "Order created successfully",
 		"order_id", orderID,
 		"user_id", req.UserID,
 		"symbol", req.Symbol,
+		"side", req.Side,
+		"price", price.String(),
+		"quantity", quantity.String(),
 	)
 
 	// 转换为 DTO
@@ -170,15 +202,18 @@ func (oas *OrderApplicationService) CancelOrder(ctx context.Context, orderID, us
 
 	// 更新订单状态
 	if err := oas.orderRepo.UpdateStatus(ctx, orderID, domain.OrderStatusCancelled); err != nil {
-		logger.WithContext(ctx).Error("Failed to cancel order",
+		logger.Error(ctx, "Failed to update order status to cancelled",
 			"order_id", orderID,
+			"user_id", userID,
 			"error", err,
 		)
 		return nil, fmt.Errorf("failed to cancel order: %w", err)
 	}
 
-	logger.WithContext(ctx).Debug("Order cancelled successfully",
+	logger.Info(ctx, "Order cancelled successfully",
 		"order_id", orderID,
+		"user_id", userID,
+		"symbol", order.Symbol,
 	)
 
 	// 转换为 DTO

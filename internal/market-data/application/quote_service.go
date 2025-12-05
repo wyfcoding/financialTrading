@@ -67,6 +67,9 @@ func (qas *QuoteApplicationService) GetLatestQuote(ctx context.Context, req *Get
 	}
 
 	if quote == nil {
+		logger.Warn(ctx, "Quote not found",
+			"symbol", req.Symbol,
+		)
 		return nil, fmt.Errorf("quote not found for symbol: %s", req.Symbol)
 	}
 

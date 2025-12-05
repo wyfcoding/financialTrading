@@ -69,24 +69,57 @@ func NewExecutionApplicationService(executionRepo domain.ExecutionRepository) *E
 // - 订单状态的复杂管理（如部分成交）。
 // - 发布订单执行事件到消息队列（如 Kafka），供其他服务（如清算、通知）消费。
 func (eas *ExecutionApplicationService) ExecuteOrder(ctx context.Context, req *ExecuteOrderRequest) (*ExecutionDTO, error) {
+	// 记录性能监控
+	defer logger.LogDuration(ctx, "Order execution completed",
+		"order_id", req.OrderID,
+		"symbol", req.Symbol,
+	)()
+
+	logger.Info(ctx, "Executing order",
+		"order_id", req.OrderID,
+		"user_id", req.UserID,
+		"symbol", req.Symbol,
+		"side", req.Side,
+	)
+
 	// 1. 输入校验
 	if req.OrderID == "" || req.UserID == "" || req.Symbol == "" {
+		logger.Warn(ctx, "Invalid execution request parameters",
+			"order_id", req.OrderID,
+			"user_id", req.UserID,
+			"symbol", req.Symbol,
+		)
 		return nil, fmt.Errorf("invalid request parameters: OrderID, UserID, and Symbol are required")
 	}
 
 	// 2. 数据转换和校验
 	price, err := decimal.NewFromString(req.Price)
 	if err != nil {
+		logger.Error(ctx, "Failed to parse execution price",
+			"order_id", req.OrderID,
+			"price", req.Price,
+			"error", err,
+		)
 		return nil, fmt.Errorf("invalid price format: %w", err)
 	}
 
 	quantity, err := decimal.NewFromString(req.Quantity)
 	if err != nil {
+		logger.Error(ctx, "Failed to parse execution quantity",
+			"order_id", req.OrderID,
+			"quantity", req.Quantity,
+			"error", err,
+		)
 		return nil, fmt.Errorf("invalid quantity format: %w", err)
 	}
 
 	// 3. 生成唯一ID
 	executionID := fmt.Sprintf("EXEC-%d", eas.snowflake.Generate())
+
+	logger.Debug(ctx, "Generated execution ID",
+		"execution_id", executionID,
+		"order_id", req.OrderID,
+	)
 
 	// 4. 创建领域实体
 	execution := &domain.Execution{
@@ -104,9 +137,10 @@ func (eas *ExecutionApplicationService) ExecuteOrder(ctx context.Context, req *E
 
 	// 5. 持久化
 	if err := eas.executionRepo.Save(ctx, execution); err != nil {
-		logger.Error(ctx, "Failed to save execution",
+		logger.Error(ctx, "Failed to save execution record",
 			"execution_id", executionID,
 			"order_id", req.OrderID,
+			"user_id", req.UserID,
 			"error", err,
 		)
 		return nil, fmt.Errorf("failed to save execution record: %w", err)
@@ -115,6 +149,10 @@ func (eas *ExecutionApplicationService) ExecuteOrder(ctx context.Context, req *E
 	logger.Info(ctx, "Order executed successfully",
 		"execution_id", executionID,
 		"order_id", req.OrderID,
+		"user_id", req.UserID,
+		"symbol", req.Symbol,
+		"price", price.String(),
+		"quantity", quantity.String(),
 	)
 
 	// 6. 转换为 DTO 并返回
