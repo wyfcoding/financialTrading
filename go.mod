@@ -6,7 +6,7 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/shopspring/decimal v1.4.0
-	github.com/wyfcoding/pkg v0.0.0-00010101000000-000000000000
+	github.com/wyfcoding/pkg v0.0.0-20251219030337-1bfb413ce019
 	google.golang.org/grpc v1.77.0
 	google.golang.org/protobuf v1.36.10
 	gorm.io/gorm v1.31.1
@@ -109,5 +109,3 @@ require (
 	gorm.io/driver/postgres v1.5.11 // indirect
 	gorm.io/plugin/opentelemetry v0.1.16 // indirect
 )
-
-replace github.com/wyfcoding/pkg => ../pkg
