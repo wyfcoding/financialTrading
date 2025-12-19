@@ -7,8 +7,8 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/matching-engine/domain"
-	"github.com/wyfcoding/financialTrading/pkg/algos"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/algorithm"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // SubmitOrderRequest 提交订单请求 DTO
@@ -23,7 +23,7 @@ type SubmitOrderRequest struct {
 // MatchingApplicationService 撮合应用服务
 // 负责协调撮合引擎、订单簿和成交记录的持久化
 type MatchingApplicationService struct {
-	engine        *algos.MatchingEngine      // 撮合引擎核心
+	engine        *algorithm.MatchingEngine  // 撮合引擎核心
 	tradeRepo     domain.TradeRepository     // 成交记录仓储接口
 	orderBookRepo domain.OrderBookRepository // 订单簿仓储接口
 }
@@ -31,7 +31,7 @@ type MatchingApplicationService struct {
 // NewMatchingApplicationService 创建撮合应用服务
 func NewMatchingApplicationService(tradeRepo domain.TradeRepository, orderBookRepo domain.OrderBookRepository) *MatchingApplicationService {
 	return &MatchingApplicationService{
-		engine:        algos.NewMatchingEngine(),
+		engine:        algorithm.NewMatchingEngine(),
 		tradeRepo:     tradeRepo,
 		orderBookRepo: orderBookRepo,
 	}
@@ -46,12 +46,12 @@ func NewMatchingApplicationService(tradeRepo domain.TradeRepository, orderBookRe
 // 5. 返回撮合结果
 func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *SubmitOrderRequest) (*domain.MatchingResult, error) {
 	// 记录性能监控
-	defer logger.LogDuration(ctx, "Order matching completed",
+	defer logging.LogDuration(ctx, "Order matching completed",
 		"order_id", req.OrderID,
 		"symbol", req.Symbol,
 	)()
 
-	logger.Info(ctx, "Order received for matching",
+	logging.Info(ctx, "Order received for matching",
 		"order_id", req.OrderID,
 		"symbol", req.Symbol,
 		"side", req.Side,
@@ -61,7 +61,7 @@ func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *Sub
 
 	// 验证输入
 	if req.OrderID == "" || req.Symbol == "" || req.Side == "" {
-		logger.Warn(ctx, "Invalid order parameters",
+		logging.Warn(ctx, "Invalid order parameters",
 			"order_id", req.OrderID,
 			"symbol", req.Symbol,
 			"side", req.Side,
@@ -72,7 +72,7 @@ func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *Sub
 	// 解析价格和数量
 	price, err := decimal.NewFromString(req.Price)
 	if err != nil {
-		logger.Error(ctx, "Failed to parse price",
+		logging.Error(ctx, "Failed to parse price",
 			"order_id", req.OrderID,
 			"price", req.Price,
 			"error", err,
@@ -82,7 +82,7 @@ func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *Sub
 
 	quantity, err := decimal.NewFromString(req.Quantity)
 	if err != nil {
-		logger.Error(ctx, "Failed to parse quantity",
+		logging.Error(ctx, "Failed to parse quantity",
 			"order_id", req.OrderID,
 			"quantity", req.Quantity,
 			"error", err,
@@ -91,7 +91,7 @@ func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *Sub
 	}
 
 	// 创建订单对象
-	order := &algos.Order{
+	order := &algorithm.Order{
 		OrderID:   req.OrderID,
 		Symbol:    req.Symbol,
 		Side:      req.Side,
@@ -100,7 +100,7 @@ func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *Sub
 		Timestamp: 0, // 实际应用中应使用当前时间戳
 	}
 
-	logger.Debug(ctx, "Starting order matching",
+	logging.Debug(ctx, "Starting order matching",
 		"order_id", req.OrderID,
 		"symbol", req.Symbol,
 	)
@@ -108,7 +108,7 @@ func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *Sub
 	// 执行撮合
 	trades := mas.engine.Match(order)
 
-	logger.Info(ctx, "Order matched",
+	logging.Info(ctx, "Order matched",
 		"order_id", req.OrderID,
 		"trades_count", len(trades),
 		"remaining_quantity", order.Quantity.String(),
@@ -117,13 +117,13 @@ func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *Sub
 	// 保存成交记录
 	for _, trade := range trades {
 		if err := mas.tradeRepo.Save(ctx, trade); err != nil {
-			logger.Error(ctx, "Failed to save trade",
+			logging.Error(ctx, "Failed to save trade",
 				"trade_id", trade.TradeID,
 				"order_id", req.OrderID,
 				"error", err,
 			)
 		} else {
-			logger.Debug(ctx, "Trade saved successfully",
+			logging.Debug(ctx, "Trade saved successfully",
 				"trade_id", trade.TradeID,
 				"price", trade.Price.String(),
 				"quantity", trade.Quantity.String(),
@@ -180,7 +180,7 @@ func (mas *MatchingApplicationService) GetOrderBook(ctx context.Context, symbol 
 
 	// 保存快照
 	if err := mas.orderBookRepo.SaveSnapshot(ctx, snapshot); err != nil {
-		logger.Error(ctx, "Failed to save order book snapshot",
+		logging.Error(ctx, "Failed to save order book snapshot",
 			"symbol", symbol,
 			"error", err,
 		)
@@ -190,7 +190,7 @@ func (mas *MatchingApplicationService) GetOrderBook(ctx context.Context, symbol 
 }
 
 // GetTrades 获取成交历史
-func (mas *MatchingApplicationService) GetTrades(ctx context.Context, symbol string, limit int) ([]*algos.Trade, error) {
+func (mas *MatchingApplicationService) GetTrades(ctx context.Context, symbol string, limit int) ([]*algorithm.Trade, error) {
 	if symbol == "" {
 		return nil, fmt.Errorf("symbol is required")
 	}
@@ -201,7 +201,7 @@ func (mas *MatchingApplicationService) GetTrades(ctx context.Context, symbol str
 
 	trades, err := mas.tradeRepo.GetLatest(ctx, symbol, limit)
 	if err != nil {
-		logger.Error(ctx, "Failed to get trades",
+		logging.Error(ctx, "Failed to get trades",
 			"symbol", symbol,
 			"error", err,
 		)

@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialTrading/internal/pricing/application"
 	"github.com/wyfcoding/financialTrading/internal/pricing/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // PricingHandler HTTP 处理器
@@ -65,7 +65,7 @@ func (h *PricingHandler) GetOptionPrice(c *gin.Context) {
 
 	price, err := h.app.GetOptionPrice(c.Request.Context(), contract, req.UnderlyingPrice, req.Volatility, req.RiskFreeRate)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to calculate option price", "error", err)
+		logging.Error(c.Request.Context(), "Failed to calculate option price", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -93,7 +93,7 @@ func (h *PricingHandler) GetGreeks(c *gin.Context) {
 
 	greeks, err := h.app.GetGreeks(c.Request.Context(), contract, req.UnderlyingPrice, req.Volatility, req.RiskFreeRate)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to calculate Greeks", "error", err)
+		logging.Error(c.Request.Context(), "Failed to calculate Greeks", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

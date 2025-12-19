@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialTrading/internal/market-making/application"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // MarketMakingHandler HTTP 处理器
@@ -51,7 +51,7 @@ func (h *MarketMakingHandler) SetStrategy(c *gin.Context) {
 
 	id, err := h.app.SetStrategy(c.Request.Context(), req.Symbol, req.Spread, req.MinOrderSize, req.MaxOrderSize, req.MaxPosition, req.Status)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to set strategy", "error", err)
+		logging.Error(c.Request.Context(), "Failed to set strategy", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -69,7 +69,7 @@ func (h *MarketMakingHandler) GetStrategy(c *gin.Context) {
 
 	strategy, err := h.app.GetStrategy(c.Request.Context(), symbol)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to get strategy", "symbol", symbol, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get strategy", "symbol", symbol, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -92,7 +92,7 @@ func (h *MarketMakingHandler) GetPerformance(c *gin.Context) {
 
 	performance, err := h.app.GetPerformance(c.Request.Context(), symbol)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to get performance", "symbol", symbol, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get performance", "symbol", symbol, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

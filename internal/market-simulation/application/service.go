@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wyfcoding/financialTrading/internal/market-simulation/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // MarketSimulationService 市场模拟应用服务
@@ -43,14 +43,14 @@ func (s *MarketSimulationService) StartSimulation(ctx context.Context, name stri
 	}
 
 	if err := s.repo.Save(ctx, scenario); err != nil {
-		logger.Error(ctx, "Failed to save simulation scenario",
+		logging.Error(ctx, "Failed to save simulation scenario",
 			"name", name,
 			"error", err,
 		)
 		return "", fmt.Errorf("failed to save scenario: %w", err)
 	}
 
-	logger.Info(ctx, "Starting simulation",
+	logging.Info(ctx, "Starting simulation",
 		"simulation_id", scenario.ID,
 		"symbol", symbol,
 		"type", simulationType,
@@ -76,7 +76,7 @@ func (s *MarketSimulationService) StartSimulation(ctx context.Context, name stri
 			// 实际项目中应该使用带有超时或取消机制的 context
 			bgCtx := context.Background()
 			if err := s.publisher.Publish(bgCtx, symbol, basePrice); err != nil {
-				logger.Error(bgCtx, "Failed to publish market data",
+				logging.Error(bgCtx, "Failed to publish market data",
 					"symbol", symbol,
 					"price", basePrice,
 					"error", err,
@@ -93,7 +93,7 @@ func (s *MarketSimulationService) StopSimulation(ctx context.Context, simulation
 	// 简化实现，仅更新状态
 	scenario, err := s.repo.GetByID(ctx, simulationID)
 	if err != nil {
-		logger.Error(ctx, "Failed to get simulation scenario",
+		logging.Error(ctx, "Failed to get simulation scenario",
 			"simulation_id", simulationID,
 			"error", err,
 		)
@@ -106,14 +106,14 @@ func (s *MarketSimulationService) StopSimulation(ctx context.Context, simulation
 	scenario.Status = domain.SimulationStatusStopped
 	scenario.EndTime = time.Now()
 	if err := s.repo.Save(ctx, scenario); err != nil { // 更新状态
-		logger.Error(ctx, "Failed to update simulation status",
+		logging.Error(ctx, "Failed to update simulation status",
 			"simulation_id", simulationID,
 			"error", err,
 		)
 		return false, fmt.Errorf("failed to update simulation status: %w", err)
 	}
 
-	logger.Info(ctx, "Simulation stopped", "simulation_id", simulationID)
+	logging.Info(ctx, "Simulation stopped", "simulation_id", simulationID)
 	return true, nil
 }
 
@@ -121,7 +121,7 @@ func (s *MarketSimulationService) StopSimulation(ctx context.Context, simulation
 func (s *MarketSimulationService) GetSimulationStatus(ctx context.Context, simulationID string) (*domain.SimulationScenario, error) {
 	scenario, err := s.repo.GetByID(ctx, simulationID)
 	if err != nil {
-		logger.Error(ctx, "Failed to get simulation scenario",
+		logging.Error(ctx, "Failed to get simulation scenario",
 			"simulation_id", simulationID,
 			"error", err,
 		)

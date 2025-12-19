@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/wyfcoding/financialTrading/internal/quant/domain"
-	"github.com/wyfcoding/financialTrading/pkg/db"
 	"gorm.io/gorm"
 )
 
@@ -27,11 +26,11 @@ func (StrategyModel) TableName() string {
 
 // StrategyRepositoryImpl 策略仓储实现
 type StrategyRepositoryImpl struct {
-	db *db.DB
+	db *gorm.DB
 }
 
 // NewStrategyRepository 创建策略仓储实例
-func NewStrategyRepository(db *db.DB) domain.StrategyRepository {
+func NewStrategyRepository(db *gorm.DB) domain.StrategyRepository {
 	return &StrategyRepositoryImpl{db: db}
 }
 
@@ -96,11 +95,11 @@ func (BacktestResultModel) TableName() string {
 
 // BacktestResultRepositoryImpl 回测结果仓储实现
 type BacktestResultRepositoryImpl struct {
-	db *db.DB
+	db *gorm.DB
 }
 
 // NewBacktestResultRepository 创建回测结果仓储实例
-func NewBacktestResultRepository(db *db.DB) domain.BacktestResultRepository {
+func NewBacktestResultRepository(db *gorm.DB) domain.BacktestResultRepository {
 	return &BacktestResultRepositoryImpl{db: db}
 }
 

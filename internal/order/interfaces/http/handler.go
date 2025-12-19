@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialTrading/internal/order/application"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // OrderHandler HTTP 处理器
@@ -43,7 +43,7 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 
 	dto, err := h.orderService.CreateOrder(c.Request.Context(), &req)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to create order", "error", err)
+		logging.Error(c.Request.Context(), "Failed to create order", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -69,7 +69,7 @@ func (h *OrderHandler) CancelOrder(c *gin.Context) {
 
 	dto, err := h.orderService.CancelOrder(c.Request.Context(), orderID, userID)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to cancel order", "order_id", orderID, "error", err)
+		logging.Error(c.Request.Context(), "Failed to cancel order", "order_id", orderID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -93,7 +93,7 @@ func (h *OrderHandler) GetOrder(c *gin.Context) {
 
 	dto, err := h.orderService.GetOrder(c.Request.Context(), orderID, userID)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to get order", "order_id", orderID, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get order", "order_id", orderID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/wyfcoding/financialTrading/internal/reference-data/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // ReferenceDataService 参考数据应用服务
@@ -30,7 +30,7 @@ func NewReferenceDataService(symbolRepo domain.SymbolRepository, exchangeRepo do
 func (s *ReferenceDataService) GetSymbol(ctx context.Context, id string) (*domain.Symbol, error) {
 	symbol, err := s.symbolRepo.GetByID(ctx, id)
 	if err != nil {
-		logger.Error(ctx, "Failed to get symbol",
+		logging.Error(ctx, "Failed to get symbol",
 			"symbol_id", id,
 			"error", err,
 		)
@@ -43,7 +43,7 @@ func (s *ReferenceDataService) GetSymbol(ctx context.Context, id string) (*domai
 func (s *ReferenceDataService) ListSymbols(ctx context.Context, exchangeID string, status string, limit int, offset int) ([]*domain.Symbol, error) {
 	symbols, err := s.symbolRepo.List(ctx, exchangeID, status, limit, offset)
 	if err != nil {
-		logger.Error(ctx, "Failed to list symbols",
+		logging.Error(ctx, "Failed to list symbols",
 			"exchange_id", exchangeID,
 			"status", status,
 			"error", err,
@@ -57,7 +57,7 @@ func (s *ReferenceDataService) ListSymbols(ctx context.Context, exchangeID strin
 func (s *ReferenceDataService) GetExchange(ctx context.Context, id string) (*domain.Exchange, error) {
 	exchange, err := s.exchangeRepo.GetByID(ctx, id)
 	if err != nil {
-		logger.Error(ctx, "Failed to get exchange",
+		logging.Error(ctx, "Failed to get exchange",
 			"exchange_id", id,
 			"error", err,
 		)
@@ -70,7 +70,7 @@ func (s *ReferenceDataService) GetExchange(ctx context.Context, id string) (*dom
 func (s *ReferenceDataService) ListExchanges(ctx context.Context, limit int, offset int) ([]*domain.Exchange, error) {
 	exchanges, err := s.exchangeRepo.List(ctx, limit, offset)
 	if err != nil {
-		logger.Error(ctx, "Failed to list exchanges", "error", err)
+		logging.Error(ctx, "Failed to list exchanges", "error", err)
 		return nil, fmt.Errorf("failed to list exchanges: %w", err)
 	}
 	return exchanges, nil

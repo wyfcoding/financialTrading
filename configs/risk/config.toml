@@ -1,23 +1,26 @@
-# RiskService 配置文件
-
-service_name = "risk-service"
 version = "1.0.0"
+
+[server]
+name = "risk-service"
 environment = "dev"
 
-[http]
-host = "0.0.0.0"
+# RiskService 配置文件
+
+
+[server.http]
+addr = "0.0.0.0"
 port = 8086
 read_timeout = 30
 write_timeout = 30
 max_connections = 1000
 
-[grpc]
-host = "0.0.0.0"
+[server.grpc]
+addr = "0.0.0.0"
 port = 50057
 max_concurrent_streams = 1000
 idle_timeout = 300
 
-[database]
+[data.database]
 driver = "mysql"
 dsn = "root:password@tcp(localhost:3306)/trading_system?charset=utf8mb4&parseTime=True&loc=Local"
 max_open_conns = 25
@@ -26,9 +29,9 @@ conn_max_lifetime = 300
 log_enabled = false
 slow_query_threshold = 1000
 
-[redis]
-host = "localhost"
-port = 6379
+[data.redis]
+addr = "localhost:6379"
+# port merged into addr
 password = ""
 db = 6
 max_pool_size = 10
@@ -36,14 +39,14 @@ conn_timeout = 5
 read_timeout = 3
 write_timeout = 3
 
-[kafka]
+[messagequeue.kafka]
 brokers = ["localhost:9092"]
 group_id = "risk-service"
 partitions = 3
 replication = 1
 session_timeout = 10
 
-[logger]
+[log]
 level = "info"
 format = "json"
 output = "stdout"

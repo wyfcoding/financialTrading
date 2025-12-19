@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialTrading/internal/execution/application"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // ExecutionHandler HTTP 处理器
@@ -43,7 +43,7 @@ func (h *ExecutionHandler) ExecuteOrder(c *gin.Context) {
 
 	dto, err := h.executionService.ExecuteOrder(c.Request.Context(), &req)
 	if err != nil {
-		logger.Error(c.Request.Context(), "Failed to execute order", "error", err)
+		logging.Error(c.Request.Context(), "Failed to execute order", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -75,7 +75,7 @@ func (h *ExecutionHandler) GetExecutionHistory(c *gin.Context) {
 
 	dtos, total, err := h.executionService.GetExecutionHistory(c.Request.Context(), userID, limit, offset)
 	if err != nil {
-		logger.Error(c.Request.Context(), "Failed to get execution history", "user_id", userID, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get execution history", "user_id", userID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

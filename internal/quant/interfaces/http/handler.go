@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialTrading/internal/quant/application"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // QuantHandler HTTP 处理器
@@ -50,7 +50,7 @@ func (h *QuantHandler) CreateStrategy(c *gin.Context) {
 
 	id, err := h.app.CreateStrategy(c.Request.Context(), req.Name, req.Description, req.Script)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to create strategy", "error", err)
+		logging.Error(c.Request.Context(), "Failed to create strategy", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -68,7 +68,7 @@ func (h *QuantHandler) GetStrategy(c *gin.Context) {
 
 	strategy, err := h.app.GetStrategy(c.Request.Context(), id)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to get strategy", "id", id, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get strategy", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -100,7 +100,7 @@ func (h *QuantHandler) RunBacktest(c *gin.Context) {
 
 	id, err := h.app.RunBacktest(c.Request.Context(), req.StrategyID, req.Symbol, req.StartTime, req.EndTime, req.InitialCapital)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to run backtest", "error", err)
+		logging.Error(c.Request.Context(), "Failed to run backtest", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -118,7 +118,7 @@ func (h *QuantHandler) GetBacktestResult(c *gin.Context) {
 
 	result, err := h.app.GetBacktestResult(c.Request.Context(), id)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to get backtest result", "id", id, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get backtest result", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

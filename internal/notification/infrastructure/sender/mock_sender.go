@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/wyfcoding/financialTrading/internal/notification/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // MockEmailSender 模拟邮件发送器
@@ -17,7 +17,7 @@ func NewMockEmailSender() domain.Sender {
 
 // Send 发送邮件（模拟实现）
 func (s *MockEmailSender) Send(ctx context.Context, target, subject, content string) error {
-	logger.Info(ctx, "Sending email notification",
+	logging.Info(ctx, "Sending email notification",
 		"sender", "MockEmailSender",
 		"target", target,
 		"subject", subject,
@@ -35,7 +35,7 @@ func NewMockSMSSender() domain.Sender {
 
 // Send 发送短信（模拟实现）
 func (s *MockSMSSender) Send(ctx context.Context, target, subject, content string) error {
-	logger.Info(ctx, "Sending SMS notification",
+	logging.Info(ctx, "Sending SMS notification",
 		"sender", "MockSMSSender",
 		"target", target,
 		"content_length", len(content),

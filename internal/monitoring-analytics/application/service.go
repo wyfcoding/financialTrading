@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/wyfcoding/financialTrading/internal/monitoring-analytics/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // MonitoringAnalyticsService 监控分析应用服务
@@ -36,7 +36,7 @@ func (s *MonitoringAnalyticsService) RecordMetric(ctx context.Context, name stri
 		Timestamp: timestamp,
 	}
 	if err := s.metricRepo.Save(ctx, metric); err != nil {
-		logger.Error(ctx, "Failed to save metric",
+		logging.Error(ctx, "Failed to save metric",
 			"name", name,
 			"error", err,
 		)
@@ -44,7 +44,7 @@ func (s *MonitoringAnalyticsService) RecordMetric(ctx context.Context, name stri
 	}
 
 	// Optional: Log metric recording at debug level to avoid spamming
-	logger.Debug(ctx, "Metric recorded",
+	logging.Debug(ctx, "Metric recorded",
 		"name", name,
 		"value", value,
 	)
@@ -56,7 +56,7 @@ func (s *MonitoringAnalyticsService) RecordMetric(ctx context.Context, name stri
 func (s *MonitoringAnalyticsService) GetMetrics(ctx context.Context, name string, startTime, endTime time.Time) ([]*domain.Metric, error) {
 	metrics, err := s.metricRepo.GetMetrics(ctx, name, startTime, endTime)
 	if err != nil {
-		logger.Error(ctx, "Failed to get metrics",
+		logging.Error(ctx, "Failed to get metrics",
 			"name", name,
 			"error", err,
 		)
@@ -69,7 +69,7 @@ func (s *MonitoringAnalyticsService) GetMetrics(ctx context.Context, name string
 func (s *MonitoringAnalyticsService) GetSystemHealth(ctx context.Context, serviceName string) ([]*domain.SystemHealth, error) {
 	healths, err := s.healthRepo.GetLatestHealth(ctx, serviceName)
 	if err != nil {
-		logger.Error(ctx, "Failed to get system health",
+		logging.Error(ctx, "Failed to get system health",
 			"service_name", serviceName,
 			"error", err,
 		)

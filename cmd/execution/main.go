@@ -1,16 +1,11 @@
-// ExecutionService 主程序
-// 功能：提供订单执行服务，负责接收订单并将其路由至撮合引擎或交易所。
 package main
 
 import (
-	"context"
-	"fmt"
-	"net"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
+	"log/slog"
+
 	"time"
+
+	"github.com/wyfcoding/pkg/grpcclient"
 
 	"github.com/gin-gonic/gin"
 	pb "github.com/wyfcoding/financialTrading/go-api/execution"
@@ -18,237 +13,101 @@ import (
 	"github.com/wyfcoding/financialTrading/internal/execution/infrastructure/repository"
 	grpchandler "github.com/wyfcoding/financialTrading/internal/execution/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialTrading/internal/execution/interfaces/http"
-	"github.com/wyfcoding/financialTrading/pkg/cache"
-	"github.com/wyfcoding/financialTrading/pkg/config"
-	"github.com/wyfcoding/financialTrading/pkg/db"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
-	"github.com/wyfcoding/financialTrading/pkg/metrics"
-	"github.com/wyfcoding/financialTrading/pkg/middleware"
-	"github.com/wyfcoding/financialTrading/pkg/ratelimit"
-	"github.com/wyfcoding/financialTrading/pkg/trace"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"github.com/wyfcoding/pkg/app"
+	"github.com/wyfcoding/pkg/cache"
+	configpkg "github.com/wyfcoding/pkg/config"
+	"github.com/wyfcoding/pkg/databases"
+	"github.com/wyfcoding/pkg/limiter"
+	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/metrics"
+	"github.com/wyfcoding/pkg/middleware"
 	"google.golang.org/grpc"
 )
 
-// main 是 ExecutionService 服务的入口函数。
-// 负责整个服务的生命周期管理，包括初始化、运行和优雅地关闭。
-func main() {
-	// 1. 加载配置
-	// 从 `configs/execution/config.toml` 加载服务配置。
-	configPath := "configs/execution/config.toml"
-	cfg, err := config.Load(configPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
-		os.Exit(1)
-	}
-
-	// 2. 初始化日志
-	// 初始化全局结构化日志记录器 (slog)。
-	loggerCfg := logger.Config{
-		ServiceName: cfg.ServiceName,
-		Level:       cfg.Logger.Level,
-		Format:      cfg.Logger.Format,
-		Output:      cfg.Logger.Output,
-		FilePath:    cfg.Logger.FilePath,
-		MaxSize:     cfg.Logger.MaxSize,
-		MaxBackups:  cfg.Logger.MaxBackups,
-		MaxAge:      cfg.Logger.MaxAge,
-		Compress:    cfg.Logger.Compress,
-		WithCaller:  cfg.Logger.WithCaller,
-	}
-	if err := logger.Init(loggerCfg); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
-		os.Exit(1)
-	}
-
-	ctx := context.Background()
-	log := logger.WithModule("main")
-
-	log.InfoContext(ctx, "Starting ExecutionService",
-		"service", cfg.ServiceName,
-		"version", cfg.Version,
-		"environment", cfg.Environment,
-	)
-
-	// 3. 初始化追踪
-	// 如果配置中启用，则初始化 OpenTelemetry 分布式追踪。
-	if cfg.Tracing.Enabled {
-		shutdown, err := trace.InitTracer(cfg.ServiceName, cfg.Tracing.CollectorEndpoint)
-		if err != nil {
-			log.ErrorContext(ctx, "Failed to initialize tracer", "error", err)
-		} else {
-			defer func() {
-				if err := shutdown(context.Background()); err != nil {
-					log.ErrorContext(ctx, "Failed to shutdown tracer", "error", err)
-				}
-			}()
-			log.InfoContext(ctx, "Tracer initialized", "endpoint", cfg.Tracing.CollectorEndpoint)
-		}
-	}
-
-	// 4. 初始化数据库
-	dbCfg := db.Config{
-		Driver:             cfg.Database.Driver,
-		DSN:                cfg.Database.DSN,
-		MaxOpenConns:       cfg.Database.MaxOpenConns,
-		MaxIdleConns:       cfg.Database.MaxIdleConns,
-		ConnMaxLifetime:    cfg.Database.ConnMaxLifetime,
-		LogEnabled:         cfg.Database.LogEnabled,
-		SlowQueryThreshold: cfg.Database.SlowQueryThreshold,
-	}
-	database, err := db.Init(dbCfg)
-	if err != nil {
-		log.ErrorContext(ctx, "Failed to initialize database", "error", err)
-		os.Exit(1)
-	}
-	defer database.Close()
-
-	// 5. 初始化 Redis
-	redisCfg := cache.Config{
-		Host:         cfg.Redis.Host,
-		Port:         cfg.Redis.Port,
-		Password:     cfg.Redis.Password,
-		DB:           cfg.Redis.DB,
-		MaxPoolSize:  cfg.Redis.MaxPoolSize,
-		ConnTimeout:  cfg.Redis.ConnTimeout,
-		ReadTimeout:  cfg.Redis.ReadTimeout,
-		WriteTimeout: cfg.Redis.WriteTimeout,
-	}
-	redisCache, err := cache.New(redisCfg)
-	if err != nil {
-		log.ErrorContext(ctx, "Failed to initialize Redis", "error", err)
-		os.Exit(1)
-	}
-	defer redisCache.Close()
-
-	// 6. 初始化限流器
-	rateLimiter := ratelimit.NewRedisRateLimiter(redisCache.GetClient())
-
-	// 7. 初始化仓储 (DDD - Infrastructure)
-	executionRepo := repository.NewExecutionRepository(database)
-
-	// 8. 初始化应用服务 (DDD - Application)
-	executionAppService := application.NewExecutionApplicationService(executionRepo)
-
-	// 9. 初始化指标
-	// 初始化并启动 Prometheus 指标服务。
-	metricsInstance := metrics.New(cfg.ServiceName)
-	if err := metricsInstance.Register(); err != nil {
-		log.ErrorContext(ctx, "Failed to register metrics", "error", err)
-		os.Exit(1)
-	}
-	if err := metrics.StartHTTPServer(cfg.Metrics.Port, cfg.Metrics.Path); err != nil {
-		log.ErrorContext(ctx, "Failed to start metrics HTTP server", "error", err)
-		os.Exit(1)
-	}
-
-	// 10. 创建 HTTP 服务器
-	httpServer := createHTTPServer(cfg, executionAppService, rateLimiter)
-
-	// 11. 创建 gRPC 服务器
-	grpcServer := createGRPCServer(cfg, executionAppService)
-
-	// 12. 在独立的 goroutine 中启动 HTTP 服务器
-	go func() {
-		addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
-		log.InfoContext(ctx, "Starting HTTP server", "addr", addr)
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.ErrorContext(ctx, "HTTP server error", "error", err)
-			os.Exit(1)
-		}
-	}()
-
-	// 13. 在独立的 goroutine 中启动 gRPC 服务器
-	go func() {
-		addr := fmt.Sprintf("%s:%d", cfg.GRPC.Host, cfg.GRPC.Port)
-		listener, err := net.Listen("tcp", addr)
-		if err != nil {
-			log.ErrorContext(ctx, "Failed to listen on gRPC address", "error", err)
-			os.Exit(1)
-		}
-		log.InfoContext(ctx, "Starting gRPC server", "addr", addr)
-		if err := grpcServer.Serve(listener); err != nil {
-			log.ErrorContext(ctx, "gRPC server error", "error", err)
-			os.Exit(1)
-		}
-	}()
-
-	// 14. 优雅关停
-	// 监听系统信号，以触发平滑关停流程。
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	<-sigChan
-
-	log.InfoContext(ctx, "Shutting down ExecutionService")
-
-	// 优雅关闭 HTTP 服务器。
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := httpServer.Shutdown(shutdownCtx); err != nil {
-		log.ErrorContext(ctx, "HTTP server shutdown error", "error", err)
-	}
-
-	// 优雅关闭 gRPC 服务器。
-	grpcServer.GracefulStop()
-
-	log.InfoContext(ctx, "ExecutionService stopped")
+type AppContext struct {
+	AppService *application.ExecutionApplicationService
+	Limiter    limiter.Limiter
+	Config     *configpkg.Config
+	Clients    *ServiceClients
 }
 
-// createHTTPServer 负责创建和配置 Gin HTTP 服务器。
-func createHTTPServer(cfg *config.Config, executionAppService *application.ExecutionApplicationService, rateLimiter ratelimit.RateLimiter) *http.Server {
-	router := gin.Default()
+type ServiceClients struct {
+	Order          *grpc.ClientConn
+	MatchingEngine *grpc.ClientConn
+}
 
-	// 注册通用中间件。
-	router.Use(otelgin.Middleware(cfg.ServiceName))                        // OpenTelemetry 追踪
-	router.Use(middleware.GinLoggingMiddleware())                          // 结构化日志
-	router.Use(middleware.GinRecoveryMiddleware())                         // Panic 恢复
-	router.Use(middleware.GinCORSMiddleware())                             // 跨域资源共享
-	router.Use(middleware.RateLimitMiddleware(rateLimiter, cfg.RateLimit)) // API 限流
+const BootstrapName = "execution"
 
-	// 注册该服务的业务路由。
-	httpHandler := httphandler.NewExecutionHandler(executionAppService)
-	httpHandler.RegisterRoutes(router)
+func main() {
+	app.NewBuilder(BootstrapName).
+		WithConfig(&configpkg.Config{}).
+		WithService(initService).
+		WithGRPC(registerGRPC).
+		WithGin(registerGin).
+		WithGinMiddleware(middleware.CORS()).
+		Build().
+		Run()
+}
 
-	// 健康检查端点。
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
+func registerGRPC(s *grpc.Server, srv interface{}) {
+	ctx := srv.(*AppContext)
+	handler := grpchandler.NewGRPCHandler(ctx.AppService)
+	pb.RegisterExecutionServiceServer(s, handler)
+	slog.Default().Info("gRPC server registered", "service", BootstrapName)
+}
+
+func registerGin(e *gin.Engine, srv interface{}) {
+	ctx := srv.(*AppContext)
+	e.Use(middleware.RateLimitWithLimiter(ctx.Limiter))
+	httpHandler := httphandler.NewExecutionHandler(ctx.AppService)
+	httpHandler.RegisterRoutes(e)
+	e.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
 			"status":    "healthy",
-			"service":   cfg.ServiceName,
+			"service":   BootstrapName,
 			"timestamp": time.Now().Unix(),
 		})
 	})
-
-	// 返回配置好的 http.Server 实例。
-	return &http.Server{
-		Addr:         fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port),
-		Handler:      router,
-		ReadTimeout:  time.Duration(cfg.HTTP.ReadTimeout) * time.Second,
-		WriteTimeout: time.Duration(cfg.HTTP.WriteTimeout) * time.Second,
-	}
+	slog.Default().Info("HTTP routes registered", "service", BootstrapName)
 }
 
-// createGRPCServer 负责创建和配置 gRPC 服务器。
-func createGRPCServer(cfg *config.Config, executionAppService *application.ExecutionApplicationService) *grpc.Server {
-	// 配置 gRPC 服务器选项。
-	opts := []grpc.ServerOption{
-		// 添加 OpenTelemetry 拦截器。
-		grpc.StatsHandler(otelgrpc.NewServerHandler()),
-		// 链式一元拦截器。
-		grpc.ChainUnaryInterceptor(
-			middleware.GRPCLoggingInterceptor(),  // 日志记录
-			middleware.GRPCRecoveryInterceptor(), // Panic 恢复
-		),
-		// 设置服务器端的最大并发流数。
-		grpc.MaxConcurrentStreams(uint32(cfg.GRPC.MaxConcurrentStreams)),
+func initService(cfg interface{}, m *metrics.Metrics) (interface{}, func(), error) {
+	c := cfg.(*configpkg.Config)
+	slog.Info("initializing service dependencies...")
+	db, err := databases.NewDB(c.Data.Database, logging.Default())
+	if err != nil {
+		return nil, nil, err
 	}
+	redisCache, err := cache.NewRedisCache(c.Data.Redis)
+	if err != nil {
+		return nil, nil, err
+	}
+	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
+	executionRepo := repository.NewExecutionRepository(db)
+	appService := application.NewExecutionApplicationService(executionRepo)
 
-	// 创建 gRPC 服务器。
-	server := grpc.NewServer(opts...)
-
-	// 创建并注册 gRPC 服务处理器。
-	handler := grpchandler.NewGRPCHandler(executionAppService)
-	pb.RegisterExecutionServiceServer(server, handler)
-
-	return server
+	// Downstream Clients
+	clients := &ServiceClients{}
+	clientCleanup, err := grpcclient.InitServiceClients(c.Services, clients)
+	if err != nil {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+		redisCache.Close()
+		return nil, nil, err
+	}
+	cleanup := func() {
+		slog.Info("cleaning up resources...")
+		clientCleanup()
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+		redisCache.Close()
+	}
+	return &AppContext{
+		AppService: appService,
+		Limiter:    rateLimiter,
+		Config:     c,
+		Clients:    clients,
+	}, cleanup, nil
 }

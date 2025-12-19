@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/wyfcoding/financialTrading/internal/market-making/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 )
 
@@ -69,7 +69,7 @@ func (r *QuoteStrategyRepositoryImpl) Save(ctx context.Context, strategy *domain
 	}
 	// Upsert
 	if err := r.db.WithContext(ctx).Where(QuoteStrategyModel{Symbol: strategy.Symbol}).Assign(model).FirstOrCreate(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save quote strategy",
+		logging.Error(ctx, "Failed to save quote strategy",
 			"symbol", strategy.Symbol,
 			"error", err,
 		)
@@ -87,7 +87,7 @@ func (r *QuoteStrategyRepositoryImpl) GetBySymbol(ctx context.Context, symbol st
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get quote strategy by symbol",
+		logging.Error(ctx, "Failed to get quote strategy by symbol",
 			"symbol", symbol,
 			"error", err,
 		)
@@ -146,7 +146,7 @@ func (r *PerformanceRepositoryImpl) Save(ctx context.Context, performance *domai
 		SharpeRatio: performance.SharpeRatio,
 	}
 	if err := r.db.WithContext(ctx).Where(PerformanceModel{Symbol: performance.Symbol}).Assign(model).FirstOrCreate(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save performance",
+		logging.Error(ctx, "Failed to save performance",
 			"symbol", performance.Symbol,
 			"error", err,
 		)
@@ -164,7 +164,7 @@ func (r *PerformanceRepositoryImpl) GetBySymbol(ctx context.Context, symbol stri
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get performance by symbol",
+		logging.Error(ctx, "Failed to get performance by symbol",
 			"symbol", symbol,
 			"error", err,
 		)

@@ -7,7 +7,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/position/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // PositionDTO 持仓 DTO
@@ -51,7 +51,7 @@ func (pas *PositionApplicationService) GetPositions(ctx context.Context, userID 
 	// 获取持仓列表
 	positions, total, err := pas.positionRepo.GetByUser(ctx, userID, limit, offset)
 	if err != nil {
-		logger.WithContext(ctx).Error("Failed to get positions",
+		logging.Error(ctx, "Failed to get positions",
 			"user_id", userID,
 			"error", err,
 		)
@@ -95,7 +95,7 @@ func (pas *PositionApplicationService) GetPosition(ctx context.Context, position
 	// 获取持仓
 	position, err := pas.positionRepo.Get(ctx, positionID)
 	if err != nil {
-		logger.WithContext(ctx).Error("Failed to get position",
+		logging.Error(ctx, "Failed to get position",
 			"position_id", positionID,
 			"error", err,
 		)
@@ -137,14 +137,14 @@ func (pas *PositionApplicationService) ClosePosition(ctx context.Context, positi
 
 	// 平仓
 	if err := pas.positionRepo.Close(ctx, positionID, closePrice); err != nil {
-		logger.WithContext(ctx).Error("Failed to close position",
+		logging.Error(ctx, "Failed to close position",
 			"position_id", positionID,
 			"error", err,
 		)
 		return fmt.Errorf("failed to close position: %w", err)
 	}
 
-	logger.WithContext(ctx).Debug("Position closed successfully",
+	logging.Debug(ctx, "Position closed successfully",
 		"position_id", positionID,
 		"close_price", closePrice.String(),
 	)

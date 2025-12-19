@@ -1,3 +1,9 @@
+version = "1.0.0"
+
+[server]
+name = "financial-service"
+environment = "dev"
+
 [server]
 name = "pricing-service"
 grpc_port = 50055
@@ -9,7 +15,7 @@ level = "info"
 format = "json"
 output = "stdout"
 
-[redis]
+[data.redis]
 addr = "localhost:6379"
 password = ""
 db = 0
@@ -18,7 +24,12 @@ db = 0
 endpoints = ["localhost:2379"]
 
 [jaeger]
-agent_host = "localhost"
+agent_addr = "localhost"
 agent_port = 6831
 sampler_type = "const"
 sampler_param = 1.0
+
+[metrics]
+enabled = true
+port = "9090"
+path = "/metrics"

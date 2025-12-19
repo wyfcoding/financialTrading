@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/position/application"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // PositionHandler HTTP 处理器
@@ -58,7 +58,7 @@ func (h *PositionHandler) GetPositions(c *gin.Context) {
 
 	dtos, total, err := h.positionService.GetPositions(c.Request.Context(), userID, limit, offset)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to get positions", "user_id", userID, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get positions", "user_id", userID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -79,7 +79,7 @@ func (h *PositionHandler) GetPosition(c *gin.Context) {
 
 	dto, err := h.positionService.GetPosition(c.Request.Context(), positionID)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to get position", "position_id", positionID, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get position", "position_id", positionID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -113,7 +113,7 @@ func (h *PositionHandler) ClosePosition(c *gin.Context) {
 	}
 
 	if err := h.positionService.ClosePosition(c.Request.Context(), positionID, closePrice); err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to close position", "position_id", positionID, "error", err)
+		logging.Error(c.Request.Context(), "Failed to close position", "position_id", positionID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

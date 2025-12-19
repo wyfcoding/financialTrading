@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialTrading/internal/market-data/application"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // Handler HTTP 处理器
@@ -37,7 +37,7 @@ func (h *Handler) GetLatestQuote(c *gin.Context) {
 
 	// 验证输入
 	if symbol == "" {
-		logger.Warn(ctx, "Invalid request: symbol is required")
+		logging.Warn(ctx, "Invalid request: symbol is required")
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "symbol is required",
 		})
@@ -51,7 +51,7 @@ func (h *Handler) GetLatestQuote(c *gin.Context) {
 
 	quoteDTO, err := h.quoteService.GetLatestQuote(ctx, req)
 	if err != nil {
-		logger.Error(ctx, "Failed to get latest quote",
+		logging.Error(ctx, "Failed to get latest quote",
 			"symbol", symbol,
 			"error", err,
 		)
@@ -85,7 +85,7 @@ func (h *Handler) GetHistoricalQuotes(c *gin.Context) {
 
 	// 验证输入
 	if symbol == "" || startTime == "" || endTime == "" {
-		logger.Warn(ctx, "Invalid request parameters")
+		logging.Warn(ctx, "Invalid request parameters")
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "symbol, start_time, and end_time are required",
 		})
@@ -95,7 +95,7 @@ func (h *Handler) GetHistoricalQuotes(c *gin.Context) {
 	// 解析 startTime 和 endTime 从字符串到 int64
 	startTimeInt, err := strconv.ParseInt(startTime, 10, 64)
 	if err != nil {
-		logger.Warn(ctx, "Invalid start_time format",
+		logging.Warn(ctx, "Invalid start_time format",
 			"start_time", startTime,
 			"error", err,
 		)
@@ -107,7 +107,7 @@ func (h *Handler) GetHistoricalQuotes(c *gin.Context) {
 
 	endTimeInt, err := strconv.ParseInt(endTime, 10, 64)
 	if err != nil {
-		logger.Warn(ctx, "Invalid end_time format",
+		logging.Warn(ctx, "Invalid end_time format",
 			"end_time", endTime,
 			"error", err,
 		)
@@ -119,7 +119,7 @@ func (h *Handler) GetHistoricalQuotes(c *gin.Context) {
 
 	// 验证时间范围合法性
 	if startTimeInt >= endTimeInt {
-		logger.Warn(ctx, "Invalid time range",
+		logging.Warn(ctx, "Invalid time range",
 			"start_time", startTimeInt,
 			"end_time", endTimeInt,
 		)
@@ -132,7 +132,7 @@ func (h *Handler) GetHistoricalQuotes(c *gin.Context) {
 	// 调用应用服务
 	quotes, err := h.quoteService.GetHistoricalQuotes(ctx, symbol, startTimeInt, endTimeInt)
 	if err != nil {
-		logger.Error(ctx, "Failed to get historical quotes",
+		logging.Error(ctx, "Failed to get historical quotes",
 			"symbol", symbol,
 			"error", err,
 		)

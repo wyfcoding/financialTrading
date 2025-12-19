@@ -7,9 +7,8 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/matching-engine/domain"
-	"github.com/wyfcoding/financialTrading/pkg/algos"
-	"github.com/wyfcoding/financialTrading/pkg/db"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/algorithm"
+	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 )
 
@@ -40,18 +39,18 @@ func (TradeModel) TableName() string {
 
 // TradeRepositoryImpl 成交记录仓储实现
 type TradeRepositoryImpl struct {
-	db *db.DB
+	db *gorm.DB
 }
 
 // NewTradeRepository 创建成交记录仓储
-func NewTradeRepository(database *db.DB) domain.TradeRepository {
+func NewTradeRepository(database *gorm.DB) domain.TradeRepository {
 	return &TradeRepositoryImpl{
 		db: database,
 	}
 }
 
 // Save 保存成交记录
-func (tr *TradeRepositoryImpl) Save(ctx context.Context, trade *algos.Trade) error {
+func (tr *TradeRepositoryImpl) Save(ctx context.Context, trade *algorithm.Trade) error {
 	model := &TradeModel{
 		TradeID:     trade.TradeID,
 		Symbol:      trade.Symbol,
@@ -63,7 +62,7 @@ func (tr *TradeRepositoryImpl) Save(ctx context.Context, trade *algos.Trade) err
 	}
 
 	if err := tr.db.WithContext(ctx).Create(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save trade",
+		logging.Error(ctx, "Failed to save trade",
 			"trade_id", trade.TradeID,
 			"error", err,
 		)
@@ -74,22 +73,22 @@ func (tr *TradeRepositoryImpl) Save(ctx context.Context, trade *algos.Trade) err
 }
 
 // GetHistory 获取成交历史
-func (tr *TradeRepositoryImpl) GetHistory(ctx context.Context, symbol string, limit int) ([]*algos.Trade, error) {
+func (tr *TradeRepositoryImpl) GetHistory(ctx context.Context, symbol string, limit int) ([]*algorithm.Trade, error) {
 	var models []TradeModel
 
 	if err := tr.db.WithContext(ctx).Where("symbol = ?", symbol).Order("timestamp DESC").Limit(limit).Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to get trade history",
+		logging.Error(ctx, "Failed to get trade history",
 			"symbol", symbol,
 			"error", err,
 		)
 		return nil, fmt.Errorf("failed to get trade history: %w", err)
 	}
 
-	trades := make([]*algos.Trade, 0, len(models))
+	trades := make([]*algorithm.Trade, 0, len(models))
 	for _, model := range models {
 		price, _ := parseDecimal(model.Price)
 		quantity, _ := parseDecimal(model.Quantity)
-		trades = append(trades, &algos.Trade{
+		trades = append(trades, &algorithm.Trade{
 			TradeID:     model.TradeID,
 			Symbol:      model.Symbol,
 			BuyOrderID:  model.BuyOrderID,
@@ -104,17 +103,17 @@ func (tr *TradeRepositoryImpl) GetHistory(ctx context.Context, symbol string, li
 }
 
 // GetLatest 获取最新成交
-func (tr *TradeRepositoryImpl) GetLatest(ctx context.Context, symbol string, limit int) ([]*algos.Trade, error) {
+func (tr *TradeRepositoryImpl) GetLatest(ctx context.Context, symbol string, limit int) ([]*algorithm.Trade, error) {
 	return tr.GetHistory(ctx, symbol, limit)
 }
 
 // OrderBookRepositoryImpl 订单簿仓储实现
 type OrderBookRepositoryImpl struct {
-	db *db.DB
+	db *gorm.DB
 }
 
 // NewOrderBookRepository 创建订单簿仓储
-func NewOrderBookRepository(database *db.DB) domain.OrderBookRepository {
+func NewOrderBookRepository(database *gorm.DB) domain.OrderBookRepository {
 	return &OrderBookRepositoryImpl{
 		db: database,
 	}
@@ -123,7 +122,7 @@ func NewOrderBookRepository(database *db.DB) domain.OrderBookRepository {
 // SaveSnapshot 保存订单簿快照
 func (obr *OrderBookRepositoryImpl) SaveSnapshot(ctx context.Context, snapshot *domain.OrderBookSnapshot) error {
 	// 实现待补充：保存订单簿快照到数据库或缓存
-	logger.Debug(ctx, "Order book snapshot saved",
+	logging.Debug(ctx, "Order book snapshot saved",
 		"symbol", snapshot.Symbol,
 		"bids_count", len(snapshot.Bids),
 		"asks_count", len(snapshot.Asks),

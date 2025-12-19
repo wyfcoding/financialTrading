@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/account/application"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // AccountHandler HTTP 处理器
@@ -43,7 +43,7 @@ func (h *AccountHandler) CreateAccount(c *gin.Context) {
 
 	account, err := h.accountService.CreateAccount(c.Request.Context(), &req)
 	if err != nil {
-		logger.Error(c.Request.Context(), "Failed to create account", "error", err)
+		logging.Error(c.Request.Context(), "Failed to create account", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -61,7 +61,7 @@ func (h *AccountHandler) GetAccount(c *gin.Context) {
 
 	account, err := h.accountService.GetAccount(c.Request.Context(), accountID)
 	if err != nil {
-		logger.Error(c.Request.Context(), "Failed to get account", "account_id", accountID, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get account", "account_id", accountID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -95,7 +95,7 @@ func (h *AccountHandler) Deposit(c *gin.Context) {
 	}
 
 	if err := h.accountService.Deposit(c.Request.Context(), accountID, amount); err != nil {
-		logger.Error(c.Request.Context(), "Failed to deposit", "account_id", accountID, "error", err)
+		logging.Error(c.Request.Context(), "Failed to deposit", "account_id", accountID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

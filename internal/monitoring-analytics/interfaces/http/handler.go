@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialTrading/internal/monitoring-analytics/application"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // MonitoringAnalyticsHandler HTTP 处理器
@@ -54,7 +54,7 @@ func (h *MonitoringAnalyticsHandler) RecordMetric(c *gin.Context) {
 
 	err := h.app.RecordMetric(c.Request.Context(), req.Name, req.Value, req.Tags, req.Timestamp)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to record metric", "error", err)
+		logging.Error(c.Request.Context(), "Failed to record metric", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -98,7 +98,7 @@ func (h *MonitoringAnalyticsHandler) GetMetrics(c *gin.Context) {
 
 	metrics, err := h.app.GetMetrics(c.Request.Context(), name, startTime, endTime)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to get metrics", "error", err)
+		logging.Error(c.Request.Context(), "Failed to get metrics", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -116,7 +116,7 @@ func (h *MonitoringAnalyticsHandler) GetSystemHealth(c *gin.Context) {
 
 	healths, err := h.app.GetSystemHealth(c.Request.Context(), serviceName)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to get system health", "error", err)
+		logging.Error(c.Request.Context(), "Failed to get system health", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

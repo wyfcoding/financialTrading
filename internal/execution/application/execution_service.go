@@ -9,8 +9,8 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/execution/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
-	"github.com/wyfcoding/financialTrading/pkg/utils"
+	"github.com/wyfcoding/pkg/idgen"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // ExecuteOrderRequest 是执行订单请求的数据传输对象 (DTO)。
@@ -43,7 +43,6 @@ type ExecutionDTO struct {
 // 它封装了所有与订单执行相关的业务用例。
 type ExecutionApplicationService struct {
 	executionRepo domain.ExecutionRepository // 依赖注入的执行仓储接口
-	snowflake     *utils.SnowflakeID         // 雪花算法ID生成器
 }
 
 // NewExecutionApplicationService 是 ExecutionApplicationService 的构造函数。
@@ -51,7 +50,6 @@ func NewExecutionApplicationService(executionRepo domain.ExecutionRepository) *E
 	// 初始化雪花ID生成器，传入一个唯一的节点ID（此处为2）。
 	return &ExecutionApplicationService{
 		executionRepo: executionRepo,
-		snowflake:     utils.NewSnowflakeID(2),
 	}
 }
 
@@ -70,12 +68,12 @@ func NewExecutionApplicationService(executionRepo domain.ExecutionRepository) *E
 // - 发布订单执行事件到消息队列（如 Kafka），供其他服务（如清算、通知）消费。
 func (eas *ExecutionApplicationService) ExecuteOrder(ctx context.Context, req *ExecuteOrderRequest) (*ExecutionDTO, error) {
 	// 记录性能监控
-	defer logger.LogDuration(ctx, "Order execution completed",
+	defer logging.LogDuration(ctx, "Order execution completed",
 		"order_id", req.OrderID,
 		"symbol", req.Symbol,
 	)()
 
-	logger.Info(ctx, "Executing order",
+	logging.Info(ctx, "Executing order",
 		"order_id", req.OrderID,
 		"user_id", req.UserID,
 		"symbol", req.Symbol,
@@ -84,7 +82,7 @@ func (eas *ExecutionApplicationService) ExecuteOrder(ctx context.Context, req *E
 
 	// 1. 输入校验
 	if req.OrderID == "" || req.UserID == "" || req.Symbol == "" {
-		logger.Warn(ctx, "Invalid execution request parameters",
+		logging.Warn(ctx, "Invalid execution request parameters",
 			"order_id", req.OrderID,
 			"user_id", req.UserID,
 			"symbol", req.Symbol,
@@ -95,7 +93,7 @@ func (eas *ExecutionApplicationService) ExecuteOrder(ctx context.Context, req *E
 	// 2. 数据转换和校验
 	price, err := decimal.NewFromString(req.Price)
 	if err != nil {
-		logger.Error(ctx, "Failed to parse execution price",
+		logging.Error(ctx, "Failed to parse execution price",
 			"order_id", req.OrderID,
 			"price", req.Price,
 			"error", err,
@@ -105,7 +103,7 @@ func (eas *ExecutionApplicationService) ExecuteOrder(ctx context.Context, req *E
 
 	quantity, err := decimal.NewFromString(req.Quantity)
 	if err != nil {
-		logger.Error(ctx, "Failed to parse execution quantity",
+		logging.Error(ctx, "Failed to parse execution quantity",
 			"order_id", req.OrderID,
 			"quantity", req.Quantity,
 			"error", err,
@@ -114,9 +112,9 @@ func (eas *ExecutionApplicationService) ExecuteOrder(ctx context.Context, req *E
 	}
 
 	// 3. 生成唯一ID
-	executionID := fmt.Sprintf("EXEC-%d", eas.snowflake.Generate())
+	executionID := fmt.Sprintf("EXEC-%d", idgen.GenID())
 
-	logger.Debug(ctx, "Generated execution ID",
+	logging.Debug(ctx, "Generated execution ID",
 		"execution_id", executionID,
 		"order_id", req.OrderID,
 	)
@@ -137,7 +135,7 @@ func (eas *ExecutionApplicationService) ExecuteOrder(ctx context.Context, req *E
 
 	// 5. 持久化
 	if err := eas.executionRepo.Save(ctx, execution); err != nil {
-		logger.Error(ctx, "Failed to save execution record",
+		logging.Error(ctx, "Failed to save execution record",
 			"execution_id", executionID,
 			"order_id", req.OrderID,
 			"user_id", req.UserID,
@@ -146,7 +144,7 @@ func (eas *ExecutionApplicationService) ExecuteOrder(ctx context.Context, req *E
 		return nil, fmt.Errorf("failed to save execution record: %w", err)
 	}
 
-	logger.Info(ctx, "Order executed successfully",
+	logging.Info(ctx, "Order executed successfully",
 		"execution_id", executionID,
 		"order_id", req.OrderID,
 		"user_id", req.UserID,
@@ -179,7 +177,7 @@ func (eas *ExecutionApplicationService) GetExecutionHistory(ctx context.Context,
 	// 从仓储获取领域实体列表
 	executions, total, err := eas.executionRepo.GetByUser(ctx, userID, limit, offset)
 	if err != nil {
-		logger.Error(ctx, "Failed to get execution history",
+		logging.Error(ctx, "Failed to get execution history",
 			"user_id", userID,
 			"error", err,
 		)

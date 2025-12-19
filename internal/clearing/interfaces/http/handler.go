@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialTrading/internal/clearing/application"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // ClearingHandler 是清算服务的 HTTP 处理器。
@@ -59,7 +59,7 @@ func (h *ClearingHandler) SettleTrade(c *gin.Context) {
 	//    从 Gin 的 context 中传递 `Request.Context()`，以支持 Trace 和超时控制。
 	settlementID, err := h.clearingService.SettleTrade(c.Request.Context(), &req)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to settle trade", "error", err)
+		logging.Error(c.Request.Context(), "Failed to settle trade", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to settle trade: " + err.Error()})
 		return
 	}
@@ -98,7 +98,7 @@ func (h *ClearingHandler) ExecuteEODClearing(c *gin.Context) {
 
 	clearingID, err := h.clearingService.ExecuteEODClearing(c.Request.Context(), req.ClearingDate)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to execute EOD clearing", "error", err)
+		logging.Error(c.Request.Context(), "Failed to execute EOD clearing", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to execute EOD clearing: " + err.Error()})
 		return
 	}
@@ -132,7 +132,7 @@ func (h *ClearingHandler) GetClearingStatus(c *gin.Context) {
 	// 2. 调用应用服务查询状态。
 	clearing, err := h.clearingService.GetClearingStatus(c.Request.Context(), clearingID)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to get clearing status", "clearing_id", clearingID, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get clearing status", "clearing_id", clearingID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get clearing status: " + err.Error()})
 		return
 	}

@@ -1,29 +1,32 @@
+version = "1.0.0"
+
+[server]
+name = "market-data-service"
+environment = "dev"
+
 # MarketDataService 配置文件
 # 支持环境变量覆盖：APP_<SECTION>_<KEY> 格式
 # 例如：APP_HTTP_PORT=8081 会覆盖 http.port 配置
 
 # 服务基本信息
-service_name = "market-data-service"
-version = "1.0.0"
-environment = "dev" # dev, staging, prod
 
 # HTTP 服务配置
-[http]
-host = "0.0.0.0"
+[server.http]
+addr = "0.0.0.0"
 port = 8080
 read_timeout = 30
 write_timeout = 30
 max_connections = 1000
 
 # gRPC 服务配置
-[grpc]
-host = "0.0.0.0"
+[server.grpc]
+addr = "0.0.0.0"
 port = 50051
 max_concurrent_streams = 1000
 idle_timeout = 300
 
 # 数据库配置
-[database]
+[data.database]
 driver = "mysql"
 # DSN 格式：user:password@tcp(host:port)/dbname?charset=utf8mb4&parseTime=True&loc=Local
 dsn = "root:password@tcp(localhost:3306)/trading_system?charset=utf8mb4&parseTime=True&loc=Local"
@@ -34,9 +37,9 @@ log_enabled = false
 slow_query_threshold = 1000
 
 # Redis 缓存配置
-[redis]
-host = "localhost"
-port = 6379
+[data.redis]
+addr = "localhost:6379"
+# port merged into addr
 password = ""
 db = 0
 max_pool_size = 10
@@ -45,7 +48,7 @@ read_timeout = 3
 write_timeout = 3
 
 # Kafka 消息队列配置
-[kafka]
+[messagequeue.kafka]
 brokers = ["localhost:9092"]
 group_id = "market-data-service"
 partitions = 3
@@ -53,7 +56,7 @@ replication = 1
 session_timeout = 10
 
 # 日志配置
-[logger]
+[log]
 level = "info"
 format = "json"
 output = "stdout"

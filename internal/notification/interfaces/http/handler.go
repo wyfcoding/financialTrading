@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialTrading/internal/notification/application"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // NotificationHandler HTTP 处理器
@@ -50,7 +50,7 @@ func (h *NotificationHandler) SendNotification(c *gin.Context) {
 
 	id, err := h.app.SendNotification(c.Request.Context(), req.UserID, req.Type, req.Subject, req.Content, req.Target)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to send notification", "error", err)
+		logging.Error(c.Request.Context(), "Failed to send notification", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -82,7 +82,7 @@ func (h *NotificationHandler) GetNotificationHistory(c *gin.Context) {
 
 	notifications, err := h.app.GetNotificationHistory(c.Request.Context(), userID, limit, offset)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to get notification history", "user_id", userID, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get notification history", "user_id", userID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/wyfcoding/financialTrading/internal/market-simulation/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 )
 
@@ -69,7 +69,7 @@ func (r *SimulationScenarioRepositoryImpl) Save(ctx context.Context, scenario *d
 	}
 
 	if err := r.db.WithContext(ctx).Save(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save simulation scenario",
+		logging.Error(ctx, "Failed to save simulation scenario",
 			"scenario_id", scenario.ID,
 			"error", err,
 		)
@@ -87,7 +87,7 @@ func (r *SimulationScenarioRepositoryImpl) GetByID(ctx context.Context, id strin
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get simulation scenario by ID",
+		logging.Error(ctx, "Failed to get simulation scenario by ID",
 			"scenario_id", id,
 			"error", err,
 		)

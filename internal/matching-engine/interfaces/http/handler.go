@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialTrading/internal/matching-engine/application"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // MatchingHandler HTTP 处理器
@@ -43,7 +43,7 @@ func (h *MatchingHandler) SubmitOrder(c *gin.Context) {
 
 	result, err := h.matchingService.SubmitOrder(c.Request.Context(), &req)
 	if err != nil {
-		logger.Error(c.Request.Context(), "Failed to submit order", "error", err)
+		logging.Error(c.Request.Context(), "Failed to submit order", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -68,7 +68,7 @@ func (h *MatchingHandler) GetOrderBook(c *gin.Context) {
 
 	snapshot, err := h.matchingService.GetOrderBook(c.Request.Context(), symbol, depth)
 	if err != nil {
-		logger.Error(c.Request.Context(), "Failed to get order book", "symbol", symbol, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get order book", "symbol", symbol, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -93,7 +93,7 @@ func (h *MatchingHandler) GetTrades(c *gin.Context) {
 
 	trades, err := h.matchingService.GetTrades(c.Request.Context(), symbol, limit)
 	if err != nil {
-		logger.Error(c.Request.Context(), "Failed to get trades", "symbol", symbol, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get trades", "symbol", symbol, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

@@ -6,7 +6,7 @@ import (
 
 	pb "github.com/wyfcoding/financialTrading/go-api/matching-engine"
 	"github.com/wyfcoding/financialTrading/internal/matching-engine/application"
-	"github.com/wyfcoding/financialTrading/pkg/algos"
+	"github.com/wyfcoding/pkg/algorithm"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -105,7 +105,7 @@ func (h *GRPCHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (
 	}, nil
 }
 
-func (h *GRPCHandler) toProtoTrade(trade *algos.Trade) *pb.Trade {
+func (h *GRPCHandler) toProtoTrade(trade *algorithm.Trade) *pb.Trade {
 	return &pb.Trade{
 		TradeId:     trade.TradeID,
 		BuyOrderId:  trade.BuyOrderID,

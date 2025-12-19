@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialTrading/internal/market-simulation/application"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // MarketSimulationHandler HTTP 处理器
@@ -49,7 +49,7 @@ func (h *MarketSimulationHandler) StartSimulation(c *gin.Context) {
 
 	id, err := h.app.StartSimulation(c.Request.Context(), req.Name, req.Symbol, req.Type, req.Parameters)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to start simulation", "error", err)
+		logging.Error(c.Request.Context(), "Failed to start simulation", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -72,7 +72,7 @@ func (h *MarketSimulationHandler) StopSimulation(c *gin.Context) {
 
 	success, err := h.app.StopSimulation(c.Request.Context(), req.SimulationID)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to stop simulation", "simulation_id", req.SimulationID, "error", err)
+		logging.Error(c.Request.Context(), "Failed to stop simulation", "simulation_id", req.SimulationID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -90,7 +90,7 @@ func (h *MarketSimulationHandler) GetSimulationStatus(c *gin.Context) {
 
 	scenario, err := h.app.GetSimulationStatus(c.Request.Context(), simulationID)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to get simulation status", "simulation_id", simulationID, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get simulation status", "simulation_id", simulationID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

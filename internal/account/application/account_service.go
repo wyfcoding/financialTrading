@@ -7,8 +7,8 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/account/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
-	"github.com/wyfcoding/financialTrading/pkg/utils"
+	"github.com/wyfcoding/pkg/idgen"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // CreateAccountRequest 创建账户请求 DTO
@@ -37,7 +37,6 @@ type AccountDTO struct {
 type AccountApplicationService struct {
 	accountRepo     domain.AccountRepository
 	transactionRepo domain.TransactionRepository
-	snowflake       *utils.SnowflakeID
 }
 
 // NewAccountApplicationService 创建账户应用服务
@@ -45,7 +44,6 @@ func NewAccountApplicationService(accountRepo domain.AccountRepository, transact
 	return &AccountApplicationService{
 		accountRepo:     accountRepo,
 		transactionRepo: transactionRepo,
-		snowflake:       utils.NewSnowflakeID(3),
 	}
 }
 
@@ -56,7 +54,7 @@ func NewAccountApplicationService(accountRepo domain.AccountRepository, transact
 // 3. 创建账户对象
 // 4. 保存到仓储
 func (aas *AccountApplicationService) CreateAccount(ctx context.Context, req *CreateAccountRequest) (*AccountDTO, error) {
-	logger.Info(ctx, "Creating new account",
+	logging.Info(ctx, "Creating new account",
 		"user_id", req.UserID,
 		"account_type", req.AccountType,
 		"currency", req.Currency,
@@ -64,7 +62,7 @@ func (aas *AccountApplicationService) CreateAccount(ctx context.Context, req *Cr
 
 	// 验证输入
 	if req.UserID == "" || req.AccountType == "" || req.Currency == "" {
-		logger.Warn(ctx, "Invalid account creation parameters",
+		logging.Warn(ctx, "Invalid account creation parameters",
 			"user_id", req.UserID,
 			"account_type", req.AccountType,
 			"currency", req.Currency,
@@ -73,7 +71,7 @@ func (aas *AccountApplicationService) CreateAccount(ctx context.Context, req *Cr
 	}
 
 	// 生成账户 ID
-	accountID := fmt.Sprintf("ACC-%d", aas.snowflake.Generate())
+	accountID := fmt.Sprintf("ACC-%d", idgen.GenID())
 
 	// 创建账户对象
 	account := &domain.Account{
@@ -88,7 +86,7 @@ func (aas *AccountApplicationService) CreateAccount(ctx context.Context, req *Cr
 
 	// 保存到仓储
 	if err := aas.accountRepo.Save(ctx, account); err != nil {
-		logger.Error(ctx, "Failed to save account to repository",
+		logging.Error(ctx, "Failed to save account to repository",
 			"account_id", accountID,
 			"user_id", req.UserID,
 			"error", err,
@@ -96,7 +94,7 @@ func (aas *AccountApplicationService) CreateAccount(ctx context.Context, req *Cr
 		return nil, fmt.Errorf("failed to save account: %w", err)
 	}
 
-	logger.Info(ctx, "Account created successfully",
+	logging.Info(ctx, "Account created successfully",
 		"account_id", accountID,
 		"user_id", req.UserID,
 		"account_type", req.AccountType,
@@ -127,7 +125,7 @@ func (aas *AccountApplicationService) GetAccount(ctx context.Context, accountID 
 	// 获取账户
 	account, err := aas.accountRepo.Get(ctx, accountID)
 	if err != nil {
-		logger.Error(ctx, "Failed to get account",
+		logging.Error(ctx, "Failed to get account",
 			"account_id", accountID,
 			"error", err,
 		)
@@ -158,14 +156,14 @@ func (aas *AccountApplicationService) GetAccount(ctx context.Context, accountID 
 // 2. 更新余额
 // 3. 创建交易记录
 func (aas *AccountApplicationService) Deposit(ctx context.Context, accountID string, amount decimal.Decimal) error {
-	logger.Info(ctx, "Processing deposit",
+	logging.Info(ctx, "Processing deposit",
 		"account_id", accountID,
 		"amount", amount.String(),
 	)
 
 	// 验证输入
 	if accountID == "" || amount.LessThanOrEqual(decimal.Zero) {
-		logger.Warn(ctx, "Invalid deposit parameters",
+		logging.Warn(ctx, "Invalid deposit parameters",
 			"account_id", accountID,
 			"amount", amount.String(),
 		)
@@ -175,7 +173,7 @@ func (aas *AccountApplicationService) Deposit(ctx context.Context, accountID str
 	// 获取账户
 	account, err := aas.accountRepo.Get(ctx, accountID)
 	if err != nil {
-		logger.Error(ctx, "Failed to retrieve account for deposit",
+		logging.Error(ctx, "Failed to retrieve account for deposit",
 			"account_id", accountID,
 			"error", err,
 		)
@@ -183,7 +181,7 @@ func (aas *AccountApplicationService) Deposit(ctx context.Context, accountID str
 	}
 
 	if account == nil {
-		logger.Warn(ctx, "Account not found for deposit",
+		logging.Warn(ctx, "Account not found for deposit",
 			"account_id", accountID,
 		)
 		return fmt.Errorf("account not found: %s", accountID)
@@ -194,7 +192,7 @@ func (aas *AccountApplicationService) Deposit(ctx context.Context, accountID str
 	newAvailableBalance := account.AvailableBalance.Add(amount)
 
 	if err := aas.accountRepo.UpdateBalance(ctx, accountID, newBalance, newAvailableBalance, account.FrozenBalance); err != nil {
-		logger.Error(ctx, "Failed to update balance for deposit",
+		logging.Error(ctx, "Failed to update balance for deposit",
 			"account_id", accountID,
 			"old_balance", account.Balance.String(),
 			"new_balance", newBalance.String(),
@@ -205,7 +203,7 @@ func (aas *AccountApplicationService) Deposit(ctx context.Context, accountID str
 
 	// 创建交易记录
 	transaction := &domain.Transaction{
-		TransactionID: fmt.Sprintf("TXN-%d", aas.snowflake.Generate()),
+		TransactionID: fmt.Sprintf("TXN-%d", idgen.GenID()),
 		AccountID:     accountID,
 		Type:          "DEPOSIT",
 		Amount:        amount,
@@ -213,14 +211,14 @@ func (aas *AccountApplicationService) Deposit(ctx context.Context, accountID str
 	}
 
 	if err := aas.transactionRepo.Save(ctx, transaction); err != nil {
-		logger.Error(ctx, "Failed to save deposit transaction",
+		logging.Error(ctx, "Failed to save deposit transaction",
 			"transaction_id", transaction.TransactionID,
 			"account_id", accountID,
 			"error", err,
 		)
 	}
 
-	logger.Info(ctx, "Deposit completed successfully",
+	logging.Info(ctx, "Deposit completed successfully",
 		"account_id", accountID,
 		"amount", amount.String(),
 		"new_balance", newBalance.String(),

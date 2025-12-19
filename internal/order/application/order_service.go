@@ -7,8 +7,8 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/order/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
-	"github.com/wyfcoding/financialTrading/pkg/utils"
+	"github.com/wyfcoding/pkg/idgen"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // CreateOrderRequest 创建订单请求 DTO
@@ -43,14 +43,12 @@ type OrderDTO struct {
 // OrderApplicationService 订单应用服务
 type OrderApplicationService struct {
 	orderRepo domain.OrderRepository
-	snowflake *utils.SnowflakeID
 }
 
 // NewOrderApplicationService 创建订单应用服务
 func NewOrderApplicationService(orderRepo domain.OrderRepository) *OrderApplicationService {
 	return &OrderApplicationService{
 		orderRepo: orderRepo,
-		snowflake: utils.NewSnowflakeID(1),
 	}
 }
 
@@ -63,12 +61,12 @@ func NewOrderApplicationService(orderRepo domain.OrderRepository) *OrderApplicat
 // 5. 发布订单创建事件（待实现）
 func (oas *OrderApplicationService) CreateOrder(ctx context.Context, req *CreateOrderRequest) (*OrderDTO, error) {
 	// 记录性能监控
-	defer logger.LogDuration(ctx, "Order creation completed",
+	defer logging.LogDuration(ctx, "Order creation completed",
 		"user_id", req.UserID,
 		"symbol", req.Symbol,
 	)()
 
-	logger.Info(ctx, "Creating new order",
+	logging.Info(ctx, "Creating new order",
 		"user_id", req.UserID,
 		"symbol", req.Symbol,
 		"side", req.Side,
@@ -77,7 +75,7 @@ func (oas *OrderApplicationService) CreateOrder(ctx context.Context, req *Create
 
 	// 验证输入
 	if req.UserID == "" || req.Symbol == "" || req.Side == "" {
-		logger.Warn(ctx, "Invalid order creation parameters",
+		logging.Warn(ctx, "Invalid order creation parameters",
 			"user_id", req.UserID,
 			"symbol", req.Symbol,
 			"side", req.Side,
@@ -88,7 +86,7 @@ func (oas *OrderApplicationService) CreateOrder(ctx context.Context, req *Create
 	// 解析价格和数量
 	price, err := decimal.NewFromString(req.Price)
 	if err != nil {
-		logger.Error(ctx, "Failed to parse order price",
+		logging.Error(ctx, "Failed to parse order price",
 			"user_id", req.UserID,
 			"price", req.Price,
 			"error", err,
@@ -98,7 +96,7 @@ func (oas *OrderApplicationService) CreateOrder(ctx context.Context, req *Create
 
 	quantity, err := decimal.NewFromString(req.Quantity)
 	if err != nil {
-		logger.Error(ctx, "Failed to parse order quantity",
+		logging.Error(ctx, "Failed to parse order quantity",
 			"user_id", req.UserID,
 			"quantity", req.Quantity,
 			"error", err,
@@ -107,9 +105,9 @@ func (oas *OrderApplicationService) CreateOrder(ctx context.Context, req *Create
 	}
 
 	// 生成订单 ID
-	orderID := fmt.Sprintf("ORD-%d", oas.snowflake.Generate())
+	orderID := fmt.Sprintf("ORD-%d", idgen.GenID())
 
-	logger.Debug(ctx, "Generated order ID",
+	logging.Debug(ctx, "Generated order ID",
 		"order_id", orderID,
 		"user_id", req.UserID,
 	)
@@ -129,7 +127,7 @@ func (oas *OrderApplicationService) CreateOrder(ctx context.Context, req *Create
 
 	// 保存到仓储
 	if err := oas.orderRepo.Save(ctx, order); err != nil {
-		logger.Error(ctx, "Failed to save order to repository",
+		logging.Error(ctx, "Failed to save order to repository",
 			"order_id", orderID,
 			"user_id", req.UserID,
 			"symbol", req.Symbol,
@@ -138,7 +136,7 @@ func (oas *OrderApplicationService) CreateOrder(ctx context.Context, req *Create
 		return nil, fmt.Errorf("failed to save order: %w", err)
 	}
 
-	logger.Info(ctx, "Order created successfully",
+	logging.Info(ctx, "Order created successfully",
 		"order_id", orderID,
 		"user_id", req.UserID,
 		"symbol", req.Symbol,
@@ -179,7 +177,7 @@ func (oas *OrderApplicationService) CancelOrder(ctx context.Context, orderID, us
 	// 获取订单
 	order, err := oas.orderRepo.Get(ctx, orderID)
 	if err != nil {
-		logger.WithContext(ctx).Error("Failed to get order",
+		logging.Error(ctx, "Failed to get order",
 			"order_id", orderID,
 			"error", err,
 		)
@@ -202,7 +200,7 @@ func (oas *OrderApplicationService) CancelOrder(ctx context.Context, orderID, us
 
 	// 更新订单状态
 	if err := oas.orderRepo.UpdateStatus(ctx, orderID, domain.OrderStatusCancelled); err != nil {
-		logger.Error(ctx, "Failed to update order status to cancelled",
+		logging.Error(ctx, "Failed to update order status to cancelled",
 			"order_id", orderID,
 			"user_id", userID,
 			"error", err,
@@ -210,7 +208,7 @@ func (oas *OrderApplicationService) CancelOrder(ctx context.Context, orderID, us
 		return nil, fmt.Errorf("failed to cancel order: %w", err)
 	}
 
-	logger.Info(ctx, "Order cancelled successfully",
+	logging.Info(ctx, "Order cancelled successfully",
 		"order_id", orderID,
 		"user_id", userID,
 		"symbol", order.Symbol,
@@ -244,7 +242,7 @@ func (oas *OrderApplicationService) GetOrder(ctx context.Context, orderID, userI
 	// 获取订单
 	order, err := oas.orderRepo.Get(ctx, orderID)
 	if err != nil {
-		logger.WithContext(ctx).Error("Failed to get order",
+		logging.Error(ctx, "Failed to get order",
 			"order_id", orderID,
 			"error", err,
 		)

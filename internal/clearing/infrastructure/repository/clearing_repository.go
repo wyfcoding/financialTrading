@@ -9,8 +9,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/clearing/domain"
-	"github.com/wyfcoding/financialTrading/pkg/db"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 )
 
@@ -37,11 +36,11 @@ func (SettlementModel) TableName() string {
 
 // SettlementRepositoryImpl 是 SettlementRepository 接口的 GORM 实现。
 type SettlementRepositoryImpl struct {
-	db *db.DB // 依赖注入数据库连接实例
+	db *gorm.DB // 依赖注入数据库连接实例
 }
 
 // NewSettlementRepository 是 SettlementRepositoryImpl 的构造函数。
-func NewSettlementRepository(database *db.DB) domain.SettlementRepository {
+func NewSettlementRepository(database *gorm.DB) domain.SettlementRepository {
 	return &SettlementRepositoryImpl{
 		db: database,
 	}
@@ -66,7 +65,7 @@ func (sr *SettlementRepositoryImpl) Save(ctx context.Context, settlement *domain
 
 	// 使用 GORM 的 Create 方法将记录插入数据库
 	if err := sr.db.WithContext(ctx).Create(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save settlement",
+		logging.Error(ctx, "Failed to save settlement",
 			"settlement_id", settlement.SettlementID,
 			"error", err,
 		)
@@ -88,7 +87,7 @@ func (sr *SettlementRepositoryImpl) Get(ctx context.Context, settlementID string
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get settlement",
+		logging.Error(ctx, "Failed to get settlement",
 			"settlement_id", settlementID,
 			"error", err,
 		)
@@ -113,7 +112,7 @@ func (sr *SettlementRepositoryImpl) GetByUser(ctx context.Context, userID string
 
 	// 再执行分页查询
 	if err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to get settlements by user",
+		logging.Error(ctx, "Failed to get settlements by user",
 			"user_id", userID,
 			"error", err,
 		)
@@ -137,7 +136,7 @@ func (sr *SettlementRepositoryImpl) GetByTrade(ctx context.Context, tradeID stri
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get settlement by trade",
+		logging.Error(ctx, "Failed to get settlement by trade",
 			"trade_id", tradeID,
 			"error", err,
 		)
@@ -188,11 +187,11 @@ func (EODClearingModel) TableName() string {
 
 // EODClearingRepositoryImpl 是 EODClearingRepository 接口的 GORM 实现。
 type EODClearingRepositoryImpl struct {
-	db *db.DB
+	db *gorm.DB
 }
 
 // NewEODClearingRepository 是 EODClearingRepositoryImpl 的构造函数。
-func NewEODClearingRepository(database *db.DB) domain.EODClearingRepository {
+func NewEODClearingRepository(database *gorm.DB) domain.EODClearingRepository {
 	return &EODClearingRepositoryImpl{
 		db: database,
 	}
@@ -217,7 +216,7 @@ func (ecr *EODClearingRepositoryImpl) Save(ctx context.Context, clearing *domain
 	}
 
 	if err := ecr.db.WithContext(ctx).Create(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save EOD clearing",
+		logging.Error(ctx, "Failed to save EOD clearing",
 			"clearing_id", clearing.ClearingID,
 			"error", err,
 		)
@@ -236,7 +235,7 @@ func (ecr *EODClearingRepositoryImpl) Get(ctx context.Context, clearingID string
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get EOD clearing",
+		logging.Error(ctx, "Failed to get EOD clearing",
 			"clearing_id", clearingID,
 			"error", err,
 		)
@@ -254,7 +253,7 @@ func (ecr *EODClearingRepositoryImpl) GetLatest(ctx context.Context) (*domain.EO
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get latest EOD clearing", "error", err)
+		logging.Error(ctx, "Failed to get latest EOD clearing", "error", err)
 		return nil, fmt.Errorf("failed to get latest EOD clearing: %w", err)
 	}
 
@@ -275,7 +274,7 @@ func (ecr *EODClearingRepositoryImpl) Update(ctx context.Context, clearing *doma
 	}
 
 	if err := ecr.db.WithContext(ctx).Model(&EODClearingModel{}).Where("clearing_id = ?", clearing.ClearingID).Updates(updates).Error; err != nil {
-		logger.Error(ctx, "Failed to update EOD clearing",
+		logging.Error(ctx, "Failed to update EOD clearing",
 			"clearing_id", clearing.ClearingID,
 			"error", err,
 		)

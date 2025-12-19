@@ -6,8 +6,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/market-data/domain"
-	"github.com/wyfcoding/financialTrading/pkg/db"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 )
 
@@ -42,11 +41,11 @@ func (QuoteModel) TableName() string {
 
 // QuoteRepositoryImpl 行情数据仓储实现
 type QuoteRepositoryImpl struct {
-	db *db.DB
+	db *gorm.DB
 }
 
 // NewQuoteRepository 创建行情数据仓储
-func NewQuoteRepository(database *db.DB) domain.QuoteRepository {
+func NewQuoteRepository(database *gorm.DB) domain.QuoteRepository {
 	return &QuoteRepositoryImpl{
 		db: database,
 	}
@@ -67,7 +66,7 @@ func (qr *QuoteRepositoryImpl) Save(ctx context.Context, quote *domain.Quote) er
 	}
 
 	if err := qr.db.WithContext(ctx).Create(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save quote",
+		logging.Error(ctx, "Failed to save quote",
 			"symbol", quote.Symbol,
 			"error", err,
 		)
@@ -85,7 +84,7 @@ func (qr *QuoteRepositoryImpl) GetLatest(ctx context.Context, symbol string) (*d
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get latest quote",
+		logging.Error(ctx, "Failed to get latest quote",
 			"symbol", symbol,
 			"error", err,
 		)
@@ -102,7 +101,7 @@ func (qr *QuoteRepositoryImpl) GetHistory(ctx context.Context, symbol string, st
 	if err := qr.db.WithContext(ctx).Where("symbol = ? AND timestamp >= ? AND timestamp <= ?", symbol, startTime, endTime).
 		Order("timestamp DESC").
 		Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to get historical quotes",
+		logging.Error(ctx, "Failed to get historical quotes",
 			"symbol", symbol,
 			"error", err,
 		)
@@ -120,7 +119,7 @@ func (qr *QuoteRepositoryImpl) GetHistory(ctx context.Context, symbol string, st
 // DeleteExpired 删除过期行情
 func (qr *QuoteRepositoryImpl) DeleteExpired(ctx context.Context, beforeTime int64) error {
 	if err := qr.db.WithContext(ctx).Where("timestamp < ?", beforeTime).Delete(&QuoteModel{}).Error; err != nil {
-		logger.Error(ctx, "Failed to delete expired quotes",
+		logging.Error(ctx, "Failed to delete expired quotes",
 			"before_time", beforeTime,
 			"error", err,
 		)

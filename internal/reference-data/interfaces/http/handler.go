@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialTrading/internal/reference-data/application"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // ReferenceDataHandler HTTP 处理器
@@ -43,7 +43,7 @@ func (h *ReferenceDataHandler) GetSymbol(c *gin.Context) {
 
 	symbol, err := h.app.GetSymbol(c.Request.Context(), id)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to get symbol", "id", id, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get symbol", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -77,7 +77,7 @@ func (h *ReferenceDataHandler) ListSymbols(c *gin.Context) {
 
 	symbols, err := h.app.ListSymbols(c.Request.Context(), exchangeID, status, limit, offset)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to list symbols", "error", err)
+		logging.Error(c.Request.Context(), "Failed to list symbols", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -95,7 +95,7 @@ func (h *ReferenceDataHandler) GetExchange(c *gin.Context) {
 
 	exchange, err := h.app.GetExchange(c.Request.Context(), id)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to get exchange", "id", id, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get exchange", "id", id, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -126,7 +126,7 @@ func (h *ReferenceDataHandler) ListExchanges(c *gin.Context) {
 
 	exchanges, err := h.app.ListExchanges(c.Request.Context(), limit, offset)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to list exchanges", "error", err)
+		logging.Error(c.Request.Context(), "Failed to list exchanges", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

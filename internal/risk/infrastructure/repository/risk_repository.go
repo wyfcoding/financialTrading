@@ -7,8 +7,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/risk/domain"
-	"github.com/wyfcoding/financialTrading/pkg/db"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 )
 
@@ -47,11 +46,11 @@ func (RiskAssessmentModel) TableName() string {
 
 // RiskAssessmentRepositoryImpl 风险评估仓储实现
 type RiskAssessmentRepositoryImpl struct {
-	db *db.DB
+	db *gorm.DB
 }
 
 // NewRiskAssessmentRepository 创建风险评估仓储
-func NewRiskAssessmentRepository(database *db.DB) domain.RiskAssessmentRepository {
+func NewRiskAssessmentRepository(database *gorm.DB) domain.RiskAssessmentRepository {
 	return &RiskAssessmentRepositoryImpl{
 		db: database,
 	}
@@ -75,7 +74,7 @@ func (rar *RiskAssessmentRepositoryImpl) Save(ctx context.Context, assessment *d
 	}
 
 	if err := rar.db.WithContext(ctx).Create(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save risk assessment",
+		logging.Error(ctx, "Failed to save risk assessment",
 			"assessment_id", assessment.AssessmentID,
 			"error", err,
 		)
@@ -94,7 +93,7 @@ func (rar *RiskAssessmentRepositoryImpl) Get(ctx context.Context, assessmentID s
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get risk assessment",
+		logging.Error(ctx, "Failed to get risk assessment",
 			"assessment_id", assessmentID,
 			"error", err,
 		)
@@ -112,7 +111,7 @@ func (rar *RiskAssessmentRepositoryImpl) GetLatestByUser(ctx context.Context, us
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get latest risk assessment",
+		logging.Error(ctx, "Failed to get latest risk assessment",
 			"user_id", userID,
 			"error", err,
 		)
@@ -170,11 +169,11 @@ func (RiskMetricsModel) TableName() string {
 
 // RiskMetricsRepositoryImpl 风险指标仓储实现
 type RiskMetricsRepositoryImpl struct {
-	db *db.DB
+	db *gorm.DB
 }
 
 // NewRiskMetricsRepository 创建风险指标仓储
-func NewRiskMetricsRepository(database *db.DB) domain.RiskMetricsRepository {
+func NewRiskMetricsRepository(database *gorm.DB) domain.RiskMetricsRepository {
 	return &RiskMetricsRepositoryImpl{
 		db: database,
 	}
@@ -193,7 +192,7 @@ func (rmr *RiskMetricsRepositoryImpl) Save(ctx context.Context, metrics *domain.
 	}
 
 	if err := rmr.db.WithContext(ctx).Create(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save risk metrics",
+		logging.Error(ctx, "Failed to save risk metrics",
 			"user_id", metrics.UserID,
 			"error", err,
 		)
@@ -212,7 +211,7 @@ func (rmr *RiskMetricsRepositoryImpl) Get(ctx context.Context, userID string) (*
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get risk metrics",
+		logging.Error(ctx, "Failed to get risk metrics",
 			"user_id", userID,
 			"error", err,
 		)
@@ -231,7 +230,7 @@ func (rmr *RiskMetricsRepositoryImpl) Update(ctx context.Context, metrics *domai
 		"sharpe_ratio": metrics.SharpeRatio.String(),
 		"correlation":  metrics.Correlation.String(),
 	}).Error; err != nil {
-		logger.Error(ctx, "Failed to update risk metrics",
+		logging.Error(ctx, "Failed to update risk metrics",
 			"user_id", metrics.UserID,
 			"error", err,
 		)
@@ -285,11 +284,11 @@ func (RiskLimitModel) TableName() string {
 
 // RiskLimitRepositoryImpl 风险限额仓储实现
 type RiskLimitRepositoryImpl struct {
-	db *db.DB
+	db *gorm.DB
 }
 
 // NewRiskLimitRepository 创建风险限额仓储
-func NewRiskLimitRepository(database *db.DB) domain.RiskLimitRepository {
+func NewRiskLimitRepository(database *gorm.DB) domain.RiskLimitRepository {
 	return &RiskLimitRepositoryImpl{
 		db: database,
 	}
@@ -308,7 +307,7 @@ func (rlr *RiskLimitRepositoryImpl) Save(ctx context.Context, limit *domain.Risk
 	}
 
 	if err := rlr.db.WithContext(ctx).Create(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save risk limit",
+		logging.Error(ctx, "Failed to save risk limit",
 			"limit_id", limit.LimitID,
 			"error", err,
 		)
@@ -327,7 +326,7 @@ func (rlr *RiskLimitRepositoryImpl) Get(ctx context.Context, limitID string) (*d
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get risk limit",
+		logging.Error(ctx, "Failed to get risk limit",
 			"limit_id", limitID,
 			"error", err,
 		)
@@ -345,7 +344,7 @@ func (rlr *RiskLimitRepositoryImpl) GetByUser(ctx context.Context, userID string
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get risk limit by user",
+		logging.Error(ctx, "Failed to get risk limit by user",
 			"user_id", userID,
 			"limit_type", limitType,
 			"error", err,
@@ -363,7 +362,7 @@ func (rlr *RiskLimitRepositoryImpl) Update(ctx context.Context, limit *domain.Ri
 		"current_value": limit.CurrentValue.String(),
 		"is_exceeded":   limit.IsExceeded,
 	}).Error; err != nil {
-		logger.Error(ctx, "Failed to update risk limit",
+		logging.Error(ctx, "Failed to update risk limit",
 			"limit_id", limit.LimitID,
 			"error", err,
 		)
@@ -413,11 +412,11 @@ func (RiskAlertModel) TableName() string {
 
 // RiskAlertRepositoryImpl 风险告警仓储实现
 type RiskAlertRepositoryImpl struct {
-	db *db.DB
+	db *gorm.DB
 }
 
 // NewRiskAlertRepository 创建风险告警仓储
-func NewRiskAlertRepository(database *db.DB) domain.RiskAlertRepository {
+func NewRiskAlertRepository(database *gorm.DB) domain.RiskAlertRepository {
 	return &RiskAlertRepositoryImpl{
 		db: database,
 	}
@@ -435,7 +434,7 @@ func (rar *RiskAlertRepositoryImpl) Save(ctx context.Context, alert *domain.Risk
 	}
 
 	if err := rar.db.WithContext(ctx).Create(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save risk alert",
+		logging.Error(ctx, "Failed to save risk alert",
 			"alert_id", alert.AlertID,
 			"error", err,
 		)
@@ -451,7 +450,7 @@ func (rar *RiskAlertRepositoryImpl) GetByUser(ctx context.Context, userID string
 	var models []RiskAlertModel
 
 	if err := rar.db.WithContext(ctx).Where("user_id = ?", userID).Order("created_at DESC").Limit(limit).Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to get risk alerts by user",
+		logging.Error(ctx, "Failed to get risk alerts by user",
 			"user_id", userID,
 			"error", err,
 		)
@@ -469,7 +468,7 @@ func (rar *RiskAlertRepositoryImpl) GetByUser(ctx context.Context, userID string
 // DeleteRead 删除已读告警
 func (rar *RiskAlertRepositoryImpl) DeleteRead(ctx context.Context, alertID string) error {
 	if err := rar.db.WithContext(ctx).Where("alert_id = ?", alertID).Delete(&RiskAlertModel{}).Error; err != nil {
-		logger.Error(ctx, "Failed to delete risk alert",
+		logging.Error(ctx, "Failed to delete risk alert",
 			"alert_id", alertID,
 			"error", err,
 		)

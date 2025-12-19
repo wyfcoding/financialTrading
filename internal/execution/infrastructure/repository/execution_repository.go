@@ -8,8 +8,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/execution/domain"
-	"github.com/wyfcoding/financialTrading/pkg/db"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 )
 
@@ -35,11 +34,11 @@ func (ExecutionModel) TableName() string {
 
 // ExecutionRepositoryImpl 是 ExecutionRepository 接口的 GORM 实现。
 type ExecutionRepositoryImpl struct {
-	db *db.DB // 依赖注入的数据库连接实例
+	db *gorm.DB // 依赖注入的数据库连接实例
 }
 
 // NewExecutionRepository 是 ExecutionRepositoryImpl 的构造函数。
-func NewExecutionRepository(database *db.DB) domain.ExecutionRepository {
+func NewExecutionRepository(database *gorm.DB) domain.ExecutionRepository {
 	return &ExecutionRepositoryImpl{
 		db: database,
 	}
@@ -63,7 +62,7 @@ func (er *ExecutionRepositoryImpl) Save(ctx context.Context, execution *domain.E
 
 	// 使用 GORM 的 Create 方法将记录插入数据库
 	if err := er.db.WithContext(ctx).Create(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save execution",
+		logging.Error(ctx, "Failed to save execution",
 			"execution_id", execution.ExecutionID,
 			"error", err,
 		)
@@ -85,7 +84,7 @@ func (er *ExecutionRepositoryImpl) Get(ctx context.Context, executionID string) 
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get execution",
+		logging.Error(ctx, "Failed to get execution",
 			"execution_id", executionID,
 			"error", err,
 		)
@@ -101,7 +100,7 @@ func (er *ExecutionRepositoryImpl) GetByOrder(ctx context.Context, orderID strin
 	var models []ExecutionModel
 
 	if err := er.db.WithContext(ctx).Where("order_id = ?", orderID).Order("created_at DESC").Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to get executions by order",
+		logging.Error(ctx, "Failed to get executions by order",
 			"order_id", orderID,
 			"error", err,
 		)
@@ -131,7 +130,7 @@ func (er *ExecutionRepositoryImpl) GetByUser(ctx context.Context, userID string,
 
 	// 再执行分页查询获取数据
 	if err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to get executions by user",
+		logging.Error(ctx, "Failed to get executions by user",
 			"user_id", userID,
 			"error", err,
 		)

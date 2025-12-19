@@ -8,8 +8,8 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/risk/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
-	"github.com/wyfcoding/financialTrading/pkg/utils"
+	"github.com/wyfcoding/pkg/idgen"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // AssessRiskRequest 风险评估请求 DTO
@@ -44,7 +44,6 @@ type RiskApplicationService struct {
 	metricsRepo    domain.RiskMetricsRepository
 	limitRepo      domain.RiskLimitRepository
 	alertRepo      domain.RiskAlertRepository
-	snowflake      *utils.SnowflakeID
 }
 
 // NewRiskApplicationService 创建风险应用服务
@@ -59,7 +58,6 @@ func NewRiskApplicationService(
 		metricsRepo:    metricsRepo,
 		limitRepo:      limitRepo,
 		alertRepo:      alertRepo,
-		snowflake:      utils.NewSnowflakeID(6),
 	}
 }
 
@@ -89,7 +87,7 @@ func (ras *RiskApplicationService) AssessRisk(ctx context.Context, req *AssessRi
 	}
 
 	// 生成评估 ID
-	assessmentID := fmt.Sprintf("RISK-%d", ras.snowflake.Generate())
+	assessmentID := fmt.Sprintf("RISK-%d", idgen.GenID())
 
 	// 计算风险等级和分数（简化实现）
 	riskLevel := domain.RiskLevelLow
@@ -123,7 +121,7 @@ func (ras *RiskApplicationService) AssessRisk(ctx context.Context, req *AssessRi
 
 	// 保存评估结果
 	if err := ras.assessmentRepo.Save(ctx, assessment); err != nil {
-		logger.WithContext(ctx).Error("Failed to save risk assessment",
+		logging.Error(ctx, "Failed to save risk assessment",
 			"assessment_id", assessmentID,
 			"error", err,
 		)
@@ -133,7 +131,7 @@ func (ras *RiskApplicationService) AssessRisk(ctx context.Context, req *AssessRi
 	// 如果风险过高，生成告警
 	if riskLevel == domain.RiskLevelHigh || riskLevel == domain.RiskLevelCritical {
 		alert := &domain.RiskAlert{
-			AlertID:   fmt.Sprintf("ALERT-%d", ras.snowflake.Generate()),
+			AlertID:   fmt.Sprintf("ALERT-%d", idgen.GenID()),
 			UserID:    req.UserID,
 			AlertType: "HIGH_RISK",
 			Severity:  string(riskLevel),
@@ -143,7 +141,7 @@ func (ras *RiskApplicationService) AssessRisk(ctx context.Context, req *AssessRi
 		_ = ras.alertRepo.Save(ctx, alert)
 	}
 
-	logger.WithContext(ctx).Debug("Risk assessment completed",
+	logging.Debug(ctx, "Risk assessment completed",
 		"assessment_id", assessmentID,
 		"user_id", req.UserID,
 		"risk_level", string(riskLevel),
@@ -176,7 +174,7 @@ func (ras *RiskApplicationService) GetRiskMetrics(ctx context.Context, userID st
 	// 获取风险指标
 	metrics, err := ras.metricsRepo.Get(ctx, userID)
 	if err != nil {
-		logger.WithContext(ctx).Error("Failed to get risk metrics",
+		logging.Error(ctx, "Failed to get risk metrics",
 			"user_id", userID,
 			"error", err,
 		)
@@ -196,7 +194,7 @@ func (ras *RiskApplicationService) CheckRiskLimit(ctx context.Context, userID, l
 	// 获取风险限额
 	limit, err := ras.limitRepo.GetByUser(ctx, userID, limitType)
 	if err != nil {
-		logger.WithContext(ctx).Error("Failed to check risk limit",
+		logging.Error(ctx, "Failed to check risk limit",
 			"user_id", userID,
 			"limit_type", limitType,
 			"error", err,
@@ -221,7 +219,7 @@ func (ras *RiskApplicationService) GetRiskAlerts(ctx context.Context, userID str
 	// 获取风险告警
 	alerts, err := ras.alertRepo.GetByUser(ctx, userID, limit)
 	if err != nil {
-		logger.WithContext(ctx).Error("Failed to get risk alerts",
+		logging.Error(ctx, "Failed to get risk alerts",
 			"user_id", userID,
 			"error", err,
 		)

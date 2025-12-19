@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/wyfcoding/financialTrading/internal/pricing/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // PricingService 定价应用服务
@@ -26,7 +26,7 @@ func NewPricingService(marketDataClient domain.MarketDataClient) *PricingService
 
 // GetOptionPrice 计算期权价格 (Black-Scholes)
 func (s *PricingService) GetOptionPrice(ctx context.Context, contract domain.OptionContract, underlyingPrice, volatility, riskFreeRate float64) (float64, error) {
-	logger.Info(ctx, "Calculating option price",
+	logging.Info(ctx, "Calculating option price",
 		"symbol", contract.Symbol,
 		"type", contract.Type,
 		"strike_price", contract.StrikePrice,
@@ -54,7 +54,7 @@ func (s *PricingService) GetOptionPrice(ctx context.Context, contract domain.Opt
 
 // GetGreeks 计算希腊字母
 func (s *PricingService) GetGreeks(ctx context.Context, contract domain.OptionContract, underlyingPrice, volatility, riskFreeRate float64) (*domain.Greeks, error) {
-	logger.Info(ctx, "Calculating Greeks",
+	logging.Info(ctx, "Calculating Greeks",
 		"symbol", contract.Symbol,
 		"type", contract.Type,
 		"strike_price", contract.StrikePrice,

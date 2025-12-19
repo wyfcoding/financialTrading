@@ -7,8 +7,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/account/domain"
-	"github.com/wyfcoding/financialTrading/pkg/db"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 )
 
@@ -39,11 +38,11 @@ func (AccountModel) TableName() string {
 
 // AccountRepositoryImpl 账户仓储实现
 type AccountRepositoryImpl struct {
-	db *db.DB
+	db *gorm.DB
 }
 
 // NewAccountRepository 创建账户仓储
-func NewAccountRepository(database *db.DB) domain.AccountRepository {
+func NewAccountRepository(database *gorm.DB) domain.AccountRepository {
 	return &AccountRepositoryImpl{
 		db: database,
 	}
@@ -63,7 +62,7 @@ func (ar *AccountRepositoryImpl) Save(ctx context.Context, account *domain.Accou
 	}
 
 	if err := ar.db.WithContext(ctx).Create(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save account",
+		logging.Error(ctx, "Failed to save account",
 			"account_id", account.AccountID,
 			"error", err,
 		)
@@ -84,7 +83,7 @@ func (ar *AccountRepositoryImpl) Get(ctx context.Context, accountID string) (*do
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get account",
+		logging.Error(ctx, "Failed to get account",
 			"account_id", accountID,
 			"error", err,
 		)
@@ -99,7 +98,7 @@ func (ar *AccountRepositoryImpl) GetByUser(ctx context.Context, userID string) (
 	var models []AccountModel
 
 	if err := ar.db.WithContext(ctx).Where("user_id = ?", userID).Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to get accounts by user",
+		logging.Error(ctx, "Failed to get accounts by user",
 			"user_id", userID,
 			"error", err,
 		)
@@ -121,7 +120,7 @@ func (ar *AccountRepositoryImpl) UpdateBalance(ctx context.Context, accountID st
 		"available_balance": availableBalance.String(),
 		"frozen_balance":    frozenBalance.String(),
 	}).Error; err != nil {
-		logger.Error(ctx, "Failed to update balance",
+		logging.Error(ctx, "Failed to update balance",
 			"account_id", accountID,
 			"error", err,
 		)
@@ -171,11 +170,11 @@ func (TransactionModel) TableName() string {
 
 // TransactionRepositoryImpl 交易记录仓储实现
 type TransactionRepositoryImpl struct {
-	db *db.DB
+	db *gorm.DB
 }
 
 // NewTransactionRepository 创建交易记录仓储
-func NewTransactionRepository(database *db.DB) domain.TransactionRepository {
+func NewTransactionRepository(database *gorm.DB) domain.TransactionRepository {
 	return &TransactionRepositoryImpl{
 		db: database,
 	}
@@ -193,7 +192,7 @@ func (tr *TransactionRepositoryImpl) Save(ctx context.Context, transaction *doma
 	}
 
 	if err := tr.db.WithContext(ctx).Create(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save transaction",
+		logging.Error(ctx, "Failed to save transaction",
 			"transaction_id", transaction.TransactionID,
 			"error", err,
 		)
@@ -218,7 +217,7 @@ func (tr *TransactionRepositoryImpl) GetHistory(ctx context.Context, accountID s
 	}
 
 	if err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to get transaction history",
+		logging.Error(ctx, "Failed to get transaction history",
 			"account_id", accountID,
 			"error", err,
 		)

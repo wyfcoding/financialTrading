@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wyfcoding/financialTrading/internal/market-making/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // MarketMakingService 做市应用服务
@@ -54,14 +54,14 @@ func (s *MarketMakingService) SetStrategy(ctx context.Context, symbol string, sp
 	}
 
 	if err := s.strategyRepo.Save(ctx, strategy); err != nil {
-		logger.Error(ctx, "Failed to save strategy",
+		logging.Error(ctx, "Failed to save strategy",
 			"symbol", symbol,
 			"error", err,
 		)
 		return "", fmt.Errorf("failed to save strategy: %w", err)
 	}
 
-	logger.Info(ctx, "Strategy set",
+	logging.Info(ctx, "Strategy set",
 		"symbol", symbol,
 		"status", status,
 	)
@@ -78,7 +78,7 @@ func (s *MarketMakingService) SetStrategy(ctx context.Context, symbol string, sp
 func (s *MarketMakingService) GetStrategy(ctx context.Context, symbol string) (*domain.QuoteStrategy, error) {
 	strategy, err := s.strategyRepo.GetBySymbol(ctx, symbol)
 	if err != nil {
-		logger.Error(ctx, "Failed to get strategy",
+		logging.Error(ctx, "Failed to get strategy",
 			"symbol", symbol,
 			"error", err,
 		)
@@ -91,7 +91,7 @@ func (s *MarketMakingService) GetStrategy(ctx context.Context, symbol string) (*
 func (s *MarketMakingService) GetPerformance(ctx context.Context, symbol string) (*domain.MarketMakingPerformance, error) {
 	performance, err := s.performanceRepo.GetBySymbol(ctx, symbol)
 	if err != nil {
-		logger.Error(ctx, "Failed to get performance",
+		logging.Error(ctx, "Failed to get performance",
 			"symbol", symbol,
 			"error", err,
 		)
@@ -121,7 +121,7 @@ func (s *MarketMakingService) runMarketMaking(symbol string) {
 
 	// 4. 下单
 	if _, err := s.orderClient.PlaceOrder(ctx, symbol, "BUY", bidPrice, quantity); err != nil {
-		logger.Error(ctx, "Failed to place buy order",
+		logging.Error(ctx, "Failed to place buy order",
 			"symbol", symbol,
 			"price", bidPrice,
 			"quantity", quantity,
@@ -129,7 +129,7 @@ func (s *MarketMakingService) runMarketMaking(symbol string) {
 		)
 	}
 	if _, err := s.orderClient.PlaceOrder(ctx, symbol, "SELL", askPrice, quantity); err != nil {
-		logger.Error(ctx, "Failed to place sell order",
+		logging.Error(ctx, "Failed to place sell order",
 			"symbol", symbol,
 			"price", askPrice,
 			"quantity", quantity,
@@ -148,7 +148,7 @@ func (s *MarketMakingService) runMarketMaking(symbol string) {
 		EndTime:     time.Now(),
 	}
 	if err := s.performanceRepo.Save(ctx, perf); err != nil {
-		logger.Error(ctx, "Failed to save performance",
+		logging.Error(ctx, "Failed to save performance",
 			"symbol", symbol,
 			"error", err,
 		)

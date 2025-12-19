@@ -1,3 +1,9 @@
+version = "1.0.0"
+
+[server]
+name = "financial-service"
+environment = "dev"
+
 [server]
 name = "quant-service"
 grpc_port = 50053
@@ -9,14 +15,14 @@ level = "info"
 format = "json"
 output = "stdout"
 
-[database]
+[data.database]
 driver = "mysql"
 dsn = "root:password@tcp(localhost:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
 max_idle_conns = 10
 max_open_conns = 100
 conn_max_lifetime = "1h"
 
-[redis]
+[data.redis]
 addr = "localhost:6379"
 password = ""
 db = 0
@@ -25,7 +31,12 @@ db = 0
 endpoints = ["localhost:2379"]
 
 [jaeger]
-agent_host = "localhost"
+agent_addr = "localhost"
 agent_port = 6831
 sampler_type = "const"
 sampler_param = 1.0
+
+[metrics]
+enabled = true
+port = "9090"
+path = "/metrics"

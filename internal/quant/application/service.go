@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wyfcoding/financialTrading/internal/quant/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // QuantService 量化应用服务
@@ -44,14 +44,14 @@ func (s *QuantService) CreateStrategy(ctx context.Context, name string, descript
 	}
 
 	if err := s.strategyRepo.Save(ctx, strategy); err != nil {
-		logger.Error(ctx, "Failed to save strategy",
+		logging.Error(ctx, "Failed to save strategy",
 			"name", name,
 			"error", err,
 		)
 		return "", fmt.Errorf("failed to save strategy: %w", err)
 	}
 
-	logger.Info(ctx, "Strategy created",
+	logging.Info(ctx, "Strategy created",
 		"strategy_id", strategy.ID,
 		"name", name,
 	)
@@ -63,7 +63,7 @@ func (s *QuantService) CreateStrategy(ctx context.Context, name string, descript
 func (s *QuantService) GetStrategy(ctx context.Context, id string) (*domain.Strategy, error) {
 	strategy, err := s.strategyRepo.GetByID(ctx, id)
 	if err != nil {
-		logger.Error(ctx, "Failed to get strategy",
+		logging.Error(ctx, "Failed to get strategy",
 			"strategy_id", id,
 			"error", err,
 		)
@@ -77,7 +77,7 @@ func (s *QuantService) RunBacktest(ctx context.Context, strategyID string, symbo
 	// 1. 获取策略
 	strategy, err := s.strategyRepo.GetByID(ctx, strategyID)
 	if err != nil {
-		logger.Error(ctx, "Failed to get strategy for backtest",
+		logging.Error(ctx, "Failed to get strategy for backtest",
 			"strategy_id", strategyID,
 			"error", err,
 		)
@@ -90,7 +90,7 @@ func (s *QuantService) RunBacktest(ctx context.Context, strategyID string, symbo
 	// 2. 获取历史数据
 	prices, err := s.marketDataClient.GetHistoricalData(ctx, symbol, startTime, endTime)
 	if err != nil {
-		logger.Error(ctx, "Failed to get historical data",
+		logging.Error(ctx, "Failed to get historical data",
 			"symbol", symbol,
 			"start_time", startTime,
 			"end_time", endTime,
@@ -125,7 +125,7 @@ func (s *QuantService) RunBacktest(ctx context.Context, strategyID string, symbo
 	}
 
 	if err := s.backtestRepo.Save(ctx, result); err != nil {
-		logger.Error(ctx, "Failed to save backtest result",
+		logging.Error(ctx, "Failed to save backtest result",
 			"strategy_id", strategyID,
 			"symbol", symbol,
 			"error", err,
@@ -133,7 +133,7 @@ func (s *QuantService) RunBacktest(ctx context.Context, strategyID string, symbo
 		return "", fmt.Errorf("failed to save backtest result: %w", err)
 	}
 
-	logger.Info(ctx, "Backtest completed",
+	logging.Info(ctx, "Backtest completed",
 		"backtest_id", result.ID,
 		"strategy_id", strategyID,
 		"symbol", symbol,
@@ -147,7 +147,7 @@ func (s *QuantService) RunBacktest(ctx context.Context, strategyID string, symbo
 func (s *QuantService) GetBacktestResult(ctx context.Context, id string) (*domain.BacktestResult, error) {
 	result, err := s.backtestRepo.GetByID(ctx, id)
 	if err != nil {
-		logger.Error(ctx, "Failed to get backtest result",
+		logging.Error(ctx, "Failed to get backtest result",
 			"result_id", id,
 			"error", err,
 		)

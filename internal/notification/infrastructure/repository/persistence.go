@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/wyfcoding/financialTrading/internal/notification/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 )
 
@@ -72,7 +72,7 @@ func (r *NotificationRepositoryImpl) Save(ctx context.Context, notification *dom
 	}
 
 	if err := r.db.WithContext(ctx).Save(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save notification",
+		logging.Error(ctx, "Failed to save notification",
 			"notification_id", notification.ID,
 			"error", err,
 		)
@@ -90,7 +90,7 @@ func (r *NotificationRepositoryImpl) GetByID(ctx context.Context, id string) (*d
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get notification",
+		logging.Error(ctx, "Failed to get notification",
 			"notification_id", id,
 			"error", err,
 		)
@@ -103,7 +103,7 @@ func (r *NotificationRepositoryImpl) GetByID(ctx context.Context, id string) (*d
 func (r *NotificationRepositoryImpl) ListByUserID(ctx context.Context, userID string, limit int, offset int) ([]*domain.Notification, error) {
 	var models []NotificationModel
 	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Limit(limit).Offset(offset).Order("created_at desc").Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to list notifications by user",
+		logging.Error(ctx, "Failed to list notifications by user",
 			"user_id", userID,
 			"error", err,
 		)

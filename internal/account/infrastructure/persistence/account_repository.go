@@ -8,7 +8,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/account/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -43,7 +43,6 @@ func (r *accountRepositoryImpl) fromDomainAccount(entity *domain.Account) *domai
 // Save 实现了 domain.AccountRepository.Save 方法。
 // 使用 `clauses.OnConflict` 来实现 "Upsert" (Update or Insert) 逻辑。
 func (r *accountRepositoryImpl) Save(ctx context.Context, account *domain.Account) error {
-	log := logger.WithContext(ctx)
 	dbModel := r.fromDomainAccount(account)
 
 	// OnConflict: 如果 account_id 已存在，则更新所有字段。
@@ -51,7 +50,7 @@ func (r *accountRepositoryImpl) Save(ctx context.Context, account *domain.Accoun
 		Columns:   []clause.Column{{Name: "account_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"user_id", "account_type", "currency", "balance", "available_balance", "frozen_balance"}),
 	}).Create(dbModel).Error; err != nil {
-		log.Error("Failed to save account to DB", "account_id", account.AccountID, "error", err)
+		logging.Error(ctx, "Failed to save account to DB", "account_id", account.AccountID, "error", err)
 		return err
 	}
 
@@ -62,14 +61,13 @@ func (r *accountRepositoryImpl) Save(ctx context.Context, account *domain.Accoun
 
 // Get 实现了 domain.AccountRepository.Get 方法。
 func (r *accountRepositoryImpl) Get(ctx context.Context, accountID string) (*domain.Account, error) {
-	log := logger.WithContext(ctx)
 	var model domain.Account
 
 	if err := r.db.WithContext(ctx).Where("account_id = ?", accountID).First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, err // 返回 gorm 的标准未找到错误，以便上层可以判断
 		}
-		log.Error("Failed to get account from DB", "account_id", accountID, "error", err)
+		logging.Error(ctx, "Failed to get account from DB", "account_id", accountID, "error", err)
 		return nil, err
 	}
 
@@ -78,11 +76,10 @@ func (r *accountRepositoryImpl) Get(ctx context.Context, accountID string) (*dom
 
 // GetByUser 实现了 domain.AccountRepository.GetByUser 方法。
 func (r *accountRepositoryImpl) GetByUser(ctx context.Context, userID string) ([]*domain.Account, error) {
-	log := logger.WithContext(ctx)
 	var models []*domain.Account
 
 	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&models).Error; err != nil {
-		log.Error("Failed to get accounts by user from DB", "user_id", userID, "error", err)
+		logging.Error(ctx, "Failed to get accounts by user from DB", "user_id", userID, "error", err)
 		return nil, err
 	}
 
@@ -97,7 +94,6 @@ func (r *accountRepositoryImpl) GetByUser(ctx context.Context, userID string) ([
 // UpdateBalance 实现了 domain.AccountRepository.UpdateBalance 方法。
 // 它使用 `clauses.Locking{Strength: "UPDATE"}` 来获取行锁，确保并发更新的原子性和一致性。
 func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, accountID string, newBalance, newAvailable, newFrozen decimal.Decimal) error {
-	log := logger.WithContext(ctx)
 
 	result := r.db.WithContext(ctx).Model(&domain.Account{}).Where("account_id = ?", accountID).Updates(map[string]interface{}{
 		"balance":           newBalance,
@@ -106,7 +102,7 @@ func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, accountID str
 	})
 
 	if result.Error != nil {
-		log.Error("Failed to update account balance in DB", "account_id", accountID, "error", result.Error)
+		logging.Error(ctx, "Failed to update account balance in DB", "account_id", accountID, "error", result.Error)
 		return result.Error
 	}
 	if result.RowsAffected == 0 {

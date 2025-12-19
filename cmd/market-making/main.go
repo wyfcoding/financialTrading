@@ -1,14 +1,8 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"log"
-	"net"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
+	"log/slog"
+
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -18,248 +12,110 @@ import (
 	"github.com/wyfcoding/financialTrading/internal/market-making/infrastructure/repository"
 	grpchandler "github.com/wyfcoding/financialTrading/internal/market-making/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialTrading/internal/market-making/interfaces/http"
-	"github.com/wyfcoding/financialTrading/pkg/cache"
-	"github.com/wyfcoding/financialTrading/pkg/config"
-	"github.com/wyfcoding/financialTrading/pkg/db"
-	"github.com/wyfcoding/financialTrading/pkg/grpcclient"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
-	"github.com/wyfcoding/financialTrading/pkg/middleware"
-	"github.com/wyfcoding/financialTrading/pkg/ratelimit"
-	"github.com/wyfcoding/financialTrading/pkg/trace"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"github.com/wyfcoding/pkg/app"
+	"github.com/wyfcoding/pkg/cache"
+	configpkg "github.com/wyfcoding/pkg/config"
+	"github.com/wyfcoding/pkg/databases"
+	"github.com/wyfcoding/pkg/grpcclient"
+	"github.com/wyfcoding/pkg/limiter"
+	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/metrics"
+	"github.com/wyfcoding/pkg/middleware"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
-func main() {
-	// 1. 加载配置
-	configPath := "configs/market-making/config.toml"
-	cfg, err := config.Load(configPath)
-	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
-	}
-
-	// 2. 初始化日志
-	loggerCfg := logger.Config{
-		ServiceName: cfg.ServiceName,
-		Level:       cfg.Logger.Level,
-		Format:      cfg.Logger.Format,
-		Output:      cfg.Logger.Output,
-		FilePath:    cfg.Logger.FilePath,
-		MaxSize:     cfg.Logger.MaxSize,
-		MaxBackups:  cfg.Logger.MaxBackups,
-		MaxAge:      cfg.Logger.MaxAge,
-		Compress:    cfg.Logger.Compress,
-		WithCaller:  cfg.Logger.WithCaller,
-	}
-	if err := logger.Init(loggerCfg); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
-		os.Exit(1)
-	}
-
-	ctx := context.Background()
-	log := logger.WithModule("main")
-
-	log.InfoContext(ctx, "Starting MarketMakingService", "version", cfg.Version)
-
-	// 3. 初始化追踪
-	if cfg.Tracing.Enabled {
-		shutdown, err := trace.InitTracer(cfg.ServiceName, cfg.Tracing.CollectorEndpoint)
-		if err != nil {
-			log.ErrorContext(ctx, "Failed to initialize tracer", "error", err)
-		} else {
-			defer func() {
-				if err := shutdown(context.Background()); err != nil {
-					log.ErrorContext(ctx, "Failed to shutdown tracer", "error", err)
-				}
-			}()
-			log.InfoContext(ctx, "Tracer initialized", "endpoint", cfg.Tracing.CollectorEndpoint)
-		}
-	}
-
-	// 4. 初始化数据库
-	dbConfig := db.Config{
-		Driver:             cfg.Database.Driver,
-		DSN:                cfg.Database.DSN,
-		MaxOpenConns:       cfg.Database.MaxOpenConns,
-		MaxIdleConns:       cfg.Database.MaxIdleConns,
-		ConnMaxLifetime:    cfg.Database.ConnMaxLifetime,
-		LogEnabled:         cfg.Database.LogEnabled,
-		SlowQueryThreshold: cfg.Database.SlowQueryThreshold,
-	}
-	gormDB, err := db.Init(dbConfig)
-	if err != nil {
-		log.ErrorContext(ctx, "Failed to connect to database", "error", err)
-		os.Exit(1)
-	}
-	// defer gormDB.Close() // gorm.DB doesn't have Close()
-
-	// 5. 自动迁移数据库
-	if err := gormDB.AutoMigrate(&repository.QuoteStrategyModel{}, &repository.PerformanceModel{}); err != nil {
-		log.ErrorContext(ctx, "Failed to migrate database", "error", err)
-		os.Exit(1)
-	}
-
-	// 6. 初始化 Redis
-	redisCfg := cache.Config{
-		Host:         cfg.Redis.Host,
-		Port:         cfg.Redis.Port,
-		Password:     cfg.Redis.Password,
-		DB:           cfg.Redis.DB,
-		MaxPoolSize:  cfg.Redis.MaxPoolSize,
-		ConnTimeout:  cfg.Redis.ConnTimeout,
-		ReadTimeout:  cfg.Redis.ReadTimeout,
-		WriteTimeout: cfg.Redis.WriteTimeout,
-	}
-	redisCache, err := cache.New(redisCfg)
-	if err != nil {
-		log.ErrorContext(ctx, "Failed to initialize Redis", "error", err)
-		os.Exit(1)
-	}
-	defer redisCache.Close()
-
-	// 7. 初始化限流器
-	rateLimiter := ratelimit.NewRedisRateLimiter(redisCache.GetClient())
-
-	// 8. 初始化层级依赖
-	// Infrastructure
-	strategyRepo := repository.NewQuoteStrategyRepository(gormDB.DB)
-	performanceRepo := repository.NewPerformanceRepository(gormDB.DB)
-
-	// 初始化 gRPC 客户端
-	orderClientCfg := grpcclient.ClientConfig{
-		Target:          cfg.Services["order"].Address,
-		ConnTimeout:     5,
-		RequestTimeout:  5,
-		MaxRetries:      3,
-		RetryDelay:      100,
-		EnableKeepalive: true,
-	}
-	orderClient, err := client.NewOrderClient(orderClientCfg)
-	if err != nil {
-		log.ErrorContext(ctx, "Failed to create order client", "error", err)
-		os.Exit(1)
-	}
-
-	marketDataClientCfg := grpcclient.ClientConfig{
-		Target:          cfg.Services["market-data"].Address,
-		ConnTimeout:     5,
-		RequestTimeout:  5,
-		MaxRetries:      3,
-		RetryDelay:      100,
-		EnableKeepalive: true,
-	}
-	marketDataClient, err := client.NewMarketDataClient(marketDataClientCfg)
-	if err != nil {
-		log.ErrorContext(ctx, "Failed to create market data client", "error", err)
-		os.Exit(1)
-	}
-
-	// Application
-	marketMakingApp := application.NewMarketMakingService(strategyRepo, performanceRepo, orderClient, marketDataClient)
-
-	// 9. 创建 HTTP 服务器
-	httpServer := createHTTPServer(cfg, marketMakingApp, rateLimiter)
-
-	// 10. 创建 gRPC 服务器
-	grpcServer := createGRPCServer(cfg, marketMakingApp)
-
-	// 11. 启动 HTTP 服务器
-	go func() {
-		addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
-		log.InfoContext(ctx, "Starting HTTP server", "addr", addr)
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.ErrorContext(ctx, "HTTP server error", "error", err)
-			os.Exit(1)
-		}
-	}()
-
-	// 12. 启动 gRPC 服务器
-	go func() {
-		addr := fmt.Sprintf("%s:%d", cfg.GRPC.Host, cfg.GRPC.Port)
-		lis, err := net.Listen("tcp", addr)
-		if err != nil {
-			log.ErrorContext(ctx, "Failed to listen on gRPC address", "error", err)
-			os.Exit(1)
-		}
-		log.InfoContext(ctx, "Starting gRPC server", "addr", addr)
-		if err := grpcServer.Serve(lis); err != nil {
-			log.ErrorContext(ctx, "gRPC server error", "error", err)
-			os.Exit(1)
-		}
-	}()
-
-	// 13. 优雅关停
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	log.InfoContext(ctx, "Shutting down MarketMakingService")
-
-	// 关闭 HTTP 服务器
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := httpServer.Shutdown(shutdownCtx); err != nil {
-		log.ErrorContext(ctx, "HTTP server shutdown error", "error", err)
-	}
-
-	// 关闭 gRPC 服务器
-	grpcServer.GracefulStop()
-
-	log.InfoContext(ctx, "MarketMakingService stopped")
+type AppContext struct {
+	AppService *application.MarketMakingService
+	Limiter    limiter.Limiter
+	Config     *configpkg.Config
+	Clients    *ServiceClients
 }
 
-// createHTTPServer 创建 HTTP 服务器
-func createHTTPServer(cfg *config.Config, app *application.MarketMakingService, rateLimiter ratelimit.RateLimiter) *http.Server {
-	router := gin.Default()
+type ServiceClients struct {
+	Order      *grpc.ClientConn
+	MarketData *grpc.ClientConn
+}
 
-	// 添加中间件
-	router.Use(otelgin.Middleware(cfg.ServiceName))
-	router.Use(middleware.GinLoggingMiddleware())
-	router.Use(middleware.GinRecoveryMiddleware())
-	router.Use(middleware.GinCORSMiddleware())
-	router.Use(middleware.RateLimitMiddleware(rateLimiter, cfg.RateLimit))
+const BootstrapName = "market-making"
 
-	// 注册路由
-	httpHandler := httphandler.NewMarketMakingHandler(app)
-	httpHandler.RegisterRoutes(router)
+func main() {
+	app.NewBuilder(BootstrapName).
+		WithConfig(&configpkg.Config{}).
+		WithService(initService).
+		WithGRPC(registerGRPC).
+		WithGin(registerGin).
+		WithGinMiddleware(middleware.CORS()).
+		Build().
+		Run()
+}
 
-	// 健康检查
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
+func registerGRPC(s *grpc.Server, srv interface{}) {
+	ctx := srv.(*AppContext)
+	handler := grpchandler.NewGRPCHandler(ctx.AppService)
+	pb.RegisterMarketMakingServiceServer(s, handler)
+	slog.Default().Info("gRPC server registered", "service", BootstrapName)
+}
+
+func registerGin(e *gin.Engine, srv interface{}) {
+	ctx := srv.(*AppContext)
+	e.Use(middleware.RateLimitWithLimiter(ctx.Limiter))
+	httpHandler := httphandler.NewMarketMakingHandler(ctx.AppService)
+	httpHandler.RegisterRoutes(e)
+	e.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
 			"status":    "healthy",
-			"service":   cfg.ServiceName,
+			"service":   BootstrapName,
 			"timestamp": time.Now().Unix(),
 		})
 	})
-
-	return &http.Server{
-		Addr:         fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port),
-		Handler:      router,
-		ReadTimeout:  time.Duration(cfg.HTTP.ReadTimeout) * time.Second,
-		WriteTimeout: time.Duration(cfg.HTTP.WriteTimeout) * time.Second,
-	}
+	slog.Default().Info("HTTP routes registered", "service", BootstrapName)
 }
 
-// createGRPCServer 创建 gRPC 服务器
-func createGRPCServer(cfg *config.Config, app *application.MarketMakingService) *grpc.Server {
-	// 创建 gRPC 服务器选项
-	opts := []grpc.ServerOption{
-		grpc.StatsHandler(otelgrpc.NewServerHandler()),
-		grpc.ChainUnaryInterceptor(
-			middleware.GRPCLoggingInterceptor(),
-			middleware.GRPCRecoveryInterceptor(),
-		),
-		grpc.MaxConcurrentStreams(uint32(cfg.GRPC.MaxConcurrentStreams)),
+func initService(cfg interface{}, m *metrics.Metrics) (interface{}, func(), error) {
+	c := cfg.(*configpkg.Config)
+	slog.Info("initializing service dependencies...")
+	db, err := databases.NewDB(c.Data.Database, logging.Default())
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := db.AutoMigrate(&repository.QuoteStrategyModel{}, &repository.PerformanceModel{}); err != nil {
+		return nil, nil, err
+	}
+	redisCache, err := cache.NewRedisCache(c.Data.Redis)
+	if err != nil {
+		return nil, nil, err
+	}
+	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
+	strategyRepo := repository.NewQuoteStrategyRepository(db)
+	performanceRepo := repository.NewPerformanceRepository(db)
+
+	// Downstream Clients
+	clients := &ServiceClients{}
+	clientCleanup, err := grpcclient.InitServiceClients(c.Services, clients)
+	if err != nil {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+		redisCache.Close()
+		return nil, nil, err
 	}
 
-	server := grpc.NewServer(opts...)
+	orderClient := client.NewOrderClientFromConn(clients.Order)
+	marketDataClient := client.NewMarketDataClientFromConn(clients.MarketData)
 
-	// 注册服务
-	handler := grpchandler.NewGRPCHandler(app)
-	pb.RegisterMarketMakingServiceServer(server, handler)
-	reflection.Register(server)
-
-	return server
+	appService := application.NewMarketMakingService(strategyRepo, performanceRepo, orderClient, marketDataClient)
+	cleanup := func() {
+		slog.Info("cleaning up resources...")
+		clientCleanup()
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+		redisCache.Close()
+	}
+	return &AppContext{
+		AppService: appService,
+		Limiter:    rateLimiter,
+		Config:     c,
+		Clients:    clients,
+	}, cleanup, nil
 }

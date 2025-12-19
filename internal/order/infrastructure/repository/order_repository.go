@@ -6,8 +6,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/order/domain"
-	"github.com/wyfcoding/financialTrading/pkg/db"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 )
 
@@ -48,11 +47,11 @@ func (OrderModel) TableName() string {
 
 // OrderRepositoryImpl 订单仓储实现
 type OrderRepositoryImpl struct {
-	db *db.DB
+	db *gorm.DB
 }
 
 // NewOrderRepository 创建订单仓储
-func NewOrderRepository(database *db.DB) domain.OrderRepository {
+func NewOrderRepository(database *gorm.DB) domain.OrderRepository {
 	return &OrderRepositoryImpl{
 		db: database,
 	}
@@ -77,7 +76,7 @@ func (or *OrderRepositoryImpl) Save(ctx context.Context, order *domain.Order) er
 	}
 
 	if err := or.db.WithContext(ctx).Create(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save order",
+		logging.Error(ctx, "Failed to save order",
 			"order_id", order.OrderID,
 			"error", err,
 		)
@@ -98,7 +97,7 @@ func (or *OrderRepositoryImpl) Get(ctx context.Context, orderID string) (*domain
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get order",
+		logging.Error(ctx, "Failed to get order",
 			"order_id", orderID,
 			"error", err,
 		)
@@ -123,7 +122,7 @@ func (or *OrderRepositoryImpl) ListByUser(ctx context.Context, userID string, st
 	}
 
 	if err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to list orders",
+		logging.Error(ctx, "Failed to list orders",
 			"user_id", userID,
 			"error", err,
 		)
@@ -153,7 +152,7 @@ func (or *OrderRepositoryImpl) ListBySymbol(ctx context.Context, symbol string, 
 	}
 
 	if err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to list orders",
+		logging.Error(ctx, "Failed to list orders",
 			"symbol", symbol,
 			"error", err,
 		)
@@ -171,7 +170,7 @@ func (or *OrderRepositoryImpl) ListBySymbol(ctx context.Context, symbol string, 
 // UpdateStatus 更新订单状态
 func (or *OrderRepositoryImpl) UpdateStatus(ctx context.Context, orderID string, status domain.OrderStatus) error {
 	if err := or.db.WithContext(ctx).Model(&OrderModel{}).Where("order_id = ?", orderID).Update("status", string(status)).Error; err != nil {
-		logger.Error(ctx, "Failed to update order status",
+		logging.Error(ctx, "Failed to update order status",
 			"order_id", orderID,
 			"error", err,
 		)
@@ -184,7 +183,7 @@ func (or *OrderRepositoryImpl) UpdateStatus(ctx context.Context, orderID string,
 // UpdateFilledQuantity 更新已成交数量
 func (or *OrderRepositoryImpl) UpdateFilledQuantity(ctx context.Context, orderID string, filledQuantity decimal.Decimal) error {
 	if err := or.db.WithContext(ctx).Model(&OrderModel{}).Where("order_id = ?", orderID).Update("filled_quantity", filledQuantity.String()).Error; err != nil {
-		logger.Error(ctx, "Failed to update filled quantity",
+		logging.Error(ctx, "Failed to update filled quantity",
 			"order_id", orderID,
 			"error", err,
 		)
@@ -197,7 +196,7 @@ func (or *OrderRepositoryImpl) UpdateFilledQuantity(ctx context.Context, orderID
 // Delete 删除订单
 func (or *OrderRepositoryImpl) Delete(ctx context.Context, orderID string) error {
 	if err := or.db.WithContext(ctx).Where("order_id = ?", orderID).Delete(&OrderModel{}).Error; err != nil {
-		logger.Error(ctx, "Failed to delete order",
+		logging.Error(ctx, "Failed to delete order",
 			"order_id", orderID,
 			"error", err,
 		)

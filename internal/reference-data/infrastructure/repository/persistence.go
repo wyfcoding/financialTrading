@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/wyfcoding/financialTrading/internal/reference-data/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 )
 
@@ -91,7 +91,7 @@ func (r *SymbolRepositoryImpl) GetByID(ctx context.Context, id string) (*domain.
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get symbol by ID",
+		logging.Error(ctx, "Failed to get symbol by ID",
 			"symbol_id", id,
 			"error", err,
 		)
@@ -116,7 +116,7 @@ func (r *SymbolRepositoryImpl) List(ctx context.Context, exchangeID string, stat
 		query = query.Where("status = ?", status)
 	}
 	if err := query.Limit(limit).Offset(offset).Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to list symbols",
+		logging.Error(ctx, "Failed to list symbols",
 			"exchange_id", exchangeID,
 			"status", status,
 			"error", err,
@@ -149,7 +149,7 @@ func (r *ExchangeRepositoryImpl) GetByID(ctx context.Context, id string) (*domai
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get exchange by ID",
+		logging.Error(ctx, "Failed to get exchange by ID",
 			"exchange_id", id,
 			"error", err,
 		)
@@ -162,7 +162,7 @@ func (r *ExchangeRepositoryImpl) GetByID(ctx context.Context, id string) (*domai
 func (r *ExchangeRepositoryImpl) List(ctx context.Context, limit int, offset int) ([]*domain.Exchange, error) {
 	var models []ExchangeModel
 	if err := r.db.WithContext(ctx).Limit(limit).Offset(offset).Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to list exchanges", "error", err)
+		logging.Error(ctx, "Failed to list exchanges", "error", err)
 		return nil, fmt.Errorf("failed to list exchanges: %w", err)
 	}
 

@@ -8,7 +8,7 @@ import (
 
 	pb "github.com/wyfcoding/financialTrading/go-api/market-data"
 	"github.com/wyfcoding/financialTrading/internal/market-data/application"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -32,7 +32,7 @@ func NewMarketDataHandler(quoteService *application.QuoteApplicationService) *Ma
 func (h *MarketDataHandler) GetLatestQuote(ctx context.Context, req *pb.GetLatestQuoteRequest) (*pb.QuoteResponse, error) {
 	// 验证输入
 	if req.Symbol == "" {
-		logger.Warn(ctx, "Invalid request: symbol is required")
+		logging.Warn(ctx, "Invalid request: symbol is required")
 		return nil, status.Error(codes.InvalidArgument, "symbol is required")
 	}
 
@@ -43,7 +43,7 @@ func (h *MarketDataHandler) GetLatestQuote(ctx context.Context, req *pb.GetLates
 
 	quoteDTO, err := h.quoteService.GetLatestQuote(ctx, appReq)
 	if err != nil {
-		logger.Error(ctx, "Failed to get latest quote",
+		logging.Error(ctx, "Failed to get latest quote",
 			"symbol", req.Symbol,
 			"error", err,
 		)
@@ -75,7 +75,7 @@ func (h *MarketDataHandler) GetKlines(ctx context.Context, req *pb.GetKlinesRequ
 		return nil, status.Error(codes.InvalidArgument, "interval is required")
 	}
 
-	logger.Debug(ctx, "GetKlines called",
+	logging.Debug(ctx, "GetKlines called",
 		"symbol", req.Symbol,
 		"interval", req.Interval,
 		"limit", req.Limit,
@@ -101,7 +101,7 @@ func (h *MarketDataHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBo
 		depth = 20
 	}
 
-	logger.Debug(ctx, "GetOrderBook called",
+	logging.Debug(ctx, "GetOrderBook called",
 		"symbol", req.Symbol,
 		"depth", depth,
 	)
@@ -124,7 +124,7 @@ func (h *MarketDataHandler) SubscribeQuotes(req *pb.SubscribeQuotesRequest, stre
 
 	// Note: stream.Context() is available
 	ctx := stream.Context()
-	logger.Debug(ctx, "SubscribeQuotes called",
+	logging.Debug(ctx, "SubscribeQuotes called",
 		"symbols", fmt.Sprintf("%v", req.Symbols),
 	)
 
@@ -144,7 +144,7 @@ func (h *MarketDataHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequ
 		limit = 100
 	}
 
-	logger.Debug(ctx, "GetTrades called",
+	logging.Debug(ctx, "GetTrades called",
 		"symbol", req.Symbol,
 		"limit", limit,
 	)

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/wyfcoding/financialTrading/internal/monitoring-analytics/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 )
 
@@ -62,7 +62,7 @@ func (r *MetricRepositoryImpl) Save(ctx context.Context, metric *domain.Metric) 
 		Timestamp: metric.Timestamp,
 	}
 	if err := r.db.WithContext(ctx).Create(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save metric",
+		logging.Error(ctx, "Failed to save metric",
 			"name", metric.Name,
 			"error", err,
 		)
@@ -78,7 +78,7 @@ func (r *MetricRepositoryImpl) Save(ctx context.Context, metric *domain.Metric) 
 func (r *MetricRepositoryImpl) GetMetrics(ctx context.Context, name string, startTime, endTime time.Time) ([]*domain.Metric, error) {
 	var models []MetricModel
 	if err := r.db.WithContext(ctx).Where("name = ? AND timestamp BETWEEN ? AND ?", name, startTime, endTime).Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to get metrics",
+		logging.Error(ctx, "Failed to get metrics",
 			"name", name,
 			"start_time", startTime,
 			"end_time", endTime,
@@ -139,7 +139,7 @@ func (r *SystemHealthRepositoryImpl) Save(ctx context.Context, health *domain.Sy
 		LastChecked: health.LastChecked,
 	}
 	if err := r.db.WithContext(ctx).Create(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save system health",
+		logging.Error(ctx, "Failed to save system health",
 			"service_name", health.ServiceName,
 			"error", err,
 		)
@@ -161,7 +161,7 @@ func (r *SystemHealthRepositoryImpl) GetLatestHealth(ctx context.Context, servic
 	// 获取每个服务的最新状态（简化实现：直接获取所有记录，实际应分组取最新）
 	// 这里为了演示简单，只获取最近的100条
 	if err := query.Order("last_checked desc").Limit(100).Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to get latest health",
+		logging.Error(ctx, "Failed to get latest health",
 			"service_name", serviceName,
 			"error", err,
 		)

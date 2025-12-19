@@ -5,16 +5,16 @@ import (
 	"context"
 
 	"github.com/shopspring/decimal"
-	"github.com/wyfcoding/financialTrading/pkg/algos"
+	"github.com/wyfcoding/pkg/algorithm"
 )
 
 // MatchingResult 撮合结果
 // 包含撮合后的成交信息和订单状态
 type MatchingResult struct {
-	OrderID           string          // 订单 ID
-	Trades            []*algos.Trade  // 成交列表
-	RemainingQuantity decimal.Decimal // 剩余数量
-	Status            string          // 状态 (MATCHED, PARTIALLY_MATCHED)
+	OrderID           string             // 订单 ID
+	Trades            []*algorithm.Trade // 成交列表
+	RemainingQuantity decimal.Decimal    // 剩余数量
+	Status            string             // 状态 (MATCHED, PARTIALLY_MATCHED)
 }
 
 // OrderBookSnapshot 订单簿快照
@@ -40,21 +40,21 @@ type OrderBookLevel struct {
 // MatchingEngine 撮合引擎接口
 type MatchingEngine interface {
 	// 提交订单进行撮合
-	SubmitOrder(order *algos.Order) *MatchingResult
+	SubmitOrder(order *algorithm.Order) *MatchingResult
 	// 获取订单簿快照
 	GetOrderBook(symbol string, depth int) *OrderBookSnapshot
 	// 获取成交历史
-	GetTrades(symbol string, limit int) []*algos.Trade
+	GetTrades(symbol string, limit int) []*algorithm.Trade
 }
 
 // TradeRepository 成交记录仓储接口
 type TradeRepository interface {
 	// 保存成交记录
-	Save(ctx context.Context, trade *algos.Trade) error
+	Save(ctx context.Context, trade *algorithm.Trade) error
 	// 获取成交历史
-	GetHistory(ctx context.Context, symbol string, limit int) ([]*algos.Trade, error)
+	GetHistory(ctx context.Context, symbol string, limit int) ([]*algorithm.Trade, error)
 	// 获取最新成交
-	GetLatest(ctx context.Context, symbol string, limit int) ([]*algos.Trade, error)
+	GetLatest(ctx context.Context, symbol string, limit int) ([]*algorithm.Trade, error)
 }
 
 // OrderBookRepository 订单簿仓储接口

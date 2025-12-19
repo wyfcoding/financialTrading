@@ -6,7 +6,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/market-data/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // GetLatestQuoteRequest 获取最新行情请求 DTO
@@ -49,7 +49,7 @@ func NewQuoteApplicationService(quoteRepo domain.QuoteRepository) *QuoteApplicat
 // 3. 转换为 DTO 返回
 func (qas *QuoteApplicationService) GetLatestQuote(ctx context.Context, req *GetLatestQuoteRequest) (*QuoteDTO, error) {
 	// 记录操作开始
-	defer logger.Info(ctx, "GetLatestQuote completed", "symbol", req.Symbol)
+	defer logging.Info(ctx, "GetLatestQuote completed", "symbol", req.Symbol)
 
 	// 验证输入
 	if req.Symbol == "" {
@@ -59,7 +59,7 @@ func (qas *QuoteApplicationService) GetLatestQuote(ctx context.Context, req *Get
 	// 从仓储获取最新行情
 	quote, err := qas.quoteRepo.GetLatest(ctx, req.Symbol)
 	if err != nil {
-		logger.Error(ctx, "Failed to get latest quote",
+		logging.Error(ctx, "Failed to get latest quote",
 			"symbol", req.Symbol,
 			"error", err,
 		)
@@ -67,7 +67,7 @@ func (qas *QuoteApplicationService) GetLatestQuote(ctx context.Context, req *Get
 	}
 
 	if quote == nil {
-		logger.Warn(ctx, "Quote not found",
+		logging.Warn(ctx, "Quote not found",
 			"symbol", req.Symbol,
 		)
 		return nil, fmt.Errorf("quote not found for symbol: %s", req.Symbol)
@@ -103,14 +103,14 @@ func (qas *QuoteApplicationService) SaveQuote(ctx context.Context, symbol string
 
 	// 保存到仓储
 	if err := qas.quoteRepo.Save(ctx, quote); err != nil {
-		logger.Error(ctx, "Failed to save quote",
+		logging.Error(ctx, "Failed to save quote",
 			"symbol", symbol,
 			"error", err,
 		)
 		return fmt.Errorf("failed to save quote: %w", err)
 	}
 
-	logger.Debug(ctx, "Quote saved successfully",
+	logging.Debug(ctx, "Quote saved successfully",
 		"symbol", symbol,
 		"timestamp", timestamp,
 	)
@@ -135,7 +135,7 @@ func (qas *QuoteApplicationService) GetHistoricalQuotes(ctx context.Context, sym
 	// 从仓储获取历史行情
 	quotes, err := qas.quoteRepo.GetHistory(ctx, symbol, startTime, endTime)
 	if err != nil {
-		logger.Error(ctx, "Failed to get historical quotes",
+		logging.Error(ctx, "Failed to get historical quotes",
 			"symbol", symbol,
 			"error", err,
 		)

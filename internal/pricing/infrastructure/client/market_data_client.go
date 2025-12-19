@@ -6,8 +6,9 @@ import (
 
 	market_data "github.com/wyfcoding/financialTrading/go-api/market-data"
 	"github.com/wyfcoding/financialTrading/internal/pricing/domain"
-	"github.com/wyfcoding/financialTrading/pkg/grpcclient"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/grpcclient"
+	"github.com/wyfcoding/pkg/logging"
+	"google.golang.org/grpc"
 )
 
 // MarketDataClientImpl 市场数据服务客户端实现
@@ -27,6 +28,13 @@ func NewMarketDataClient(cfg grpcclient.ClientConfig) (domain.MarketDataClient, 
 	}, nil
 }
 
+// NewMarketDataClientFromConn 从现有连接创建客户端
+func NewMarketDataClientFromConn(conn *grpc.ClientConn) domain.MarketDataClient {
+	return &MarketDataClientImpl{
+		client: market_data.NewMarketDataServiceClient(conn),
+	}
+}
+
 // GetPrice 获取最新价格
 func (c *MarketDataClientImpl) GetPrice(ctx context.Context, symbol string) (float64, error) {
 	req := &market_data.GetLatestQuoteRequest{
@@ -35,7 +43,7 @@ func (c *MarketDataClientImpl) GetPrice(ctx context.Context, symbol string) (flo
 
 	resp, err := c.client.GetLatestQuote(ctx, req)
 	if err != nil {
-		logger.Error(ctx, "Failed to get latest quote",
+		logging.Error(ctx, "Failed to get latest quote",
 			"symbol", symbol,
 			"error", err,
 		)
@@ -54,7 +62,7 @@ func (c *MarketDataClientImpl) GetPrice(ctx context.Context, symbol string) (flo
 		}
 	}
 
-	logger.Info(ctx, "Retrieved latest price from market data",
+	logging.Info(ctx, "Retrieved latest price from market data",
 		"symbol", symbol,
 		"price", price,
 	)

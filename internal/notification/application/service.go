@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wyfcoding/financialTrading/internal/notification/domain"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // NotificationService 通知应用服务
@@ -47,7 +47,7 @@ func (s *NotificationService) SendNotification(ctx context.Context, userID strin
 
 	// 2. 保存到数据库
 	if err := s.repo.Save(ctx, notification); err != nil {
-		logger.Error(ctx, "Failed to save notification",
+		logging.Error(ctx, "Failed to save notification",
 			"user_id", userID,
 			"error", err,
 		)
@@ -69,14 +69,14 @@ func (s *NotificationService) SendNotification(ctx context.Context, userID strin
 	if err != nil {
 		notification.Status = domain.NotificationStatusFailed
 		notification.ErrorMessage = err.Error()
-		logger.Error(ctx, "Failed to send notification",
+		logging.Error(ctx, "Failed to send notification",
 			"notification_id", notification.ID,
 			"error", err,
 		)
 	} else {
 		notification.Status = domain.NotificationStatusSent
 		notification.SentAt = time.Now()
-		logger.Info(ctx, "Notification sent successfully",
+		logging.Info(ctx, "Notification sent successfully",
 			"notification_id", notification.ID,
 			"type", notificationType,
 		)
@@ -84,7 +84,7 @@ func (s *NotificationService) SendNotification(ctx context.Context, userID strin
 
 	// 再次保存更新状态
 	if err := s.repo.Save(ctx, notification); err != nil {
-		logger.Error(ctx, "Failed to update notification status",
+		logging.Error(ctx, "Failed to update notification status",
 			"notification_id", notification.ID,
 			"error", err,
 		)
@@ -97,7 +97,7 @@ func (s *NotificationService) SendNotification(ctx context.Context, userID strin
 func (s *NotificationService) GetNotificationHistory(ctx context.Context, userID string, limit int, offset int) ([]*domain.Notification, error) {
 	notifications, err := s.repo.ListByUserID(ctx, userID, limit, offset)
 	if err != nil {
-		logger.Error(ctx, "Failed to get notification history",
+		logging.Error(ctx, "Failed to get notification history",
 			"user_id", userID,
 			"error", err,
 		)

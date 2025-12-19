@@ -6,8 +6,9 @@ import (
 
 	"github.com/wyfcoding/financialTrading/go-api/order"
 	"github.com/wyfcoding/financialTrading/internal/market-making/domain"
-	"github.com/wyfcoding/financialTrading/pkg/grpcclient"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/grpcclient"
+	"github.com/wyfcoding/pkg/logging"
+	"google.golang.org/grpc"
 )
 
 // OrderClientImpl 订单服务客户端实现
@@ -27,6 +28,13 @@ func NewOrderClient(cfg grpcclient.ClientConfig) (domain.OrderClient, error) {
 	}, nil
 }
 
+// NewOrderClientFromConn 从现有连接创建客户端
+func NewOrderClientFromConn(conn *grpc.ClientConn) domain.OrderClient {
+	return &OrderClientImpl{
+		client: order.NewOrderServiceClient(conn),
+	}
+}
+
 // PlaceOrder 下单
 func (c *OrderClientImpl) PlaceOrder(ctx context.Context, symbol string, side string, price, quantity float64) (string, error) {
 	req := &order.CreateOrderRequest{
@@ -40,7 +48,7 @@ func (c *OrderClientImpl) PlaceOrder(ctx context.Context, symbol string, side st
 
 	resp, err := c.client.CreateOrder(ctx, req)
 	if err != nil {
-		logger.Error(ctx, "Failed to place order",
+		logging.Error(ctx, "Failed to place order",
 			"symbol", symbol,
 			"side", side,
 			"price", price,

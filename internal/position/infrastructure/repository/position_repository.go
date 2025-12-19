@@ -8,8 +8,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialTrading/internal/position/domain"
-	"github.com/wyfcoding/financialTrading/pkg/db"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 )
 
@@ -50,11 +49,11 @@ func (PositionModel) TableName() string {
 
 // PositionRepositoryImpl 持仓仓储实现
 type PositionRepositoryImpl struct {
-	db *db.DB
+	db *gorm.DB
 }
 
 // NewPositionRepository 创建持仓仓储
-func NewPositionRepository(database *db.DB) domain.PositionRepository {
+func NewPositionRepository(database *gorm.DB) domain.PositionRepository {
 	return &PositionRepositoryImpl{
 		db: database,
 	}
@@ -79,7 +78,7 @@ func (pr *PositionRepositoryImpl) Save(ctx context.Context, position *domain.Pos
 	}
 
 	if err := pr.db.WithContext(ctx).Create(model).Error; err != nil {
-		logger.Error(ctx, "Failed to save position",
+		logging.Error(ctx, "Failed to save position",
 			"position_id", position.PositionID,
 			"error", err,
 		)
@@ -100,7 +99,7 @@ func (pr *PositionRepositoryImpl) Get(ctx context.Context, positionID string) (*
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		logger.Error(ctx, "Failed to get position",
+		logging.Error(ctx, "Failed to get position",
 			"position_id", positionID,
 			"error", err,
 		)
@@ -122,7 +121,7 @@ func (pr *PositionRepositoryImpl) GetByUser(ctx context.Context, userID string, 
 	}
 
 	if err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to get positions by user",
+		logging.Error(ctx, "Failed to get positions by user",
 			"user_id", userID,
 			"error", err,
 		)
@@ -149,7 +148,7 @@ func (pr *PositionRepositoryImpl) GetBySymbol(ctx context.Context, symbol string
 	}
 
 	if err := query.Offset(offset).Limit(limit).Order("created_at DESC").Find(&models).Error; err != nil {
-		logger.Error(ctx, "Failed to get positions by symbol",
+		logging.Error(ctx, "Failed to get positions by symbol",
 			"symbol", symbol,
 			"error", err,
 		)
@@ -183,7 +182,7 @@ func (pr *PositionRepositoryImpl) Update(ctx context.Context, position *domain.P
 	}
 
 	if err := pr.db.WithContext(ctx).Model(&PositionModel{}).Where("position_id = ?", position.PositionID).Updates(model).Error; err != nil {
-		logger.Error(ctx, "Failed to update position",
+		logging.Error(ctx, "Failed to update position",
 			"position_id", position.PositionID,
 			"error", err,
 		)
@@ -199,7 +198,7 @@ func (pr *PositionRepositoryImpl) Close(ctx context.Context, positionID string, 
 		"status":    "CLOSED",
 		"closed_at": time.Now(),
 	}).Error; err != nil {
-		logger.Error(ctx, "Failed to close position",
+		logging.Error(ctx, "Failed to close position",
 			"position_id", positionID,
 			"error", err,
 		)

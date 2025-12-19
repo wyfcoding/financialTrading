@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialTrading/internal/risk/application"
-	"github.com/wyfcoding/financialTrading/pkg/logger"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // RiskHandler HTTP 处理器
@@ -44,7 +44,7 @@ func (h *RiskHandler) AssessRisk(c *gin.Context) {
 
 	dto, err := h.riskService.AssessRisk(c.Request.Context(), &req)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to assess risk", "error", err)
+		logging.Error(c.Request.Context(), "Failed to assess risk", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -62,7 +62,7 @@ func (h *RiskHandler) GetRiskMetrics(c *gin.Context) {
 
 	metrics, err := h.riskService.GetRiskMetrics(c.Request.Context(), userID)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to get risk metrics", "user_id", userID, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get risk metrics", "user_id", userID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -86,7 +86,7 @@ func (h *RiskHandler) CheckRiskLimit(c *gin.Context) {
 
 	limit, err := h.riskService.CheckRiskLimit(c.Request.Context(), userID, limitType)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to check risk limit", "user_id", userID, "limit_type", limitType, "error", err)
+		logging.Error(c.Request.Context(), "Failed to check risk limit", "user_id", userID, "limit_type", limitType, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -111,7 +111,7 @@ func (h *RiskHandler) GetRiskAlerts(c *gin.Context) {
 
 	alerts, err := h.riskService.GetRiskAlerts(c.Request.Context(), userID, limit)
 	if err != nil {
-		logger.WithContext(c.Request.Context()).Error("Failed to get risk alerts", "user_id", userID, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get risk alerts", "user_id", userID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
