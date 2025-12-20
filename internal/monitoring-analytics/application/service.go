@@ -43,7 +43,7 @@ func (s *MonitoringAnalyticsService) RecordMetric(ctx context.Context, name stri
 		return fmt.Errorf("failed to save metric: %w", err)
 	}
 
-	// Optional: Log metric recording at debug level to avoid spamming
+	// 可选：在调试级别记录指标记录，以避免刷屏
 	logging.Debug(ctx, "Metric recorded",
 		"name", name,
 		"value", value,

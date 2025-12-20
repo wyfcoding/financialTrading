@@ -122,7 +122,7 @@ func (h *MarketDataHandler) SubscribeQuotes(req *pb.SubscribeQuotesRequest, stre
 		return status.Error(codes.InvalidArgument, "symbols is required")
 	}
 
-	// Note: stream.Context() is available
+	// 注意：stream.Context() 可用
 	ctx := stream.Context()
 	logging.Debug(ctx, "SubscribeQuotes called",
 		"symbols", fmt.Sprintf("%v", req.Symbols),

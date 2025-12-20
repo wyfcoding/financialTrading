@@ -79,7 +79,7 @@ func (h *GRPCHandler) ClosePosition(ctx context.Context, req *pb.ClosePositionRe
 		return nil, status.Errorf(codes.Internal, "failed to close position: %v", err)
 	}
 
-	// Fetch updated position to return
+	// 获取更新后的头寸以返回
 	dto, err := h.appService.GetPosition(ctx, req.PositionId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get updated position: %v", err)

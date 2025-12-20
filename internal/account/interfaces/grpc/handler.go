@@ -89,7 +89,7 @@ func (h *GRPCHandler) Deposit(ctx context.Context, req *pb.DepositRequest) (*pb.
 		Type:      "DEPOSIT",
 		Amount:    req.Amount,
 		Status:    "COMPLETED",
-		// TransactionID and Timestamp would ideally be returned by the service
+		// TransactionID 和 Timestamp 理想情况下应由服务返回
 	}, nil
 }
 

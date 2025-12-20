@@ -59,8 +59,8 @@ func (h *OrderHandler) CancelOrder(c *gin.Context) {
 		return
 	}
 
-	// Assuming user_id is passed in header or context (e.g. from auth middleware)
-	// For now, we'll try to get it from query param for simplicity if not in context
+	// 假设 user_id 通过头部或上下文传递（例如来自认证中间件）
+	// 如果上下文中没有，为简单起见，我们目前尝试从查询参数中获取
 	userID := c.Query("user_id")
 	if userID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
