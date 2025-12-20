@@ -48,9 +48,9 @@ func NewAccountApplicationService(accountRepo domain.AccountRepository, transact
 }
 
 // CreateAccount 创建账户
-// 用例涁程：
+// 用例流程：
 // 1. 验证输入参数
-// 2. 生溦账户 ID
+// 2. 生成账户 ID
 // 3. 创建账户对象
 // 4. 保存到仓储
 func (aas *AccountApplicationService) CreateAccount(ctx context.Context, req *CreateAccountRequest) (*AccountDTO, error) {
