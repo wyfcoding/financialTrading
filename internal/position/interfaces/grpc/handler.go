@@ -34,10 +34,7 @@ func (h *GRPCHandler) GetPositions(ctx context.Context, req *pb.GetPositionsRequ
 	if limit <= 0 {
 		limit = 20
 	}
-	offset := int((req.Page - 1) * req.PageSize)
-	if offset < 0 {
-		offset = 0
-	}
+	offset := max(int((req.Page-1)*req.PageSize), 0)
 
 	dtos, total, err := h.appService.GetPositions(ctx, req.UserId, limit, offset)
 	if err != nil {

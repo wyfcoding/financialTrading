@@ -100,7 +100,7 @@ func (s *IndicatorService) CalculateMACD(prices []decimal.Decimal, fastPeriod, s
 	// slowEMAs 长度: len(prices) (前 slowPeriod-1 个为 0 或无效)
 
 	macdLineSeries := make([]decimal.Decimal, len(prices))
-	for i := 0; i < len(prices); i++ {
+	for i := range prices {
 		if i < slowPeriod-1 {
 			continue
 		}

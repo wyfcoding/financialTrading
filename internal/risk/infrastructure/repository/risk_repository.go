@@ -223,7 +223,7 @@ func (rmr *RiskMetricsRepositoryImpl) Get(ctx context.Context, userID string) (*
 
 // Update 更新风险指标
 func (rmr *RiskMetricsRepositoryImpl) Update(ctx context.Context, metrics *domain.RiskMetrics) error {
-	if err := rmr.db.WithContext(ctx).Model(&RiskMetricsModel{}).Where("user_id = ?", metrics.UserID).Updates(map[string]interface{}{
+	if err := rmr.db.WithContext(ctx).Model(&RiskMetricsModel{}).Where("user_id = ?", metrics.UserID).Updates(map[string]any{
 		"var_95":       metrics.VaR95.String(),
 		"var_99":       metrics.VaR99.String(),
 		"max_drawdown": metrics.MaxDrawdown.String(),
@@ -357,7 +357,7 @@ func (rlr *RiskLimitRepositoryImpl) GetByUser(ctx context.Context, userID string
 
 // Update 更新风险限额
 func (rlr *RiskLimitRepositoryImpl) Update(ctx context.Context, limit *domain.RiskLimit) error {
-	if err := rlr.db.WithContext(ctx).Model(&RiskLimitModel{}).Where("limit_id = ?", limit.LimitID).Updates(map[string]interface{}{
+	if err := rlr.db.WithContext(ctx).Model(&RiskLimitModel{}).Where("limit_id = ?", limit.LimitID).Updates(map[string]any{
 		"limit_value":   limit.LimitValue.String(),
 		"current_value": limit.CurrentValue.String(),
 		"is_exceeded":   limit.IsExceeded,

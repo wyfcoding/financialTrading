@@ -273,7 +273,7 @@ type TradeRepository interface {
 // 提供市场数据相关的业务逻辑
 type MarketDataService interface {
 	// 计算技术指标（如 MA、RSI 等）
-	CalculateTechnicalIndicators(klines []*Kline) map[string]interface{}
+	CalculateTechnicalIndicators(klines []*Kline) map[string]any
 	// 检测异常行情
 	DetectAnomalies(quote *Quote, historicalQuotes []*Quote) bool
 	// 计算波动率

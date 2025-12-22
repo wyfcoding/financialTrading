@@ -194,7 +194,7 @@ func (pr *PositionRepositoryImpl) Update(ctx context.Context, position *domain.P
 
 // Close 平仓
 func (pr *PositionRepositoryImpl) Close(ctx context.Context, positionID string, closePrice decimal.Decimal) error {
-	if err := pr.db.WithContext(ctx).Model(&PositionModel{}).Where("position_id = ?", positionID).Updates(map[string]interface{}{
+	if err := pr.db.WithContext(ctx).Model(&PositionModel{}).Where("position_id = ?", positionID).Updates(map[string]any{
 		"status":    "CLOSED",
 		"closed_at": time.Now(),
 	}).Error; err != nil {

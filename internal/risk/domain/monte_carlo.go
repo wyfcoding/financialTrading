@@ -67,10 +67,10 @@ func CalculateVaR(input MonteCarloInput) *MonteCarloResult {
 	// 计算 Expected Shortfall (ES) / CVaR
 	// ES 是超过 VaR 的损失的平均值
 	var sumTail95, sumTail99 float64
-	for i := 0; i < idx95; i++ {
+	for i := range idx95 {
 		sumTail95 += pnl[i]
 	}
-	for i := 0; i < idx99; i++ {
+	for i := range idx99 {
 		sumTail99 += pnl[i]
 	}
 

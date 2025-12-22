@@ -263,7 +263,7 @@ func (ecr *EODClearingRepositoryImpl) GetLatest(ctx context.Context) (*domain.EO
 // Update 实现了更新日终清算任务的接口。
 func (ecr *EODClearingRepositoryImpl) Update(ctx context.Context, clearing *domain.EODClearing) error {
 	// 使用 map 构建更新字段，只会更新非零值字段，更安全。
-	updates := map[string]interface{}{
+	updates := map[string]any{
 		"status":         clearing.Status,
 		"trades_settled": clearing.TradesSettled,
 		"total_trades":   clearing.TotalTrades,

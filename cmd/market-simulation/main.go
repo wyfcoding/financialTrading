@@ -53,14 +53,14 @@ func main() {
 		Run()
 }
 
-func registerGRPC(s *grpc.Server, srv interface{}) {
+func registerGRPC(s *grpc.Server, srv any) {
 	ctx := srv.(*AppContext)
 	handler := grpchandler.NewGRPCHandler(ctx.AppService)
 	pb.RegisterMarketSimulationServiceServer(s, handler)
 	slog.Default().Info("gRPC server registered", "service", BootstrapName)
 }
 
-func registerGin(e *gin.Engine, srv interface{}) {
+func registerGin(e *gin.Engine, srv any) {
 	ctx := srv.(*AppContext)
 	e.Use(middleware.RateLimitWithLimiter(ctx.Limiter))
 	httpHandler := httphandler.NewMarketSimulationHandler(ctx.AppService)
@@ -75,7 +75,7 @@ func registerGin(e *gin.Engine, srv interface{}) {
 	slog.Default().Info("HTTP routes registered", "service", BootstrapName)
 }
 
-func initService(cfg interface{}, m *metrics.Metrics) (interface{}, func(), error) {
+func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	c := cfg.(*configpkg.Config)
 	slog.Info("initializing service dependencies...")
 	db, err := databases.NewDB(c.Data.Database, logging.Default())

@@ -115,7 +115,7 @@ func (ar *AccountRepositoryImpl) GetByUser(ctx context.Context, userID string) (
 
 // UpdateBalance 更新余额
 func (ar *AccountRepositoryImpl) UpdateBalance(ctx context.Context, accountID string, balance, availableBalance, frozenBalance decimal.Decimal) error {
-	if err := ar.db.WithContext(ctx).Model(&AccountModel{}).Where("account_id = ?", accountID).Updates(map[string]interface{}{
+	if err := ar.db.WithContext(ctx).Model(&AccountModel{}).Where("account_id = ?", accountID).Updates(map[string]any{
 		"balance":           balance.String(),
 		"available_balance": availableBalance.String(),
 		"frozen_balance":    frozenBalance.String(),
