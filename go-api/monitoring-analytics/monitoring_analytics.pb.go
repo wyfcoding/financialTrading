@@ -22,16 +22,18 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Metric 表示Metric结构体。
 type Metric struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Value         float64                `protobuf:"fixed64,2,opt,name=value,proto3" json:"value,omitempty"`
-	Tags          map[string]string      `protobuf:"bytes,3,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"` // 名称
+	Value         float64                `protobuf:"fixed64,2,opt,name=value,proto3" json:"value,omitempty"` // 价值
+	Tags          map[string]string      `protobuf:"bytes,3,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // Tags
+	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Timestamp
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *Metric) Reset() {
 	*x = Metric{}
 	mi := &file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes[0]
@@ -39,12 +41,15 @@ func (x *Metric) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *Metric) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*Metric) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *Metric) ProtoReflect() protoreflect.Message {
 	mi := &file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes[0]
 	if x != nil {
@@ -58,10 +63,12 @@ func (x *Metric) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use Metric.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*Metric) Descriptor() ([]byte, []int) {
 	return file_api_monitoring_analytics_monitoring_analytics_proto_rawDescGZIP(), []int{0}
 }
 
+// GetName 获取名称.
 func (x *Metric) GetName() string {
 	if x != nil {
 		return x.Name
@@ -69,6 +76,7 @@ func (x *Metric) GetName() string {
 	return ""
 }
 
+// GetValue 获取Value.
 func (x *Metric) GetValue() float64 {
 	if x != nil {
 		return x.Value
@@ -76,6 +84,7 @@ func (x *Metric) GetValue() float64 {
 	return 0
 }
 
+// GetTags 获取Tags.
 func (x *Metric) GetTags() map[string]string {
 	if x != nil {
 		return x.Tags
@@ -83,6 +92,7 @@ func (x *Metric) GetTags() map[string]string {
 	return nil
 }
 
+// GetTimestamp 获取Timestamp.
 func (x *Metric) GetTimestamp() *timestamppb.Timestamp {
 	if x != nil {
 		return x.Timestamp
@@ -90,16 +100,18 @@ func (x *Metric) GetTimestamp() *timestamppb.Timestamp {
 	return nil
 }
 
+// SystemHealth 表示SystemHealth结构体。
 type SystemHealth struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ServiceName   string                 `protobuf:"bytes,1,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
-	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // UP, DOWN, DEGRADED
-	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
-	LastChecked   *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=last_checked,json=lastChecked,proto3" json:"last_checked,omitempty"`
+	ServiceName   string                 `protobuf:"bytes,1,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"` // SERVICE名称
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"` // 消息
+	LastChecked   *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=last_checked,json=lastChecked,proto3" json:"last_checked,omitempty"` // 最后Checked
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *SystemHealth) Reset() {
 	*x = SystemHealth{}
 	mi := &file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes[1]
@@ -107,12 +119,15 @@ func (x *SystemHealth) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *SystemHealth) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*SystemHealth) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *SystemHealth) ProtoReflect() protoreflect.Message {
 	mi := &file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes[1]
 	if x != nil {
@@ -126,10 +141,12 @@ func (x *SystemHealth) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use SystemHealth.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*SystemHealth) Descriptor() ([]byte, []int) {
 	return file_api_monitoring_analytics_monitoring_analytics_proto_rawDescGZIP(), []int{1}
 }
 
+// GetServiceName 获取SERVICE名称.
 func (x *SystemHealth) GetServiceName() string {
 	if x != nil {
 		return x.ServiceName
@@ -137,6 +154,7 @@ func (x *SystemHealth) GetServiceName() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *SystemHealth) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -144,6 +162,7 @@ func (x *SystemHealth) GetStatus() string {
 	return ""
 }
 
+// GetMessage 获取消息.
 func (x *SystemHealth) GetMessage() string {
 	if x != nil {
 		return x.Message
@@ -151,6 +170,7 @@ func (x *SystemHealth) GetMessage() string {
 	return ""
 }
 
+// GetLastChecked 获取最后Checked.
 func (x *SystemHealth) GetLastChecked() *timestamppb.Timestamp {
 	if x != nil {
 		return x.LastChecked
@@ -158,13 +178,15 @@ func (x *SystemHealth) GetLastChecked() *timestamppb.Timestamp {
 	return nil
 }
 
+// RecordMetricRequest 表示RecordMetric请求结构体。
 type RecordMetricRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Metric        *Metric                `protobuf:"bytes,1,opt,name=metric,proto3" json:"metric,omitempty"`
+	Metric        *Metric                `protobuf:"bytes,1,opt,name=metric,proto3" json:"metric,omitempty"` // 指标
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *RecordMetricRequest) Reset() {
 	*x = RecordMetricRequest{}
 	mi := &file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes[2]
@@ -172,12 +194,15 @@ func (x *RecordMetricRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *RecordMetricRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*RecordMetricRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *RecordMetricRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes[2]
 	if x != nil {
@@ -191,10 +216,12 @@ func (x *RecordMetricRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use RecordMetricRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*RecordMetricRequest) Descriptor() ([]byte, []int) {
 	return file_api_monitoring_analytics_monitoring_analytics_proto_rawDescGZIP(), []int{2}
 }
 
+// GetMetric 获取Metric.
 func (x *RecordMetricRequest) GetMetric() *Metric {
 	if x != nil {
 		return x.Metric
@@ -202,13 +229,15 @@ func (x *RecordMetricRequest) GetMetric() *Metric {
 	return nil
 }
 
+// RecordMetricResponse 表示RecordMetric响应结构体。
 type RecordMetricResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"` // 成功
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *RecordMetricResponse) Reset() {
 	*x = RecordMetricResponse{}
 	mi := &file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes[3]
@@ -216,12 +245,15 @@ func (x *RecordMetricResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *RecordMetricResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*RecordMetricResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *RecordMetricResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes[3]
 	if x != nil {
@@ -235,10 +267,12 @@ func (x *RecordMetricResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use RecordMetricResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*RecordMetricResponse) Descriptor() ([]byte, []int) {
 	return file_api_monitoring_analytics_monitoring_analytics_proto_rawDescGZIP(), []int{3}
 }
 
+// GetSuccess 获取成功.
 func (x *RecordMetricResponse) GetSuccess() bool {
 	if x != nil {
 		return x.Success
@@ -246,15 +280,17 @@ func (x *RecordMetricResponse) GetSuccess() bool {
 	return false
 }
 
+// GetMetricsRequest 表示获取Metrics请求结构体。
 type GetMetricsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	StartTime     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	EndTime       *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"` // 名称
+	StartTime     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"` // 开始时间
+	EndTime       *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"` // 结束时间
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetMetricsRequest) Reset() {
 	*x = GetMetricsRequest{}
 	mi := &file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes[4]
@@ -262,12 +298,15 @@ func (x *GetMetricsRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetMetricsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetMetricsRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetMetricsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes[4]
 	if x != nil {
@@ -281,10 +320,12 @@ func (x *GetMetricsRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetMetricsRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetMetricsRequest) Descriptor() ([]byte, []int) {
 	return file_api_monitoring_analytics_monitoring_analytics_proto_rawDescGZIP(), []int{4}
 }
 
+// GetName 获取名称.
 func (x *GetMetricsRequest) GetName() string {
 	if x != nil {
 		return x.Name
@@ -292,6 +333,7 @@ func (x *GetMetricsRequest) GetName() string {
 	return ""
 }
 
+// GetStartTime 获取开始时间.
 func (x *GetMetricsRequest) GetStartTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.StartTime
@@ -299,6 +341,7 @@ func (x *GetMetricsRequest) GetStartTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetEndTime 获取结束时间.
 func (x *GetMetricsRequest) GetEndTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.EndTime
@@ -306,13 +349,15 @@ func (x *GetMetricsRequest) GetEndTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetMetricsResponse 表示获取Metrics响应结构体。
 type GetMetricsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Metrics       []*Metric              `protobuf:"bytes,1,rep,name=metrics,proto3" json:"metrics,omitempty"`
+	Metrics       []*Metric              `protobuf:"bytes,1,rep,name=metrics,proto3" json:"metrics,omitempty"` // Metrics
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetMetricsResponse) Reset() {
 	*x = GetMetricsResponse{}
 	mi := &file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes[5]
@@ -320,12 +365,15 @@ func (x *GetMetricsResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetMetricsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetMetricsResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetMetricsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes[5]
 	if x != nil {
@@ -339,10 +387,12 @@ func (x *GetMetricsResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetMetricsResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetMetricsResponse) Descriptor() ([]byte, []int) {
 	return file_api_monitoring_analytics_monitoring_analytics_proto_rawDescGZIP(), []int{5}
 }
 
+// GetMetrics 获取Metrics.
 func (x *GetMetricsResponse) GetMetrics() []*Metric {
 	if x != nil {
 		return x.Metrics
@@ -350,13 +400,15 @@ func (x *GetMetricsResponse) GetMetrics() []*Metric {
 	return nil
 }
 
+// GetSystemHealthRequest 表示获取SystemHealth请求结构体。
 type GetSystemHealthRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ServiceName   string                 `protobuf:"bytes,1,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"` // Optional, if empty return all
+	ServiceName   string                 `protobuf:"bytes,1,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"` // 服务名称
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetSystemHealthRequest) Reset() {
 	*x = GetSystemHealthRequest{}
 	mi := &file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes[6]
@@ -364,12 +416,15 @@ func (x *GetSystemHealthRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetSystemHealthRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetSystemHealthRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetSystemHealthRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes[6]
 	if x != nil {
@@ -383,10 +438,12 @@ func (x *GetSystemHealthRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetSystemHealthRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetSystemHealthRequest) Descriptor() ([]byte, []int) {
 	return file_api_monitoring_analytics_monitoring_analytics_proto_rawDescGZIP(), []int{6}
 }
 
+// GetServiceName 获取SERVICE名称.
 func (x *GetSystemHealthRequest) GetServiceName() string {
 	if x != nil {
 		return x.ServiceName
@@ -394,13 +451,15 @@ func (x *GetSystemHealthRequest) GetServiceName() string {
 	return ""
 }
 
+// GetSystemHealthResponse 表示获取SystemHealth响应结构体。
 type GetSystemHealthResponse struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	HealthStatuses []*SystemHealth        `protobuf:"bytes,1,rep,name=health_statuses,json=healthStatuses,proto3" json:"health_statuses,omitempty"`
+	HealthStatuses []*SystemHealth        `protobuf:"bytes,1,rep,name=health_statuses,json=healthStatuses,proto3" json:"health_statuses,omitempty"` // HealthStatuses
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetSystemHealthResponse) Reset() {
 	*x = GetSystemHealthResponse{}
 	mi := &file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes[7]
@@ -408,12 +467,15 @@ func (x *GetSystemHealthResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetSystemHealthResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetSystemHealthResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetSystemHealthResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes[7]
 	if x != nil {
@@ -427,10 +489,12 @@ func (x *GetSystemHealthResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetSystemHealthResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetSystemHealthResponse) Descriptor() ([]byte, []int) {
 	return file_api_monitoring_analytics_monitoring_analytics_proto_rawDescGZIP(), []int{7}
 }
 
+// GetHealthStatuses 获取HealthStatuses.
 func (x *GetSystemHealthResponse) GetHealthStatuses() []*SystemHealth {
 	if x != nil {
 		return x.HealthStatuses
@@ -543,7 +607,7 @@ func file_api_monitoring_analytics_monitoring_analytics_proto_init() {
 		DependencyIndexes: file_api_monitoring_analytics_monitoring_analytics_proto_depIdxs,
 		MessageInfos:      file_api_monitoring_analytics_monitoring_analytics_proto_msgTypes,
 	}.Build()
-	File_api_monitoring_analytics_monitoring_analytics_proto = out.File
+	File_api_monitoring_analytics_monitoring_analytics_proto = out.File // File_api_monitoring_analytics_monitoring_analytics_proto 文件APImonitoringanalyticsmonitoringanalyticsProto
 	file_api_monitoring_analytics_monitoring_analytics_proto_goTypes = nil
 	file_api_monitoring_analytics_monitoring_analytics_proto_depIdxs = nil
 }

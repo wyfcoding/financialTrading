@@ -21,17 +21,19 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// SubmitOrderRequest 表示Submit订单请求结构体。
 type SubmitOrderRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	OrderId       string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Side          string                 `protobuf:"bytes,3,opt,name=side,proto3" json:"side,omitempty"`
-	Price         string                 `protobuf:"bytes,4,opt,name=price,proto3" json:"price,omitempty"`
-	Quantity      string                 `protobuf:"bytes,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	OrderId       string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"` // 订单唯一标识
+	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Side          string                 `protobuf:"bytes,3,opt,name=side,proto3" json:"side,omitempty"` // 交易方向
+	Price         string                 `protobuf:"bytes,4,opt,name=price,proto3" json:"price,omitempty"` // 价格
+	Quantity      string                 `protobuf:"bytes,5,opt,name=quantity,proto3" json:"quantity,omitempty"` // 数量
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *SubmitOrderRequest) Reset() {
 	*x = SubmitOrderRequest{}
 	mi := &file_api_matching_engine_matching_proto_msgTypes[0]
@@ -39,12 +41,15 @@ func (x *SubmitOrderRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *SubmitOrderRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*SubmitOrderRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *SubmitOrderRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_matching_engine_matching_proto_msgTypes[0]
 	if x != nil {
@@ -58,10 +63,12 @@ func (x *SubmitOrderRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use SubmitOrderRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*SubmitOrderRequest) Descriptor() ([]byte, []int) {
 	return file_api_matching_engine_matching_proto_rawDescGZIP(), []int{0}
 }
 
+// GetOrderId 获取订单唯一标识.
 func (x *SubmitOrderRequest) GetOrderId() string {
 	if x != nil {
 		return x.OrderId
@@ -69,6 +76,7 @@ func (x *SubmitOrderRequest) GetOrderId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *SubmitOrderRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -76,6 +84,7 @@ func (x *SubmitOrderRequest) GetSymbol() string {
 	return ""
 }
 
+// GetSide 获取交易方向.
 func (x *SubmitOrderRequest) GetSide() string {
 	if x != nil {
 		return x.Side
@@ -83,6 +92,7 @@ func (x *SubmitOrderRequest) GetSide() string {
 	return ""
 }
 
+// GetPrice 获取价格.
 func (x *SubmitOrderRequest) GetPrice() string {
 	if x != nil {
 		return x.Price
@@ -90,6 +100,7 @@ func (x *SubmitOrderRequest) GetPrice() string {
 	return ""
 }
 
+// GetQuantity 获取数量.
 func (x *SubmitOrderRequest) GetQuantity() string {
 	if x != nil {
 		return x.Quantity
@@ -97,16 +108,18 @@ func (x *SubmitOrderRequest) GetQuantity() string {
 	return ""
 }
 
+// MatchResult 表示撮合结果结构体。
 type MatchResult struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
-	OrderId           string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	MatchedTrades     []*Trade               `protobuf:"bytes,2,rep,name=matched_trades,json=matchedTrades,proto3" json:"matched_trades,omitempty"`
-	RemainingQuantity string                 `protobuf:"bytes,3,opt,name=remaining_quantity,json=remainingQuantity,proto3" json:"remaining_quantity,omitempty"`
-	Status            string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	OrderId           string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"` // 订单唯一标识
+	MatchedTrades     []*Trade               `protobuf:"bytes,2,rep,name=matched_trades,json=matchedTrades,proto3" json:"matched_trades,omitempty"` // MatchedTrades
+	RemainingQuantity string                 `protobuf:"bytes,3,opt,name=remaining_quantity,json=remainingQuantity,proto3" json:"remaining_quantity,omitempty"` // Remaining数量
+	Status            string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"` // 状态
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *MatchResult) Reset() {
 	*x = MatchResult{}
 	mi := &file_api_matching_engine_matching_proto_msgTypes[1]
@@ -114,12 +127,15 @@ func (x *MatchResult) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *MatchResult) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*MatchResult) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *MatchResult) ProtoReflect() protoreflect.Message {
 	mi := &file_api_matching_engine_matching_proto_msgTypes[1]
 	if x != nil {
@@ -133,10 +149,12 @@ func (x *MatchResult) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use MatchResult.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*MatchResult) Descriptor() ([]byte, []int) {
 	return file_api_matching_engine_matching_proto_rawDescGZIP(), []int{1}
 }
 
+// GetOrderId 获取订单唯一标识.
 func (x *MatchResult) GetOrderId() string {
 	if x != nil {
 		return x.OrderId
@@ -144,6 +162,7 @@ func (x *MatchResult) GetOrderId() string {
 	return ""
 }
 
+// GetMatchedTrades 获取MatchedTrades.
 func (x *MatchResult) GetMatchedTrades() []*Trade {
 	if x != nil {
 		return x.MatchedTrades
@@ -151,6 +170,7 @@ func (x *MatchResult) GetMatchedTrades() []*Trade {
 	return nil
 }
 
+// GetRemainingQuantity 获取Remaining数量.
 func (x *MatchResult) GetRemainingQuantity() string {
 	if x != nil {
 		return x.RemainingQuantity
@@ -158,6 +178,7 @@ func (x *MatchResult) GetRemainingQuantity() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *MatchResult) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -165,18 +186,20 @@ func (x *MatchResult) GetStatus() string {
 	return ""
 }
 
+// Trade 表示成交结构体。
 type Trade struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TradeId       string                 `protobuf:"bytes,1,opt,name=trade_id,json=tradeId,proto3" json:"trade_id,omitempty"`
-	BuyOrderId    string                 `protobuf:"bytes,2,opt,name=buy_order_id,json=buyOrderId,proto3" json:"buy_order_id,omitempty"`
-	SellOrderId   string                 `protobuf:"bytes,3,opt,name=sell_order_id,json=sellOrderId,proto3" json:"sell_order_id,omitempty"`
-	Price         string                 `protobuf:"bytes,4,opt,name=price,proto3" json:"price,omitempty"`
-	Quantity      string                 `protobuf:"bytes,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	TradeId       string                 `protobuf:"bytes,1,opt,name=trade_id,json=tradeId,proto3" json:"trade_id,omitempty"` // 成交唯一标识
+	BuyOrderId    string                 `protobuf:"bytes,2,opt,name=buy_order_id,json=buyOrderId,proto3" json:"buy_order_id,omitempty"` // Buy订单唯一标识
+	SellOrderId   string                 `protobuf:"bytes,3,opt,name=sell_order_id,json=sellOrderId,proto3" json:"sell_order_id,omitempty"` // Sell订单唯一标识
+	Price         string                 `protobuf:"bytes,4,opt,name=price,proto3" json:"price,omitempty"` // 价格
+	Quantity      string                 `protobuf:"bytes,5,opt,name=quantity,proto3" json:"quantity,omitempty"` // 数量
+	Timestamp     int64                  `protobuf:"varint,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Timestamp
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *Trade) Reset() {
 	*x = Trade{}
 	mi := &file_api_matching_engine_matching_proto_msgTypes[2]
@@ -184,12 +207,15 @@ func (x *Trade) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *Trade) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*Trade) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *Trade) ProtoReflect() protoreflect.Message {
 	mi := &file_api_matching_engine_matching_proto_msgTypes[2]
 	if x != nil {
@@ -203,10 +229,12 @@ func (x *Trade) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use Trade.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*Trade) Descriptor() ([]byte, []int) {
 	return file_api_matching_engine_matching_proto_rawDescGZIP(), []int{2}
 }
 
+// GetTradeId 获取成交唯一标识.
 func (x *Trade) GetTradeId() string {
 	if x != nil {
 		return x.TradeId
@@ -214,6 +242,7 @@ func (x *Trade) GetTradeId() string {
 	return ""
 }
 
+// GetBuyOrderId 获取Buy订单唯一标识.
 func (x *Trade) GetBuyOrderId() string {
 	if x != nil {
 		return x.BuyOrderId
@@ -221,6 +250,7 @@ func (x *Trade) GetBuyOrderId() string {
 	return ""
 }
 
+// GetSellOrderId 获取Sell订单唯一标识.
 func (x *Trade) GetSellOrderId() string {
 	if x != nil {
 		return x.SellOrderId
@@ -228,6 +258,7 @@ func (x *Trade) GetSellOrderId() string {
 	return ""
 }
 
+// GetPrice 获取价格.
 func (x *Trade) GetPrice() string {
 	if x != nil {
 		return x.Price
@@ -235,6 +266,7 @@ func (x *Trade) GetPrice() string {
 	return ""
 }
 
+// GetQuantity 获取数量.
 func (x *Trade) GetQuantity() string {
 	if x != nil {
 		return x.Quantity
@@ -242,6 +274,7 @@ func (x *Trade) GetQuantity() string {
 	return ""
 }
 
+// GetTimestamp 获取Timestamp.
 func (x *Trade) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
@@ -249,14 +282,16 @@ func (x *Trade) GetTimestamp() int64 {
 	return 0
 }
 
+// GetOrderBookRequest 表示获取订单Book请求结构体。
 type GetOrderBookRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Depth         int32                  `protobuf:"varint,2,opt,name=depth,proto3" json:"depth,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Depth         int32                  `protobuf:"varint,2,opt,name=depth,proto3" json:"depth,omitempty"` // Depth
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetOrderBookRequest) Reset() {
 	*x = GetOrderBookRequest{}
 	mi := &file_api_matching_engine_matching_proto_msgTypes[3]
@@ -264,12 +299,15 @@ func (x *GetOrderBookRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetOrderBookRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetOrderBookRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetOrderBookRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_matching_engine_matching_proto_msgTypes[3]
 	if x != nil {
@@ -283,10 +321,12 @@ func (x *GetOrderBookRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetOrderBookRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetOrderBookRequest) Descriptor() ([]byte, []int) {
 	return file_api_matching_engine_matching_proto_rawDescGZIP(), []int{3}
 }
 
+// GetSymbol 获取交易对.
 func (x *GetOrderBookRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -294,6 +334,7 @@ func (x *GetOrderBookRequest) GetSymbol() string {
 	return ""
 }
 
+// GetDepth 获取Depth.
 func (x *GetOrderBookRequest) GetDepth() int32 {
 	if x != nil {
 		return x.Depth
@@ -301,14 +342,16 @@ func (x *GetOrderBookRequest) GetDepth() int32 {
 	return 0
 }
 
+// OrderBookLevel 表示订单Book等级结构体。
 type OrderBookLevel struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Price         string                 `protobuf:"bytes,1,opt,name=price,proto3" json:"price,omitempty"`
-	Quantity      string                 `protobuf:"bytes,2,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	Price         string                 `protobuf:"bytes,1,opt,name=price,proto3" json:"price,omitempty"` // 价格
+	Quantity      string                 `protobuf:"bytes,2,opt,name=quantity,proto3" json:"quantity,omitempty"` // 数量
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *OrderBookLevel) Reset() {
 	*x = OrderBookLevel{}
 	mi := &file_api_matching_engine_matching_proto_msgTypes[4]
@@ -316,12 +359,15 @@ func (x *OrderBookLevel) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *OrderBookLevel) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*OrderBookLevel) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *OrderBookLevel) ProtoReflect() protoreflect.Message {
 	mi := &file_api_matching_engine_matching_proto_msgTypes[4]
 	if x != nil {
@@ -335,10 +381,12 @@ func (x *OrderBookLevel) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use OrderBookLevel.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*OrderBookLevel) Descriptor() ([]byte, []int) {
 	return file_api_matching_engine_matching_proto_rawDescGZIP(), []int{4}
 }
 
+// GetPrice 获取价格.
 func (x *OrderBookLevel) GetPrice() string {
 	if x != nil {
 		return x.Price
@@ -346,6 +394,7 @@ func (x *OrderBookLevel) GetPrice() string {
 	return ""
 }
 
+// GetQuantity 获取数量.
 func (x *OrderBookLevel) GetQuantity() string {
 	if x != nil {
 		return x.Quantity
@@ -353,16 +402,18 @@ func (x *OrderBookLevel) GetQuantity() string {
 	return ""
 }
 
+// OrderBookSnapshot 表示订单BookSnapshot结构体。
 type OrderBookSnapshot struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Bids          []*OrderBookLevel      `protobuf:"bytes,2,rep,name=bids,proto3" json:"bids,omitempty"`
-	Asks          []*OrderBookLevel      `protobuf:"bytes,3,rep,name=asks,proto3" json:"asks,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Bids          []*OrderBookLevel      `protobuf:"bytes,2,rep,name=bids,proto3" json:"bids,omitempty"` // Bids
+	Asks          []*OrderBookLevel      `protobuf:"bytes,3,rep,name=asks,proto3" json:"asks,omitempty"` // Asks
+	Timestamp     int64                  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Timestamp
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *OrderBookSnapshot) Reset() {
 	*x = OrderBookSnapshot{}
 	mi := &file_api_matching_engine_matching_proto_msgTypes[5]
@@ -370,12 +421,15 @@ func (x *OrderBookSnapshot) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *OrderBookSnapshot) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*OrderBookSnapshot) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *OrderBookSnapshot) ProtoReflect() protoreflect.Message {
 	mi := &file_api_matching_engine_matching_proto_msgTypes[5]
 	if x != nil {
@@ -389,10 +443,12 @@ func (x *OrderBookSnapshot) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use OrderBookSnapshot.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*OrderBookSnapshot) Descriptor() ([]byte, []int) {
 	return file_api_matching_engine_matching_proto_rawDescGZIP(), []int{5}
 }
 
+// GetSymbol 获取交易对.
 func (x *OrderBookSnapshot) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -400,6 +456,7 @@ func (x *OrderBookSnapshot) GetSymbol() string {
 	return ""
 }
 
+// GetBids 获取Bids.
 func (x *OrderBookSnapshot) GetBids() []*OrderBookLevel {
 	if x != nil {
 		return x.Bids
@@ -407,6 +464,7 @@ func (x *OrderBookSnapshot) GetBids() []*OrderBookLevel {
 	return nil
 }
 
+// GetAsks 获取Asks.
 func (x *OrderBookSnapshot) GetAsks() []*OrderBookLevel {
 	if x != nil {
 		return x.Asks
@@ -414,6 +472,7 @@ func (x *OrderBookSnapshot) GetAsks() []*OrderBookLevel {
 	return nil
 }
 
+// GetTimestamp 获取Timestamp.
 func (x *OrderBookSnapshot) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
@@ -421,14 +480,16 @@ func (x *OrderBookSnapshot) GetTimestamp() int64 {
 	return 0
 }
 
+// GetTradesRequest 表示获取Trades请求结构体。
 type GetTradesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"` // 限制
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetTradesRequest) Reset() {
 	*x = GetTradesRequest{}
 	mi := &file_api_matching_engine_matching_proto_msgTypes[6]
@@ -436,12 +497,15 @@ func (x *GetTradesRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetTradesRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetTradesRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetTradesRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_matching_engine_matching_proto_msgTypes[6]
 	if x != nil {
@@ -455,10 +519,12 @@ func (x *GetTradesRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetTradesRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetTradesRequest) Descriptor() ([]byte, []int) {
 	return file_api_matching_engine_matching_proto_rawDescGZIP(), []int{6}
 }
 
+// GetSymbol 获取交易对.
 func (x *GetTradesRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -466,6 +532,7 @@ func (x *GetTradesRequest) GetSymbol() string {
 	return ""
 }
 
+// GetLimit 获取限制.
 func (x *GetTradesRequest) GetLimit() int32 {
 	if x != nil {
 		return x.Limit
@@ -473,14 +540,16 @@ func (x *GetTradesRequest) GetLimit() int32 {
 	return 0
 }
 
+// TradesResponse 表示Trades响应结构体。
 type TradesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Trades        []*Trade               `protobuf:"bytes,2,rep,name=trades,proto3" json:"trades,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Trades        []*Trade               `protobuf:"bytes,2,rep,name=trades,proto3" json:"trades,omitempty"` // Trades
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *TradesResponse) Reset() {
 	*x = TradesResponse{}
 	mi := &file_api_matching_engine_matching_proto_msgTypes[7]
@@ -488,12 +557,15 @@ func (x *TradesResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *TradesResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*TradesResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *TradesResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_matching_engine_matching_proto_msgTypes[7]
 	if x != nil {
@@ -507,10 +579,12 @@ func (x *TradesResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use TradesResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*TradesResponse) Descriptor() ([]byte, []int) {
 	return file_api_matching_engine_matching_proto_rawDescGZIP(), []int{7}
 }
 
+// GetSymbol 获取交易对.
 func (x *TradesResponse) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -518,6 +592,7 @@ func (x *TradesResponse) GetSymbol() string {
 	return ""
 }
 
+// GetTrades 获取Trades.
 func (x *TradesResponse) GetTrades() []*Trade {
 	if x != nil {
 		return x.Trades
@@ -525,13 +600,15 @@ func (x *TradesResponse) GetTrades() []*Trade {
 	return nil
 }
 
+// SubscribeTradesRequest 表示SubscribeTrades请求结构体。
 type SubscribeTradesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbols       []string               `protobuf:"bytes,1,rep,name=symbols,proto3" json:"symbols,omitempty"`
+	Symbols       []string               `protobuf:"bytes,1,rep,name=symbols,proto3" json:"symbols,omitempty"` // Symbols
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *SubscribeTradesRequest) Reset() {
 	*x = SubscribeTradesRequest{}
 	mi := &file_api_matching_engine_matching_proto_msgTypes[8]
@@ -539,12 +616,15 @@ func (x *SubscribeTradesRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *SubscribeTradesRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*SubscribeTradesRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *SubscribeTradesRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_matching_engine_matching_proto_msgTypes[8]
 	if x != nil {
@@ -558,10 +638,12 @@ func (x *SubscribeTradesRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use SubscribeTradesRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*SubscribeTradesRequest) Descriptor() ([]byte, []int) {
 	return file_api_matching_engine_matching_proto_rawDescGZIP(), []int{8}
 }
 
+// GetSymbols 获取Symbols.
 func (x *SubscribeTradesRequest) GetSymbols() []string {
 	if x != nil {
 		return x.Symbols
@@ -569,17 +651,19 @@ func (x *SubscribeTradesRequest) GetSymbols() []string {
 	return nil
 }
 
+// TradeUpdate 表示成交更新结构体。
 type TradeUpdate struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TradeId       string                 `protobuf:"bytes,1,opt,name=trade_id,json=tradeId,proto3" json:"trade_id,omitempty"`
-	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Price         string                 `protobuf:"bytes,3,opt,name=price,proto3" json:"price,omitempty"`
-	Quantity      string                 `protobuf:"bytes,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	TradeId       string                 `protobuf:"bytes,1,opt,name=trade_id,json=tradeId,proto3" json:"trade_id,omitempty"` // 成交唯一标识
+	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Price         string                 `protobuf:"bytes,3,opt,name=price,proto3" json:"price,omitempty"` // 价格
+	Quantity      string                 `protobuf:"bytes,4,opt,name=quantity,proto3" json:"quantity,omitempty"` // 数量
+	Timestamp     int64                  `protobuf:"varint,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Timestamp
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *TradeUpdate) Reset() {
 	*x = TradeUpdate{}
 	mi := &file_api_matching_engine_matching_proto_msgTypes[9]
@@ -587,12 +671,15 @@ func (x *TradeUpdate) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *TradeUpdate) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*TradeUpdate) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *TradeUpdate) ProtoReflect() protoreflect.Message {
 	mi := &file_api_matching_engine_matching_proto_msgTypes[9]
 	if x != nil {
@@ -606,10 +693,12 @@ func (x *TradeUpdate) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use TradeUpdate.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*TradeUpdate) Descriptor() ([]byte, []int) {
 	return file_api_matching_engine_matching_proto_rawDescGZIP(), []int{9}
 }
 
+// GetTradeId 获取成交唯一标识.
 func (x *TradeUpdate) GetTradeId() string {
 	if x != nil {
 		return x.TradeId
@@ -617,6 +706,7 @@ func (x *TradeUpdate) GetTradeId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *TradeUpdate) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -624,6 +714,7 @@ func (x *TradeUpdate) GetSymbol() string {
 	return ""
 }
 
+// GetPrice 获取价格.
 func (x *TradeUpdate) GetPrice() string {
 	if x != nil {
 		return x.Price
@@ -631,6 +722,7 @@ func (x *TradeUpdate) GetPrice() string {
 	return ""
 }
 
+// GetQuantity 获取数量.
 func (x *TradeUpdate) GetQuantity() string {
 	if x != nil {
 		return x.Quantity
@@ -638,6 +730,7 @@ func (x *TradeUpdate) GetQuantity() string {
 	return ""
 }
 
+// GetTimestamp 获取Timestamp.
 func (x *TradeUpdate) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
@@ -764,7 +857,7 @@ func file_api_matching_engine_matching_proto_init() {
 		DependencyIndexes: file_api_matching_engine_matching_proto_depIdxs,
 		MessageInfos:      file_api_matching_engine_matching_proto_msgTypes,
 	}.Build()
-	File_api_matching_engine_matching_proto = out.File
+	File_api_matching_engine_matching_proto = out.File // File_api_matching_engine_matching_proto 文件APImatchingenginematchingProto
 	file_api_matching_engine_matching_proto_goTypes = nil
 	file_api_matching_engine_matching_proto_depIdxs = nil
 }

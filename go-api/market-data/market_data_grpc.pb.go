@@ -19,11 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MarketDataService_GetLatestQuote_FullMethodName  = "/market_data.MarketDataService/GetLatestQuote"
-	MarketDataService_GetKlines_FullMethodName       = "/market_data.MarketDataService/GetKlines"
-	MarketDataService_GetOrderBook_FullMethodName    = "/market_data.MarketDataService/GetOrderBook"
-	MarketDataService_SubscribeQuotes_FullMethodName = "/market_data.MarketDataService/SubscribeQuotes"
-	MarketDataService_GetTrades_FullMethodName       = "/market_data.MarketDataService/GetTrades"
+	MarketDataService_GetLatestQuote_FullMethodName  = "/market_data.MarketDataService/GetLatestQuote" // MarketDataService_GetLatestQuote_FullMethodName 市场DATASERVICE获取LatestQuoteFullMethod名称
+	MarketDataService_GetKlines_FullMethodName       = "/market_data.MarketDataService/GetKlines" // MarketDataService_GetKlines_FullMethodName 市场DATASERVICE获取KlinesFullMethod名称
+	MarketDataService_GetOrderBook_FullMethodName    = "/market_data.MarketDataService/GetOrderBook" // MarketDataService_GetOrderBook_FullMethodName 市场DATASERVICE获取订单BookFullMethod名称
+	MarketDataService_SubscribeQuotes_FullMethodName = "/market_data.MarketDataService/SubscribeQuotes" // MarketDataService_SubscribeQuotes_FullMethodName 市场DATASERVICESubscribeQuotesFullMethod名称
+	MarketDataService_GetTrades_FullMethodName       = "/market_data.MarketDataService/GetTrades" // MarketDataService_GetTrades_FullMethodName 市场DATASERVICE获取TradesFullMethod名称
 )
 
 // MarketDataServiceClient is the client API for MarketDataService service.
@@ -31,6 +31,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // 市场数据服务
+// MarketDataServiceClient 表示市场DATASERVICE客户端结构体。
 type MarketDataServiceClient interface {
 	// 获取最新行情
 	GetLatestQuote(ctx context.Context, in *GetLatestQuoteRequest, opts ...grpc.CallOption) (*QuoteResponse, error)
@@ -48,10 +49,12 @@ type marketDataServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
+// NewMarketDataServiceClient 创建新的创建一个新的实例市场DATASERVICE客户端.
 func NewMarketDataServiceClient(cc grpc.ClientConnInterface) MarketDataServiceClient {
 	return &marketDataServiceClient{cc}
 }
 
+// GetLatestQuote 获取LatestQuote.
 func (c *marketDataServiceClient) GetLatestQuote(ctx context.Context, in *GetLatestQuoteRequest, opts ...grpc.CallOption) (*QuoteResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(QuoteResponse)
@@ -62,6 +65,7 @@ func (c *marketDataServiceClient) GetLatestQuote(ctx context.Context, in *GetLat
 	return out, nil
 }
 
+// GetKlines 获取Klines.
 func (c *marketDataServiceClient) GetKlines(ctx context.Context, in *GetKlinesRequest, opts ...grpc.CallOption) (*KlinesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(KlinesResponse)
@@ -72,6 +76,7 @@ func (c *marketDataServiceClient) GetKlines(ctx context.Context, in *GetKlinesRe
 	return out, nil
 }
 
+// GetOrderBook 获取订单Book.
 func (c *marketDataServiceClient) GetOrderBook(ctx context.Context, in *GetOrderBookRequest, opts ...grpc.CallOption) (*OrderBookResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(OrderBookResponse)
@@ -82,6 +87,7 @@ func (c *marketDataServiceClient) GetOrderBook(ctx context.Context, in *GetOrder
 	return out, nil
 }
 
+// SubscribeQuotes 执行SubscribeQuotes逻辑。
 func (c *marketDataServiceClient) SubscribeQuotes(ctx context.Context, in *SubscribeQuotesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[QuoteUpdate], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &MarketDataService_ServiceDesc.Streams[0], MarketDataService_SubscribeQuotes_FullMethodName, cOpts...)
@@ -101,6 +107,7 @@ func (c *marketDataServiceClient) SubscribeQuotes(ctx context.Context, in *Subsc
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type MarketDataService_SubscribeQuotesClient = grpc.ServerStreamingClient[QuoteUpdate]
 
+// GetTrades 获取Trades.
 func (c *marketDataServiceClient) GetTrades(ctx context.Context, in *GetTradesRequest, opts ...grpc.CallOption) (*TradesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(TradesResponse)
@@ -116,6 +123,7 @@ func (c *marketDataServiceClient) GetTrades(ctx context.Context, in *GetTradesRe
 // for forward compatibility.
 //
 // 市场数据服务
+// MarketDataServiceServer 表示市场DATASERVICE服务端结构体。
 type MarketDataServiceServer interface {
 	// 获取最新行情
 	GetLatestQuote(context.Context, *GetLatestQuoteRequest) (*QuoteResponse, error)
@@ -135,20 +143,26 @@ type MarketDataServiceServer interface {
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
+// UnimplementedMarketDataServiceServer 表示未实现的市场DATASERVICE服务端结构体。
 type UnimplementedMarketDataServiceServer struct{}
 
+// GetLatestQuote 获取LatestQuote.
 func (UnimplementedMarketDataServiceServer) GetLatestQuote(context.Context, *GetLatestQuoteRequest) (*QuoteResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLatestQuote not implemented")
 }
+// GetKlines 获取Klines.
 func (UnimplementedMarketDataServiceServer) GetKlines(context.Context, *GetKlinesRequest) (*KlinesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetKlines not implemented")
 }
+// GetOrderBook 获取订单Book.
 func (UnimplementedMarketDataServiceServer) GetOrderBook(context.Context, *GetOrderBookRequest) (*OrderBookResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOrderBook not implemented")
 }
+// SubscribeQuotes 执行SubscribeQuotes逻辑。
 func (UnimplementedMarketDataServiceServer) SubscribeQuotes(*SubscribeQuotesRequest, grpc.ServerStreamingServer[QuoteUpdate]) error {
 	return status.Errorf(codes.Unimplemented, "method SubscribeQuotes not implemented")
 }
+// GetTrades 获取Trades.
 func (UnimplementedMarketDataServiceServer) GetTrades(context.Context, *GetTradesRequest) (*TradesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTrades not implemented")
 }
@@ -158,10 +172,12 @@ func (UnimplementedMarketDataServiceServer) testEmbeddedByValue()               
 // UnsafeMarketDataServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to MarketDataServiceServer will
 // result in compilation errors.
+// UnsafeMarketDataServiceServer 表示Unsafe市场DATASERVICE服务端结构体。
 type UnsafeMarketDataServiceServer interface {
 	mustEmbedUnimplementedMarketDataServiceServer()
 }
 
+// RegisterMarketDataServiceServer 执行Register市场DATASERVICE服务端逻辑。
 func RegisterMarketDataServiceServer(s grpc.ServiceRegistrar, srv MarketDataServiceServer) {
 	// If the following call pancis, it indicates UnimplementedMarketDataServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an

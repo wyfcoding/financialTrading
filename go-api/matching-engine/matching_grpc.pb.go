@@ -19,10 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MatchingEngineService_SubmitOrder_FullMethodName     = "/matching_engine.MatchingEngineService/SubmitOrder"
-	MatchingEngineService_GetOrderBook_FullMethodName    = "/matching_engine.MatchingEngineService/GetOrderBook"
-	MatchingEngineService_GetTrades_FullMethodName       = "/matching_engine.MatchingEngineService/GetTrades"
-	MatchingEngineService_SubscribeTrades_FullMethodName = "/matching_engine.MatchingEngineService/SubscribeTrades"
+	MatchingEngineService_SubmitOrder_FullMethodName     = "/matching_engine.MatchingEngineService/SubmitOrder" // MatchingEngineService_SubmitOrder_FullMethodName MatchingEngineSERVICESubmit订单FullMethod名称
+	MatchingEngineService_GetOrderBook_FullMethodName    = "/matching_engine.MatchingEngineService/GetOrderBook" // MatchingEngineService_GetOrderBook_FullMethodName MatchingEngineSERVICE获取订单BookFullMethod名称
+	MatchingEngineService_GetTrades_FullMethodName       = "/matching_engine.MatchingEngineService/GetTrades" // MatchingEngineService_GetTrades_FullMethodName MatchingEngineSERVICE获取TradesFullMethod名称
+	MatchingEngineService_SubscribeTrades_FullMethodName = "/matching_engine.MatchingEngineService/SubscribeTrades" // MatchingEngineService_SubscribeTrades_FullMethodName MatchingEngineSERVICESubscribeTradesFullMethod名称
 )
 
 // MatchingEngineServiceClient is the client API for MatchingEngineService service.
@@ -30,6 +30,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // 撮合引擎服务
+// MatchingEngineServiceClient 表示MatchingEngineSERVICE客户端结构体。
 type MatchingEngineServiceClient interface {
 	// 提交订单进行撮合
 	SubmitOrder(ctx context.Context, in *SubmitOrderRequest, opts ...grpc.CallOption) (*MatchResult, error)
@@ -45,10 +46,12 @@ type matchingEngineServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
+// NewMatchingEngineServiceClient 创建新的创建一个新的实例MatchingEngineSERVICE客户端.
 func NewMatchingEngineServiceClient(cc grpc.ClientConnInterface) MatchingEngineServiceClient {
 	return &matchingEngineServiceClient{cc}
 }
 
+// SubmitOrder 执行Submit订单逻辑。
 func (c *matchingEngineServiceClient) SubmitOrder(ctx context.Context, in *SubmitOrderRequest, opts ...grpc.CallOption) (*MatchResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MatchResult)
@@ -59,6 +62,7 @@ func (c *matchingEngineServiceClient) SubmitOrder(ctx context.Context, in *Submi
 	return out, nil
 }
 
+// GetOrderBook 获取订单Book.
 func (c *matchingEngineServiceClient) GetOrderBook(ctx context.Context, in *GetOrderBookRequest, opts ...grpc.CallOption) (*OrderBookSnapshot, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(OrderBookSnapshot)
@@ -69,6 +73,7 @@ func (c *matchingEngineServiceClient) GetOrderBook(ctx context.Context, in *GetO
 	return out, nil
 }
 
+// GetTrades 获取Trades.
 func (c *matchingEngineServiceClient) GetTrades(ctx context.Context, in *GetTradesRequest, opts ...grpc.CallOption) (*TradesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(TradesResponse)
@@ -79,6 +84,7 @@ func (c *matchingEngineServiceClient) GetTrades(ctx context.Context, in *GetTrad
 	return out, nil
 }
 
+// SubscribeTrades 执行SubscribeTrades逻辑。
 func (c *matchingEngineServiceClient) SubscribeTrades(ctx context.Context, in *SubscribeTradesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[TradeUpdate], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &MatchingEngineService_ServiceDesc.Streams[0], MatchingEngineService_SubscribeTrades_FullMethodName, cOpts...)
@@ -103,6 +109,7 @@ type MatchingEngineService_SubscribeTradesClient = grpc.ServerStreamingClient[Tr
 // for forward compatibility.
 //
 // 撮合引擎服务
+// MatchingEngineServiceServer 表示MatchingEngineSERVICE服务端结构体。
 type MatchingEngineServiceServer interface {
 	// 提交订单进行撮合
 	SubmitOrder(context.Context, *SubmitOrderRequest) (*MatchResult, error)
@@ -120,17 +127,22 @@ type MatchingEngineServiceServer interface {
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
+// UnimplementedMatchingEngineServiceServer 表示未实现的MatchingEngineSERVICE服务端结构体。
 type UnimplementedMatchingEngineServiceServer struct{}
 
+// SubmitOrder 执行Submit订单逻辑。
 func (UnimplementedMatchingEngineServiceServer) SubmitOrder(context.Context, *SubmitOrderRequest) (*MatchResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitOrder not implemented")
 }
+// GetOrderBook 获取订单Book.
 func (UnimplementedMatchingEngineServiceServer) GetOrderBook(context.Context, *GetOrderBookRequest) (*OrderBookSnapshot, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOrderBook not implemented")
 }
+// GetTrades 获取Trades.
 func (UnimplementedMatchingEngineServiceServer) GetTrades(context.Context, *GetTradesRequest) (*TradesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTrades not implemented")
 }
+// SubscribeTrades 执行SubscribeTrades逻辑。
 func (UnimplementedMatchingEngineServiceServer) SubscribeTrades(*SubscribeTradesRequest, grpc.ServerStreamingServer[TradeUpdate]) error {
 	return status.Errorf(codes.Unimplemented, "method SubscribeTrades not implemented")
 }
@@ -140,10 +152,12 @@ func (UnimplementedMatchingEngineServiceServer) testEmbeddedByValue()           
 // UnsafeMatchingEngineServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to MatchingEngineServiceServer will
 // result in compilation errors.
+// UnsafeMatchingEngineServiceServer 表示UnsafeMatchingEngineSERVICE服务端结构体。
 type UnsafeMatchingEngineServiceServer interface {
 	mustEmbedUnimplementedMatchingEngineServiceServer()
 }
 
+// RegisterMatchingEngineServiceServer 执行RegisterMatchingEngineSERVICE服务端逻辑。
 func RegisterMatchingEngineServiceServer(s grpc.ServiceRegistrar, srv MatchingEngineServiceServer) {
 	// If the following call pancis, it indicates UnimplementedMatchingEngineServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an

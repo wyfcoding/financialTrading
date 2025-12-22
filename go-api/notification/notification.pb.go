@@ -22,21 +22,23 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Notification 表示Notification结构体。
 type Notification struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Type          string                 `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"` // EMAIL, SMS, WEBHOOK
-	Subject       string                 `protobuf:"bytes,4,opt,name=subject,proto3" json:"subject,omitempty"`
-	Content       string                 `protobuf:"bytes,5,opt,name=content,proto3" json:"content,omitempty"`
-	Status        string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"` // PENDING, SENT, FAILED
-	ErrorMessage  string                 `protobuf:"bytes,7,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	SentAt        *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=sent_at,json=sentAt,proto3" json:"sent_at,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // 唯一标识
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Type          string                 `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"` // 类型
+	Subject       string                 `protobuf:"bytes,4,opt,name=subject,proto3" json:"subject,omitempty"` // Subject
+	Content       string                 `protobuf:"bytes,5,opt,name=content,proto3" json:"content,omitempty"` // 内容
+	Status        string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	ErrorMessage  string                 `protobuf:"bytes,7,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"` // 错误消息
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // Created在
+	SentAt        *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=sent_at,json=sentAt,proto3" json:"sent_at,omitempty"` // Sent在
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *Notification) Reset() {
 	*x = Notification{}
 	mi := &file_api_notification_notification_proto_msgTypes[0]
@@ -44,12 +46,15 @@ func (x *Notification) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *Notification) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*Notification) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *Notification) ProtoReflect() protoreflect.Message {
 	mi := &file_api_notification_notification_proto_msgTypes[0]
 	if x != nil {
@@ -63,10 +68,12 @@ func (x *Notification) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use Notification.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*Notification) Descriptor() ([]byte, []int) {
 	return file_api_notification_notification_proto_rawDescGZIP(), []int{0}
 }
 
+// GetId 获取唯一标识.
 func (x *Notification) GetId() string {
 	if x != nil {
 		return x.Id
@@ -74,6 +81,7 @@ func (x *Notification) GetId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *Notification) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -81,6 +89,7 @@ func (x *Notification) GetUserId() string {
 	return ""
 }
 
+// GetType 获取类型.
 func (x *Notification) GetType() string {
 	if x != nil {
 		return x.Type
@@ -88,6 +97,7 @@ func (x *Notification) GetType() string {
 	return ""
 }
 
+// GetSubject 获取Subject.
 func (x *Notification) GetSubject() string {
 	if x != nil {
 		return x.Subject
@@ -95,6 +105,7 @@ func (x *Notification) GetSubject() string {
 	return ""
 }
 
+// GetContent 获取内容.
 func (x *Notification) GetContent() string {
 	if x != nil {
 		return x.Content
@@ -102,6 +113,7 @@ func (x *Notification) GetContent() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *Notification) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -109,6 +121,7 @@ func (x *Notification) GetStatus() string {
 	return ""
 }
 
+// GetErrorMessage 获取错误消息.
 func (x *Notification) GetErrorMessage() string {
 	if x != nil {
 		return x.ErrorMessage
@@ -116,6 +129,7 @@ func (x *Notification) GetErrorMessage() string {
 	return ""
 }
 
+// GetCreatedAt 获取Created在.
 func (x *Notification) GetCreatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CreatedAt
@@ -123,6 +137,7 @@ func (x *Notification) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetSentAt 获取Sent在.
 func (x *Notification) GetSentAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.SentAt
@@ -130,17 +145,19 @@ func (x *Notification) GetSentAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// SendNotificationRequest 表示发送Notification请求结构体。
 type SendNotificationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	Subject       string                 `protobuf:"bytes,3,opt,name=subject,proto3" json:"subject,omitempty"`
-	Content       string                 `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"`
-	Target        string                 `protobuf:"bytes,5,opt,name=target,proto3" json:"target,omitempty"` // Email address, Phone number, or URL
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"` // 类型
+	Subject       string                 `protobuf:"bytes,3,opt,name=subject,proto3" json:"subject,omitempty"` // Subject
+	Content       string                 `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"` // 内容
+	Target        string                 `protobuf:"bytes,5,opt,name=target,proto3" json:"target,omitempty"` // 指标
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *SendNotificationRequest) Reset() {
 	*x = SendNotificationRequest{}
 	mi := &file_api_notification_notification_proto_msgTypes[1]
@@ -148,12 +165,15 @@ func (x *SendNotificationRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *SendNotificationRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*SendNotificationRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *SendNotificationRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_notification_notification_proto_msgTypes[1]
 	if x != nil {
@@ -167,10 +187,12 @@ func (x *SendNotificationRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use SendNotificationRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*SendNotificationRequest) Descriptor() ([]byte, []int) {
 	return file_api_notification_notification_proto_rawDescGZIP(), []int{1}
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *SendNotificationRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -178,6 +200,7 @@ func (x *SendNotificationRequest) GetUserId() string {
 	return ""
 }
 
+// GetType 获取类型.
 func (x *SendNotificationRequest) GetType() string {
 	if x != nil {
 		return x.Type
@@ -185,6 +208,7 @@ func (x *SendNotificationRequest) GetType() string {
 	return ""
 }
 
+// GetSubject 获取Subject.
 func (x *SendNotificationRequest) GetSubject() string {
 	if x != nil {
 		return x.Subject
@@ -192,6 +216,7 @@ func (x *SendNotificationRequest) GetSubject() string {
 	return ""
 }
 
+// GetContent 获取内容.
 func (x *SendNotificationRequest) GetContent() string {
 	if x != nil {
 		return x.Content
@@ -199,6 +224,7 @@ func (x *SendNotificationRequest) GetContent() string {
 	return ""
 }
 
+// GetTarget 获取Target.
 func (x *SendNotificationRequest) GetTarget() string {
 	if x != nil {
 		return x.Target
@@ -206,14 +232,16 @@ func (x *SendNotificationRequest) GetTarget() string {
 	return ""
 }
 
+// SendNotificationResponse 表示发送Notification响应结构体。
 type SendNotificationResponse struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	NotificationId string                 `protobuf:"bytes,1,opt,name=notification_id,json=notificationId,proto3" json:"notification_id,omitempty"`
-	Status         string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	NotificationId string                 `protobuf:"bytes,1,opt,name=notification_id,json=notificationId,proto3" json:"notification_id,omitempty"` // Notification唯一标识
+	Status         string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // 状态
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *SendNotificationResponse) Reset() {
 	*x = SendNotificationResponse{}
 	mi := &file_api_notification_notification_proto_msgTypes[2]
@@ -221,12 +249,15 @@ func (x *SendNotificationResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *SendNotificationResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*SendNotificationResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *SendNotificationResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_notification_notification_proto_msgTypes[2]
 	if x != nil {
@@ -240,10 +271,12 @@ func (x *SendNotificationResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use SendNotificationResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*SendNotificationResponse) Descriptor() ([]byte, []int) {
 	return file_api_notification_notification_proto_rawDescGZIP(), []int{2}
 }
 
+// GetNotificationId 获取Notification唯一标识.
 func (x *SendNotificationResponse) GetNotificationId() string {
 	if x != nil {
 		return x.NotificationId
@@ -251,6 +284,7 @@ func (x *SendNotificationResponse) GetNotificationId() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *SendNotificationResponse) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -258,15 +292,17 @@ func (x *SendNotificationResponse) GetStatus() string {
 	return ""
 }
 
+// GetNotificationHistoryRequest 表示获取NotificationHistory请求结构体。
 type GetNotificationHistoryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	PageSize      int32                  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
-	PageToken     string                 `protobuf:"bytes,3,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	PageSize      int32                  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"` // 页码大小
+	PageToken     string                 `protobuf:"bytes,3,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"` // 页码令牌
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetNotificationHistoryRequest) Reset() {
 	*x = GetNotificationHistoryRequest{}
 	mi := &file_api_notification_notification_proto_msgTypes[3]
@@ -274,12 +310,15 @@ func (x *GetNotificationHistoryRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetNotificationHistoryRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetNotificationHistoryRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetNotificationHistoryRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_notification_notification_proto_msgTypes[3]
 	if x != nil {
@@ -293,10 +332,12 @@ func (x *GetNotificationHistoryRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetNotificationHistoryRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetNotificationHistoryRequest) Descriptor() ([]byte, []int) {
 	return file_api_notification_notification_proto_rawDescGZIP(), []int{3}
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *GetNotificationHistoryRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -304,6 +345,7 @@ func (x *GetNotificationHistoryRequest) GetUserId() string {
 	return ""
 }
 
+// GetPageSize 获取页码大小.
 func (x *GetNotificationHistoryRequest) GetPageSize() int32 {
 	if x != nil {
 		return x.PageSize
@@ -311,6 +353,7 @@ func (x *GetNotificationHistoryRequest) GetPageSize() int32 {
 	return 0
 }
 
+// GetPageToken 获取页码令牌.
 func (x *GetNotificationHistoryRequest) GetPageToken() string {
 	if x != nil {
 		return x.PageToken
@@ -318,14 +361,16 @@ func (x *GetNotificationHistoryRequest) GetPageToken() string {
 	return ""
 }
 
+// GetNotificationHistoryResponse 表示获取NotificationHistory响应结构体。
 type GetNotificationHistoryResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Notifications []*Notification        `protobuf:"bytes,1,rep,name=notifications,proto3" json:"notifications,omitempty"`
-	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	Notifications []*Notification        `protobuf:"bytes,1,rep,name=notifications,proto3" json:"notifications,omitempty"` // Notifications
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"` // 下一个页码令牌
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetNotificationHistoryResponse) Reset() {
 	*x = GetNotificationHistoryResponse{}
 	mi := &file_api_notification_notification_proto_msgTypes[4]
@@ -333,12 +378,15 @@ func (x *GetNotificationHistoryResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetNotificationHistoryResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetNotificationHistoryResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetNotificationHistoryResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_notification_notification_proto_msgTypes[4]
 	if x != nil {
@@ -352,10 +400,12 @@ func (x *GetNotificationHistoryResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetNotificationHistoryResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetNotificationHistoryResponse) Descriptor() ([]byte, []int) {
 	return file_api_notification_notification_proto_rawDescGZIP(), []int{4}
 }
 
+// GetNotifications 获取Notifications.
 func (x *GetNotificationHistoryResponse) GetNotifications() []*Notification {
 	if x != nil {
 		return x.Notifications
@@ -363,6 +413,7 @@ func (x *GetNotificationHistoryResponse) GetNotifications() []*Notification {
 	return nil
 }
 
+// GetNextPageToken 获取下一个页码令牌.
 func (x *GetNotificationHistoryResponse) GetNextPageToken() string {
 	if x != nil {
 		return x.NextPageToken
@@ -462,7 +513,7 @@ func file_api_notification_notification_proto_init() {
 		DependencyIndexes: file_api_notification_notification_proto_depIdxs,
 		MessageInfos:      file_api_notification_notification_proto_msgTypes,
 	}.Build()
-	File_api_notification_notification_proto = out.File
+	File_api_notification_notification_proto = out.File // File_api_notification_notification_proto 文件APInotificationnotificationProto
 	file_api_notification_notification_proto_goTypes = nil
 	file_api_notification_notification_proto_depIdxs = nil
 }

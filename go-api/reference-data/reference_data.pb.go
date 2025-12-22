@@ -22,22 +22,24 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Symbol 表示交易对结构体。
 type Symbol struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	BaseCurrency   string                 `protobuf:"bytes,2,opt,name=base_currency,json=baseCurrency,proto3" json:"base_currency,omitempty"`
-	QuoteCurrency  string                 `protobuf:"bytes,3,opt,name=quote_currency,json=quoteCurrency,proto3" json:"quote_currency,omitempty"`
-	ExchangeId     string                 `protobuf:"bytes,4,opt,name=exchange_id,json=exchangeId,proto3" json:"exchange_id,omitempty"`
-	SymbolCode     string                 `protobuf:"bytes,5,opt,name=symbol_code,json=symbolCode,proto3" json:"symbol_code,omitempty"` // e.g., BTC/USD
-	Status         string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`                           // ACTIVE, SUSPENDED
-	MinOrderSize   float64                `protobuf:"fixed64,7,opt,name=min_order_size,json=minOrderSize,proto3" json:"min_order_size,omitempty"`
-	PricePrecision float64                `protobuf:"fixed64,8,opt,name=price_precision,json=pricePrecision,proto3" json:"price_precision,omitempty"`
-	CreatedAt      *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt      *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // 唯一标识
+	BaseCurrency   string                 `protobuf:"bytes,2,opt,name=base_currency,json=baseCurrency,proto3" json:"base_currency,omitempty"` // Base货币
+	QuoteCurrency  string                 `protobuf:"bytes,3,opt,name=quote_currency,json=quoteCurrency,proto3" json:"quote_currency,omitempty"` // Quote货币
+	ExchangeId     string                 `protobuf:"bytes,4,opt,name=exchange_id,json=exchangeId,proto3" json:"exchange_id,omitempty"` // Exchange唯一标识
+	SymbolCode     string                 `protobuf:"bytes,5,opt,name=symbol_code,json=symbolCode,proto3" json:"symbol_code,omitempty"` // 交易对代码
+	Status         string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	MinOrderSize   float64                `protobuf:"fixed64,7,opt,name=min_order_size,json=minOrderSize,proto3" json:"min_order_size,omitempty"` // 最小订单大小
+	PricePrecision float64                `protobuf:"fixed64,8,opt,name=price_precision,json=pricePrecision,proto3" json:"price_precision,omitempty"` // 价格Precision
+	CreatedAt      *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // Created在
+	UpdatedAt      *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"` // Updated在
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *Symbol) Reset() {
 	*x = Symbol{}
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[0]
@@ -45,12 +47,15 @@ func (x *Symbol) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *Symbol) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*Symbol) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *Symbol) ProtoReflect() protoreflect.Message {
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[0]
 	if x != nil {
@@ -64,10 +69,12 @@ func (x *Symbol) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use Symbol.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*Symbol) Descriptor() ([]byte, []int) {
 	return file_api_reference_data_reference_data_proto_rawDescGZIP(), []int{0}
 }
 
+// GetId 获取唯一标识.
 func (x *Symbol) GetId() string {
 	if x != nil {
 		return x.Id
@@ -75,6 +82,7 @@ func (x *Symbol) GetId() string {
 	return ""
 }
 
+// GetBaseCurrency 获取Base货币.
 func (x *Symbol) GetBaseCurrency() string {
 	if x != nil {
 		return x.BaseCurrency
@@ -82,6 +90,7 @@ func (x *Symbol) GetBaseCurrency() string {
 	return ""
 }
 
+// GetQuoteCurrency 获取Quote货币.
 func (x *Symbol) GetQuoteCurrency() string {
 	if x != nil {
 		return x.QuoteCurrency
@@ -89,6 +98,7 @@ func (x *Symbol) GetQuoteCurrency() string {
 	return ""
 }
 
+// GetExchangeId 获取Exchange唯一标识.
 func (x *Symbol) GetExchangeId() string {
 	if x != nil {
 		return x.ExchangeId
@@ -96,6 +106,7 @@ func (x *Symbol) GetExchangeId() string {
 	return ""
 }
 
+// GetSymbolCode 获取交易对代码.
 func (x *Symbol) GetSymbolCode() string {
 	if x != nil {
 		return x.SymbolCode
@@ -103,6 +114,7 @@ func (x *Symbol) GetSymbolCode() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *Symbol) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -110,6 +122,7 @@ func (x *Symbol) GetStatus() string {
 	return ""
 }
 
+// GetMinOrderSize 获取最小订单大小.
 func (x *Symbol) GetMinOrderSize() float64 {
 	if x != nil {
 		return x.MinOrderSize
@@ -117,6 +130,7 @@ func (x *Symbol) GetMinOrderSize() float64 {
 	return 0
 }
 
+// GetPricePrecision 获取价格Precision.
 func (x *Symbol) GetPricePrecision() float64 {
 	if x != nil {
 		return x.PricePrecision
@@ -124,6 +138,7 @@ func (x *Symbol) GetPricePrecision() float64 {
 	return 0
 }
 
+// GetCreatedAt 获取Created在.
 func (x *Symbol) GetCreatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CreatedAt
@@ -131,6 +146,7 @@ func (x *Symbol) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetUpdatedAt 获取Updated在.
 func (x *Symbol) GetUpdatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.UpdatedAt
@@ -138,19 +154,21 @@ func (x *Symbol) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// Exchange 表示Exchange结构体。
 type Exchange struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Country       string                 `protobuf:"bytes,3,opt,name=country,proto3" json:"country,omitempty"`
-	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
-	Timezone      string                 `protobuf:"bytes,5,opt,name=timezone,proto3" json:"timezone,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // 唯一标识
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"` // 名称
+	Country       string                 `protobuf:"bytes,3,opt,name=country,proto3" json:"country,omitempty"` // 国家
+	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	Timezone      string                 `protobuf:"bytes,5,opt,name=timezone,proto3" json:"timezone,omitempty"` // 时区
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // Created在
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"` // Updated在
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *Exchange) Reset() {
 	*x = Exchange{}
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[1]
@@ -158,12 +176,15 @@ func (x *Exchange) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *Exchange) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*Exchange) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *Exchange) ProtoReflect() protoreflect.Message {
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[1]
 	if x != nil {
@@ -177,10 +198,12 @@ func (x *Exchange) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use Exchange.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*Exchange) Descriptor() ([]byte, []int) {
 	return file_api_reference_data_reference_data_proto_rawDescGZIP(), []int{1}
 }
 
+// GetId 获取唯一标识.
 func (x *Exchange) GetId() string {
 	if x != nil {
 		return x.Id
@@ -188,6 +211,7 @@ func (x *Exchange) GetId() string {
 	return ""
 }
 
+// GetName 获取名称.
 func (x *Exchange) GetName() string {
 	if x != nil {
 		return x.Name
@@ -195,6 +219,7 @@ func (x *Exchange) GetName() string {
 	return ""
 }
 
+// GetCountry 获取国家.
 func (x *Exchange) GetCountry() string {
 	if x != nil {
 		return x.Country
@@ -202,6 +227,7 @@ func (x *Exchange) GetCountry() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *Exchange) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -209,6 +235,7 @@ func (x *Exchange) GetStatus() string {
 	return ""
 }
 
+// GetTimezone 获取Timezone.
 func (x *Exchange) GetTimezone() string {
 	if x != nil {
 		return x.Timezone
@@ -216,6 +243,7 @@ func (x *Exchange) GetTimezone() string {
 	return ""
 }
 
+// GetCreatedAt 获取Created在.
 func (x *Exchange) GetCreatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CreatedAt
@@ -223,6 +251,7 @@ func (x *Exchange) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetUpdatedAt 获取Updated在.
 func (x *Exchange) GetUpdatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.UpdatedAt
@@ -230,14 +259,16 @@ func (x *Exchange) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetSymbolRequest 表示获取交易对请求结构体。
 type GetSymbolRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	SymbolCode    string                 `protobuf:"bytes,2,opt,name=symbol_code,json=symbolCode,proto3" json:"symbol_code,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // 唯一标识
+	SymbolCode    string                 `protobuf:"bytes,2,opt,name=symbol_code,json=symbolCode,proto3" json:"symbol_code,omitempty"` // 交易对代码
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetSymbolRequest) Reset() {
 	*x = GetSymbolRequest{}
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[2]
@@ -245,12 +276,15 @@ func (x *GetSymbolRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetSymbolRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetSymbolRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetSymbolRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[2]
 	if x != nil {
@@ -264,10 +298,12 @@ func (x *GetSymbolRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetSymbolRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetSymbolRequest) Descriptor() ([]byte, []int) {
 	return file_api_reference_data_reference_data_proto_rawDescGZIP(), []int{2}
 }
 
+// GetId 获取唯一标识.
 func (x *GetSymbolRequest) GetId() string {
 	if x != nil {
 		return x.Id
@@ -275,6 +311,7 @@ func (x *GetSymbolRequest) GetId() string {
 	return ""
 }
 
+// GetSymbolCode 获取交易对代码.
 func (x *GetSymbolRequest) GetSymbolCode() string {
 	if x != nil {
 		return x.SymbolCode
@@ -282,13 +319,15 @@ func (x *GetSymbolRequest) GetSymbolCode() string {
 	return ""
 }
 
+// GetSymbolResponse 表示获取交易对响应结构体。
 type GetSymbolResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        *Symbol                `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
+	Symbol        *Symbol                `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetSymbolResponse) Reset() {
 	*x = GetSymbolResponse{}
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[3]
@@ -296,12 +335,15 @@ func (x *GetSymbolResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetSymbolResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetSymbolResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetSymbolResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[3]
 	if x != nil {
@@ -315,10 +357,12 @@ func (x *GetSymbolResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetSymbolResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetSymbolResponse) Descriptor() ([]byte, []int) {
 	return file_api_reference_data_reference_data_proto_rawDescGZIP(), []int{3}
 }
 
+// GetSymbol 获取交易对.
 func (x *GetSymbolResponse) GetSymbol() *Symbol {
 	if x != nil {
 		return x.Symbol
@@ -326,16 +370,18 @@ func (x *GetSymbolResponse) GetSymbol() *Symbol {
 	return nil
 }
 
+// ListSymbolsRequest 表示LISTSymbols请求结构体。
 type ListSymbolsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ExchangeId    string                 `protobuf:"bytes,1,opt,name=exchange_id,json=exchangeId,proto3" json:"exchange_id,omitempty"`
-	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	PageSize      int32                  `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
-	PageToken     string                 `protobuf:"bytes,4,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	ExchangeId    string                 `protobuf:"bytes,1,opt,name=exchange_id,json=exchangeId,proto3" json:"exchange_id,omitempty"` // Exchange唯一标识
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	PageSize      int32                  `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"` // 页码大小
+	PageToken     string                 `protobuf:"bytes,4,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"` // 页码令牌
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *ListSymbolsRequest) Reset() {
 	*x = ListSymbolsRequest{}
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[4]
@@ -343,12 +389,15 @@ func (x *ListSymbolsRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *ListSymbolsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*ListSymbolsRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *ListSymbolsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[4]
 	if x != nil {
@@ -362,10 +411,12 @@ func (x *ListSymbolsRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use ListSymbolsRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*ListSymbolsRequest) Descriptor() ([]byte, []int) {
 	return file_api_reference_data_reference_data_proto_rawDescGZIP(), []int{4}
 }
 
+// GetExchangeId 获取Exchange唯一标识.
 func (x *ListSymbolsRequest) GetExchangeId() string {
 	if x != nil {
 		return x.ExchangeId
@@ -373,6 +424,7 @@ func (x *ListSymbolsRequest) GetExchangeId() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *ListSymbolsRequest) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -380,6 +432,7 @@ func (x *ListSymbolsRequest) GetStatus() string {
 	return ""
 }
 
+// GetPageSize 获取页码大小.
 func (x *ListSymbolsRequest) GetPageSize() int32 {
 	if x != nil {
 		return x.PageSize
@@ -387,6 +440,7 @@ func (x *ListSymbolsRequest) GetPageSize() int32 {
 	return 0
 }
 
+// GetPageToken 获取页码令牌.
 func (x *ListSymbolsRequest) GetPageToken() string {
 	if x != nil {
 		return x.PageToken
@@ -394,14 +448,16 @@ func (x *ListSymbolsRequest) GetPageToken() string {
 	return ""
 }
 
+// ListSymbolsResponse 表示LISTSymbols响应结构体。
 type ListSymbolsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbols       []*Symbol              `protobuf:"bytes,1,rep,name=symbols,proto3" json:"symbols,omitempty"`
-	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	Symbols       []*Symbol              `protobuf:"bytes,1,rep,name=symbols,proto3" json:"symbols,omitempty"` // Symbols
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"` // 下一个页码令牌
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *ListSymbolsResponse) Reset() {
 	*x = ListSymbolsResponse{}
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[5]
@@ -409,12 +465,15 @@ func (x *ListSymbolsResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *ListSymbolsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*ListSymbolsResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *ListSymbolsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[5]
 	if x != nil {
@@ -428,10 +487,12 @@ func (x *ListSymbolsResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use ListSymbolsResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*ListSymbolsResponse) Descriptor() ([]byte, []int) {
 	return file_api_reference_data_reference_data_proto_rawDescGZIP(), []int{5}
 }
 
+// GetSymbols 获取Symbols.
 func (x *ListSymbolsResponse) GetSymbols() []*Symbol {
 	if x != nil {
 		return x.Symbols
@@ -439,6 +500,7 @@ func (x *ListSymbolsResponse) GetSymbols() []*Symbol {
 	return nil
 }
 
+// GetNextPageToken 获取下一个页码令牌.
 func (x *ListSymbolsResponse) GetNextPageToken() string {
 	if x != nil {
 		return x.NextPageToken
@@ -446,14 +508,16 @@ func (x *ListSymbolsResponse) GetNextPageToken() string {
 	return ""
 }
 
+// GetExchangeRequest 表示获取Exchange请求结构体。
 type GetExchangeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // 唯一标识
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"` // 名称
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetExchangeRequest) Reset() {
 	*x = GetExchangeRequest{}
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[6]
@@ -461,12 +525,15 @@ func (x *GetExchangeRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetExchangeRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetExchangeRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetExchangeRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[6]
 	if x != nil {
@@ -480,10 +547,12 @@ func (x *GetExchangeRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetExchangeRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetExchangeRequest) Descriptor() ([]byte, []int) {
 	return file_api_reference_data_reference_data_proto_rawDescGZIP(), []int{6}
 }
 
+// GetId 获取唯一标识.
 func (x *GetExchangeRequest) GetId() string {
 	if x != nil {
 		return x.Id
@@ -491,6 +560,7 @@ func (x *GetExchangeRequest) GetId() string {
 	return ""
 }
 
+// GetName 获取名称.
 func (x *GetExchangeRequest) GetName() string {
 	if x != nil {
 		return x.Name
@@ -498,13 +568,15 @@ func (x *GetExchangeRequest) GetName() string {
 	return ""
 }
 
+// GetExchangeResponse 表示获取Exchange响应结构体。
 type GetExchangeResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Exchange      *Exchange              `protobuf:"bytes,1,opt,name=exchange,proto3" json:"exchange,omitempty"`
+	Exchange      *Exchange              `protobuf:"bytes,1,opt,name=exchange,proto3" json:"exchange,omitempty"` // 换
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetExchangeResponse) Reset() {
 	*x = GetExchangeResponse{}
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[7]
@@ -512,12 +584,15 @@ func (x *GetExchangeResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetExchangeResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetExchangeResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetExchangeResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[7]
 	if x != nil {
@@ -531,10 +606,12 @@ func (x *GetExchangeResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetExchangeResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetExchangeResponse) Descriptor() ([]byte, []int) {
 	return file_api_reference_data_reference_data_proto_rawDescGZIP(), []int{7}
 }
 
+// GetExchange 获取Exchange.
 func (x *GetExchangeResponse) GetExchange() *Exchange {
 	if x != nil {
 		return x.Exchange
@@ -542,14 +619,16 @@ func (x *GetExchangeResponse) GetExchange() *Exchange {
 	return nil
 }
 
+// ListExchangesRequest 表示LISTExchanges请求结构体。
 type ListExchangesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
-	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"` // 页码大小
+	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"` // 页码令牌
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *ListExchangesRequest) Reset() {
 	*x = ListExchangesRequest{}
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[8]
@@ -557,12 +636,15 @@ func (x *ListExchangesRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *ListExchangesRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*ListExchangesRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *ListExchangesRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[8]
 	if x != nil {
@@ -576,10 +658,12 @@ func (x *ListExchangesRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use ListExchangesRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*ListExchangesRequest) Descriptor() ([]byte, []int) {
 	return file_api_reference_data_reference_data_proto_rawDescGZIP(), []int{8}
 }
 
+// GetPageSize 获取页码大小.
 func (x *ListExchangesRequest) GetPageSize() int32 {
 	if x != nil {
 		return x.PageSize
@@ -587,6 +671,7 @@ func (x *ListExchangesRequest) GetPageSize() int32 {
 	return 0
 }
 
+// GetPageToken 获取页码令牌.
 func (x *ListExchangesRequest) GetPageToken() string {
 	if x != nil {
 		return x.PageToken
@@ -594,14 +679,16 @@ func (x *ListExchangesRequest) GetPageToken() string {
 	return ""
 }
 
+// ListExchangesResponse 表示LISTExchanges响应结构体。
 type ListExchangesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Exchanges     []*Exchange            `protobuf:"bytes,1,rep,name=exchanges,proto3" json:"exchanges,omitempty"`
-	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	Exchanges     []*Exchange            `protobuf:"bytes,1,rep,name=exchanges,proto3" json:"exchanges,omitempty"` // Exchanges
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"` // 下一个页码令牌
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *ListExchangesResponse) Reset() {
 	*x = ListExchangesResponse{}
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[9]
@@ -609,12 +696,15 @@ func (x *ListExchangesResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *ListExchangesResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*ListExchangesResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *ListExchangesResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_reference_data_reference_data_proto_msgTypes[9]
 	if x != nil {
@@ -628,10 +718,12 @@ func (x *ListExchangesResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use ListExchangesResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*ListExchangesResponse) Descriptor() ([]byte, []int) {
 	return file_api_reference_data_reference_data_proto_rawDescGZIP(), []int{9}
 }
 
+// GetExchanges 获取Exchanges.
 func (x *ListExchangesResponse) GetExchanges() []*Exchange {
 	if x != nil {
 		return x.Exchanges
@@ -639,6 +731,7 @@ func (x *ListExchangesResponse) GetExchanges() []*Exchange {
 	return nil
 }
 
+// GetNextPageToken 获取下一个页码令牌.
 func (x *ListExchangesResponse) GetNextPageToken() string {
 	if x != nil {
 		return x.NextPageToken
@@ -780,7 +873,7 @@ func file_api_reference_data_reference_data_proto_init() {
 		DependencyIndexes: file_api_reference_data_reference_data_proto_depIdxs,
 		MessageInfos:      file_api_reference_data_reference_data_proto_msgTypes,
 	}.Build()
-	File_api_reference_data_reference_data_proto = out.File
+	File_api_reference_data_reference_data_proto = out.File // File_api_reference_data_reference_data_proto 文件APIreferenceDATAreferenceDATAProto
 	file_api_reference_data_reference_data_proto_goTypes = nil
 	file_api_reference_data_reference_data_proto_depIdxs = nil
 }

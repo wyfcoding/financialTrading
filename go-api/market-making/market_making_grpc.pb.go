@@ -19,9 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MarketMakingService_SetStrategy_FullMethodName    = "/market_making.MarketMakingService/SetStrategy"
-	MarketMakingService_GetStrategy_FullMethodName    = "/market_making.MarketMakingService/GetStrategy"
-	MarketMakingService_GetPerformance_FullMethodName = "/market_making.MarketMakingService/GetPerformance"
+	MarketMakingService_SetStrategy_FullMethodName    = "/market_making.MarketMakingService/SetStrategy" // MarketMakingService_SetStrategy_FullMethodName 市场MakingSERVICESetStrategyFullMethod名称
+	MarketMakingService_GetStrategy_FullMethodName    = "/market_making.MarketMakingService/GetStrategy" // MarketMakingService_GetStrategy_FullMethodName 市场MakingSERVICE获取StrategyFullMethod名称
+	MarketMakingService_GetPerformance_FullMethodName = "/market_making.MarketMakingService/GetPerformance" // MarketMakingService_GetPerformance_FullMethodName 市场MakingSERVICE获取PerformanceFullMethod名称
 )
 
 // MarketMakingServiceClient is the client API for MarketMakingService service.
@@ -29,6 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // MarketMakingService 提供做市策略管理服务
+// MarketMakingServiceClient 表示市场MakingSERVICE客户端结构体。
 type MarketMakingServiceClient interface {
 	// 设置做市策略
 	SetStrategy(ctx context.Context, in *SetStrategyRequest, opts ...grpc.CallOption) (*SetStrategyResponse, error)
@@ -42,10 +43,12 @@ type marketMakingServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
+// NewMarketMakingServiceClient 创建新的创建一个新的实例市场MakingSERVICE客户端.
 func NewMarketMakingServiceClient(cc grpc.ClientConnInterface) MarketMakingServiceClient {
 	return &marketMakingServiceClient{cc}
 }
 
+// SetStrategy 执行SetStrategy逻辑。
 func (c *marketMakingServiceClient) SetStrategy(ctx context.Context, in *SetStrategyRequest, opts ...grpc.CallOption) (*SetStrategyResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetStrategyResponse)
@@ -56,6 +59,7 @@ func (c *marketMakingServiceClient) SetStrategy(ctx context.Context, in *SetStra
 	return out, nil
 }
 
+// GetStrategy 获取Strategy.
 func (c *marketMakingServiceClient) GetStrategy(ctx context.Context, in *GetStrategyRequest, opts ...grpc.CallOption) (*GetStrategyResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetStrategyResponse)
@@ -66,6 +70,7 @@ func (c *marketMakingServiceClient) GetStrategy(ctx context.Context, in *GetStra
 	return out, nil
 }
 
+// GetPerformance 获取Performance.
 func (c *marketMakingServiceClient) GetPerformance(ctx context.Context, in *GetPerformanceRequest, opts ...grpc.CallOption) (*GetPerformanceResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetPerformanceResponse)
@@ -81,6 +86,7 @@ func (c *marketMakingServiceClient) GetPerformance(ctx context.Context, in *GetP
 // for forward compatibility.
 //
 // MarketMakingService 提供做市策略管理服务
+// MarketMakingServiceServer 表示市场MakingSERVICE服务端结构体。
 type MarketMakingServiceServer interface {
 	// 设置做市策略
 	SetStrategy(context.Context, *SetStrategyRequest) (*SetStrategyResponse, error)
@@ -96,14 +102,18 @@ type MarketMakingServiceServer interface {
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
+// UnimplementedMarketMakingServiceServer 表示未实现的市场MakingSERVICE服务端结构体。
 type UnimplementedMarketMakingServiceServer struct{}
 
+// SetStrategy 执行SetStrategy逻辑。
 func (UnimplementedMarketMakingServiceServer) SetStrategy(context.Context, *SetStrategyRequest) (*SetStrategyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetStrategy not implemented")
 }
+// GetStrategy 获取Strategy.
 func (UnimplementedMarketMakingServiceServer) GetStrategy(context.Context, *GetStrategyRequest) (*GetStrategyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStrategy not implemented")
 }
+// GetPerformance 获取Performance.
 func (UnimplementedMarketMakingServiceServer) GetPerformance(context.Context, *GetPerformanceRequest) (*GetPerformanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPerformance not implemented")
 }
@@ -113,10 +123,12 @@ func (UnimplementedMarketMakingServiceServer) testEmbeddedByValue()             
 // UnsafeMarketMakingServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to MarketMakingServiceServer will
 // result in compilation errors.
+// UnsafeMarketMakingServiceServer 表示Unsafe市场MakingSERVICE服务端结构体。
 type UnsafeMarketMakingServiceServer interface {
 	mustEmbedUnimplementedMarketMakingServiceServer()
 }
 
+// RegisterMarketMakingServiceServer 执行Register市场MakingSERVICE服务端逻辑。
 func RegisterMarketMakingServiceServer(s grpc.ServiceRegistrar, srv MarketMakingServiceServer) {
 	// If the following call pancis, it indicates UnimplementedMarketMakingServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an

@@ -19,10 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ClearingService_SettleTrade_FullMethodName        = "/clearing.ClearingService/SettleTrade"
-	ClearingService_GetSettlements_FullMethodName     = "/clearing.ClearingService/GetSettlements"
-	ClearingService_ExecuteEODClearing_FullMethodName = "/clearing.ClearingService/ExecuteEODClearing"
-	ClearingService_GetClearingStatus_FullMethodName  = "/clearing.ClearingService/GetClearingStatus"
+	ClearingService_SettleTrade_FullMethodName        = "/clearing.ClearingService/SettleTrade" // ClearingService_SettleTrade_FullMethodName ClearingSERVICESettle成交FullMethod名称
+	ClearingService_GetSettlements_FullMethodName     = "/clearing.ClearingService/GetSettlements" // ClearingService_GetSettlements_FullMethodName ClearingSERVICE获取SettlementsFullMethod名称
+	ClearingService_ExecuteEODClearing_FullMethodName = "/clearing.ClearingService/ExecuteEODClearing" // ClearingService_ExecuteEODClearing_FullMethodName ClearingSERVICEExecuteEODClearingFullMethod名称
+	ClearingService_GetClearingStatus_FullMethodName  = "/clearing.ClearingService/GetClearingStatus" // ClearingService_GetClearingStatus_FullMethodName ClearingSERVICE获取ClearingSTATUSFullMethod名称
 )
 
 // ClearingServiceClient is the client API for ClearingService service.
@@ -30,6 +30,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // 清算服务
+// ClearingServiceClient 表示ClearingSERVICE客户端结构体。
 type ClearingServiceClient interface {
 	// 清算交易
 	SettleTrade(ctx context.Context, in *SettleTradeRequest, opts ...grpc.CallOption) (*SettlementResponse, error)
@@ -45,10 +46,12 @@ type clearingServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
+// NewClearingServiceClient 创建新的创建一个新的实例ClearingSERVICE客户端.
 func NewClearingServiceClient(cc grpc.ClientConnInterface) ClearingServiceClient {
 	return &clearingServiceClient{cc}
 }
 
+// SettleTrade 执行Settle成交逻辑。
 func (c *clearingServiceClient) SettleTrade(ctx context.Context, in *SettleTradeRequest, opts ...grpc.CallOption) (*SettlementResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SettlementResponse)
@@ -59,6 +62,7 @@ func (c *clearingServiceClient) SettleTrade(ctx context.Context, in *SettleTrade
 	return out, nil
 }
 
+// GetSettlements 获取Settlements.
 func (c *clearingServiceClient) GetSettlements(ctx context.Context, in *GetSettlementsRequest, opts ...grpc.CallOption) (*SettlementsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SettlementsResponse)
@@ -69,6 +73,7 @@ func (c *clearingServiceClient) GetSettlements(ctx context.Context, in *GetSettl
 	return out, nil
 }
 
+// ExecuteEODClearing 执行ExecuteEODClearing逻辑。
 func (c *clearingServiceClient) ExecuteEODClearing(ctx context.Context, in *ExecuteEODClearingRequest, opts ...grpc.CallOption) (*EODClearingResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EODClearingResponse)
@@ -79,6 +84,7 @@ func (c *clearingServiceClient) ExecuteEODClearing(ctx context.Context, in *Exec
 	return out, nil
 }
 
+// GetClearingStatus 获取ClearingSTATUS.
 func (c *clearingServiceClient) GetClearingStatus(ctx context.Context, in *GetClearingStatusRequest, opts ...grpc.CallOption) (*ClearingStatusResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ClearingStatusResponse)
@@ -94,6 +100,7 @@ func (c *clearingServiceClient) GetClearingStatus(ctx context.Context, in *GetCl
 // for forward compatibility.
 //
 // 清算服务
+// ClearingServiceServer 表示ClearingSERVICE服务端结构体。
 type ClearingServiceServer interface {
 	// 清算交易
 	SettleTrade(context.Context, *SettleTradeRequest) (*SettlementResponse, error)
@@ -111,17 +118,22 @@ type ClearingServiceServer interface {
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
+// UnimplementedClearingServiceServer 表示未实现的ClearingSERVICE服务端结构体。
 type UnimplementedClearingServiceServer struct{}
 
+// SettleTrade 执行Settle成交逻辑。
 func (UnimplementedClearingServiceServer) SettleTrade(context.Context, *SettleTradeRequest) (*SettlementResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SettleTrade not implemented")
 }
+// GetSettlements 获取Settlements.
 func (UnimplementedClearingServiceServer) GetSettlements(context.Context, *GetSettlementsRequest) (*SettlementsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSettlements not implemented")
 }
+// ExecuteEODClearing 执行ExecuteEODClearing逻辑。
 func (UnimplementedClearingServiceServer) ExecuteEODClearing(context.Context, *ExecuteEODClearingRequest) (*EODClearingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExecuteEODClearing not implemented")
 }
+// GetClearingStatus 获取ClearingSTATUS.
 func (UnimplementedClearingServiceServer) GetClearingStatus(context.Context, *GetClearingStatusRequest) (*ClearingStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetClearingStatus not implemented")
 }
@@ -131,10 +143,12 @@ func (UnimplementedClearingServiceServer) testEmbeddedByValue()                 
 // UnsafeClearingServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to ClearingServiceServer will
 // result in compilation errors.
+// UnsafeClearingServiceServer 表示UnsafeClearingSERVICE服务端结构体。
 type UnsafeClearingServiceServer interface {
 	mustEmbedUnimplementedClearingServiceServer()
 }
 
+// RegisterClearingServiceServer 执行RegisterClearingSERVICE服务端逻辑。
 func RegisterClearingServiceServer(s grpc.ServiceRegistrar, srv ClearingServiceServer) {
 	// If the following call pancis, it indicates UnimplementedClearingServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an

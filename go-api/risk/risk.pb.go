@@ -21,17 +21,19 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// AssessRiskRequest 表示AssessRisk请求结构体。
 type AssessRiskRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Side          string                 `protobuf:"bytes,3,opt,name=side,proto3" json:"side,omitempty"`
-	Quantity      string                 `protobuf:"bytes,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	Price         string                 `protobuf:"bytes,5,opt,name=price,proto3" json:"price,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Side          string                 `protobuf:"bytes,3,opt,name=side,proto3" json:"side,omitempty"` // 交易方向
+	Quantity      string                 `protobuf:"bytes,4,opt,name=quantity,proto3" json:"quantity,omitempty"` // 数量
+	Price         string                 `protobuf:"bytes,5,opt,name=price,proto3" json:"price,omitempty"` // 价格
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *AssessRiskRequest) Reset() {
 	*x = AssessRiskRequest{}
 	mi := &file_api_risk_risk_proto_msgTypes[0]
@@ -39,12 +41,15 @@ func (x *AssessRiskRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *AssessRiskRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*AssessRiskRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *AssessRiskRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_risk_risk_proto_msgTypes[0]
 	if x != nil {
@@ -58,10 +63,12 @@ func (x *AssessRiskRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use AssessRiskRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*AssessRiskRequest) Descriptor() ([]byte, []int) {
 	return file_api_risk_risk_proto_rawDescGZIP(), []int{0}
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *AssessRiskRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -69,6 +76,7 @@ func (x *AssessRiskRequest) GetUserId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *AssessRiskRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -76,6 +84,7 @@ func (x *AssessRiskRequest) GetSymbol() string {
 	return ""
 }
 
+// GetSide 获取交易方向.
 func (x *AssessRiskRequest) GetSide() string {
 	if x != nil {
 		return x.Side
@@ -83,6 +92,7 @@ func (x *AssessRiskRequest) GetSide() string {
 	return ""
 }
 
+// GetQuantity 获取数量.
 func (x *AssessRiskRequest) GetQuantity() string {
 	if x != nil {
 		return x.Quantity
@@ -90,6 +100,7 @@ func (x *AssessRiskRequest) GetQuantity() string {
 	return ""
 }
 
+// GetPrice 获取价格.
 func (x *AssessRiskRequest) GetPrice() string {
 	if x != nil {
 		return x.Price
@@ -97,17 +108,19 @@ func (x *AssessRiskRequest) GetPrice() string {
 	return ""
 }
 
+// RiskAssessmentResponse 表示RiskAssessment响应结构体。
 type RiskAssessmentResponse struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
-	RiskLevel         string                 `protobuf:"bytes,1,opt,name=risk_level,json=riskLevel,proto3" json:"risk_level,omitempty"` // LOW, MEDIUM, HIGH, CRITICAL
-	RiskScore         string                 `protobuf:"bytes,2,opt,name=risk_score,json=riskScore,proto3" json:"risk_score,omitempty"`
-	MarginRequirement string                 `protobuf:"bytes,3,opt,name=margin_requirement,json=marginRequirement,proto3" json:"margin_requirement,omitempty"`
-	IsAllowed         bool                   `protobuf:"varint,4,opt,name=is_allowed,json=isAllowed,proto3" json:"is_allowed,omitempty"`
-	Reason            string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	RiskLevel         string                 `protobuf:"bytes,1,opt,name=risk_level,json=riskLevel,proto3" json:"risk_level,omitempty"` // 风险等级
+	RiskScore         string                 `protobuf:"bytes,2,opt,name=risk_score,json=riskScore,proto3" json:"risk_score,omitempty"` // Risk分数
+	MarginRequirement string                 `protobuf:"bytes,3,opt,name=margin_requirement,json=marginRequirement,proto3" json:"margin_requirement,omitempty"` // Margin需求
+	IsAllowed         bool                   `protobuf:"varint,4,opt,name=is_allowed,json=isAllowed,proto3" json:"is_allowed,omitempty"` // 是Allowed
+	Reason            string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"` // Reason
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *RiskAssessmentResponse) Reset() {
 	*x = RiskAssessmentResponse{}
 	mi := &file_api_risk_risk_proto_msgTypes[1]
@@ -115,12 +128,15 @@ func (x *RiskAssessmentResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *RiskAssessmentResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*RiskAssessmentResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *RiskAssessmentResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_risk_risk_proto_msgTypes[1]
 	if x != nil {
@@ -134,10 +150,12 @@ func (x *RiskAssessmentResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use RiskAssessmentResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*RiskAssessmentResponse) Descriptor() ([]byte, []int) {
 	return file_api_risk_risk_proto_rawDescGZIP(), []int{1}
 }
 
+// GetRiskLevel 获取Risk等级.
 func (x *RiskAssessmentResponse) GetRiskLevel() string {
 	if x != nil {
 		return x.RiskLevel
@@ -145,6 +163,7 @@ func (x *RiskAssessmentResponse) GetRiskLevel() string {
 	return ""
 }
 
+// GetRiskScore 获取Risk分数.
 func (x *RiskAssessmentResponse) GetRiskScore() string {
 	if x != nil {
 		return x.RiskScore
@@ -152,6 +171,7 @@ func (x *RiskAssessmentResponse) GetRiskScore() string {
 	return ""
 }
 
+// GetMarginRequirement 获取MarginRequirement.
 func (x *RiskAssessmentResponse) GetMarginRequirement() string {
 	if x != nil {
 		return x.MarginRequirement
@@ -159,6 +179,7 @@ func (x *RiskAssessmentResponse) GetMarginRequirement() string {
 	return ""
 }
 
+// GetIsAllowed 获取是Allowed.
 func (x *RiskAssessmentResponse) GetIsAllowed() bool {
 	if x != nil {
 		return x.IsAllowed
@@ -166,6 +187,7 @@ func (x *RiskAssessmentResponse) GetIsAllowed() bool {
 	return false
 }
 
+// GetReason 获取Reason.
 func (x *RiskAssessmentResponse) GetReason() string {
 	if x != nil {
 		return x.Reason
@@ -173,13 +195,15 @@ func (x *RiskAssessmentResponse) GetReason() string {
 	return ""
 }
 
+// GetRiskMetricsRequest 表示获取RiskMetrics请求结构体。
 type GetRiskMetricsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetRiskMetricsRequest) Reset() {
 	*x = GetRiskMetricsRequest{}
 	mi := &file_api_risk_risk_proto_msgTypes[2]
@@ -187,12 +211,15 @@ func (x *GetRiskMetricsRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetRiskMetricsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetRiskMetricsRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetRiskMetricsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_risk_risk_proto_msgTypes[2]
 	if x != nil {
@@ -206,10 +233,12 @@ func (x *GetRiskMetricsRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetRiskMetricsRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetRiskMetricsRequest) Descriptor() ([]byte, []int) {
 	return file_api_risk_risk_proto_rawDescGZIP(), []int{2}
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *GetRiskMetricsRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -217,17 +246,19 @@ func (x *GetRiskMetricsRequest) GetUserId() string {
 	return ""
 }
 
+// RiskMetricsResponse 表示RiskMetrics响应结构体。
 type RiskMetricsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Var_95        string                 `protobuf:"bytes,1,opt,name=var_95,json=var95,proto3" json:"var_95,omitempty"` // Value at Risk
-	Var_99        string                 `protobuf:"bytes,2,opt,name=var_99,json=var99,proto3" json:"var_99,omitempty"`
-	MaxDrawdown   string                 `protobuf:"bytes,3,opt,name=max_drawdown,json=maxDrawdown,proto3" json:"max_drawdown,omitempty"`
-	SharpeRatio   string                 `protobuf:"bytes,4,opt,name=sharpe_ratio,json=sharpeRatio,proto3" json:"sharpe_ratio,omitempty"`
-	Correlation   string                 `protobuf:"bytes,5,opt,name=correlation,proto3" json:"correlation,omitempty"`
+	Var_95        string                 `protobuf:"bytes,1,opt,name=var_95,json=var95,proto3" json:"var_95,omitempty"` // Var
+	Var_99        string                 `protobuf:"bytes,2,opt,name=var_99,json=var99,proto3" json:"var_99,omitempty"` // Var
+	MaxDrawdown   string                 `protobuf:"bytes,3,opt,name=max_drawdown,json=maxDrawdown,proto3" json:"max_drawdown,omitempty"` // 最大Drawdown
+	SharpeRatio   string                 `protobuf:"bytes,4,opt,name=sharpe_ratio,json=sharpeRatio,proto3" json:"sharpe_ratio,omitempty"` // SharpeRatio
+	Correlation   string                 `protobuf:"bytes,5,opt,name=correlation,proto3" json:"correlation,omitempty"` // Correlation
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *RiskMetricsResponse) Reset() {
 	*x = RiskMetricsResponse{}
 	mi := &file_api_risk_risk_proto_msgTypes[3]
@@ -235,12 +266,15 @@ func (x *RiskMetricsResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *RiskMetricsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*RiskMetricsResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *RiskMetricsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_risk_risk_proto_msgTypes[3]
 	if x != nil {
@@ -254,10 +288,12 @@ func (x *RiskMetricsResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use RiskMetricsResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*RiskMetricsResponse) Descriptor() ([]byte, []int) {
 	return file_api_risk_risk_proto_rawDescGZIP(), []int{3}
 }
 
+// GetVar_95 获取VAR.
 func (x *RiskMetricsResponse) GetVar_95() string {
 	if x != nil {
 		return x.Var_95
@@ -265,6 +301,7 @@ func (x *RiskMetricsResponse) GetVar_95() string {
 	return ""
 }
 
+// GetVar_99 获取VAR.
 func (x *RiskMetricsResponse) GetVar_99() string {
 	if x != nil {
 		return x.Var_99
@@ -272,6 +309,7 @@ func (x *RiskMetricsResponse) GetVar_99() string {
 	return ""
 }
 
+// GetMaxDrawdown 获取最大Drawdown.
 func (x *RiskMetricsResponse) GetMaxDrawdown() string {
 	if x != nil {
 		return x.MaxDrawdown
@@ -279,6 +317,7 @@ func (x *RiskMetricsResponse) GetMaxDrawdown() string {
 	return ""
 }
 
+// GetSharpeRatio 获取SharpeRatio.
 func (x *RiskMetricsResponse) GetSharpeRatio() string {
 	if x != nil {
 		return x.SharpeRatio
@@ -286,6 +325,7 @@ func (x *RiskMetricsResponse) GetSharpeRatio() string {
 	return ""
 }
 
+// GetCorrelation 获取Correlation.
 func (x *RiskMetricsResponse) GetCorrelation() string {
 	if x != nil {
 		return x.Correlation
@@ -293,14 +333,16 @@ func (x *RiskMetricsResponse) GetCorrelation() string {
 	return ""
 }
 
+// CheckRiskLimitRequest 表示CheckRisk限制请求结构体。
 type CheckRiskLimitRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	LimitType     string                 `protobuf:"bytes,2,opt,name=limit_type,json=limitType,proto3" json:"limit_type,omitempty"` // POSITION_SIZE, DAILY_LOSS, LEVERAGE
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	LimitType     string                 `protobuf:"bytes,2,opt,name=limit_type,json=limitType,proto3" json:"limit_type,omitempty"` // 限制类型
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *CheckRiskLimitRequest) Reset() {
 	*x = CheckRiskLimitRequest{}
 	mi := &file_api_risk_risk_proto_msgTypes[4]
@@ -308,12 +350,15 @@ func (x *CheckRiskLimitRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *CheckRiskLimitRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*CheckRiskLimitRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *CheckRiskLimitRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_risk_risk_proto_msgTypes[4]
 	if x != nil {
@@ -327,10 +372,12 @@ func (x *CheckRiskLimitRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use CheckRiskLimitRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*CheckRiskLimitRequest) Descriptor() ([]byte, []int) {
 	return file_api_risk_risk_proto_rawDescGZIP(), []int{4}
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *CheckRiskLimitRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -338,6 +385,7 @@ func (x *CheckRiskLimitRequest) GetUserId() string {
 	return ""
 }
 
+// GetLimitType 获取限制类型.
 func (x *CheckRiskLimitRequest) GetLimitType() string {
 	if x != nil {
 		return x.LimitType
@@ -345,17 +393,19 @@ func (x *CheckRiskLimitRequest) GetLimitType() string {
 	return ""
 }
 
+// RiskLimitResponse 表示Risk限制响应结构体。
 type RiskLimitResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	LimitType     string                 `protobuf:"bytes,1,opt,name=limit_type,json=limitType,proto3" json:"limit_type,omitempty"`
-	LimitValue    string                 `protobuf:"bytes,2,opt,name=limit_value,json=limitValue,proto3" json:"limit_value,omitempty"`
-	CurrentValue  string                 `protobuf:"bytes,3,opt,name=current_value,json=currentValue,proto3" json:"current_value,omitempty"`
-	Remaining     string                 `protobuf:"bytes,4,opt,name=remaining,proto3" json:"remaining,omitempty"`
-	IsExceeded    bool                   `protobuf:"varint,5,opt,name=is_exceeded,json=isExceeded,proto3" json:"is_exceeded,omitempty"`
+	LimitType     string                 `protobuf:"bytes,1,opt,name=limit_type,json=limitType,proto3" json:"limit_type,omitempty"` // 限制类型
+	LimitValue    string                 `protobuf:"bytes,2,opt,name=limit_value,json=limitValue,proto3" json:"limit_value,omitempty"` // 限制Value
+	CurrentValue  string                 `protobuf:"bytes,3,opt,name=current_value,json=currentValue,proto3" json:"current_value,omitempty"` // Current价值
+	Remaining     string                 `protobuf:"bytes,4,opt,name=remaining,proto3" json:"remaining,omitempty"` // Remaining
+	IsExceeded    bool                   `protobuf:"varint,5,opt,name=is_exceeded,json=isExceeded,proto3" json:"is_exceeded,omitempty"` // 是Exceeded
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *RiskLimitResponse) Reset() {
 	*x = RiskLimitResponse{}
 	mi := &file_api_risk_risk_proto_msgTypes[5]
@@ -363,12 +413,15 @@ func (x *RiskLimitResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *RiskLimitResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*RiskLimitResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *RiskLimitResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_risk_risk_proto_msgTypes[5]
 	if x != nil {
@@ -382,10 +435,12 @@ func (x *RiskLimitResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use RiskLimitResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*RiskLimitResponse) Descriptor() ([]byte, []int) {
 	return file_api_risk_risk_proto_rawDescGZIP(), []int{5}
 }
 
+// GetLimitType 获取限制类型.
 func (x *RiskLimitResponse) GetLimitType() string {
 	if x != nil {
 		return x.LimitType
@@ -393,6 +448,7 @@ func (x *RiskLimitResponse) GetLimitType() string {
 	return ""
 }
 
+// GetLimitValue 获取限制Value.
 func (x *RiskLimitResponse) GetLimitValue() string {
 	if x != nil {
 		return x.LimitValue
@@ -400,6 +456,7 @@ func (x *RiskLimitResponse) GetLimitValue() string {
 	return ""
 }
 
+// GetCurrentValue 获取CURRENTValue.
 func (x *RiskLimitResponse) GetCurrentValue() string {
 	if x != nil {
 		return x.CurrentValue
@@ -407,6 +464,7 @@ func (x *RiskLimitResponse) GetCurrentValue() string {
 	return ""
 }
 
+// GetRemaining 获取Remaining.
 func (x *RiskLimitResponse) GetRemaining() string {
 	if x != nil {
 		return x.Remaining
@@ -414,6 +472,7 @@ func (x *RiskLimitResponse) GetRemaining() string {
 	return ""
 }
 
+// GetIsExceeded 获取是Exceeded.
 func (x *RiskLimitResponse) GetIsExceeded() bool {
 	if x != nil {
 		return x.IsExceeded
@@ -421,13 +480,15 @@ func (x *RiskLimitResponse) GetIsExceeded() bool {
 	return false
 }
 
+// GetRiskAlertsRequest 表示获取RiskAlerts请求结构体。
 type GetRiskAlertsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetRiskAlertsRequest) Reset() {
 	*x = GetRiskAlertsRequest{}
 	mi := &file_api_risk_risk_proto_msgTypes[6]
@@ -435,12 +496,15 @@ func (x *GetRiskAlertsRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetRiskAlertsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetRiskAlertsRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetRiskAlertsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_risk_risk_proto_msgTypes[6]
 	if x != nil {
@@ -454,10 +518,12 @@ func (x *GetRiskAlertsRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetRiskAlertsRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetRiskAlertsRequest) Descriptor() ([]byte, []int) {
 	return file_api_risk_risk_proto_rawDescGZIP(), []int{6}
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *GetRiskAlertsRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -465,17 +531,19 @@ func (x *GetRiskAlertsRequest) GetUserId() string {
 	return ""
 }
 
+// RiskAlert 表示RiskAlert结构体。
 type RiskAlert struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AlertId       string                 `protobuf:"bytes,1,opt,name=alert_id,json=alertId,proto3" json:"alert_id,omitempty"`
-	AlertType     string                 `protobuf:"bytes,2,opt,name=alert_type,json=alertType,proto3" json:"alert_type,omitempty"`
-	Severity      string                 `protobuf:"bytes,3,opt,name=severity,proto3" json:"severity,omitempty"`
-	Message       string                 `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	AlertId       string                 `protobuf:"bytes,1,opt,name=alert_id,json=alertId,proto3" json:"alert_id,omitempty"` // Alert唯一标识
+	AlertType     string                 `protobuf:"bytes,2,opt,name=alert_type,json=alertType,proto3" json:"alert_type,omitempty"` // Alert类型
+	Severity      string                 `protobuf:"bytes,3,opt,name=severity,proto3" json:"severity,omitempty"` // Severity
+	Message       string                 `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"` // 消息
+	Timestamp     int64                  `protobuf:"varint,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Timestamp
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *RiskAlert) Reset() {
 	*x = RiskAlert{}
 	mi := &file_api_risk_risk_proto_msgTypes[7]
@@ -483,12 +551,15 @@ func (x *RiskAlert) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *RiskAlert) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*RiskAlert) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *RiskAlert) ProtoReflect() protoreflect.Message {
 	mi := &file_api_risk_risk_proto_msgTypes[7]
 	if x != nil {
@@ -502,10 +573,12 @@ func (x *RiskAlert) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use RiskAlert.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*RiskAlert) Descriptor() ([]byte, []int) {
 	return file_api_risk_risk_proto_rawDescGZIP(), []int{7}
 }
 
+// GetAlertId 获取Alert唯一标识.
 func (x *RiskAlert) GetAlertId() string {
 	if x != nil {
 		return x.AlertId
@@ -513,6 +586,7 @@ func (x *RiskAlert) GetAlertId() string {
 	return ""
 }
 
+// GetAlertType 获取Alert类型.
 func (x *RiskAlert) GetAlertType() string {
 	if x != nil {
 		return x.AlertType
@@ -520,6 +594,7 @@ func (x *RiskAlert) GetAlertType() string {
 	return ""
 }
 
+// GetSeverity 获取Severity.
 func (x *RiskAlert) GetSeverity() string {
 	if x != nil {
 		return x.Severity
@@ -527,6 +602,7 @@ func (x *RiskAlert) GetSeverity() string {
 	return ""
 }
 
+// GetMessage 获取消息.
 func (x *RiskAlert) GetMessage() string {
 	if x != nil {
 		return x.Message
@@ -534,6 +610,7 @@ func (x *RiskAlert) GetMessage() string {
 	return ""
 }
 
+// GetTimestamp 获取Timestamp.
 func (x *RiskAlert) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
@@ -541,13 +618,15 @@ func (x *RiskAlert) GetTimestamp() int64 {
 	return 0
 }
 
+// RiskAlertsResponse 表示RiskAlerts响应结构体。
 type RiskAlertsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Alerts        []*RiskAlert           `protobuf:"bytes,1,rep,name=alerts,proto3" json:"alerts,omitempty"`
+	Alerts        []*RiskAlert           `protobuf:"bytes,1,rep,name=alerts,proto3" json:"alerts,omitempty"` // Alerts
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *RiskAlertsResponse) Reset() {
 	*x = RiskAlertsResponse{}
 	mi := &file_api_risk_risk_proto_msgTypes[8]
@@ -555,12 +634,15 @@ func (x *RiskAlertsResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *RiskAlertsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*RiskAlertsResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *RiskAlertsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_risk_risk_proto_msgTypes[8]
 	if x != nil {
@@ -574,10 +656,12 @@ func (x *RiskAlertsResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use RiskAlertsResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*RiskAlertsResponse) Descriptor() ([]byte, []int) {
 	return file_api_risk_risk_proto_rawDescGZIP(), []int{8}
 }
 
+// GetAlerts 获取Alerts.
 func (x *RiskAlertsResponse) GetAlerts() []*RiskAlert {
 	if x != nil {
 		return x.Alerts
@@ -704,7 +788,7 @@ func file_api_risk_risk_proto_init() {
 		DependencyIndexes: file_api_risk_risk_proto_depIdxs,
 		MessageInfos:      file_api_risk_risk_proto_msgTypes,
 	}.Build()
-	File_api_risk_risk_proto = out.File
+	File_api_risk_risk_proto = out.File // File_api_risk_risk_proto 文件APIriskriskProto
 	file_api_risk_risk_proto_goTypes = nil
 	file_api_risk_risk_proto_depIdxs = nil
 }

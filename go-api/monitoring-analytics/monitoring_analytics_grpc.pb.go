@@ -19,9 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MonitoringAnalyticsService_RecordMetric_FullMethodName    = "/monitoring_analytics.MonitoringAnalyticsService/RecordMetric"
-	MonitoringAnalyticsService_GetMetrics_FullMethodName      = "/monitoring_analytics.MonitoringAnalyticsService/GetMetrics"
-	MonitoringAnalyticsService_GetSystemHealth_FullMethodName = "/monitoring_analytics.MonitoringAnalyticsService/GetSystemHealth"
+	MonitoringAnalyticsService_RecordMetric_FullMethodName    = "/monitoring_analytics.MonitoringAnalyticsService/RecordMetric" // MonitoringAnalyticsService_RecordMetric_FullMethodName MonitoringAnalyticsSERVICERecordMetricFullMethod名称
+	MonitoringAnalyticsService_GetMetrics_FullMethodName      = "/monitoring_analytics.MonitoringAnalyticsService/GetMetrics" // MonitoringAnalyticsService_GetMetrics_FullMethodName MonitoringAnalyticsSERVICE获取MetricsFullMethod名称
+	MonitoringAnalyticsService_GetSystemHealth_FullMethodName = "/monitoring_analytics.MonitoringAnalyticsService/GetSystemHealth" // MonitoringAnalyticsService_GetSystemHealth_FullMethodName MonitoringAnalyticsSERVICE获取SystemHealthFullMethod名称
 )
 
 // MonitoringAnalyticsServiceClient is the client API for MonitoringAnalyticsService service.
@@ -29,6 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // MonitoringAnalyticsService 提供监控和分析服务
+// MonitoringAnalyticsServiceClient 表示MonitoringAnalyticsSERVICE客户端结构体。
 type MonitoringAnalyticsServiceClient interface {
 	// 记录指标
 	RecordMetric(ctx context.Context, in *RecordMetricRequest, opts ...grpc.CallOption) (*RecordMetricResponse, error)
@@ -42,10 +43,12 @@ type monitoringAnalyticsServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
+// NewMonitoringAnalyticsServiceClient 创建新的创建一个新的实例MonitoringAnalyticsSERVICE客户端.
 func NewMonitoringAnalyticsServiceClient(cc grpc.ClientConnInterface) MonitoringAnalyticsServiceClient {
 	return &monitoringAnalyticsServiceClient{cc}
 }
 
+// RecordMetric 执行RecordMetric逻辑。
 func (c *monitoringAnalyticsServiceClient) RecordMetric(ctx context.Context, in *RecordMetricRequest, opts ...grpc.CallOption) (*RecordMetricResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RecordMetricResponse)
@@ -56,6 +59,7 @@ func (c *monitoringAnalyticsServiceClient) RecordMetric(ctx context.Context, in 
 	return out, nil
 }
 
+// GetMetrics 获取Metrics.
 func (c *monitoringAnalyticsServiceClient) GetMetrics(ctx context.Context, in *GetMetricsRequest, opts ...grpc.CallOption) (*GetMetricsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetMetricsResponse)
@@ -66,6 +70,7 @@ func (c *monitoringAnalyticsServiceClient) GetMetrics(ctx context.Context, in *G
 	return out, nil
 }
 
+// GetSystemHealth 获取SystemHealth.
 func (c *monitoringAnalyticsServiceClient) GetSystemHealth(ctx context.Context, in *GetSystemHealthRequest, opts ...grpc.CallOption) (*GetSystemHealthResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetSystemHealthResponse)
@@ -81,6 +86,7 @@ func (c *monitoringAnalyticsServiceClient) GetSystemHealth(ctx context.Context, 
 // for forward compatibility.
 //
 // MonitoringAnalyticsService 提供监控和分析服务
+// MonitoringAnalyticsServiceServer 表示MonitoringAnalyticsSERVICE服务端结构体。
 type MonitoringAnalyticsServiceServer interface {
 	// 记录指标
 	RecordMetric(context.Context, *RecordMetricRequest) (*RecordMetricResponse, error)
@@ -96,14 +102,18 @@ type MonitoringAnalyticsServiceServer interface {
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
+// UnimplementedMonitoringAnalyticsServiceServer 表示未实现的MonitoringAnalyticsSERVICE服务端结构体。
 type UnimplementedMonitoringAnalyticsServiceServer struct{}
 
+// RecordMetric 执行RecordMetric逻辑。
 func (UnimplementedMonitoringAnalyticsServiceServer) RecordMetric(context.Context, *RecordMetricRequest) (*RecordMetricResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RecordMetric not implemented")
 }
+// GetMetrics 获取Metrics.
 func (UnimplementedMonitoringAnalyticsServiceServer) GetMetrics(context.Context, *GetMetricsRequest) (*GetMetricsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMetrics not implemented")
 }
+// GetSystemHealth 获取SystemHealth.
 func (UnimplementedMonitoringAnalyticsServiceServer) GetSystemHealth(context.Context, *GetSystemHealthRequest) (*GetSystemHealthResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSystemHealth not implemented")
 }
@@ -114,10 +124,12 @@ func (UnimplementedMonitoringAnalyticsServiceServer) testEmbeddedByValue() {}
 // UnsafeMonitoringAnalyticsServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to MonitoringAnalyticsServiceServer will
 // result in compilation errors.
+// UnsafeMonitoringAnalyticsServiceServer 表示UnsafeMonitoringAnalyticsSERVICE服务端结构体。
 type UnsafeMonitoringAnalyticsServiceServer interface {
 	mustEmbedUnimplementedMonitoringAnalyticsServiceServer()
 }
 
+// RegisterMonitoringAnalyticsServiceServer 执行RegisterMonitoringAnalyticsSERVICE服务端逻辑。
 func RegisterMonitoringAnalyticsServiceServer(s grpc.ServiceRegistrar, srv MonitoringAnalyticsServiceServer) {
 	// If the following call pancis, it indicates UnimplementedMonitoringAnalyticsServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an

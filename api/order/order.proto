@@ -22,82 +22,82 @@ service OrderService {
 
 // 创建订单请求
 message CreateOrderRequest {
-  string user_id = 1;
-  string symbol = 2;
-  string side = 3; // BUY or SELL
-  string order_type = 4; // LIMIT, MARKET, STOP_LOSS, TAKE_PROFIT
-  string price = 5;
-  string quantity = 6;
-  string time_in_force = 7; // GTC, IOC, FOK
-  string client_order_id = 8;
+  string user_id = 1; // 用户唯一标识
+  string symbol = 2; // 交易对符号
+  string side = 3; // 买入或卖出
+  string order_type = 4; // 限价、市价、止损、止盈
+  string price = 5; // 价格
+  string quantity = 6; // 数量
+  string time_in_force = 7; // 撤单前有效(GTC)、立即成交否则取消(IOC)、全部成交否则取消(FOK)
+  string client_order_id = 8; // 订单唯一标识
 }
 
 // 订单响应
 message OrderResponse {
-  string order_id = 1;
-  string user_id = 2;
-  string symbol = 3;
-  string side = 4;
-  string order_type = 5;
-  string price = 6;
-  string quantity = 7;
-  string filled_quantity = 8;
-  string status = 9; // PENDING, OPEN, PARTIALLY_FILLED, FILLED, CANCELLED, REJECTED
-  string time_in_force = 10;
-  int64 created_at = 11;
-  int64 updated_at = 12;
-  string error_message = 13;
+  string order_id = 1; // 订单唯一标识
+  string user_id = 2; // 用户唯一标识
+  string symbol = 3; // 交易对符号
+  string side = 4; // 交易方向
+  string order_type = 5; // 订单类型
+  string price = 6; // 价格
+  string quantity = 7; // 数量
+  string filled_quantity = 8; // filled数量
+  string status = 9; // 待定、已开放、部分成交、已成交、已取消、已拒绝
+  string time_in_force = 10; // 时间在...里面force
+  int64 created_at = 11; // 创建时间
+  int64 updated_at = 12; // 更新时间
+  string error_message = 13; // error消息
 }
 
 // 取消订单请求
 message CancelOrderRequest {
-  string order_id = 1;
-  string user_id = 2;
+  string order_id = 1; // 订单唯一标识
+  string user_id = 2; // 用户唯一标识
 }
 
 // 修改订单请求
 message ModifyOrderRequest {
-  string order_id = 1;
-  string user_id = 2;
-  string price = 3;
-  string quantity = 4;
+  string order_id = 1; // 订单唯一标识
+  string user_id = 2; // 用户唯一标识
+  string price = 3; // 价格
+  string quantity = 4; // 数量
 }
 
 // 获取订单请求
 message GetOrderRequest {
-  string order_id = 1;
-  string user_id = 2;
+  string order_id = 1; // 订单唯一标识
+  string user_id = 2; // 用户唯一标识
 }
 
 // 获取订单列表请求
 message ListOrdersRequest {
-  string user_id = 1;
-  string symbol = 2;
-  string status = 3;
-  int32 page = 4;
-  int32 page_size = 5;
+  string user_id = 1; // 用户唯一标识
+  string symbol = 2; // 交易对符号
+  string status = 3; // 状态
+  int32 page = 4; // 页码
+  int32 page_size = 5; // 页码大小
 }
 
 // 订单列表响应
 message ListOrdersResponse {
-  repeated OrderResponse orders = 1;
-  int64 total = 2;
-  int32 page = 3;
-  int32 page_size = 4;
+  repeated OrderResponse orders = 1; // 订单列表
+  int64 total = 2; // 总数
+  int32 page = 3; // 页码
+  int32 page_size = 4; // 页码大小
 }
 
 // 订阅订单请求
 message SubscribeOrdersRequest {
-  string user_id = 1;
-  repeated string symbols = 2;
+  string user_id = 1; // 用户唯一标识
+  repeated string symbols = 2; // 交易对符号
 }
 
 // 订单更新
 message OrderUpdate {
-  string order_id = 1;
-  string user_id = 2;
-  string symbol = 3;
-  string status = 4;
-  string filled_quantity = 5;
-  int64 timestamp = 6;
+  string order_id = 1; // 订单唯一标识
+  string user_id = 2; // 用户唯一标识
+  string symbol = 3; // 交易对符号
+  string status = 4; // 状态
+  string filled_quantity = 5; // filled数量
+  int64 timestamp = 6; // 时间戳
 }

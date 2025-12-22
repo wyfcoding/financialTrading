@@ -19,10 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	QuantService_CreateStrategy_FullMethodName    = "/quant.QuantService/CreateStrategy"
-	QuantService_GetStrategy_FullMethodName       = "/quant.QuantService/GetStrategy"
-	QuantService_RunBacktest_FullMethodName       = "/quant.QuantService/RunBacktest"
-	QuantService_GetBacktestResult_FullMethodName = "/quant.QuantService/GetBacktestResult"
+	QuantService_CreateStrategy_FullMethodName    = "/quant.QuantService/CreateStrategy" // QuantService_CreateStrategy_FullMethodName QuantSERVICE创建StrategyFullMethod名称
+	QuantService_GetStrategy_FullMethodName       = "/quant.QuantService/GetStrategy" // QuantService_GetStrategy_FullMethodName QuantSERVICE获取StrategyFullMethod名称
+	QuantService_RunBacktest_FullMethodName       = "/quant.QuantService/RunBacktest" // QuantService_RunBacktest_FullMethodName QuantSERVICERUNBacktestFullMethod名称
+	QuantService_GetBacktestResult_FullMethodName = "/quant.QuantService/GetBacktestResult" // QuantService_GetBacktestResult_FullMethodName QuantSERVICE获取Backtest结果FullMethod名称
 )
 
 // QuantServiceClient is the client API for QuantService service.
@@ -30,6 +30,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // QuantService 提供量化策略管理与回测服务
+// QuantServiceClient 表示QuantSERVICE客户端结构体。
 type QuantServiceClient interface {
 	// 创建策略
 	CreateStrategy(ctx context.Context, in *CreateStrategyRequest, opts ...grpc.CallOption) (*CreateStrategyResponse, error)
@@ -45,10 +46,12 @@ type quantServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
+// NewQuantServiceClient 创建新的创建一个新的实例QuantSERVICE客户端.
 func NewQuantServiceClient(cc grpc.ClientConnInterface) QuantServiceClient {
 	return &quantServiceClient{cc}
 }
 
+// CreateStrategy 执行创建Strategy逻辑。
 func (c *quantServiceClient) CreateStrategy(ctx context.Context, in *CreateStrategyRequest, opts ...grpc.CallOption) (*CreateStrategyResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateStrategyResponse)
@@ -59,6 +62,7 @@ func (c *quantServiceClient) CreateStrategy(ctx context.Context, in *CreateStrat
 	return out, nil
 }
 
+// GetStrategy 获取Strategy.
 func (c *quantServiceClient) GetStrategy(ctx context.Context, in *GetStrategyRequest, opts ...grpc.CallOption) (*GetStrategyResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetStrategyResponse)
@@ -69,6 +73,7 @@ func (c *quantServiceClient) GetStrategy(ctx context.Context, in *GetStrategyReq
 	return out, nil
 }
 
+// RunBacktest 执行RUNBacktest逻辑。
 func (c *quantServiceClient) RunBacktest(ctx context.Context, in *RunBacktestRequest, opts ...grpc.CallOption) (*RunBacktestResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RunBacktestResponse)
@@ -79,6 +84,7 @@ func (c *quantServiceClient) RunBacktest(ctx context.Context, in *RunBacktestReq
 	return out, nil
 }
 
+// GetBacktestResult 获取Backtest结果.
 func (c *quantServiceClient) GetBacktestResult(ctx context.Context, in *GetBacktestResultRequest, opts ...grpc.CallOption) (*GetBacktestResultResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetBacktestResultResponse)
@@ -94,6 +100,7 @@ func (c *quantServiceClient) GetBacktestResult(ctx context.Context, in *GetBackt
 // for forward compatibility.
 //
 // QuantService 提供量化策略管理与回测服务
+// QuantServiceServer 表示QuantSERVICE服务端结构体。
 type QuantServiceServer interface {
 	// 创建策略
 	CreateStrategy(context.Context, *CreateStrategyRequest) (*CreateStrategyResponse, error)
@@ -111,17 +118,22 @@ type QuantServiceServer interface {
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
+// UnimplementedQuantServiceServer 表示未实现的QuantSERVICE服务端结构体。
 type UnimplementedQuantServiceServer struct{}
 
+// CreateStrategy 执行创建Strategy逻辑。
 func (UnimplementedQuantServiceServer) CreateStrategy(context.Context, *CreateStrategyRequest) (*CreateStrategyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateStrategy not implemented")
 }
+// GetStrategy 获取Strategy.
 func (UnimplementedQuantServiceServer) GetStrategy(context.Context, *GetStrategyRequest) (*GetStrategyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStrategy not implemented")
 }
+// RunBacktest 执行RUNBacktest逻辑。
 func (UnimplementedQuantServiceServer) RunBacktest(context.Context, *RunBacktestRequest) (*RunBacktestResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RunBacktest not implemented")
 }
+// GetBacktestResult 获取Backtest结果.
 func (UnimplementedQuantServiceServer) GetBacktestResult(context.Context, *GetBacktestResultRequest) (*GetBacktestResultResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetBacktestResult not implemented")
 }
@@ -131,10 +143,12 @@ func (UnimplementedQuantServiceServer) testEmbeddedByValue()                    
 // UnsafeQuantServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to QuantServiceServer will
 // result in compilation errors.
+// UnsafeQuantServiceServer 表示UnsafeQuantSERVICE服务端结构体。
 type UnsafeQuantServiceServer interface {
 	mustEmbedUnimplementedQuantServiceServer()
 }
 
+// RegisterQuantServiceServer 执行RegisterQuantSERVICE服务端逻辑。
 func RegisterQuantServiceServer(s grpc.ServiceRegistrar, srv QuantServiceServer) {
 	// If the following call pancis, it indicates UnimplementedQuantServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an

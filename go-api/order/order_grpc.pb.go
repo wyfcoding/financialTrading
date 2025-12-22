@@ -19,12 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	OrderService_CreateOrder_FullMethodName     = "/order.OrderService/CreateOrder"
-	OrderService_CancelOrder_FullMethodName     = "/order.OrderService/CancelOrder"
-	OrderService_ModifyOrder_FullMethodName     = "/order.OrderService/ModifyOrder"
-	OrderService_GetOrder_FullMethodName        = "/order.OrderService/GetOrder"
-	OrderService_ListOrders_FullMethodName      = "/order.OrderService/ListOrders"
-	OrderService_SubscribeOrders_FullMethodName = "/order.OrderService/SubscribeOrders"
+	OrderService_CreateOrder_FullMethodName     = "/order.OrderService/CreateOrder" // OrderService_CreateOrder_FullMethodName 订单SERVICE创建订单FullMethod名称
+	OrderService_CancelOrder_FullMethodName     = "/order.OrderService/CancelOrder" // OrderService_CancelOrder_FullMethodName 订单SERVICE取消订单FullMethod名称
+	OrderService_ModifyOrder_FullMethodName     = "/order.OrderService/ModifyOrder" // OrderService_ModifyOrder_FullMethodName 订单SERVICEModify订单FullMethod名称
+	OrderService_GetOrder_FullMethodName        = "/order.OrderService/GetOrder" // OrderService_GetOrder_FullMethodName 订单SERVICE获取订单FullMethod名称
+	OrderService_ListOrders_FullMethodName      = "/order.OrderService/ListOrders" // OrderService_ListOrders_FullMethodName 订单SERVICELISTOrdersFullMethod名称
+	OrderService_SubscribeOrders_FullMethodName = "/order.OrderService/SubscribeOrders" // OrderService_SubscribeOrders_FullMethodName 订单SERVICESubscribeOrdersFullMethod名称
 )
 
 // OrderServiceClient is the client API for OrderService service.
@@ -32,6 +32,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // 订单服务
+// OrderServiceClient 表示订单SERVICE客户端结构体。
 type OrderServiceClient interface {
 	// 创建订单
 	CreateOrder(ctx context.Context, in *CreateOrderRequest, opts ...grpc.CallOption) (*OrderResponse, error)
@@ -51,10 +52,12 @@ type orderServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
+// NewOrderServiceClient 创建新的创建一个新的实例订单SERVICE客户端.
 func NewOrderServiceClient(cc grpc.ClientConnInterface) OrderServiceClient {
 	return &orderServiceClient{cc}
 }
 
+// CreateOrder 执行创建订单逻辑。
 func (c *orderServiceClient) CreateOrder(ctx context.Context, in *CreateOrderRequest, opts ...grpc.CallOption) (*OrderResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(OrderResponse)
@@ -65,6 +68,7 @@ func (c *orderServiceClient) CreateOrder(ctx context.Context, in *CreateOrderReq
 	return out, nil
 }
 
+// CancelOrder 执行取消订单逻辑。
 func (c *orderServiceClient) CancelOrder(ctx context.Context, in *CancelOrderRequest, opts ...grpc.CallOption) (*OrderResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(OrderResponse)
@@ -75,6 +79,7 @@ func (c *orderServiceClient) CancelOrder(ctx context.Context, in *CancelOrderReq
 	return out, nil
 }
 
+// ModifyOrder 执行Modify订单逻辑。
 func (c *orderServiceClient) ModifyOrder(ctx context.Context, in *ModifyOrderRequest, opts ...grpc.CallOption) (*OrderResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(OrderResponse)
@@ -85,6 +90,7 @@ func (c *orderServiceClient) ModifyOrder(ctx context.Context, in *ModifyOrderReq
 	return out, nil
 }
 
+// GetOrder 获取订单.
 func (c *orderServiceClient) GetOrder(ctx context.Context, in *GetOrderRequest, opts ...grpc.CallOption) (*OrderResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(OrderResponse)
@@ -95,6 +101,7 @@ func (c *orderServiceClient) GetOrder(ctx context.Context, in *GetOrderRequest, 
 	return out, nil
 }
 
+// ListOrders 执行LISTOrders逻辑。
 func (c *orderServiceClient) ListOrders(ctx context.Context, in *ListOrdersRequest, opts ...grpc.CallOption) (*ListOrdersResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListOrdersResponse)
@@ -105,6 +112,7 @@ func (c *orderServiceClient) ListOrders(ctx context.Context, in *ListOrdersReque
 	return out, nil
 }
 
+// SubscribeOrders 执行SubscribeOrders逻辑。
 func (c *orderServiceClient) SubscribeOrders(ctx context.Context, in *SubscribeOrdersRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OrderUpdate], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &OrderService_ServiceDesc.Streams[0], OrderService_SubscribeOrders_FullMethodName, cOpts...)
@@ -129,6 +137,7 @@ type OrderService_SubscribeOrdersClient = grpc.ServerStreamingClient[OrderUpdate
 // for forward compatibility.
 //
 // 订单服务
+// OrderServiceServer 表示订单SERVICE服务端结构体。
 type OrderServiceServer interface {
 	// 创建订单
 	CreateOrder(context.Context, *CreateOrderRequest) (*OrderResponse, error)
@@ -150,23 +159,30 @@ type OrderServiceServer interface {
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
+// UnimplementedOrderServiceServer 表示未实现的订单SERVICE服务端结构体。
 type UnimplementedOrderServiceServer struct{}
 
+// CreateOrder 执行创建订单逻辑。
 func (UnimplementedOrderServiceServer) CreateOrder(context.Context, *CreateOrderRequest) (*OrderResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateOrder not implemented")
 }
+// CancelOrder 执行取消订单逻辑。
 func (UnimplementedOrderServiceServer) CancelOrder(context.Context, *CancelOrderRequest) (*OrderResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CancelOrder not implemented")
 }
+// ModifyOrder 执行Modify订单逻辑。
 func (UnimplementedOrderServiceServer) ModifyOrder(context.Context, *ModifyOrderRequest) (*OrderResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ModifyOrder not implemented")
 }
+// GetOrder 获取订单.
 func (UnimplementedOrderServiceServer) GetOrder(context.Context, *GetOrderRequest) (*OrderResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOrder not implemented")
 }
+// ListOrders 执行LISTOrders逻辑。
 func (UnimplementedOrderServiceServer) ListOrders(context.Context, *ListOrdersRequest) (*ListOrdersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListOrders not implemented")
 }
+// SubscribeOrders 执行SubscribeOrders逻辑。
 func (UnimplementedOrderServiceServer) SubscribeOrders(*SubscribeOrdersRequest, grpc.ServerStreamingServer[OrderUpdate]) error {
 	return status.Errorf(codes.Unimplemented, "method SubscribeOrders not implemented")
 }
@@ -176,10 +192,12 @@ func (UnimplementedOrderServiceServer) testEmbeddedByValue()                    
 // UnsafeOrderServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to OrderServiceServer will
 // result in compilation errors.
+// UnsafeOrderServiceServer 表示Unsafe订单SERVICE服务端结构体。
 type UnsafeOrderServiceServer interface {
 	mustEmbedUnimplementedOrderServiceServer()
 }
 
+// RegisterOrderServiceServer 执行Register订单SERVICE服务端逻辑。
 func RegisterOrderServiceServer(s grpc.ServiceRegistrar, srv OrderServiceServer) {
 	// If the following call pancis, it indicates UnimplementedOrderServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an

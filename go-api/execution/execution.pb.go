@@ -21,18 +21,20 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// ExecuteOrderRequest 表示Execute订单请求结构体。
 type ExecuteOrderRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	OrderId       string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Symbol        string                 `protobuf:"bytes,3,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Side          string                 `protobuf:"bytes,4,opt,name=side,proto3" json:"side,omitempty"`
-	Price         string                 `protobuf:"bytes,5,opt,name=price,proto3" json:"price,omitempty"`
-	Quantity      string                 `protobuf:"bytes,6,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	OrderId       string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"` // 订单唯一标识
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Symbol        string                 `protobuf:"bytes,3,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Side          string                 `protobuf:"bytes,4,opt,name=side,proto3" json:"side,omitempty"` // 交易方向
+	Price         string                 `protobuf:"bytes,5,opt,name=price,proto3" json:"price,omitempty"` // 价格
+	Quantity      string                 `protobuf:"bytes,6,opt,name=quantity,proto3" json:"quantity,omitempty"` // 数量
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *ExecuteOrderRequest) Reset() {
 	*x = ExecuteOrderRequest{}
 	mi := &file_api_execution_execution_proto_msgTypes[0]
@@ -40,12 +42,15 @@ func (x *ExecuteOrderRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *ExecuteOrderRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*ExecuteOrderRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *ExecuteOrderRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_execution_execution_proto_msgTypes[0]
 	if x != nil {
@@ -59,10 +64,12 @@ func (x *ExecuteOrderRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use ExecuteOrderRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*ExecuteOrderRequest) Descriptor() ([]byte, []int) {
 	return file_api_execution_execution_proto_rawDescGZIP(), []int{0}
 }
 
+// GetOrderId 获取订单唯一标识.
 func (x *ExecuteOrderRequest) GetOrderId() string {
 	if x != nil {
 		return x.OrderId
@@ -70,6 +77,7 @@ func (x *ExecuteOrderRequest) GetOrderId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *ExecuteOrderRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -77,6 +85,7 @@ func (x *ExecuteOrderRequest) GetUserId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *ExecuteOrderRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -84,6 +93,7 @@ func (x *ExecuteOrderRequest) GetSymbol() string {
 	return ""
 }
 
+// GetSide 获取交易方向.
 func (x *ExecuteOrderRequest) GetSide() string {
 	if x != nil {
 		return x.Side
@@ -91,6 +101,7 @@ func (x *ExecuteOrderRequest) GetSide() string {
 	return ""
 }
 
+// GetPrice 获取价格.
 func (x *ExecuteOrderRequest) GetPrice() string {
 	if x != nil {
 		return x.Price
@@ -98,6 +109,7 @@ func (x *ExecuteOrderRequest) GetPrice() string {
 	return ""
 }
 
+// GetQuantity 获取数量.
 func (x *ExecuteOrderRequest) GetQuantity() string {
 	if x != nil {
 		return x.Quantity
@@ -105,19 +117,21 @@ func (x *ExecuteOrderRequest) GetQuantity() string {
 	return ""
 }
 
+// ExecutionResponse 表示Execution响应结构体。
 type ExecutionResponse struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
-	ExecutionId      string                 `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
-	OrderId          string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	Status           string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
-	ExecutedQuantity string                 `protobuf:"bytes,4,opt,name=executed_quantity,json=executedQuantity,proto3" json:"executed_quantity,omitempty"`
-	ExecutedPrice    string                 `protobuf:"bytes,5,opt,name=executed_price,json=executedPrice,proto3" json:"executed_price,omitempty"`
-	Timestamp        int64                  `protobuf:"varint,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	ErrorMessage     string                 `protobuf:"bytes,7,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	ExecutionId      string                 `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"` // Execution唯一标识
+	OrderId          string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"` // 订单唯一标识
+	Status           string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	ExecutedQuantity string                 `protobuf:"bytes,4,opt,name=executed_quantity,json=executedQuantity,proto3" json:"executed_quantity,omitempty"` // Executed数量
+	ExecutedPrice    string                 `protobuf:"bytes,5,opt,name=executed_price,json=executedPrice,proto3" json:"executed_price,omitempty"` // Executed价格
+	Timestamp        int64                  `protobuf:"varint,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Timestamp
+	ErrorMessage     string                 `protobuf:"bytes,7,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"` // 错误消息
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *ExecutionResponse) Reset() {
 	*x = ExecutionResponse{}
 	mi := &file_api_execution_execution_proto_msgTypes[1]
@@ -125,12 +139,15 @@ func (x *ExecutionResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *ExecutionResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*ExecutionResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *ExecutionResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_execution_execution_proto_msgTypes[1]
 	if x != nil {
@@ -144,10 +161,12 @@ func (x *ExecutionResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use ExecutionResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*ExecutionResponse) Descriptor() ([]byte, []int) {
 	return file_api_execution_execution_proto_rawDescGZIP(), []int{1}
 }
 
+// GetExecutionId 获取Execution唯一标识.
 func (x *ExecutionResponse) GetExecutionId() string {
 	if x != nil {
 		return x.ExecutionId
@@ -155,6 +174,7 @@ func (x *ExecutionResponse) GetExecutionId() string {
 	return ""
 }
 
+// GetOrderId 获取订单唯一标识.
 func (x *ExecutionResponse) GetOrderId() string {
 	if x != nil {
 		return x.OrderId
@@ -162,6 +182,7 @@ func (x *ExecutionResponse) GetOrderId() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *ExecutionResponse) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -169,6 +190,7 @@ func (x *ExecutionResponse) GetStatus() string {
 	return ""
 }
 
+// GetExecutedQuantity 获取Executed数量.
 func (x *ExecutionResponse) GetExecutedQuantity() string {
 	if x != nil {
 		return x.ExecutedQuantity
@@ -176,6 +198,7 @@ func (x *ExecutionResponse) GetExecutedQuantity() string {
 	return ""
 }
 
+// GetExecutedPrice 获取Executed价格.
 func (x *ExecutionResponse) GetExecutedPrice() string {
 	if x != nil {
 		return x.ExecutedPrice
@@ -183,6 +206,7 @@ func (x *ExecutionResponse) GetExecutedPrice() string {
 	return ""
 }
 
+// GetTimestamp 获取Timestamp.
 func (x *ExecutionResponse) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
@@ -190,6 +214,7 @@ func (x *ExecutionResponse) GetTimestamp() int64 {
 	return 0
 }
 
+// GetErrorMessage 获取错误消息.
 func (x *ExecutionResponse) GetErrorMessage() string {
 	if x != nil {
 		return x.ErrorMessage
@@ -197,15 +222,17 @@ func (x *ExecutionResponse) GetErrorMessage() string {
 	return ""
 }
 
+// GetExecutionHistoryRequest 表示获取ExecutionHistory请求结构体。
 type GetExecutionHistoryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"` // 限制
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetExecutionHistoryRequest) Reset() {
 	*x = GetExecutionHistoryRequest{}
 	mi := &file_api_execution_execution_proto_msgTypes[2]
@@ -213,12 +240,15 @@ func (x *GetExecutionHistoryRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetExecutionHistoryRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetExecutionHistoryRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetExecutionHistoryRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_execution_execution_proto_msgTypes[2]
 	if x != nil {
@@ -232,10 +262,12 @@ func (x *GetExecutionHistoryRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetExecutionHistoryRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetExecutionHistoryRequest) Descriptor() ([]byte, []int) {
 	return file_api_execution_execution_proto_rawDescGZIP(), []int{2}
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *GetExecutionHistoryRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -243,6 +275,7 @@ func (x *GetExecutionHistoryRequest) GetUserId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *GetExecutionHistoryRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -250,6 +283,7 @@ func (x *GetExecutionHistoryRequest) GetSymbol() string {
 	return ""
 }
 
+// GetLimit 获取限制.
 func (x *GetExecutionHistoryRequest) GetLimit() int32 {
 	if x != nil {
 		return x.Limit
@@ -257,18 +291,20 @@ func (x *GetExecutionHistoryRequest) GetLimit() int32 {
 	return 0
 }
 
+// ExecutionRecord 表示ExecutionRecord结构体。
 type ExecutionRecord struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
-	ExecutionId      string                 `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
-	OrderId          string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	Symbol           string                 `protobuf:"bytes,3,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	ExecutedQuantity string                 `protobuf:"bytes,4,opt,name=executed_quantity,json=executedQuantity,proto3" json:"executed_quantity,omitempty"`
-	ExecutedPrice    string                 `protobuf:"bytes,5,opt,name=executed_price,json=executedPrice,proto3" json:"executed_price,omitempty"`
-	Timestamp        int64                  `protobuf:"varint,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	ExecutionId      string                 `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"` // Execution唯一标识
+	OrderId          string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"` // 订单唯一标识
+	Symbol           string                 `protobuf:"bytes,3,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	ExecutedQuantity string                 `protobuf:"bytes,4,opt,name=executed_quantity,json=executedQuantity,proto3" json:"executed_quantity,omitempty"` // Executed数量
+	ExecutedPrice    string                 `protobuf:"bytes,5,opt,name=executed_price,json=executedPrice,proto3" json:"executed_price,omitempty"` // Executed价格
+	Timestamp        int64                  `protobuf:"varint,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Timestamp
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *ExecutionRecord) Reset() {
 	*x = ExecutionRecord{}
 	mi := &file_api_execution_execution_proto_msgTypes[3]
@@ -276,12 +312,15 @@ func (x *ExecutionRecord) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *ExecutionRecord) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*ExecutionRecord) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *ExecutionRecord) ProtoReflect() protoreflect.Message {
 	mi := &file_api_execution_execution_proto_msgTypes[3]
 	if x != nil {
@@ -295,10 +334,12 @@ func (x *ExecutionRecord) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use ExecutionRecord.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*ExecutionRecord) Descriptor() ([]byte, []int) {
 	return file_api_execution_execution_proto_rawDescGZIP(), []int{3}
 }
 
+// GetExecutionId 获取Execution唯一标识.
 func (x *ExecutionRecord) GetExecutionId() string {
 	if x != nil {
 		return x.ExecutionId
@@ -306,6 +347,7 @@ func (x *ExecutionRecord) GetExecutionId() string {
 	return ""
 }
 
+// GetOrderId 获取订单唯一标识.
 func (x *ExecutionRecord) GetOrderId() string {
 	if x != nil {
 		return x.OrderId
@@ -313,6 +355,7 @@ func (x *ExecutionRecord) GetOrderId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *ExecutionRecord) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -320,6 +363,7 @@ func (x *ExecutionRecord) GetSymbol() string {
 	return ""
 }
 
+// GetExecutedQuantity 获取Executed数量.
 func (x *ExecutionRecord) GetExecutedQuantity() string {
 	if x != nil {
 		return x.ExecutedQuantity
@@ -327,6 +371,7 @@ func (x *ExecutionRecord) GetExecutedQuantity() string {
 	return ""
 }
 
+// GetExecutedPrice 获取Executed价格.
 func (x *ExecutionRecord) GetExecutedPrice() string {
 	if x != nil {
 		return x.ExecutedPrice
@@ -334,6 +379,7 @@ func (x *ExecutionRecord) GetExecutedPrice() string {
 	return ""
 }
 
+// GetTimestamp 获取Timestamp.
 func (x *ExecutionRecord) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
@@ -341,13 +387,15 @@ func (x *ExecutionRecord) GetTimestamp() int64 {
 	return 0
 }
 
+// ExecutionHistoryResponse 表示ExecutionHistory响应结构体。
 type ExecutionHistoryResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Executions    []*ExecutionRecord     `protobuf:"bytes,1,rep,name=executions,proto3" json:"executions,omitempty"`
+	Executions    []*ExecutionRecord     `protobuf:"bytes,1,rep,name=executions,proto3" json:"executions,omitempty"` // Executions
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *ExecutionHistoryResponse) Reset() {
 	*x = ExecutionHistoryResponse{}
 	mi := &file_api_execution_execution_proto_msgTypes[4]
@@ -355,12 +403,15 @@ func (x *ExecutionHistoryResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *ExecutionHistoryResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*ExecutionHistoryResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *ExecutionHistoryResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_execution_execution_proto_msgTypes[4]
 	if x != nil {
@@ -374,10 +425,12 @@ func (x *ExecutionHistoryResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use ExecutionHistoryResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*ExecutionHistoryResponse) Descriptor() ([]byte, []int) {
 	return file_api_execution_execution_proto_rawDescGZIP(), []int{4}
 }
 
+// GetExecutions 获取Executions.
 func (x *ExecutionHistoryResponse) GetExecutions() []*ExecutionRecord {
 	if x != nil {
 		return x.Executions
@@ -385,13 +438,15 @@ func (x *ExecutionHistoryResponse) GetExecutions() []*ExecutionRecord {
 	return nil
 }
 
+// SubscribeExecutionsRequest 表示SubscribeExecutions请求结构体。
 type SubscribeExecutionsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *SubscribeExecutionsRequest) Reset() {
 	*x = SubscribeExecutionsRequest{}
 	mi := &file_api_execution_execution_proto_msgTypes[5]
@@ -399,12 +454,15 @@ func (x *SubscribeExecutionsRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *SubscribeExecutionsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*SubscribeExecutionsRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *SubscribeExecutionsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_execution_execution_proto_msgTypes[5]
 	if x != nil {
@@ -418,10 +476,12 @@ func (x *SubscribeExecutionsRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use SubscribeExecutionsRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*SubscribeExecutionsRequest) Descriptor() ([]byte, []int) {
 	return file_api_execution_execution_proto_rawDescGZIP(), []int{5}
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *SubscribeExecutionsRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -429,16 +489,18 @@ func (x *SubscribeExecutionsRequest) GetUserId() string {
 	return ""
 }
 
+// ExecutionUpdate 表示Execution更新结构体。
 type ExecutionUpdate struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ExecutionId   string                 `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
-	OrderId       string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	ExecutionId   string                 `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"` // Execution唯一标识
+	OrderId       string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"` // 订单唯一标识
+	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	Timestamp     int64                  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Timestamp
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *ExecutionUpdate) Reset() {
 	*x = ExecutionUpdate{}
 	mi := &file_api_execution_execution_proto_msgTypes[6]
@@ -446,12 +508,15 @@ func (x *ExecutionUpdate) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *ExecutionUpdate) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*ExecutionUpdate) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *ExecutionUpdate) ProtoReflect() protoreflect.Message {
 	mi := &file_api_execution_execution_proto_msgTypes[6]
 	if x != nil {
@@ -465,10 +530,12 @@ func (x *ExecutionUpdate) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use ExecutionUpdate.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*ExecutionUpdate) Descriptor() ([]byte, []int) {
 	return file_api_execution_execution_proto_rawDescGZIP(), []int{6}
 }
 
+// GetExecutionId 获取Execution唯一标识.
 func (x *ExecutionUpdate) GetExecutionId() string {
 	if x != nil {
 		return x.ExecutionId
@@ -476,6 +543,7 @@ func (x *ExecutionUpdate) GetExecutionId() string {
 	return ""
 }
 
+// GetOrderId 获取订单唯一标识.
 func (x *ExecutionUpdate) GetOrderId() string {
 	if x != nil {
 		return x.OrderId
@@ -483,6 +551,7 @@ func (x *ExecutionUpdate) GetOrderId() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *ExecutionUpdate) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -490,6 +559,7 @@ func (x *ExecutionUpdate) GetStatus() string {
 	return ""
 }
 
+// GetTimestamp 获取Timestamp.
 func (x *ExecutionUpdate) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
@@ -600,7 +670,7 @@ func file_api_execution_execution_proto_init() {
 		DependencyIndexes: file_api_execution_execution_proto_depIdxs,
 		MessageInfos:      file_api_execution_execution_proto_msgTypes,
 	}.Build()
-	File_api_execution_execution_proto = out.File
+	File_api_execution_execution_proto = out.File // File_api_execution_execution_proto 文件APIexecutionexecutionProto
 	file_api_execution_execution_proto_goTypes = nil
 	file_api_execution_execution_proto_depIdxs = nil
 }

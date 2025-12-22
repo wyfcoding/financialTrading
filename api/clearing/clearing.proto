@@ -36,95 +36,95 @@ service ClearingService {
 // SettleTradeRequest 消息定义了清算单笔交易时需要提供的参数。
 message SettleTradeRequest {
   // trade_id 是待清算交易的唯一标识符。
-  string trade_id = 1;
+  string trade_id = 1; // 成交id
   // buy_user_id 是买方的用户ID。
-  string buy_user_id = 2;
+  string buy_user_id = 2; // 用户唯一标识
   // sell_user_id 是卖方的用户ID。
-  string sell_user_id = 3;
+  string sell_user_id = 3; // 用户唯一标识
   // symbol 是交易的标的物，例如 "BTC/USDT"。
-  string symbol = 4;
+  string symbol = 4; // 交易对符号
   // quantity 是交易的数量。
-  string quantity = 5;
+  string quantity = 5; // 数量
   // price 是交易的单价。
-  string price = 6;
+  string price = 6; // 价格
 }
 
 // SettlementResponse 消息返回单笔交易的清算结果。
 message SettlementResponse {
   // settlement_id 是本次清算操作生成的唯一标识符。
-  string settlement_id = 1;
+  string settlement_id = 1; // 结算唯一标识
   // trade_id 是被清算的交易ID。
-  string trade_id = 2;
+  string trade_id = 2; // 成交id
   // status 是清算的状态 (例如 "COMPLETED", "FAILED", "PENDING")。
-  string status = 3;
+  string status = 3; // 状态
   // settlement_time 是清算完成的时间戳。
-  int64 settlement_time = 4;
+  int64 settlement_time = 4; // settlement时间
   // error_message 如果清算失败，此处会包含错误信息。
-  string error_message = 5;
+  string error_message = 5; // error消息
 }
 
 // GetSettlementsRequest 消息定义了查询清算记录时需要提供的参数。
 message GetSettlementsRequest {
   // user_id 是要查询的用户的ID。
-  string user_id = 1;
+  string user_id = 1; // 用户唯一标识
   // limit 用于限制返回的记录数量。
-  int32 limit = 2;
+  int32 limit = 2; // 限制
 }
 
 // Settlement 消息定义了单条清算记录的结构。
 message Settlement {
   // settlement_id 是清算记录的唯一标识符。
-  string settlement_id = 1;
+  string settlement_id = 1; // 结算唯一标识
   // trade_id 是关联的交易ID。
-  string trade_id = 2;
+  string trade_id = 2; // 成交id
   // status 是清算的状态。
-  string status = 3;
+  string status = 3; // 状态
   // settlement_time 是清算的时间戳。
-  int64 settlement_time = 4;
+  int64 settlement_time = 4; // settlement时间
 }
 
 // SettlementsResponse 消息返回一个包含多条清算记录的列表。
 message SettlementsResponse {
   // settlements 是一个清算记录的列表。
-  repeated Settlement settlements = 1;
+  repeated Settlement settlements = 1; // 结算列表
 }
 
 // ExecuteEODClearingRequest 消息定义了执行日终清算时需要提供的参数。
 message ExecuteEODClearingRequest {
   // clearing_date 是要执行清算的日期，格式通常为 "YYYY-MM-DD"。
-  string clearing_date = 1;
+  string clearing_date = 1; // 清算date
 }
 
 // EODClearingResponse 消息返回日终清算的摘要结果。
 message EODClearingResponse {
   // clearing_id 是本次日终清算任务的唯一标识符。
-  string clearing_id = 1;
+  string clearing_id = 1; // 清算ID
   // status 是整个日终清算任务的状态 (例如 "IN_PROGRESS", "COMPLETED", "FAILED")。
-  string status = 2;
+  string status = 2; // 状态
   // start_time 是任务开始的时间戳。
-  int64 start_time = 3;
+  int64 start_time = 3; // 开始时间
   // end_time 是任务结束的时间戳。
-  int64 end_time = 4;
+  int64 end_time = 4; // 结束时间
   // trades_settled 是成功清算的交易总数。
-  int64 trades_settled = 5;
+  int64 trades_settled = 5; // trades已结算
 }
 
 // GetClearingStatusRequest 消息定义了查询清算任务状态时需要提供的参数。
 message GetClearingStatusRequest {
   // clearing_id 是要查询的清算任务ID（通常指日终清算任务）。
-  string clearing_id = 1;
+  string clearing_id = 1; // 清算ID
 }
 
 // ClearingStatusResponse 消息返回清算任务的当前状态和进度。
 message ClearingStatusResponse {
   // clearing_id 是清算任务的ID。
-  string clearing_id = 1;
+  string clearing_id = 1; // 清算ID
   // status 是任务的当前状态。
-  string status = 2;
+  string status = 2; // 状态
   // progress_percentage 是任务完成的百分比。
-  int64 progress_percentage = 3;
+  int64 progress_percentage = 3; // 进度百分比
   // trades_processed 是已处理的交易数量。
-  int64 trades_processed = 4;
+  int64 trades_processed = 4; // trades已处理
   // trades_total 是需要处理的总交易数量。
-  int64 trades_total = 5;
+  int64 trades_total = 5; // trades总数
 }

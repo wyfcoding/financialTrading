@@ -53,141 +53,141 @@ service AccountService {
 // CreateAccountRequest 消息定义了创建新账户时需要提供的参数。
 message CreateAccountRequest {
   // user_id 是用户的唯一标识符。
-  string user_id = 1;
+  string user_id = 1; // 用户唯一标识
   // account_type 是账户的类型（例如：现货、合约、杠杆）。
-  string account_type = 2;
+  string account_type = 2; // 账户类型
   // currency 是账户的计价货币（例如：USDT, BTC, ETH）。
-  string currency = 3;
+  string currency = 3; // 货币
 }
 
 // AccountResponse 消息返回账户的详细信息。
 message AccountResponse {
   // account_id 是账户的唯一标识符。
-  string account_id = 1;
+  string account_id = 1; // 账户id
   // user_id 是所属用户的唯一标识符。
-  string user_id = 2;
+  string user_id = 2; // 用户唯一标识
   // account_type 是账户的类型。
-  string account_type = 3;
+  string account_type = 3; // 账户类型
   // currency 是账户的计价货币。
-  string currency = 4;
+  string currency = 4; // 货币
   // balance 是账户的总余额（字符串格式以支持高精度）。
-  string balance = 5;
+  string balance = 5; // 余额
   // available_balance 是账户的可用余额。
-  string available_balance = 6;
+  string available_balance = 6; // available余额
   // created_at 是账户创建的时间戳（Unix apoch）。
-  int64 created_at = 7;
+  int64 created_at = 7; // 创建时间
   // updated_at 是账户信息最后更新的时间戳（Unix apoch）。
-  int64 updated_at = 8;
+  int64 updated_at = 8; // 更新时间
 }
 
 // GetAccountRequest 消息定义了查询账户信息时需要提供的参数。
 message GetAccountRequest {
   // account_id 是要查询的账户的唯一标识符。
-  string account_id = 1;
+  string account_id = 1; // 账户id
   // user_id 也可以用于查询，特别是在一个用户拥有多个账户的场景下。
-  string user_id = 2;
+  string user_id = 2; // 用户唯一标识
 }
 
 // UpdateAccountRequest 消息定义了更新账户信息时需要提供的参数。
 message UpdateAccountRequest {
   // account_id 是要更新的账户的唯一标识符。
-  string account_id = 1;
+  string account_id = 1; // 账户id
   // user_id 用于验证操作权限。
-  string user_id = 2;
+  string user_id = 2; // 用户唯一标识
   // updates 是一个包含待更新字段的映射，键为字段名，值为新的字段值。
-  map<string, string> updates = 3;
+  map<string, string> updates = 3; // updates
 }
 
 // GetBalanceRequest 消息定义了查询余额时需要提供的参数。
 message GetBalanceRequest {
   // account_id 是要查询余额的账户的唯一标识符。
-  string account_id = 1;
+  string account_id = 1; // 账户id
   // user_id 用于权限校验。
-  string user_id = 2;
+  string user_id = 2; // 用户唯一标识
 }
 
 // BalanceResponse 消息返回账户的详细余额信息。
 message BalanceResponse {
   // account_id 是账户的唯一标识符。
-  string account_id = 1;
+  string account_id = 1; // 账户id
   // balance 是账户的总余额。
-  string balance = 2;
+  string balance = 2; // 余额
   // available_balance 是当前可用于交易或提现的余额。
-  string available_balance = 3;
+  string available_balance = 3; // available余额
   // frozen_balance 是因挂单等原因被冻结的余额。
-  string frozen_balance = 4;
+  string frozen_balance = 4; // frozen余额
   // timestamp 是余额信息生成时的时间戳。
-  int64 timestamp = 5;
+  int64 timestamp = 5; // 时间戳
 }
 
 // DepositRequest 消息定义了充值时需要提供的参数。
 message DepositRequest {
   // account_id 是充值目标账户的唯一标识符。
-  string account_id = 1;
+  string account_id = 1; // 账户id
   // user_id 用于权限校验。
-  string user_id = 2;
+  string user_id = 2; // 用户唯一标识
   // amount 是充值的金额。
-  string amount = 3;
+  string amount = 3; // 金额
   // currency 是充值的货币类型。
-  string currency = 4;
+  string currency = 4; // 货币
 }
 
 // WithdrawRequest 消息定义了提现时需要提供的参数。
 message WithdrawRequest {
   // account_id 是提现来源账户的唯一标识符。
-  string account_id = 1;
+  string account_id = 1; // 账户id
   // user_id 用于权限校验。
-  string user_id = 2;
+  string user_id = 2; // 用户唯一标识
   // amount 是提现的金额。
-  string amount = 3;
+  string amount = 3; // 金额
   // currency 是提现的货币类型。
-  string currency = 4;
+  string currency = 4; // 货币
   // address 是提现的目标地址。
-  string address = 5;
+  string address = 5; // 地址
 }
 
 // TransactionResponse 消息返回单次交易（如充值、提现）的结果。
 message TransactionResponse {
   // transaction_id 是交易的唯一标识符。
-  string transaction_id = 1;
+  string transaction_id = 1; // 事务ID
   // account_id 是与该交易关联的账户ID。
-  string account_id = 2;
+  string account_id = 2; // 账户id
   // type 是交易类型（例如 "DEPOSIT", "WITHDRAW"）。
-  string type = 3;
+  string type = 3; // 类型
   // amount 是交易涉及的金额。
-  string amount = 4;
+  string amount = 4; // 金额
   // status 是交易的当前状态（例如 "PENDING", "COMPLETED", "FAILED"）。
-  string status = 5;
+  string status = 5; // 状态
   // timestamp 是交易发生时的时间戳。
-  int64 timestamp = 6;
+  int64 timestamp = 6; // 时间戳
 }
 
 // GetTransactionHistoryRequest 消息定义了查询交易历史时需要提供的参数。
 message GetTransactionHistoryRequest {
   // account_id 是要查询的账户ID。
-  string account_id = 1;
+  string account_id = 1; // 账户id
   // user_id 用于权限校验。
-  string user_id = 2;
+  string user_id = 2; // 用户唯一标识
   // limit 用于限制返回的交易记录数量。
-  int32 limit = 3;
+  int32 limit = 3; // 限制
 }
 
 // Transaction 消息定义了单条交易记录的结构。
 message Transaction {
   // transaction_id 是交易的唯一标识符。
-  string transaction_id = 1;
+  string transaction_id = 1; // 事务ID
   // type 是交易类型。
-  string type = 2;
+  string type = 2; // 类型
   // amount 是交易金额。
-  string amount = 3;
+  string amount = 3; // 金额
   // status 是交易状态。
-  string status = 4;
+  string status = 4; // 状态
   // timestamp 是交易发生时的时间戳。
-  int64 timestamp = 5;
+  int64 timestamp = 5; // 时间戳
 }
 
 // TransactionHistoryResponse 消息返回一个包含多条交易记录的列表。
 message TransactionHistoryResponse {
   // transactions 是一个交易记录列表。
-  repeated Transaction transactions = 1;
+  repeated Transaction transactions = 1; // 事务列表
 }

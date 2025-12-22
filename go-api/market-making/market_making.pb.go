@@ -22,21 +22,23 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// QuoteStrategy 表示QuoteStrategy结构体。
 type QuoteStrategy struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // 唯一标识
+	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
 	Spread        float64                `protobuf:"fixed64,3,opt,name=spread,proto3" json:"spread,omitempty"` // 目标点差
-	MinOrderSize  float64                `protobuf:"fixed64,4,opt,name=min_order_size,json=minOrderSize,proto3" json:"min_order_size,omitempty"`
-	MaxOrderSize  float64                `protobuf:"fixed64,5,opt,name=max_order_size,json=maxOrderSize,proto3" json:"max_order_size,omitempty"`
-	MaxPosition   float64                `protobuf:"fixed64,6,opt,name=max_position,json=maxPosition,proto3" json:"max_position,omitempty"`
-	Status        string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"` // ACTIVE, PAUSED
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	MinOrderSize  float64                `protobuf:"fixed64,4,opt,name=min_order_size,json=minOrderSize,proto3" json:"min_order_size,omitempty"` // 最小订单大小
+	MaxOrderSize  float64                `protobuf:"fixed64,5,opt,name=max_order_size,json=maxOrderSize,proto3" json:"max_order_size,omitempty"` // 最大订单大小
+	MaxPosition   float64                `protobuf:"fixed64,6,opt,name=max_position,json=maxPosition,proto3" json:"max_position,omitempty"` // 最大Position
+	Status        string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // Created在
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"` // Updated在
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *QuoteStrategy) Reset() {
 	*x = QuoteStrategy{}
 	mi := &file_api_market_making_market_making_proto_msgTypes[0]
@@ -44,12 +46,15 @@ func (x *QuoteStrategy) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *QuoteStrategy) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*QuoteStrategy) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *QuoteStrategy) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_making_market_making_proto_msgTypes[0]
 	if x != nil {
@@ -63,10 +68,12 @@ func (x *QuoteStrategy) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use QuoteStrategy.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*QuoteStrategy) Descriptor() ([]byte, []int) {
 	return file_api_market_making_market_making_proto_rawDescGZIP(), []int{0}
 }
 
+// GetId 获取唯一标识.
 func (x *QuoteStrategy) GetId() string {
 	if x != nil {
 		return x.Id
@@ -74,6 +81,7 @@ func (x *QuoteStrategy) GetId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *QuoteStrategy) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -81,6 +89,7 @@ func (x *QuoteStrategy) GetSymbol() string {
 	return ""
 }
 
+// GetSpread 获取Spread.
 func (x *QuoteStrategy) GetSpread() float64 {
 	if x != nil {
 		return x.Spread
@@ -88,6 +97,7 @@ func (x *QuoteStrategy) GetSpread() float64 {
 	return 0
 }
 
+// GetMinOrderSize 获取最小订单大小.
 func (x *QuoteStrategy) GetMinOrderSize() float64 {
 	if x != nil {
 		return x.MinOrderSize
@@ -95,6 +105,7 @@ func (x *QuoteStrategy) GetMinOrderSize() float64 {
 	return 0
 }
 
+// GetMaxOrderSize 获取最大订单大小.
 func (x *QuoteStrategy) GetMaxOrderSize() float64 {
 	if x != nil {
 		return x.MaxOrderSize
@@ -102,6 +113,7 @@ func (x *QuoteStrategy) GetMaxOrderSize() float64 {
 	return 0
 }
 
+// GetMaxPosition 获取最大Position.
 func (x *QuoteStrategy) GetMaxPosition() float64 {
 	if x != nil {
 		return x.MaxPosition
@@ -109,6 +121,7 @@ func (x *QuoteStrategy) GetMaxPosition() float64 {
 	return 0
 }
 
+// GetStatus 获取STATUS.
 func (x *QuoteStrategy) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -116,6 +129,7 @@ func (x *QuoteStrategy) GetStatus() string {
 	return ""
 }
 
+// GetCreatedAt 获取Created在.
 func (x *QuoteStrategy) GetCreatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CreatedAt
@@ -123,6 +137,7 @@ func (x *QuoteStrategy) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetUpdatedAt 获取Updated在.
 func (x *QuoteStrategy) GetUpdatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.UpdatedAt
@@ -130,19 +145,21 @@ func (x *QuoteStrategy) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// MarketMakingPerformance 表示市场MakingPerformance结构体。
 type MarketMakingPerformance struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	TotalPnl      float64                `protobuf:"fixed64,2,opt,name=total_pnl,json=totalPnl,proto3" json:"total_pnl,omitempty"`
-	TotalVolume   float64                `protobuf:"fixed64,3,opt,name=total_volume,json=totalVolume,proto3" json:"total_volume,omitempty"`
-	TotalTrades   int32                  `protobuf:"varint,4,opt,name=total_trades,json=totalTrades,proto3" json:"total_trades,omitempty"`
-	SharpeRatio   float64                `protobuf:"fixed64,5,opt,name=sharpe_ratio,json=sharpeRatio,proto3" json:"sharpe_ratio,omitempty"`
-	StartTime     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	EndTime       *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	TotalPnl      float64                `protobuf:"fixed64,2,opt,name=total_pnl,json=totalPnl,proto3" json:"total_pnl,omitempty"` // 总数Pnl
+	TotalVolume   float64                `protobuf:"fixed64,3,opt,name=total_volume,json=totalVolume,proto3" json:"total_volume,omitempty"` // 总数VOLUME
+	TotalTrades   int32                  `protobuf:"varint,4,opt,name=total_trades,json=totalTrades,proto3" json:"total_trades,omitempty"` // 总数Trades
+	SharpeRatio   float64                `protobuf:"fixed64,5,opt,name=sharpe_ratio,json=sharpeRatio,proto3" json:"sharpe_ratio,omitempty"` // SharpeRatio
+	StartTime     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"` // 开始时间
+	EndTime       *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"` // 结束时间
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *MarketMakingPerformance) Reset() {
 	*x = MarketMakingPerformance{}
 	mi := &file_api_market_making_market_making_proto_msgTypes[1]
@@ -150,12 +167,15 @@ func (x *MarketMakingPerformance) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *MarketMakingPerformance) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*MarketMakingPerformance) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *MarketMakingPerformance) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_making_market_making_proto_msgTypes[1]
 	if x != nil {
@@ -169,10 +189,12 @@ func (x *MarketMakingPerformance) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use MarketMakingPerformance.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*MarketMakingPerformance) Descriptor() ([]byte, []int) {
 	return file_api_market_making_market_making_proto_rawDescGZIP(), []int{1}
 }
 
+// GetSymbol 获取交易对.
 func (x *MarketMakingPerformance) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -180,6 +202,7 @@ func (x *MarketMakingPerformance) GetSymbol() string {
 	return ""
 }
 
+// GetTotalPnl 获取总数Pnl.
 func (x *MarketMakingPerformance) GetTotalPnl() float64 {
 	if x != nil {
 		return x.TotalPnl
@@ -187,6 +210,7 @@ func (x *MarketMakingPerformance) GetTotalPnl() float64 {
 	return 0
 }
 
+// GetTotalVolume 获取总数VOLUME.
 func (x *MarketMakingPerformance) GetTotalVolume() float64 {
 	if x != nil {
 		return x.TotalVolume
@@ -194,6 +218,7 @@ func (x *MarketMakingPerformance) GetTotalVolume() float64 {
 	return 0
 }
 
+// GetTotalTrades 获取总数Trades.
 func (x *MarketMakingPerformance) GetTotalTrades() int32 {
 	if x != nil {
 		return x.TotalTrades
@@ -201,6 +226,7 @@ func (x *MarketMakingPerformance) GetTotalTrades() int32 {
 	return 0
 }
 
+// GetSharpeRatio 获取SharpeRatio.
 func (x *MarketMakingPerformance) GetSharpeRatio() float64 {
 	if x != nil {
 		return x.SharpeRatio
@@ -208,6 +234,7 @@ func (x *MarketMakingPerformance) GetSharpeRatio() float64 {
 	return 0
 }
 
+// GetStartTime 获取开始时间.
 func (x *MarketMakingPerformance) GetStartTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.StartTime
@@ -215,6 +242,7 @@ func (x *MarketMakingPerformance) GetStartTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetEndTime 获取结束时间.
 func (x *MarketMakingPerformance) GetEndTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.EndTime
@@ -222,18 +250,20 @@ func (x *MarketMakingPerformance) GetEndTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// SetStrategyRequest 表示SetStrategy请求结构体。
 type SetStrategyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Spread        float64                `protobuf:"fixed64,2,opt,name=spread,proto3" json:"spread,omitempty"`
-	MinOrderSize  float64                `protobuf:"fixed64,3,opt,name=min_order_size,json=minOrderSize,proto3" json:"min_order_size,omitempty"`
-	MaxOrderSize  float64                `protobuf:"fixed64,4,opt,name=max_order_size,json=maxOrderSize,proto3" json:"max_order_size,omitempty"`
-	MaxPosition   float64                `protobuf:"fixed64,5,opt,name=max_position,json=maxPosition,proto3" json:"max_position,omitempty"`
-	Status        string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Spread        float64                `protobuf:"fixed64,2,opt,name=spread,proto3" json:"spread,omitempty"` // Spread
+	MinOrderSize  float64                `protobuf:"fixed64,3,opt,name=min_order_size,json=minOrderSize,proto3" json:"min_order_size,omitempty"` // 最小订单大小
+	MaxOrderSize  float64                `protobuf:"fixed64,4,opt,name=max_order_size,json=maxOrderSize,proto3" json:"max_order_size,omitempty"` // 最大订单大小
+	MaxPosition   float64                `protobuf:"fixed64,5,opt,name=max_position,json=maxPosition,proto3" json:"max_position,omitempty"` // 最大Position
+	Status        string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"` // 状态
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *SetStrategyRequest) Reset() {
 	*x = SetStrategyRequest{}
 	mi := &file_api_market_making_market_making_proto_msgTypes[2]
@@ -241,12 +271,15 @@ func (x *SetStrategyRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *SetStrategyRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*SetStrategyRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *SetStrategyRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_making_market_making_proto_msgTypes[2]
 	if x != nil {
@@ -260,10 +293,12 @@ func (x *SetStrategyRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use SetStrategyRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*SetStrategyRequest) Descriptor() ([]byte, []int) {
 	return file_api_market_making_market_making_proto_rawDescGZIP(), []int{2}
 }
 
+// GetSymbol 获取交易对.
 func (x *SetStrategyRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -271,6 +306,7 @@ func (x *SetStrategyRequest) GetSymbol() string {
 	return ""
 }
 
+// GetSpread 获取Spread.
 func (x *SetStrategyRequest) GetSpread() float64 {
 	if x != nil {
 		return x.Spread
@@ -278,6 +314,7 @@ func (x *SetStrategyRequest) GetSpread() float64 {
 	return 0
 }
 
+// GetMinOrderSize 获取最小订单大小.
 func (x *SetStrategyRequest) GetMinOrderSize() float64 {
 	if x != nil {
 		return x.MinOrderSize
@@ -285,6 +322,7 @@ func (x *SetStrategyRequest) GetMinOrderSize() float64 {
 	return 0
 }
 
+// GetMaxOrderSize 获取最大订单大小.
 func (x *SetStrategyRequest) GetMaxOrderSize() float64 {
 	if x != nil {
 		return x.MaxOrderSize
@@ -292,6 +330,7 @@ func (x *SetStrategyRequest) GetMaxOrderSize() float64 {
 	return 0
 }
 
+// GetMaxPosition 获取最大Position.
 func (x *SetStrategyRequest) GetMaxPosition() float64 {
 	if x != nil {
 		return x.MaxPosition
@@ -299,6 +338,7 @@ func (x *SetStrategyRequest) GetMaxPosition() float64 {
 	return 0
 }
 
+// GetStatus 获取STATUS.
 func (x *SetStrategyRequest) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -306,13 +346,15 @@ func (x *SetStrategyRequest) GetStatus() string {
 	return ""
 }
 
+// SetStrategyResponse 表示SetStrategy响应结构体。
 type SetStrategyResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	StrategyId    string                 `protobuf:"bytes,1,opt,name=strategy_id,json=strategyId,proto3" json:"strategy_id,omitempty"`
+	StrategyId    string                 `protobuf:"bytes,1,opt,name=strategy_id,json=strategyId,proto3" json:"strategy_id,omitempty"` // Strategy唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *SetStrategyResponse) Reset() {
 	*x = SetStrategyResponse{}
 	mi := &file_api_market_making_market_making_proto_msgTypes[3]
@@ -320,12 +362,15 @@ func (x *SetStrategyResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *SetStrategyResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*SetStrategyResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *SetStrategyResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_making_market_making_proto_msgTypes[3]
 	if x != nil {
@@ -339,10 +384,12 @@ func (x *SetStrategyResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use SetStrategyResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*SetStrategyResponse) Descriptor() ([]byte, []int) {
 	return file_api_market_making_market_making_proto_rawDescGZIP(), []int{3}
 }
 
+// GetStrategyId 获取Strategy唯一标识.
 func (x *SetStrategyResponse) GetStrategyId() string {
 	if x != nil {
 		return x.StrategyId
@@ -350,13 +397,15 @@ func (x *SetStrategyResponse) GetStrategyId() string {
 	return ""
 }
 
+// GetStrategyRequest 表示获取Strategy请求结构体。
 type GetStrategyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetStrategyRequest) Reset() {
 	*x = GetStrategyRequest{}
 	mi := &file_api_market_making_market_making_proto_msgTypes[4]
@@ -364,12 +413,15 @@ func (x *GetStrategyRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetStrategyRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetStrategyRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetStrategyRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_making_market_making_proto_msgTypes[4]
 	if x != nil {
@@ -383,10 +435,12 @@ func (x *GetStrategyRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetStrategyRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetStrategyRequest) Descriptor() ([]byte, []int) {
 	return file_api_market_making_market_making_proto_rawDescGZIP(), []int{4}
 }
 
+// GetSymbol 获取交易对.
 func (x *GetStrategyRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -394,13 +448,15 @@ func (x *GetStrategyRequest) GetSymbol() string {
 	return ""
 }
 
+// GetStrategyResponse 表示获取Strategy响应结构体。
 type GetStrategyResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Strategy      *QuoteStrategy         `protobuf:"bytes,1,opt,name=strategy,proto3" json:"strategy,omitempty"`
+	Strategy      *QuoteStrategy         `protobuf:"bytes,1,opt,name=strategy,proto3" json:"strategy,omitempty"` // 策略
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetStrategyResponse) Reset() {
 	*x = GetStrategyResponse{}
 	mi := &file_api_market_making_market_making_proto_msgTypes[5]
@@ -408,12 +464,15 @@ func (x *GetStrategyResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetStrategyResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetStrategyResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetStrategyResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_making_market_making_proto_msgTypes[5]
 	if x != nil {
@@ -427,10 +486,12 @@ func (x *GetStrategyResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetStrategyResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetStrategyResponse) Descriptor() ([]byte, []int) {
 	return file_api_market_making_market_making_proto_rawDescGZIP(), []int{5}
 }
 
+// GetStrategy 获取Strategy.
 func (x *GetStrategyResponse) GetStrategy() *QuoteStrategy {
 	if x != nil {
 		return x.Strategy
@@ -438,15 +499,17 @@ func (x *GetStrategyResponse) GetStrategy() *QuoteStrategy {
 	return nil
 }
 
+// GetPerformanceRequest 表示获取Performance请求结构体。
 type GetPerformanceRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	StartTime     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	EndTime       *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	StartTime     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"` // 开始时间
+	EndTime       *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"` // 结束时间
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetPerformanceRequest) Reset() {
 	*x = GetPerformanceRequest{}
 	mi := &file_api_market_making_market_making_proto_msgTypes[6]
@@ -454,12 +517,15 @@ func (x *GetPerformanceRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetPerformanceRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetPerformanceRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetPerformanceRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_making_market_making_proto_msgTypes[6]
 	if x != nil {
@@ -473,10 +539,12 @@ func (x *GetPerformanceRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetPerformanceRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetPerformanceRequest) Descriptor() ([]byte, []int) {
 	return file_api_market_making_market_making_proto_rawDescGZIP(), []int{6}
 }
 
+// GetSymbol 获取交易对.
 func (x *GetPerformanceRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -484,6 +552,7 @@ func (x *GetPerformanceRequest) GetSymbol() string {
 	return ""
 }
 
+// GetStartTime 获取开始时间.
 func (x *GetPerformanceRequest) GetStartTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.StartTime
@@ -491,6 +560,7 @@ func (x *GetPerformanceRequest) GetStartTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetEndTime 获取结束时间.
 func (x *GetPerformanceRequest) GetEndTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.EndTime
@@ -498,13 +568,15 @@ func (x *GetPerformanceRequest) GetEndTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetPerformanceResponse 表示获取Performance响应结构体。
 type GetPerformanceResponse struct {
 	state         protoimpl.MessageState   `protogen:"open.v1"`
-	Performance   *MarketMakingPerformance `protobuf:"bytes,1,opt,name=performance,proto3" json:"performance,omitempty"`
+	Performance   *MarketMakingPerformance `protobuf:"bytes,1,opt,name=performance,proto3" json:"performance,omitempty"` // 性能
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetPerformanceResponse) Reset() {
 	*x = GetPerformanceResponse{}
 	mi := &file_api_market_making_market_making_proto_msgTypes[7]
@@ -512,12 +584,15 @@ func (x *GetPerformanceResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetPerformanceResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetPerformanceResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetPerformanceResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_making_market_making_proto_msgTypes[7]
 	if x != nil {
@@ -531,10 +606,12 @@ func (x *GetPerformanceResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetPerformanceResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetPerformanceResponse) Descriptor() ([]byte, []int) {
 	return file_api_market_making_market_making_proto_rawDescGZIP(), []int{7}
 }
 
+// GetPerformance 获取Performance.
 func (x *GetPerformanceResponse) GetPerformance() *MarketMakingPerformance {
 	if x != nil {
 		return x.Performance
@@ -659,7 +736,7 @@ func file_api_market_making_market_making_proto_init() {
 		DependencyIndexes: file_api_market_making_market_making_proto_depIdxs,
 		MessageInfos:      file_api_market_making_market_making_proto_msgTypes,
 	}.Build()
-	File_api_market_making_market_making_proto = out.File
+	File_api_market_making_market_making_proto = out.File // File_api_market_making_market_making_proto 文件API市场making市场makingProto
 	file_api_market_making_market_making_proto_goTypes = nil
 	file_api_market_making_market_making_proto_depIdxs = nil
 }

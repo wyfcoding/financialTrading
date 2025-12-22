@@ -22,19 +22,21 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Strategy 表示Strategy结构体。
 type Strategy struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // 唯一标识
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"` // 名称
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"` // 描述
 	Script        string                 `protobuf:"bytes,4,opt,name=script,proto3" json:"script,omitempty"` // 策略脚本或配置
-	Status        string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"` // ACTIVE, INACTIVE
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Status        string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // Created在
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"` // Updated在
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *Strategy) Reset() {
 	*x = Strategy{}
 	mi := &file_api_quant_quant_proto_msgTypes[0]
@@ -42,12 +44,15 @@ func (x *Strategy) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *Strategy) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*Strategy) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *Strategy) ProtoReflect() protoreflect.Message {
 	mi := &file_api_quant_quant_proto_msgTypes[0]
 	if x != nil {
@@ -61,10 +66,12 @@ func (x *Strategy) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use Strategy.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*Strategy) Descriptor() ([]byte, []int) {
 	return file_api_quant_quant_proto_rawDescGZIP(), []int{0}
 }
 
+// GetId 获取唯一标识.
 func (x *Strategy) GetId() string {
 	if x != nil {
 		return x.Id
@@ -72,6 +79,7 @@ func (x *Strategy) GetId() string {
 	return ""
 }
 
+// GetName 获取名称.
 func (x *Strategy) GetName() string {
 	if x != nil {
 		return x.Name
@@ -79,6 +87,7 @@ func (x *Strategy) GetName() string {
 	return ""
 }
 
+// GetDescription 获取描述.
 func (x *Strategy) GetDescription() string {
 	if x != nil {
 		return x.Description
@@ -86,6 +95,7 @@ func (x *Strategy) GetDescription() string {
 	return ""
 }
 
+// GetScript 获取Script.
 func (x *Strategy) GetScript() string {
 	if x != nil {
 		return x.Script
@@ -93,6 +103,7 @@ func (x *Strategy) GetScript() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *Strategy) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -100,6 +111,7 @@ func (x *Strategy) GetStatus() string {
 	return ""
 }
 
+// GetCreatedAt 获取Created在.
 func (x *Strategy) GetCreatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CreatedAt
@@ -107,6 +119,7 @@ func (x *Strategy) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetUpdatedAt 获取Updated在.
 func (x *Strategy) GetUpdatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.UpdatedAt
@@ -114,23 +127,25 @@ func (x *Strategy) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// BacktestResult 表示Backtest结果结构体。
 type BacktestResult struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	StrategyId    string                 `protobuf:"bytes,2,opt,name=strategy_id,json=strategyId,proto3" json:"strategy_id,omitempty"`
-	Symbol        string                 `protobuf:"bytes,3,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	StartTime     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	EndTime       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
-	TotalReturn   float64                `protobuf:"fixed64,6,opt,name=total_return,json=totalReturn,proto3" json:"total_return,omitempty"`
-	MaxDrawdown   float64                `protobuf:"fixed64,7,opt,name=max_drawdown,json=maxDrawdown,proto3" json:"max_drawdown,omitempty"`
-	SharpeRatio   float64                `protobuf:"fixed64,8,opt,name=sharpe_ratio,json=sharpeRatio,proto3" json:"sharpe_ratio,omitempty"`
-	TotalTrades   int32                  `protobuf:"varint,9,opt,name=total_trades,json=totalTrades,proto3" json:"total_trades,omitempty"`
-	Status        string                 `protobuf:"bytes,10,opt,name=status,proto3" json:"status,omitempty"` // RUNNING, COMPLETED, FAILED
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // 唯一标识
+	StrategyId    string                 `protobuf:"bytes,2,opt,name=strategy_id,json=strategyId,proto3" json:"strategy_id,omitempty"` // Strategy唯一标识
+	Symbol        string                 `protobuf:"bytes,3,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	StartTime     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"` // 开始时间
+	EndTime       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"` // 结束时间
+	TotalReturn   float64                `protobuf:"fixed64,6,opt,name=total_return,json=totalReturn,proto3" json:"total_return,omitempty"` // 总数返回
+	MaxDrawdown   float64                `protobuf:"fixed64,7,opt,name=max_drawdown,json=maxDrawdown,proto3" json:"max_drawdown,omitempty"` // 最大Drawdown
+	SharpeRatio   float64                `protobuf:"fixed64,8,opt,name=sharpe_ratio,json=sharpeRatio,proto3" json:"sharpe_ratio,omitempty"` // SharpeRatio
+	TotalTrades   int32                  `protobuf:"varint,9,opt,name=total_trades,json=totalTrades,proto3" json:"total_trades,omitempty"` // 总数Trades
+	Status        string                 `protobuf:"bytes,10,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // Created在
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *BacktestResult) Reset() {
 	*x = BacktestResult{}
 	mi := &file_api_quant_quant_proto_msgTypes[1]
@@ -138,12 +153,15 @@ func (x *BacktestResult) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *BacktestResult) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*BacktestResult) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *BacktestResult) ProtoReflect() protoreflect.Message {
 	mi := &file_api_quant_quant_proto_msgTypes[1]
 	if x != nil {
@@ -157,10 +175,12 @@ func (x *BacktestResult) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use BacktestResult.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*BacktestResult) Descriptor() ([]byte, []int) {
 	return file_api_quant_quant_proto_rawDescGZIP(), []int{1}
 }
 
+// GetId 获取唯一标识.
 func (x *BacktestResult) GetId() string {
 	if x != nil {
 		return x.Id
@@ -168,6 +188,7 @@ func (x *BacktestResult) GetId() string {
 	return ""
 }
 
+// GetStrategyId 获取Strategy唯一标识.
 func (x *BacktestResult) GetStrategyId() string {
 	if x != nil {
 		return x.StrategyId
@@ -175,6 +196,7 @@ func (x *BacktestResult) GetStrategyId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *BacktestResult) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -182,6 +204,7 @@ func (x *BacktestResult) GetSymbol() string {
 	return ""
 }
 
+// GetStartTime 获取开始时间.
 func (x *BacktestResult) GetStartTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.StartTime
@@ -189,6 +212,7 @@ func (x *BacktestResult) GetStartTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetEndTime 获取结束时间.
 func (x *BacktestResult) GetEndTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.EndTime
@@ -196,6 +220,7 @@ func (x *BacktestResult) GetEndTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetTotalReturn 获取总数返回.
 func (x *BacktestResult) GetTotalReturn() float64 {
 	if x != nil {
 		return x.TotalReturn
@@ -203,6 +228,7 @@ func (x *BacktestResult) GetTotalReturn() float64 {
 	return 0
 }
 
+// GetMaxDrawdown 获取最大Drawdown.
 func (x *BacktestResult) GetMaxDrawdown() float64 {
 	if x != nil {
 		return x.MaxDrawdown
@@ -210,6 +236,7 @@ func (x *BacktestResult) GetMaxDrawdown() float64 {
 	return 0
 }
 
+// GetSharpeRatio 获取SharpeRatio.
 func (x *BacktestResult) GetSharpeRatio() float64 {
 	if x != nil {
 		return x.SharpeRatio
@@ -217,6 +244,7 @@ func (x *BacktestResult) GetSharpeRatio() float64 {
 	return 0
 }
 
+// GetTotalTrades 获取总数Trades.
 func (x *BacktestResult) GetTotalTrades() int32 {
 	if x != nil {
 		return x.TotalTrades
@@ -224,6 +252,7 @@ func (x *BacktestResult) GetTotalTrades() int32 {
 	return 0
 }
 
+// GetStatus 获取STATUS.
 func (x *BacktestResult) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -231,6 +260,7 @@ func (x *BacktestResult) GetStatus() string {
 	return ""
 }
 
+// GetCreatedAt 获取Created在.
 func (x *BacktestResult) GetCreatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CreatedAt
@@ -238,15 +268,17 @@ func (x *BacktestResult) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// CreateStrategyRequest 表示创建Strategy请求结构体。
 type CreateStrategyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Description   string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-	Script        string                 `protobuf:"bytes,3,opt,name=script,proto3" json:"script,omitempty"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"` // 名称
+	Description   string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"` // 描述
+	Script        string                 `protobuf:"bytes,3,opt,name=script,proto3" json:"script,omitempty"` // Script
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *CreateStrategyRequest) Reset() {
 	*x = CreateStrategyRequest{}
 	mi := &file_api_quant_quant_proto_msgTypes[2]
@@ -254,12 +286,15 @@ func (x *CreateStrategyRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *CreateStrategyRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*CreateStrategyRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *CreateStrategyRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_quant_quant_proto_msgTypes[2]
 	if x != nil {
@@ -273,10 +308,12 @@ func (x *CreateStrategyRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use CreateStrategyRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*CreateStrategyRequest) Descriptor() ([]byte, []int) {
 	return file_api_quant_quant_proto_rawDescGZIP(), []int{2}
 }
 
+// GetName 获取名称.
 func (x *CreateStrategyRequest) GetName() string {
 	if x != nil {
 		return x.Name
@@ -284,6 +321,7 @@ func (x *CreateStrategyRequest) GetName() string {
 	return ""
 }
 
+// GetDescription 获取描述.
 func (x *CreateStrategyRequest) GetDescription() string {
 	if x != nil {
 		return x.Description
@@ -291,6 +329,7 @@ func (x *CreateStrategyRequest) GetDescription() string {
 	return ""
 }
 
+// GetScript 获取Script.
 func (x *CreateStrategyRequest) GetScript() string {
 	if x != nil {
 		return x.Script
@@ -298,13 +337,15 @@ func (x *CreateStrategyRequest) GetScript() string {
 	return ""
 }
 
+// CreateStrategyResponse 表示创建Strategy响应结构体。
 type CreateStrategyResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	StrategyId    string                 `protobuf:"bytes,1,opt,name=strategy_id,json=strategyId,proto3" json:"strategy_id,omitempty"`
+	StrategyId    string                 `protobuf:"bytes,1,opt,name=strategy_id,json=strategyId,proto3" json:"strategy_id,omitempty"` // Strategy唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *CreateStrategyResponse) Reset() {
 	*x = CreateStrategyResponse{}
 	mi := &file_api_quant_quant_proto_msgTypes[3]
@@ -312,12 +353,15 @@ func (x *CreateStrategyResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *CreateStrategyResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*CreateStrategyResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *CreateStrategyResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_quant_quant_proto_msgTypes[3]
 	if x != nil {
@@ -331,10 +375,12 @@ func (x *CreateStrategyResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use CreateStrategyResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*CreateStrategyResponse) Descriptor() ([]byte, []int) {
 	return file_api_quant_quant_proto_rawDescGZIP(), []int{3}
 }
 
+// GetStrategyId 获取Strategy唯一标识.
 func (x *CreateStrategyResponse) GetStrategyId() string {
 	if x != nil {
 		return x.StrategyId
@@ -342,13 +388,15 @@ func (x *CreateStrategyResponse) GetStrategyId() string {
 	return ""
 }
 
+// GetStrategyRequest 表示获取Strategy请求结构体。
 type GetStrategyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // 唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetStrategyRequest) Reset() {
 	*x = GetStrategyRequest{}
 	mi := &file_api_quant_quant_proto_msgTypes[4]
@@ -356,12 +404,15 @@ func (x *GetStrategyRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetStrategyRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetStrategyRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetStrategyRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_quant_quant_proto_msgTypes[4]
 	if x != nil {
@@ -375,10 +426,12 @@ func (x *GetStrategyRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetStrategyRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetStrategyRequest) Descriptor() ([]byte, []int) {
 	return file_api_quant_quant_proto_rawDescGZIP(), []int{4}
 }
 
+// GetId 获取唯一标识.
 func (x *GetStrategyRequest) GetId() string {
 	if x != nil {
 		return x.Id
@@ -386,13 +439,15 @@ func (x *GetStrategyRequest) GetId() string {
 	return ""
 }
 
+// GetStrategyResponse 表示获取Strategy响应结构体。
 type GetStrategyResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Strategy      *Strategy              `protobuf:"bytes,1,opt,name=strategy,proto3" json:"strategy,omitempty"`
+	Strategy      *Strategy              `protobuf:"bytes,1,opt,name=strategy,proto3" json:"strategy,omitempty"` // 策略
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetStrategyResponse) Reset() {
 	*x = GetStrategyResponse{}
 	mi := &file_api_quant_quant_proto_msgTypes[5]
@@ -400,12 +455,15 @@ func (x *GetStrategyResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetStrategyResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetStrategyResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetStrategyResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_quant_quant_proto_msgTypes[5]
 	if x != nil {
@@ -419,10 +477,12 @@ func (x *GetStrategyResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetStrategyResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetStrategyResponse) Descriptor() ([]byte, []int) {
 	return file_api_quant_quant_proto_rawDescGZIP(), []int{5}
 }
 
+// GetStrategy 获取Strategy.
 func (x *GetStrategyResponse) GetStrategy() *Strategy {
 	if x != nil {
 		return x.Strategy
@@ -430,17 +490,19 @@ func (x *GetStrategyResponse) GetStrategy() *Strategy {
 	return nil
 }
 
+// RunBacktestRequest 表示RUNBacktest请求结构体。
 type RunBacktestRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	StrategyId     string                 `protobuf:"bytes,1,opt,name=strategy_id,json=strategyId,proto3" json:"strategy_id,omitempty"`
-	Symbol         string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	StartTime      *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	EndTime        *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
-	InitialCapital float64                `protobuf:"fixed64,5,opt,name=initial_capital,json=initialCapital,proto3" json:"initial_capital,omitempty"`
+	StrategyId     string                 `protobuf:"bytes,1,opt,name=strategy_id,json=strategyId,proto3" json:"strategy_id,omitempty"` // Strategy唯一标识
+	Symbol         string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	StartTime      *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"` // 开始时间
+	EndTime        *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"` // 结束时间
+	InitialCapital float64                `protobuf:"fixed64,5,opt,name=initial_capital,json=initialCapital,proto3" json:"initial_capital,omitempty"` // InitialCapital
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *RunBacktestRequest) Reset() {
 	*x = RunBacktestRequest{}
 	mi := &file_api_quant_quant_proto_msgTypes[6]
@@ -448,12 +510,15 @@ func (x *RunBacktestRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *RunBacktestRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*RunBacktestRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *RunBacktestRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_quant_quant_proto_msgTypes[6]
 	if x != nil {
@@ -467,10 +532,12 @@ func (x *RunBacktestRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use RunBacktestRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*RunBacktestRequest) Descriptor() ([]byte, []int) {
 	return file_api_quant_quant_proto_rawDescGZIP(), []int{6}
 }
 
+// GetStrategyId 获取Strategy唯一标识.
 func (x *RunBacktestRequest) GetStrategyId() string {
 	if x != nil {
 		return x.StrategyId
@@ -478,6 +545,7 @@ func (x *RunBacktestRequest) GetStrategyId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *RunBacktestRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -485,6 +553,7 @@ func (x *RunBacktestRequest) GetSymbol() string {
 	return ""
 }
 
+// GetStartTime 获取开始时间.
 func (x *RunBacktestRequest) GetStartTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.StartTime
@@ -492,6 +561,7 @@ func (x *RunBacktestRequest) GetStartTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetEndTime 获取结束时间.
 func (x *RunBacktestRequest) GetEndTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.EndTime
@@ -499,6 +569,7 @@ func (x *RunBacktestRequest) GetEndTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetInitialCapital 获取InitialCapital.
 func (x *RunBacktestRequest) GetInitialCapital() float64 {
 	if x != nil {
 		return x.InitialCapital
@@ -506,13 +577,15 @@ func (x *RunBacktestRequest) GetInitialCapital() float64 {
 	return 0
 }
 
+// RunBacktestResponse 表示RUNBacktest响应结构体。
 type RunBacktestResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	BacktestId    string                 `protobuf:"bytes,1,opt,name=backtest_id,json=backtestId,proto3" json:"backtest_id,omitempty"`
+	BacktestId    string                 `protobuf:"bytes,1,opt,name=backtest_id,json=backtestId,proto3" json:"backtest_id,omitempty"` // Backtest唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *RunBacktestResponse) Reset() {
 	*x = RunBacktestResponse{}
 	mi := &file_api_quant_quant_proto_msgTypes[7]
@@ -520,12 +593,15 @@ func (x *RunBacktestResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *RunBacktestResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*RunBacktestResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *RunBacktestResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_quant_quant_proto_msgTypes[7]
 	if x != nil {
@@ -539,10 +615,12 @@ func (x *RunBacktestResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use RunBacktestResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*RunBacktestResponse) Descriptor() ([]byte, []int) {
 	return file_api_quant_quant_proto_rawDescGZIP(), []int{7}
 }
 
+// GetBacktestId 获取Backtest唯一标识.
 func (x *RunBacktestResponse) GetBacktestId() string {
 	if x != nil {
 		return x.BacktestId
@@ -550,13 +628,15 @@ func (x *RunBacktestResponse) GetBacktestId() string {
 	return ""
 }
 
+// GetBacktestResultRequest 表示获取Backtest结果请求结构体。
 type GetBacktestResultRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // 唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetBacktestResultRequest) Reset() {
 	*x = GetBacktestResultRequest{}
 	mi := &file_api_quant_quant_proto_msgTypes[8]
@@ -564,12 +644,15 @@ func (x *GetBacktestResultRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetBacktestResultRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetBacktestResultRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetBacktestResultRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_quant_quant_proto_msgTypes[8]
 	if x != nil {
@@ -583,10 +666,12 @@ func (x *GetBacktestResultRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetBacktestResultRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetBacktestResultRequest) Descriptor() ([]byte, []int) {
 	return file_api_quant_quant_proto_rawDescGZIP(), []int{8}
 }
 
+// GetId 获取唯一标识.
 func (x *GetBacktestResultRequest) GetId() string {
 	if x != nil {
 		return x.Id
@@ -594,13 +679,15 @@ func (x *GetBacktestResultRequest) GetId() string {
 	return ""
 }
 
+// GetBacktestResultResponse 表示获取Backtest结果响应结构体。
 type GetBacktestResultResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Result        *BacktestResult        `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
+	Result        *BacktestResult        `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"` // 结果
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetBacktestResultResponse) Reset() {
 	*x = GetBacktestResultResponse{}
 	mi := &file_api_quant_quant_proto_msgTypes[9]
@@ -608,12 +695,15 @@ func (x *GetBacktestResultResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetBacktestResultResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetBacktestResultResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetBacktestResultResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_quant_quant_proto_msgTypes[9]
 	if x != nil {
@@ -627,10 +717,12 @@ func (x *GetBacktestResultResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetBacktestResultResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetBacktestResultResponse) Descriptor() ([]byte, []int) {
 	return file_api_quant_quant_proto_rawDescGZIP(), []int{9}
 }
 
+// GetResult 获取结果.
 func (x *GetBacktestResultResponse) GetResult() *BacktestResult {
 	if x != nil {
 		return x.Result
@@ -771,7 +863,7 @@ func file_api_quant_quant_proto_init() {
 		DependencyIndexes: file_api_quant_quant_proto_depIdxs,
 		MessageInfos:      file_api_quant_quant_proto_msgTypes,
 	}.Build()
-	File_api_quant_quant_proto = out.File
+	File_api_quant_quant_proto = out.File // File_api_quant_quant_proto 文件APIquantquantProto
 	file_api_quant_quant_proto_goTypes = nil
 	file_api_quant_quant_proto_depIdxs = nil
 }

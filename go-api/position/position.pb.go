@@ -21,16 +21,18 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// GetPositionsRequest 表示获取Positions请求结构体。
 type GetPositionsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Page          int32                  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"`
-	PageSize      int32                  `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Page          int32                  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"` // 页码
+	PageSize      int32                  `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"` // 页码大小
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetPositionsRequest) Reset() {
 	*x = GetPositionsRequest{}
 	mi := &file_api_position_position_proto_msgTypes[0]
@@ -38,12 +40,15 @@ func (x *GetPositionsRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetPositionsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetPositionsRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetPositionsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_position_position_proto_msgTypes[0]
 	if x != nil {
@@ -57,10 +62,12 @@ func (x *GetPositionsRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetPositionsRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetPositionsRequest) Descriptor() ([]byte, []int) {
 	return file_api_position_position_proto_rawDescGZIP(), []int{0}
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *GetPositionsRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -68,6 +75,7 @@ func (x *GetPositionsRequest) GetUserId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *GetPositionsRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -75,6 +83,7 @@ func (x *GetPositionsRequest) GetSymbol() string {
 	return ""
 }
 
+// GetPage 获取页码.
 func (x *GetPositionsRequest) GetPage() int32 {
 	if x != nil {
 		return x.Page
@@ -82,6 +91,7 @@ func (x *GetPositionsRequest) GetPage() int32 {
 	return 0
 }
 
+// GetPageSize 获取页码大小.
 func (x *GetPositionsRequest) GetPageSize() int32 {
 	if x != nil {
 		return x.PageSize
@@ -89,23 +99,25 @@ func (x *GetPositionsRequest) GetPageSize() int32 {
 	return 0
 }
 
+// PositionResponse 表示Position响应结构体。
 type PositionResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	PositionId    string                 `protobuf:"bytes,1,opt,name=position_id,json=positionId,proto3" json:"position_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Symbol        string                 `protobuf:"bytes,3,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Side          string                 `protobuf:"bytes,4,opt,name=side,proto3" json:"side,omitempty"`
-	Quantity      string                 `protobuf:"bytes,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	EntryPrice    string                 `protobuf:"bytes,6,opt,name=entry_price,json=entryPrice,proto3" json:"entry_price,omitempty"`
-	CurrentPrice  string                 `protobuf:"bytes,7,opt,name=current_price,json=currentPrice,proto3" json:"current_price,omitempty"`
-	UnrealizedPnl string                 `protobuf:"bytes,8,opt,name=unrealized_pnl,json=unrealizedPnl,proto3" json:"unrealized_pnl,omitempty"`
-	RealizedPnl   string                 `protobuf:"bytes,9,opt,name=realized_pnl,json=realizedPnl,proto3" json:"realized_pnl,omitempty"`
-	OpenedAt      int64                  `protobuf:"varint,10,opt,name=opened_at,json=openedAt,proto3" json:"opened_at,omitempty"`
-	ClosedAt      int64                  `protobuf:"varint,11,opt,name=closed_at,json=closedAt,proto3" json:"closed_at,omitempty"`
+	PositionId    string                 `protobuf:"bytes,1,opt,name=position_id,json=positionId,proto3" json:"position_id,omitempty"` // Position唯一标识
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Symbol        string                 `protobuf:"bytes,3,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Side          string                 `protobuf:"bytes,4,opt,name=side,proto3" json:"side,omitempty"` // 交易方向
+	Quantity      string                 `protobuf:"bytes,5,opt,name=quantity,proto3" json:"quantity,omitempty"` // 数量
+	EntryPrice    string                 `protobuf:"bytes,6,opt,name=entry_price,json=entryPrice,proto3" json:"entry_price,omitempty"` // Entry价格
+	CurrentPrice  string                 `protobuf:"bytes,7,opt,name=current_price,json=currentPrice,proto3" json:"current_price,omitempty"` // CURRENT价格
+	UnrealizedPnl string                 `protobuf:"bytes,8,opt,name=unrealized_pnl,json=unrealizedPnl,proto3" json:"unrealized_pnl,omitempty"` // UnrealizedPnl
+	RealizedPnl   string                 `protobuf:"bytes,9,opt,name=realized_pnl,json=realizedPnl,proto3" json:"realized_pnl,omitempty"` // RealizedPnl
+	OpenedAt      int64                  `protobuf:"varint,10,opt,name=opened_at,json=openedAt,proto3" json:"opened_at,omitempty"` // Opened在
+	ClosedAt      int64                  `protobuf:"varint,11,opt,name=closed_at,json=closedAt,proto3" json:"closed_at,omitempty"` // Closed在
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *PositionResponse) Reset() {
 	*x = PositionResponse{}
 	mi := &file_api_position_position_proto_msgTypes[1]
@@ -113,12 +125,15 @@ func (x *PositionResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *PositionResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*PositionResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *PositionResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_position_position_proto_msgTypes[1]
 	if x != nil {
@@ -132,10 +147,12 @@ func (x *PositionResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use PositionResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*PositionResponse) Descriptor() ([]byte, []int) {
 	return file_api_position_position_proto_rawDescGZIP(), []int{1}
 }
 
+// GetPositionId 获取Position唯一标识.
 func (x *PositionResponse) GetPositionId() string {
 	if x != nil {
 		return x.PositionId
@@ -143,6 +160,7 @@ func (x *PositionResponse) GetPositionId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *PositionResponse) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -150,6 +168,7 @@ func (x *PositionResponse) GetUserId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *PositionResponse) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -157,6 +176,7 @@ func (x *PositionResponse) GetSymbol() string {
 	return ""
 }
 
+// GetSide 获取交易方向.
 func (x *PositionResponse) GetSide() string {
 	if x != nil {
 		return x.Side
@@ -164,6 +184,7 @@ func (x *PositionResponse) GetSide() string {
 	return ""
 }
 
+// GetQuantity 获取数量.
 func (x *PositionResponse) GetQuantity() string {
 	if x != nil {
 		return x.Quantity
@@ -171,6 +192,7 @@ func (x *PositionResponse) GetQuantity() string {
 	return ""
 }
 
+// GetEntryPrice 获取Entry价格.
 func (x *PositionResponse) GetEntryPrice() string {
 	if x != nil {
 		return x.EntryPrice
@@ -178,6 +200,7 @@ func (x *PositionResponse) GetEntryPrice() string {
 	return ""
 }
 
+// GetCurrentPrice 获取CURRENT价格.
 func (x *PositionResponse) GetCurrentPrice() string {
 	if x != nil {
 		return x.CurrentPrice
@@ -185,6 +208,7 @@ func (x *PositionResponse) GetCurrentPrice() string {
 	return ""
 }
 
+// GetUnrealizedPnl 获取UnrealizedPnl.
 func (x *PositionResponse) GetUnrealizedPnl() string {
 	if x != nil {
 		return x.UnrealizedPnl
@@ -192,6 +216,7 @@ func (x *PositionResponse) GetUnrealizedPnl() string {
 	return ""
 }
 
+// GetRealizedPnl 获取RealizedPnl.
 func (x *PositionResponse) GetRealizedPnl() string {
 	if x != nil {
 		return x.RealizedPnl
@@ -199,6 +224,7 @@ func (x *PositionResponse) GetRealizedPnl() string {
 	return ""
 }
 
+// GetOpenedAt 获取Opened在.
 func (x *PositionResponse) GetOpenedAt() int64 {
 	if x != nil {
 		return x.OpenedAt
@@ -206,6 +232,7 @@ func (x *PositionResponse) GetOpenedAt() int64 {
 	return 0
 }
 
+// GetClosedAt 获取Closed在.
 func (x *PositionResponse) GetClosedAt() int64 {
 	if x != nil {
 		return x.ClosedAt
@@ -213,14 +240,16 @@ func (x *PositionResponse) GetClosedAt() int64 {
 	return 0
 }
 
+// PositionsResponse 表示Positions响应结构体。
 type PositionsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Positions     []*PositionResponse    `protobuf:"bytes,1,rep,name=positions,proto3" json:"positions,omitempty"`
-	Total         int64                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	Positions     []*PositionResponse    `protobuf:"bytes,1,rep,name=positions,proto3" json:"positions,omitempty"` // Positions
+	Total         int64                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"` // 总数
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *PositionsResponse) Reset() {
 	*x = PositionsResponse{}
 	mi := &file_api_position_position_proto_msgTypes[2]
@@ -228,12 +257,15 @@ func (x *PositionsResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *PositionsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*PositionsResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *PositionsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_position_position_proto_msgTypes[2]
 	if x != nil {
@@ -247,10 +279,12 @@ func (x *PositionsResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use PositionsResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*PositionsResponse) Descriptor() ([]byte, []int) {
 	return file_api_position_position_proto_rawDescGZIP(), []int{2}
 }
 
+// GetPositions 获取Positions.
 func (x *PositionsResponse) GetPositions() []*PositionResponse {
 	if x != nil {
 		return x.Positions
@@ -258,6 +292,7 @@ func (x *PositionsResponse) GetPositions() []*PositionResponse {
 	return nil
 }
 
+// GetTotal 获取总数.
 func (x *PositionsResponse) GetTotal() int64 {
 	if x != nil {
 		return x.Total
@@ -265,14 +300,16 @@ func (x *PositionsResponse) GetTotal() int64 {
 	return 0
 }
 
+// GetPositionRequest 表示获取Position请求结构体。
 type GetPositionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	PositionId    string                 `protobuf:"bytes,1,opt,name=position_id,json=positionId,proto3" json:"position_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	PositionId    string                 `protobuf:"bytes,1,opt,name=position_id,json=positionId,proto3" json:"position_id,omitempty"` // Position唯一标识
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetPositionRequest) Reset() {
 	*x = GetPositionRequest{}
 	mi := &file_api_position_position_proto_msgTypes[3]
@@ -280,12 +317,15 @@ func (x *GetPositionRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetPositionRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetPositionRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetPositionRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_position_position_proto_msgTypes[3]
 	if x != nil {
@@ -299,10 +339,12 @@ func (x *GetPositionRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetPositionRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetPositionRequest) Descriptor() ([]byte, []int) {
 	return file_api_position_position_proto_rawDescGZIP(), []int{3}
 }
 
+// GetPositionId 获取Position唯一标识.
 func (x *GetPositionRequest) GetPositionId() string {
 	if x != nil {
 		return x.PositionId
@@ -310,6 +352,7 @@ func (x *GetPositionRequest) GetPositionId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *GetPositionRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -317,13 +360,15 @@ func (x *GetPositionRequest) GetUserId() string {
 	return ""
 }
 
+// GetPositionSummaryRequest 表示获取PositionSummary请求结构体。
 type GetPositionSummaryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetPositionSummaryRequest) Reset() {
 	*x = GetPositionSummaryRequest{}
 	mi := &file_api_position_position_proto_msgTypes[4]
@@ -331,12 +376,15 @@ func (x *GetPositionSummaryRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetPositionSummaryRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetPositionSummaryRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetPositionSummaryRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_position_position_proto_msgTypes[4]
 	if x != nil {
@@ -350,10 +398,12 @@ func (x *GetPositionSummaryRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetPositionSummaryRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetPositionSummaryRequest) Descriptor() ([]byte, []int) {
 	return file_api_position_position_proto_rawDescGZIP(), []int{4}
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *GetPositionSummaryRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -361,16 +411,18 @@ func (x *GetPositionSummaryRequest) GetUserId() string {
 	return ""
 }
 
+// PositionSummaryResponse 表示PositionSummary响应结构体。
 type PositionSummaryResponse struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
-	TotalPositions     int64                  `protobuf:"varint,1,opt,name=total_positions,json=totalPositions,proto3" json:"total_positions,omitempty"`
-	TotalUnrealizedPnl string                 `protobuf:"bytes,2,opt,name=total_unrealized_pnl,json=totalUnrealizedPnl,proto3" json:"total_unrealized_pnl,omitempty"`
-	TotalRealizedPnl   string                 `protobuf:"bytes,3,opt,name=total_realized_pnl,json=totalRealizedPnl,proto3" json:"total_realized_pnl,omitempty"`
-	Positions          []*PositionResponse    `protobuf:"bytes,4,rep,name=positions,proto3" json:"positions,omitempty"`
+	TotalPositions     int64                  `protobuf:"varint,1,opt,name=total_positions,json=totalPositions,proto3" json:"total_positions,omitempty"` // 总数Positions
+	TotalUnrealizedPnl string                 `protobuf:"bytes,2,opt,name=total_unrealized_pnl,json=totalUnrealizedPnl,proto3" json:"total_unrealized_pnl,omitempty"` // 总数UnrealizedPnl
+	TotalRealizedPnl   string                 `protobuf:"bytes,3,opt,name=total_realized_pnl,json=totalRealizedPnl,proto3" json:"total_realized_pnl,omitempty"` // 总数RealizedPnl
+	Positions          []*PositionResponse    `protobuf:"bytes,4,rep,name=positions,proto3" json:"positions,omitempty"` // Positions
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *PositionSummaryResponse) Reset() {
 	*x = PositionSummaryResponse{}
 	mi := &file_api_position_position_proto_msgTypes[5]
@@ -378,12 +430,15 @@ func (x *PositionSummaryResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *PositionSummaryResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*PositionSummaryResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *PositionSummaryResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_position_position_proto_msgTypes[5]
 	if x != nil {
@@ -397,10 +452,12 @@ func (x *PositionSummaryResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use PositionSummaryResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*PositionSummaryResponse) Descriptor() ([]byte, []int) {
 	return file_api_position_position_proto_rawDescGZIP(), []int{5}
 }
 
+// GetTotalPositions 获取总数Positions.
 func (x *PositionSummaryResponse) GetTotalPositions() int64 {
 	if x != nil {
 		return x.TotalPositions
@@ -408,6 +465,7 @@ func (x *PositionSummaryResponse) GetTotalPositions() int64 {
 	return 0
 }
 
+// GetTotalUnrealizedPnl 获取总数UnrealizedPnl.
 func (x *PositionSummaryResponse) GetTotalUnrealizedPnl() string {
 	if x != nil {
 		return x.TotalUnrealizedPnl
@@ -415,6 +473,7 @@ func (x *PositionSummaryResponse) GetTotalUnrealizedPnl() string {
 	return ""
 }
 
+// GetTotalRealizedPnl 获取总数RealizedPnl.
 func (x *PositionSummaryResponse) GetTotalRealizedPnl() string {
 	if x != nil {
 		return x.TotalRealizedPnl
@@ -422,6 +481,7 @@ func (x *PositionSummaryResponse) GetTotalRealizedPnl() string {
 	return ""
 }
 
+// GetPositions 获取Positions.
 func (x *PositionSummaryResponse) GetPositions() []*PositionResponse {
 	if x != nil {
 		return x.Positions
@@ -429,15 +489,17 @@ func (x *PositionSummaryResponse) GetPositions() []*PositionResponse {
 	return nil
 }
 
+// ClosePositionRequest 表示关闭Position请求结构体。
 type ClosePositionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	PositionId    string                 `protobuf:"bytes,1,opt,name=position_id,json=positionId,proto3" json:"position_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	ClosePrice    string                 `protobuf:"bytes,3,opt,name=close_price,json=closePrice,proto3" json:"close_price,omitempty"`
+	PositionId    string                 `protobuf:"bytes,1,opt,name=position_id,json=positionId,proto3" json:"position_id,omitempty"` // Position唯一标识
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	ClosePrice    string                 `protobuf:"bytes,3,opt,name=close_price,json=closePrice,proto3" json:"close_price,omitempty"` // 关闭价格
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *ClosePositionRequest) Reset() {
 	*x = ClosePositionRequest{}
 	mi := &file_api_position_position_proto_msgTypes[6]
@@ -445,12 +507,15 @@ func (x *ClosePositionRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *ClosePositionRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*ClosePositionRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *ClosePositionRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_position_position_proto_msgTypes[6]
 	if x != nil {
@@ -464,10 +529,12 @@ func (x *ClosePositionRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use ClosePositionRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*ClosePositionRequest) Descriptor() ([]byte, []int) {
 	return file_api_position_position_proto_rawDescGZIP(), []int{6}
 }
 
+// GetPositionId 获取Position唯一标识.
 func (x *ClosePositionRequest) GetPositionId() string {
 	if x != nil {
 		return x.PositionId
@@ -475,6 +542,7 @@ func (x *ClosePositionRequest) GetPositionId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *ClosePositionRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -482,6 +550,7 @@ func (x *ClosePositionRequest) GetUserId() string {
 	return ""
 }
 
+// GetClosePrice 获取关闭价格.
 func (x *ClosePositionRequest) GetClosePrice() string {
 	if x != nil {
 		return x.ClosePrice
@@ -599,7 +668,7 @@ func file_api_position_position_proto_init() {
 		DependencyIndexes: file_api_position_position_proto_depIdxs,
 		MessageInfos:      file_api_position_position_proto_msgTypes,
 	}.Build()
-	File_api_position_position_proto = out.File
+	File_api_position_position_proto = out.File // File_api_position_position_proto 文件APIpositionpositionProto
 	file_api_position_position_proto_goTypes = nil
 	file_api_position_position_proto_depIdxs = nil
 }

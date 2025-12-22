@@ -18,48 +18,48 @@ service MonitoringAnalyticsService {
 
 // 指标
 message Metric {
-  string name = 1;
-  double value = 2;
-  map<string, string> tags = 3;
-  google.protobuf.Timestamp timestamp = 4;
+  string name = 1; // 名称
+  double value = 2; // 值
+  map<string, string> tags = 3; // tags
+  google.protobuf.Timestamp timestamp = 4; // 时间戳
 }
 
 // 系统健康状态
 message SystemHealth {
-  string service_name = 1;
-  string status = 2; // UP, DOWN, DEGRADED
-  string message = 3;
-  google.protobuf.Timestamp last_checked = 4;
+  string service_name = 1; // 服务名称
+  string status = 2; // 状态
+  string message = 3; // 消息
+  google.protobuf.Timestamp last_checked = 4; // 最后检查
 }
 
 // 记录指标请求
 message RecordMetricRequest {
-  Metric metric = 1;
+  Metric metric = 1; // 指标
 }
 
 // 记录指标响应
 message RecordMetricResponse {
-  bool success = 1;
+  bool success = 1; // 成功
 }
 
 // 获取指标请求
 message GetMetricsRequest {
-  string name = 1;
-  google.protobuf.Timestamp start_time = 2;
-  google.protobuf.Timestamp end_time = 3;
+  string name = 1; // 名称
+  google.protobuf.Timestamp start_time = 2; // 开始时间
+  google.protobuf.Timestamp end_time = 3; // 结束时间
 }
 
 // 获取指标响应
 message GetMetricsResponse {
-  repeated Metric metrics = 1;
+  repeated Metric metrics = 1; // 指标
 }
 
 // 获取系统健康请求
 message GetSystemHealthRequest {
-  string service_name = 1; // Optional, if empty return all
+  string service_name = 1; // 服务名称
 }
 
 // 获取系统健康响应
 message GetSystemHealthResponse {
-  repeated SystemHealth health_statuses = 1;
+  repeated SystemHealth health_statuses = 1; // 健康statuses
 }

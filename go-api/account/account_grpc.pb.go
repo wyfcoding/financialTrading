@@ -19,13 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AccountService_CreateAccount_FullMethodName         = "/account.AccountService/CreateAccount"
-	AccountService_GetAccount_FullMethodName            = "/account.AccountService/GetAccount"
-	AccountService_UpdateAccount_FullMethodName         = "/account.AccountService/UpdateAccount"
-	AccountService_GetBalance_FullMethodName            = "/account.AccountService/GetBalance"
-	AccountService_Deposit_FullMethodName               = "/account.AccountService/Deposit"
-	AccountService_Withdraw_FullMethodName              = "/account.AccountService/Withdraw"
-	AccountService_GetTransactionHistory_FullMethodName = "/account.AccountService/GetTransactionHistory"
+	AccountService_CreateAccount_FullMethodName         = "/account.AccountService/CreateAccount" // AccountService_CreateAccount_FullMethodName ACCOUNTSERVICE创建ACCOUNTFullMethod名称
+	AccountService_GetAccount_FullMethodName            = "/account.AccountService/GetAccount" // AccountService_GetAccount_FullMethodName ACCOUNTSERVICE获取ACCOUNTFullMethod名称
+	AccountService_UpdateAccount_FullMethodName         = "/account.AccountService/UpdateAccount" // AccountService_UpdateAccount_FullMethodName ACCOUNTSERVICE更新ACCOUNTFullMethod名称
+	AccountService_GetBalance_FullMethodName            = "/account.AccountService/GetBalance" // AccountService_GetBalance_FullMethodName ACCOUNTSERVICE获取余额FullMethod名称
+	AccountService_Deposit_FullMethodName               = "/account.AccountService/Deposit" // AccountService_Deposit_FullMethodName ACCOUNTSERVICEDepositFullMethod名称
+	AccountService_Withdraw_FullMethodName              = "/account.AccountService/Withdraw" // AccountService_Withdraw_FullMethodName ACCOUNTSERVICEWithdrawFullMethod名称
+	AccountService_GetTransactionHistory_FullMethodName = "/account.AccountService/GetTransactionHistory" // AccountService_GetTransactionHistory_FullMethodName ACCOUNTSERVICE获取TransactionHistoryFullMethod名称
 )
 
 // AccountServiceClient is the client API for AccountService service.
@@ -33,6 +33,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // 账户服务
+// AccountServiceClient 表示ACCOUNTSERVICE客户端结构体。
 type AccountServiceClient interface {
 	// 创建账户
 	CreateAccount(ctx context.Context, in *CreateAccountRequest, opts ...grpc.CallOption) (*AccountResponse, error)
@@ -54,10 +55,12 @@ type accountServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
+// NewAccountServiceClient 创建新的创建一个新的实例ACCOUNTSERVICE客户端.
 func NewAccountServiceClient(cc grpc.ClientConnInterface) AccountServiceClient {
 	return &accountServiceClient{cc}
 }
 
+// CreateAccount 执行创建ACCOUNT逻辑。
 func (c *accountServiceClient) CreateAccount(ctx context.Context, in *CreateAccountRequest, opts ...grpc.CallOption) (*AccountResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AccountResponse)
@@ -68,6 +71,7 @@ func (c *accountServiceClient) CreateAccount(ctx context.Context, in *CreateAcco
 	return out, nil
 }
 
+// GetAccount 获取ACCOUNT.
 func (c *accountServiceClient) GetAccount(ctx context.Context, in *GetAccountRequest, opts ...grpc.CallOption) (*AccountResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AccountResponse)
@@ -78,6 +82,7 @@ func (c *accountServiceClient) GetAccount(ctx context.Context, in *GetAccountReq
 	return out, nil
 }
 
+// UpdateAccount 执行更新ACCOUNT逻辑。
 func (c *accountServiceClient) UpdateAccount(ctx context.Context, in *UpdateAccountRequest, opts ...grpc.CallOption) (*AccountResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AccountResponse)
@@ -88,6 +93,7 @@ func (c *accountServiceClient) UpdateAccount(ctx context.Context, in *UpdateAcco
 	return out, nil
 }
 
+// GetBalance 获取余额.
 func (c *accountServiceClient) GetBalance(ctx context.Context, in *GetBalanceRequest, opts ...grpc.CallOption) (*BalanceResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(BalanceResponse)
@@ -98,6 +104,7 @@ func (c *accountServiceClient) GetBalance(ctx context.Context, in *GetBalanceReq
 	return out, nil
 }
 
+// Deposit 执行Deposit逻辑。
 func (c *accountServiceClient) Deposit(ctx context.Context, in *DepositRequest, opts ...grpc.CallOption) (*TransactionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(TransactionResponse)
@@ -108,6 +115,7 @@ func (c *accountServiceClient) Deposit(ctx context.Context, in *DepositRequest, 
 	return out, nil
 }
 
+// Withdraw 执行Withdraw逻辑。
 func (c *accountServiceClient) Withdraw(ctx context.Context, in *WithdrawRequest, opts ...grpc.CallOption) (*TransactionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(TransactionResponse)
@@ -118,6 +126,7 @@ func (c *accountServiceClient) Withdraw(ctx context.Context, in *WithdrawRequest
 	return out, nil
 }
 
+// GetTransactionHistory 获取TransactionHistory.
 func (c *accountServiceClient) GetTransactionHistory(ctx context.Context, in *GetTransactionHistoryRequest, opts ...grpc.CallOption) (*TransactionHistoryResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(TransactionHistoryResponse)
@@ -133,6 +142,7 @@ func (c *accountServiceClient) GetTransactionHistory(ctx context.Context, in *Ge
 // for forward compatibility.
 //
 // 账户服务
+// AccountServiceServer 表示ACCOUNTSERVICE服务端结构体。
 type AccountServiceServer interface {
 	// 创建账户
 	CreateAccount(context.Context, *CreateAccountRequest) (*AccountResponse, error)
@@ -156,26 +166,34 @@ type AccountServiceServer interface {
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
+// UnimplementedAccountServiceServer 表示未实现的ACCOUNTSERVICE服务端结构体。
 type UnimplementedAccountServiceServer struct{}
 
+// CreateAccount 执行创建ACCOUNT逻辑。
 func (UnimplementedAccountServiceServer) CreateAccount(context.Context, *CreateAccountRequest) (*AccountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateAccount not implemented")
 }
+// GetAccount 获取ACCOUNT.
 func (UnimplementedAccountServiceServer) GetAccount(context.Context, *GetAccountRequest) (*AccountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAccount not implemented")
 }
+// UpdateAccount 执行更新ACCOUNT逻辑。
 func (UnimplementedAccountServiceServer) UpdateAccount(context.Context, *UpdateAccountRequest) (*AccountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateAccount not implemented")
 }
+// GetBalance 获取余额.
 func (UnimplementedAccountServiceServer) GetBalance(context.Context, *GetBalanceRequest) (*BalanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetBalance not implemented")
 }
+// Deposit 执行Deposit逻辑。
 func (UnimplementedAccountServiceServer) Deposit(context.Context, *DepositRequest) (*TransactionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Deposit not implemented")
 }
+// Withdraw 执行Withdraw逻辑。
 func (UnimplementedAccountServiceServer) Withdraw(context.Context, *WithdrawRequest) (*TransactionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Withdraw not implemented")
 }
+// GetTransactionHistory 获取TransactionHistory.
 func (UnimplementedAccountServiceServer) GetTransactionHistory(context.Context, *GetTransactionHistoryRequest) (*TransactionHistoryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTransactionHistory not implemented")
 }
@@ -185,10 +203,12 @@ func (UnimplementedAccountServiceServer) testEmbeddedByValue()                  
 // UnsafeAccountServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to AccountServiceServer will
 // result in compilation errors.
+// UnsafeAccountServiceServer 表示UnsafeACCOUNTSERVICE服务端结构体。
 type UnsafeAccountServiceServer interface {
 	mustEmbedUnimplementedAccountServiceServer()
 }
 
+// RegisterAccountServiceServer 执行RegisterACCOUNTSERVICE服务端逻辑。
 func RegisterAccountServiceServer(s grpc.ServiceRegistrar, srv AccountServiceServer) {
 	// If the following call pancis, it indicates UnimplementedAccountServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an

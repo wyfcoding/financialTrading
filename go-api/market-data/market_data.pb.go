@@ -22,13 +22,15 @@ const (
 )
 
 // 获取最新行情请求
+// GetLatestQuoteRequest 表示获取LatestQuote请求结构体。
 type GetLatestQuoteRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetLatestQuoteRequest) Reset() {
 	*x = GetLatestQuoteRequest{}
 	mi := &file_api_market_data_market_data_proto_msgTypes[0]
@@ -36,12 +38,15 @@ func (x *GetLatestQuoteRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetLatestQuoteRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetLatestQuoteRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetLatestQuoteRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_data_market_data_proto_msgTypes[0]
 	if x != nil {
@@ -55,10 +60,12 @@ func (x *GetLatestQuoteRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetLatestQuoteRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetLatestQuoteRequest) Descriptor() ([]byte, []int) {
 	return file_api_market_data_market_data_proto_rawDescGZIP(), []int{0}
 }
 
+// GetSymbol 获取交易对.
 func (x *GetLatestQuoteRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -67,20 +74,22 @@ func (x *GetLatestQuoteRequest) GetSymbol() string {
 }
 
 // 行情响应
+// QuoteResponse 表示Quote响应结构体。
 type QuoteResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	BidPrice      float64                `protobuf:"fixed64,2,opt,name=bid_price,json=bidPrice,proto3" json:"bid_price,omitempty"`
-	AskPrice      float64                `protobuf:"fixed64,3,opt,name=ask_price,json=askPrice,proto3" json:"ask_price,omitempty"`
-	BidSize       float64                `protobuf:"fixed64,4,opt,name=bid_size,json=bidSize,proto3" json:"bid_size,omitempty"`
-	AskSize       float64                `protobuf:"fixed64,5,opt,name=ask_size,json=askSize,proto3" json:"ask_size,omitempty"`
-	LastPrice     float64                `protobuf:"fixed64,6,opt,name=last_price,json=lastPrice,proto3" json:"last_price,omitempty"`
-	LastSize      float64                `protobuf:"fixed64,7,opt,name=last_size,json=lastSize,proto3" json:"last_size,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,8,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	BidPrice      float64                `protobuf:"fixed64,2,opt,name=bid_price,json=bidPrice,proto3" json:"bid_price,omitempty"` // Bid价格
+	AskPrice      float64                `protobuf:"fixed64,3,opt,name=ask_price,json=askPrice,proto3" json:"ask_price,omitempty"` // Ask价格
+	BidSize       float64                `protobuf:"fixed64,4,opt,name=bid_size,json=bidSize,proto3" json:"bid_size,omitempty"` // Bid大小
+	AskSize       float64                `protobuf:"fixed64,5,opt,name=ask_size,json=askSize,proto3" json:"ask_size,omitempty"` // Ask大小
+	LastPrice     float64                `protobuf:"fixed64,6,opt,name=last_price,json=lastPrice,proto3" json:"last_price,omitempty"` // 最后价格
+	LastSize      float64                `protobuf:"fixed64,7,opt,name=last_size,json=lastSize,proto3" json:"last_size,omitempty"` // 最后大小
+	Timestamp     int64                  `protobuf:"varint,8,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Timestamp
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *QuoteResponse) Reset() {
 	*x = QuoteResponse{}
 	mi := &file_api_market_data_market_data_proto_msgTypes[1]
@@ -88,12 +97,15 @@ func (x *QuoteResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *QuoteResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*QuoteResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *QuoteResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_data_market_data_proto_msgTypes[1]
 	if x != nil {
@@ -107,10 +119,12 @@ func (x *QuoteResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use QuoteResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*QuoteResponse) Descriptor() ([]byte, []int) {
 	return file_api_market_data_market_data_proto_rawDescGZIP(), []int{1}
 }
 
+// GetSymbol 获取交易对.
 func (x *QuoteResponse) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -118,6 +132,7 @@ func (x *QuoteResponse) GetSymbol() string {
 	return ""
 }
 
+// GetBidPrice 获取Bid价格.
 func (x *QuoteResponse) GetBidPrice() float64 {
 	if x != nil {
 		return x.BidPrice
@@ -125,6 +140,7 @@ func (x *QuoteResponse) GetBidPrice() float64 {
 	return 0
 }
 
+// GetAskPrice 获取Ask价格.
 func (x *QuoteResponse) GetAskPrice() float64 {
 	if x != nil {
 		return x.AskPrice
@@ -132,6 +148,7 @@ func (x *QuoteResponse) GetAskPrice() float64 {
 	return 0
 }
 
+// GetBidSize 获取Bid大小.
 func (x *QuoteResponse) GetBidSize() float64 {
 	if x != nil {
 		return x.BidSize
@@ -139,6 +156,7 @@ func (x *QuoteResponse) GetBidSize() float64 {
 	return 0
 }
 
+// GetAskSize 获取Ask大小.
 func (x *QuoteResponse) GetAskSize() float64 {
 	if x != nil {
 		return x.AskSize
@@ -146,6 +164,7 @@ func (x *QuoteResponse) GetAskSize() float64 {
 	return 0
 }
 
+// GetLastPrice 获取最后价格.
 func (x *QuoteResponse) GetLastPrice() float64 {
 	if x != nil {
 		return x.LastPrice
@@ -153,6 +172,7 @@ func (x *QuoteResponse) GetLastPrice() float64 {
 	return 0
 }
 
+// GetLastSize 获取最后大小.
 func (x *QuoteResponse) GetLastSize() float64 {
 	if x != nil {
 		return x.LastSize
@@ -160,6 +180,7 @@ func (x *QuoteResponse) GetLastSize() float64 {
 	return 0
 }
 
+// GetTimestamp 获取Timestamp.
 func (x *QuoteResponse) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
@@ -168,15 +189,17 @@ func (x *QuoteResponse) GetTimestamp() int64 {
 }
 
 // 获取 K 线请求
+// GetKlinesRequest 表示获取Klines请求结构体。
 type GetKlinesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Interval      string                 `protobuf:"bytes,2,opt,name=interval,proto3" json:"interval,omitempty"` // 1m, 5m, 15m, 1h, 4h, 1d
-	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Interval      string                 `protobuf:"bytes,2,opt,name=interval,proto3" json:"interval,omitempty"` // Interval
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"` // 限制
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetKlinesRequest) Reset() {
 	*x = GetKlinesRequest{}
 	mi := &file_api_market_data_market_data_proto_msgTypes[2]
@@ -184,12 +207,15 @@ func (x *GetKlinesRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetKlinesRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetKlinesRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetKlinesRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_data_market_data_proto_msgTypes[2]
 	if x != nil {
@@ -203,10 +229,12 @@ func (x *GetKlinesRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetKlinesRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetKlinesRequest) Descriptor() ([]byte, []int) {
 	return file_api_market_data_market_data_proto_rawDescGZIP(), []int{2}
 }
 
+// GetSymbol 获取交易对.
 func (x *GetKlinesRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -214,6 +242,7 @@ func (x *GetKlinesRequest) GetSymbol() string {
 	return ""
 }
 
+// GetInterval 获取Interval.
 func (x *GetKlinesRequest) GetInterval() string {
 	if x != nil {
 		return x.Interval
@@ -221,6 +250,7 @@ func (x *GetKlinesRequest) GetInterval() string {
 	return ""
 }
 
+// GetLimit 获取限制.
 func (x *GetKlinesRequest) GetLimit() int32 {
 	if x != nil {
 		return x.Limit
@@ -229,19 +259,21 @@ func (x *GetKlinesRequest) GetLimit() int32 {
 }
 
 // K 线数据
+// Kline 表示Kline结构体。
 type Kline struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	OpenTime      int64                  `protobuf:"varint,1,opt,name=open_time,json=openTime,proto3" json:"open_time,omitempty"`
-	Open          float64                `protobuf:"fixed64,2,opt,name=open,proto3" json:"open,omitempty"`
-	High          float64                `protobuf:"fixed64,3,opt,name=high,proto3" json:"high,omitempty"`
-	Low           float64                `protobuf:"fixed64,4,opt,name=low,proto3" json:"low,omitempty"`
-	Close         float64                `protobuf:"fixed64,5,opt,name=close,proto3" json:"close,omitempty"`
-	Volume        float64                `protobuf:"fixed64,6,opt,name=volume,proto3" json:"volume,omitempty"`
-	CloseTime     int64                  `protobuf:"varint,7,opt,name=close_time,json=closeTime,proto3" json:"close_time,omitempty"`
+	OpenTime      int64                  `protobuf:"varint,1,opt,name=open_time,json=openTime,proto3" json:"open_time,omitempty"` // 打开时间
+	Open          float64                `protobuf:"fixed64,2,opt,name=open,proto3" json:"open,omitempty"` // 打开
+	High          float64                `protobuf:"fixed64,3,opt,name=high,proto3" json:"high,omitempty"` // 高
+	Low           float64                `protobuf:"fixed64,4,opt,name=low,proto3" json:"low,omitempty"` // 低
+	Close         float64                `protobuf:"fixed64,5,opt,name=close,proto3" json:"close,omitempty"` // 关闭
+	Volume        float64                `protobuf:"fixed64,6,opt,name=volume,proto3" json:"volume,omitempty"` // Volume
+	CloseTime     int64                  `protobuf:"varint,7,opt,name=close_time,json=closeTime,proto3" json:"close_time,omitempty"` // 关闭时间
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *Kline) Reset() {
 	*x = Kline{}
 	mi := &file_api_market_data_market_data_proto_msgTypes[3]
@@ -249,12 +281,15 @@ func (x *Kline) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *Kline) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*Kline) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *Kline) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_data_market_data_proto_msgTypes[3]
 	if x != nil {
@@ -268,10 +303,12 @@ func (x *Kline) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use Kline.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*Kline) Descriptor() ([]byte, []int) {
 	return file_api_market_data_market_data_proto_rawDescGZIP(), []int{3}
 }
 
+// GetOpenTime 获取打开时间.
 func (x *Kline) GetOpenTime() int64 {
 	if x != nil {
 		return x.OpenTime
@@ -279,6 +316,7 @@ func (x *Kline) GetOpenTime() int64 {
 	return 0
 }
 
+// GetOpen 获取打开.
 func (x *Kline) GetOpen() float64 {
 	if x != nil {
 		return x.Open
@@ -286,6 +324,7 @@ func (x *Kline) GetOpen() float64 {
 	return 0
 }
 
+// GetHigh 获取High.
 func (x *Kline) GetHigh() float64 {
 	if x != nil {
 		return x.High
@@ -293,6 +332,7 @@ func (x *Kline) GetHigh() float64 {
 	return 0
 }
 
+// GetLow 获取Low.
 func (x *Kline) GetLow() float64 {
 	if x != nil {
 		return x.Low
@@ -300,6 +340,7 @@ func (x *Kline) GetLow() float64 {
 	return 0
 }
 
+// GetClose 获取关闭.
 func (x *Kline) GetClose() float64 {
 	if x != nil {
 		return x.Close
@@ -307,6 +348,7 @@ func (x *Kline) GetClose() float64 {
 	return 0
 }
 
+// GetVolume 获取VOLUME.
 func (x *Kline) GetVolume() float64 {
 	if x != nil {
 		return x.Volume
@@ -314,6 +356,7 @@ func (x *Kline) GetVolume() float64 {
 	return 0
 }
 
+// GetCloseTime 获取关闭时间.
 func (x *Kline) GetCloseTime() int64 {
 	if x != nil {
 		return x.CloseTime
@@ -322,15 +365,17 @@ func (x *Kline) GetCloseTime() int64 {
 }
 
 // K 线响应
+// KlinesResponse 表示Klines响应结构体。
 type KlinesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Interval      string                 `protobuf:"bytes,2,opt,name=interval,proto3" json:"interval,omitempty"`
-	Klines        []*Kline               `protobuf:"bytes,3,rep,name=klines,proto3" json:"klines,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Interval      string                 `protobuf:"bytes,2,opt,name=interval,proto3" json:"interval,omitempty"` // Interval
+	Klines        []*Kline               `protobuf:"bytes,3,rep,name=klines,proto3" json:"klines,omitempty"` // Klines
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *KlinesResponse) Reset() {
 	*x = KlinesResponse{}
 	mi := &file_api_market_data_market_data_proto_msgTypes[4]
@@ -338,12 +383,15 @@ func (x *KlinesResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *KlinesResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*KlinesResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *KlinesResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_data_market_data_proto_msgTypes[4]
 	if x != nil {
@@ -357,10 +405,12 @@ func (x *KlinesResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use KlinesResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*KlinesResponse) Descriptor() ([]byte, []int) {
 	return file_api_market_data_market_data_proto_rawDescGZIP(), []int{4}
 }
 
+// GetSymbol 获取交易对.
 func (x *KlinesResponse) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -368,6 +418,7 @@ func (x *KlinesResponse) GetSymbol() string {
 	return ""
 }
 
+// GetInterval 获取Interval.
 func (x *KlinesResponse) GetInterval() string {
 	if x != nil {
 		return x.Interval
@@ -375,6 +426,7 @@ func (x *KlinesResponse) GetInterval() string {
 	return ""
 }
 
+// GetKlines 获取Klines.
 func (x *KlinesResponse) GetKlines() []*Kline {
 	if x != nil {
 		return x.Klines
@@ -383,14 +435,16 @@ func (x *KlinesResponse) GetKlines() []*Kline {
 }
 
 // 获取订单簿请求
+// GetOrderBookRequest 表示获取订单Book请求结构体。
 type GetOrderBookRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
 	Depth         int32                  `protobuf:"varint,2,opt,name=depth,proto3" json:"depth,omitempty"` // 默认 20
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetOrderBookRequest) Reset() {
 	*x = GetOrderBookRequest{}
 	mi := &file_api_market_data_market_data_proto_msgTypes[5]
@@ -398,12 +452,15 @@ func (x *GetOrderBookRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetOrderBookRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetOrderBookRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetOrderBookRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_data_market_data_proto_msgTypes[5]
 	if x != nil {
@@ -417,10 +474,12 @@ func (x *GetOrderBookRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetOrderBookRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetOrderBookRequest) Descriptor() ([]byte, []int) {
 	return file_api_market_data_market_data_proto_rawDescGZIP(), []int{5}
 }
 
+// GetSymbol 获取交易对.
 func (x *GetOrderBookRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -428,6 +487,7 @@ func (x *GetOrderBookRequest) GetSymbol() string {
 	return ""
 }
 
+// GetDepth 获取Depth.
 func (x *GetOrderBookRequest) GetDepth() int32 {
 	if x != nil {
 		return x.Depth
@@ -436,14 +496,16 @@ func (x *GetOrderBookRequest) GetDepth() int32 {
 }
 
 // 订单簿层级
+// OrderBookLevel 表示订单Book等级结构体。
 type OrderBookLevel struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Price         float64                `protobuf:"fixed64,1,opt,name=price,proto3" json:"price,omitempty"`
-	Quantity      float64                `protobuf:"fixed64,2,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	Price         float64                `protobuf:"fixed64,1,opt,name=price,proto3" json:"price,omitempty"` // 价格
+	Quantity      float64                `protobuf:"fixed64,2,opt,name=quantity,proto3" json:"quantity,omitempty"` // 数量
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *OrderBookLevel) Reset() {
 	*x = OrderBookLevel{}
 	mi := &file_api_market_data_market_data_proto_msgTypes[6]
@@ -451,12 +513,15 @@ func (x *OrderBookLevel) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *OrderBookLevel) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*OrderBookLevel) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *OrderBookLevel) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_data_market_data_proto_msgTypes[6]
 	if x != nil {
@@ -470,10 +535,12 @@ func (x *OrderBookLevel) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use OrderBookLevel.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*OrderBookLevel) Descriptor() ([]byte, []int) {
 	return file_api_market_data_market_data_proto_rawDescGZIP(), []int{6}
 }
 
+// GetPrice 获取价格.
 func (x *OrderBookLevel) GetPrice() float64 {
 	if x != nil {
 		return x.Price
@@ -481,6 +548,7 @@ func (x *OrderBookLevel) GetPrice() float64 {
 	return 0
 }
 
+// GetQuantity 获取数量.
 func (x *OrderBookLevel) GetQuantity() float64 {
 	if x != nil {
 		return x.Quantity
@@ -489,16 +557,18 @@ func (x *OrderBookLevel) GetQuantity() float64 {
 }
 
 // 订单簿响应
+// OrderBookResponse 表示订单Book响应结构体。
 type OrderBookResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Bids          []*OrderBookLevel      `protobuf:"bytes,2,rep,name=bids,proto3" json:"bids,omitempty"`
-	Asks          []*OrderBookLevel      `protobuf:"bytes,3,rep,name=asks,proto3" json:"asks,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Bids          []*OrderBookLevel      `protobuf:"bytes,2,rep,name=bids,proto3" json:"bids,omitempty"` // Bids
+	Asks          []*OrderBookLevel      `protobuf:"bytes,3,rep,name=asks,proto3" json:"asks,omitempty"` // Asks
+	Timestamp     int64                  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Timestamp
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *OrderBookResponse) Reset() {
 	*x = OrderBookResponse{}
 	mi := &file_api_market_data_market_data_proto_msgTypes[7]
@@ -506,12 +576,15 @@ func (x *OrderBookResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *OrderBookResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*OrderBookResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *OrderBookResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_data_market_data_proto_msgTypes[7]
 	if x != nil {
@@ -525,10 +598,12 @@ func (x *OrderBookResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use OrderBookResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*OrderBookResponse) Descriptor() ([]byte, []int) {
 	return file_api_market_data_market_data_proto_rawDescGZIP(), []int{7}
 }
 
+// GetSymbol 获取交易对.
 func (x *OrderBookResponse) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -536,6 +611,7 @@ func (x *OrderBookResponse) GetSymbol() string {
 	return ""
 }
 
+// GetBids 获取Bids.
 func (x *OrderBookResponse) GetBids() []*OrderBookLevel {
 	if x != nil {
 		return x.Bids
@@ -543,6 +619,7 @@ func (x *OrderBookResponse) GetBids() []*OrderBookLevel {
 	return nil
 }
 
+// GetAsks 获取Asks.
 func (x *OrderBookResponse) GetAsks() []*OrderBookLevel {
 	if x != nil {
 		return x.Asks
@@ -550,6 +627,7 @@ func (x *OrderBookResponse) GetAsks() []*OrderBookLevel {
 	return nil
 }
 
+// GetTimestamp 获取Timestamp.
 func (x *OrderBookResponse) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
@@ -558,13 +636,15 @@ func (x *OrderBookResponse) GetTimestamp() int64 {
 }
 
 // 订阅行情请求
+// SubscribeQuotesRequest 表示SubscribeQuotes请求结构体。
 type SubscribeQuotesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbols       []string               `protobuf:"bytes,1,rep,name=symbols,proto3" json:"symbols,omitempty"`
+	Symbols       []string               `protobuf:"bytes,1,rep,name=symbols,proto3" json:"symbols,omitempty"` // Symbols
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *SubscribeQuotesRequest) Reset() {
 	*x = SubscribeQuotesRequest{}
 	mi := &file_api_market_data_market_data_proto_msgTypes[8]
@@ -572,12 +652,15 @@ func (x *SubscribeQuotesRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *SubscribeQuotesRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*SubscribeQuotesRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *SubscribeQuotesRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_data_market_data_proto_msgTypes[8]
 	if x != nil {
@@ -591,10 +674,12 @@ func (x *SubscribeQuotesRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use SubscribeQuotesRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*SubscribeQuotesRequest) Descriptor() ([]byte, []int) {
 	return file_api_market_data_market_data_proto_rawDescGZIP(), []int{8}
 }
 
+// GetSymbols 获取Symbols.
 func (x *SubscribeQuotesRequest) GetSymbols() []string {
 	if x != nil {
 		return x.Symbols
@@ -603,20 +688,22 @@ func (x *SubscribeQuotesRequest) GetSymbols() []string {
 }
 
 // 行情更新
+// QuoteUpdate 表示Quote更新结构体。
 type QuoteUpdate struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	BidPrice      float64                `protobuf:"fixed64,2,opt,name=bid_price,json=bidPrice,proto3" json:"bid_price,omitempty"`
-	AskPrice      float64                `protobuf:"fixed64,3,opt,name=ask_price,json=askPrice,proto3" json:"ask_price,omitempty"`
-	BidSize       float64                `protobuf:"fixed64,4,opt,name=bid_size,json=bidSize,proto3" json:"bid_size,omitempty"`
-	AskSize       float64                `protobuf:"fixed64,5,opt,name=ask_size,json=askSize,proto3" json:"ask_size,omitempty"`
-	LastPrice     float64                `protobuf:"fixed64,6,opt,name=last_price,json=lastPrice,proto3" json:"last_price,omitempty"`
-	LastSize      float64                `protobuf:"fixed64,7,opt,name=last_size,json=lastSize,proto3" json:"last_size,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,8,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	BidPrice      float64                `protobuf:"fixed64,2,opt,name=bid_price,json=bidPrice,proto3" json:"bid_price,omitempty"` // Bid价格
+	AskPrice      float64                `protobuf:"fixed64,3,opt,name=ask_price,json=askPrice,proto3" json:"ask_price,omitempty"` // Ask价格
+	BidSize       float64                `protobuf:"fixed64,4,opt,name=bid_size,json=bidSize,proto3" json:"bid_size,omitempty"` // Bid大小
+	AskSize       float64                `protobuf:"fixed64,5,opt,name=ask_size,json=askSize,proto3" json:"ask_size,omitempty"` // Ask大小
+	LastPrice     float64                `protobuf:"fixed64,6,opt,name=last_price,json=lastPrice,proto3" json:"last_price,omitempty"` // 最后价格
+	LastSize      float64                `protobuf:"fixed64,7,opt,name=last_size,json=lastSize,proto3" json:"last_size,omitempty"` // 最后大小
+	Timestamp     int64                  `protobuf:"varint,8,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Timestamp
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *QuoteUpdate) Reset() {
 	*x = QuoteUpdate{}
 	mi := &file_api_market_data_market_data_proto_msgTypes[9]
@@ -624,12 +711,15 @@ func (x *QuoteUpdate) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *QuoteUpdate) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*QuoteUpdate) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *QuoteUpdate) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_data_market_data_proto_msgTypes[9]
 	if x != nil {
@@ -643,10 +733,12 @@ func (x *QuoteUpdate) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use QuoteUpdate.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*QuoteUpdate) Descriptor() ([]byte, []int) {
 	return file_api_market_data_market_data_proto_rawDescGZIP(), []int{9}
 }
 
+// GetSymbol 获取交易对.
 func (x *QuoteUpdate) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -654,6 +746,7 @@ func (x *QuoteUpdate) GetSymbol() string {
 	return ""
 }
 
+// GetBidPrice 获取Bid价格.
 func (x *QuoteUpdate) GetBidPrice() float64 {
 	if x != nil {
 		return x.BidPrice
@@ -661,6 +754,7 @@ func (x *QuoteUpdate) GetBidPrice() float64 {
 	return 0
 }
 
+// GetAskPrice 获取Ask价格.
 func (x *QuoteUpdate) GetAskPrice() float64 {
 	if x != nil {
 		return x.AskPrice
@@ -668,6 +762,7 @@ func (x *QuoteUpdate) GetAskPrice() float64 {
 	return 0
 }
 
+// GetBidSize 获取Bid大小.
 func (x *QuoteUpdate) GetBidSize() float64 {
 	if x != nil {
 		return x.BidSize
@@ -675,6 +770,7 @@ func (x *QuoteUpdate) GetBidSize() float64 {
 	return 0
 }
 
+// GetAskSize 获取Ask大小.
 func (x *QuoteUpdate) GetAskSize() float64 {
 	if x != nil {
 		return x.AskSize
@@ -682,6 +778,7 @@ func (x *QuoteUpdate) GetAskSize() float64 {
 	return 0
 }
 
+// GetLastPrice 获取最后价格.
 func (x *QuoteUpdate) GetLastPrice() float64 {
 	if x != nil {
 		return x.LastPrice
@@ -689,6 +786,7 @@ func (x *QuoteUpdate) GetLastPrice() float64 {
 	return 0
 }
 
+// GetLastSize 获取最后大小.
 func (x *QuoteUpdate) GetLastSize() float64 {
 	if x != nil {
 		return x.LastSize
@@ -696,6 +794,7 @@ func (x *QuoteUpdate) GetLastSize() float64 {
 	return 0
 }
 
+// GetTimestamp 获取Timestamp.
 func (x *QuoteUpdate) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
@@ -704,14 +803,16 @@ func (x *QuoteUpdate) GetTimestamp() int64 {
 }
 
 // 获取交易历史请求
+// GetTradesRequest 表示获取Trades请求结构体。
 type GetTradesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"` // 限制
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetTradesRequest) Reset() {
 	*x = GetTradesRequest{}
 	mi := &file_api_market_data_market_data_proto_msgTypes[10]
@@ -719,12 +820,15 @@ func (x *GetTradesRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetTradesRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetTradesRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetTradesRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_data_market_data_proto_msgTypes[10]
 	if x != nil {
@@ -738,10 +842,12 @@ func (x *GetTradesRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetTradesRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetTradesRequest) Descriptor() ([]byte, []int) {
 	return file_api_market_data_market_data_proto_rawDescGZIP(), []int{10}
 }
 
+// GetSymbol 获取交易对.
 func (x *GetTradesRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -749,6 +855,7 @@ func (x *GetTradesRequest) GetSymbol() string {
 	return ""
 }
 
+// GetLimit 获取限制.
 func (x *GetTradesRequest) GetLimit() int32 {
 	if x != nil {
 		return x.Limit
@@ -757,18 +864,20 @@ func (x *GetTradesRequest) GetLimit() int32 {
 }
 
 // 交易记录
+// TradeRecord 表示成交Record结构体。
 type TradeRecord struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TradeId       string                 `protobuf:"bytes,1,opt,name=trade_id,json=tradeId,proto3" json:"trade_id,omitempty"`
-	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Price         float64                `protobuf:"fixed64,3,opt,name=price,proto3" json:"price,omitempty"`
-	Quantity      float64                `protobuf:"fixed64,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	Side          string                 `protobuf:"bytes,5,opt,name=side,proto3" json:"side,omitempty"` // BUY or SELL
-	Timestamp     int64                  `protobuf:"varint,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	TradeId       string                 `protobuf:"bytes,1,opt,name=trade_id,json=tradeId,proto3" json:"trade_id,omitempty"` // 成交唯一标识
+	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Price         float64                `protobuf:"fixed64,3,opt,name=price,proto3" json:"price,omitempty"` // 价格
+	Quantity      float64                `protobuf:"fixed64,4,opt,name=quantity,proto3" json:"quantity,omitempty"` // 数量
+	Side          string                 `protobuf:"bytes,5,opt,name=side,proto3" json:"side,omitempty"` // 方向
+	Timestamp     int64                  `protobuf:"varint,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Timestamp
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *TradeRecord) Reset() {
 	*x = TradeRecord{}
 	mi := &file_api_market_data_market_data_proto_msgTypes[11]
@@ -776,12 +885,15 @@ func (x *TradeRecord) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *TradeRecord) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*TradeRecord) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *TradeRecord) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_data_market_data_proto_msgTypes[11]
 	if x != nil {
@@ -795,10 +907,12 @@ func (x *TradeRecord) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use TradeRecord.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*TradeRecord) Descriptor() ([]byte, []int) {
 	return file_api_market_data_market_data_proto_rawDescGZIP(), []int{11}
 }
 
+// GetTradeId 获取成交唯一标识.
 func (x *TradeRecord) GetTradeId() string {
 	if x != nil {
 		return x.TradeId
@@ -806,6 +920,7 @@ func (x *TradeRecord) GetTradeId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *TradeRecord) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -813,6 +928,7 @@ func (x *TradeRecord) GetSymbol() string {
 	return ""
 }
 
+// GetPrice 获取价格.
 func (x *TradeRecord) GetPrice() float64 {
 	if x != nil {
 		return x.Price
@@ -820,6 +936,7 @@ func (x *TradeRecord) GetPrice() float64 {
 	return 0
 }
 
+// GetQuantity 获取数量.
 func (x *TradeRecord) GetQuantity() float64 {
 	if x != nil {
 		return x.Quantity
@@ -827,6 +944,7 @@ func (x *TradeRecord) GetQuantity() float64 {
 	return 0
 }
 
+// GetSide 获取交易方向.
 func (x *TradeRecord) GetSide() string {
 	if x != nil {
 		return x.Side
@@ -834,6 +952,7 @@ func (x *TradeRecord) GetSide() string {
 	return ""
 }
 
+// GetTimestamp 获取Timestamp.
 func (x *TradeRecord) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
@@ -842,14 +961,16 @@ func (x *TradeRecord) GetTimestamp() int64 {
 }
 
 // 交易历史响应
+// TradesResponse 表示Trades响应结构体。
 type TradesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Trades        []*TradeRecord         `protobuf:"bytes,2,rep,name=trades,proto3" json:"trades,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Trades        []*TradeRecord         `protobuf:"bytes,2,rep,name=trades,proto3" json:"trades,omitempty"` // Trades
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *TradesResponse) Reset() {
 	*x = TradesResponse{}
 	mi := &file_api_market_data_market_data_proto_msgTypes[12]
@@ -857,12 +978,15 @@ func (x *TradesResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *TradesResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*TradesResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *TradesResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_data_market_data_proto_msgTypes[12]
 	if x != nil {
@@ -876,10 +1000,12 @@ func (x *TradesResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use TradesResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*TradesResponse) Descriptor() ([]byte, []int) {
 	return file_api_market_data_market_data_proto_rawDescGZIP(), []int{12}
 }
 
+// GetSymbol 获取交易对.
 func (x *TradesResponse) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -887,6 +1013,7 @@ func (x *TradesResponse) GetSymbol() string {
 	return ""
 }
 
+// GetTrades 获取Trades.
 func (x *TradesResponse) GetTrades() []*TradeRecord {
 	if x != nil {
 		return x.Trades
@@ -1040,7 +1167,7 @@ func file_api_market_data_market_data_proto_init() {
 		DependencyIndexes: file_api_market_data_market_data_proto_depIdxs,
 		MessageInfos:      file_api_market_data_market_data_proto_msgTypes,
 	}.Build()
-	File_api_market_data_market_data_proto = out.File
+	File_api_market_data_market_data_proto = out.File // File_api_market_data_market_data_proto 文件API市场DATA市场DATAProto
 	file_api_market_data_market_data_proto_goTypes = nil
 	file_api_market_data_market_data_proto_depIdxs = nil
 }

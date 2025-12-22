@@ -19,8 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	NotificationService_SendNotification_FullMethodName       = "/notification.NotificationService/SendNotification"
-	NotificationService_GetNotificationHistory_FullMethodName = "/notification.NotificationService/GetNotificationHistory"
+	NotificationService_SendNotification_FullMethodName       = "/notification.NotificationService/SendNotification" // NotificationService_SendNotification_FullMethodName NotificationSERVICE发送NotificationFullMethod名称
+	NotificationService_GetNotificationHistory_FullMethodName = "/notification.NotificationService/GetNotificationHistory" // NotificationService_GetNotificationHistory_FullMethodName NotificationSERVICE获取NotificationHistoryFullMethod名称
 )
 
 // NotificationServiceClient is the client API for NotificationService service.
@@ -28,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // NotificationService 提供通知服务
+// NotificationServiceClient 表示NotificationSERVICE客户端结构体。
 type NotificationServiceClient interface {
 	// 发送通知
 	SendNotification(ctx context.Context, in *SendNotificationRequest, opts ...grpc.CallOption) (*SendNotificationResponse, error)
@@ -39,10 +40,12 @@ type notificationServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
+// NewNotificationServiceClient 创建新的创建一个新的实例NotificationSERVICE客户端.
 func NewNotificationServiceClient(cc grpc.ClientConnInterface) NotificationServiceClient {
 	return &notificationServiceClient{cc}
 }
 
+// SendNotification 执行发送Notification逻辑。
 func (c *notificationServiceClient) SendNotification(ctx context.Context, in *SendNotificationRequest, opts ...grpc.CallOption) (*SendNotificationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SendNotificationResponse)
@@ -53,6 +56,7 @@ func (c *notificationServiceClient) SendNotification(ctx context.Context, in *Se
 	return out, nil
 }
 
+// GetNotificationHistory 获取NotificationHistory.
 func (c *notificationServiceClient) GetNotificationHistory(ctx context.Context, in *GetNotificationHistoryRequest, opts ...grpc.CallOption) (*GetNotificationHistoryResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetNotificationHistoryResponse)
@@ -68,6 +72,7 @@ func (c *notificationServiceClient) GetNotificationHistory(ctx context.Context, 
 // for forward compatibility.
 //
 // NotificationService 提供通知服务
+// NotificationServiceServer 表示NotificationSERVICE服务端结构体。
 type NotificationServiceServer interface {
 	// 发送通知
 	SendNotification(context.Context, *SendNotificationRequest) (*SendNotificationResponse, error)
@@ -81,11 +86,14 @@ type NotificationServiceServer interface {
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
+// UnimplementedNotificationServiceServer 表示未实现的NotificationSERVICE服务端结构体。
 type UnimplementedNotificationServiceServer struct{}
 
+// SendNotification 执行发送Notification逻辑。
 func (UnimplementedNotificationServiceServer) SendNotification(context.Context, *SendNotificationRequest) (*SendNotificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendNotification not implemented")
 }
+// GetNotificationHistory 获取NotificationHistory.
 func (UnimplementedNotificationServiceServer) GetNotificationHistory(context.Context, *GetNotificationHistoryRequest) (*GetNotificationHistoryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetNotificationHistory not implemented")
 }
@@ -95,10 +103,12 @@ func (UnimplementedNotificationServiceServer) testEmbeddedByValue()             
 // UnsafeNotificationServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to NotificationServiceServer will
 // result in compilation errors.
+// UnsafeNotificationServiceServer 表示UnsafeNotificationSERVICE服务端结构体。
 type UnsafeNotificationServiceServer interface {
 	mustEmbedUnimplementedNotificationServiceServer()
 }
 
+// RegisterNotificationServiceServer 执行RegisterNotificationSERVICE服务端逻辑。
 func RegisterNotificationServiceServer(s grpc.ServiceRegistrar, srv NotificationServiceServer) {
 	// If the following call pancis, it indicates UnimplementedNotificationServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an

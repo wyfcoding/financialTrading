@@ -22,21 +22,23 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// SimulationScenario 表示SimulationScenario结构体。
 type SimulationScenario struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	Symbol        string                 `protobuf:"bytes,4,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Type          string                 `protobuf:"bytes,5,opt,name=type,proto3" json:"type,omitempty"`             // RANDOM_WALK, REPLAY, SHOCK
-	Parameters    string                 `protobuf:"bytes,6,opt,name=parameters,proto3" json:"parameters,omitempty"` // JSON string
-	Status        string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`         // RUNNING, STOPPED
-	StartTime     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	EndTime       *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // 唯一标识
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"` // 名称
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"` // 描述
+	Symbol        string                 `protobuf:"bytes,4,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Type          string                 `protobuf:"bytes,5,opt,name=type,proto3" json:"type,omitempty"` // 类型
+	Parameters    string                 `protobuf:"bytes,6,opt,name=parameters,proto3" json:"parameters,omitempty"` // Parameters
+	Status        string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	StartTime     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"` // 开始时间
+	EndTime       *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"` // 结束时间
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *SimulationScenario) Reset() {
 	*x = SimulationScenario{}
 	mi := &file_api_market_simulation_market_simulation_proto_msgTypes[0]
@@ -44,12 +46,15 @@ func (x *SimulationScenario) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *SimulationScenario) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*SimulationScenario) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *SimulationScenario) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_simulation_market_simulation_proto_msgTypes[0]
 	if x != nil {
@@ -63,10 +68,12 @@ func (x *SimulationScenario) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use SimulationScenario.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*SimulationScenario) Descriptor() ([]byte, []int) {
 	return file_api_market_simulation_market_simulation_proto_rawDescGZIP(), []int{0}
 }
 
+// GetId 获取唯一标识.
 func (x *SimulationScenario) GetId() string {
 	if x != nil {
 		return x.Id
@@ -74,6 +81,7 @@ func (x *SimulationScenario) GetId() string {
 	return ""
 }
 
+// GetName 获取名称.
 func (x *SimulationScenario) GetName() string {
 	if x != nil {
 		return x.Name
@@ -81,6 +89,7 @@ func (x *SimulationScenario) GetName() string {
 	return ""
 }
 
+// GetDescription 获取描述.
 func (x *SimulationScenario) GetDescription() string {
 	if x != nil {
 		return x.Description
@@ -88,6 +97,7 @@ func (x *SimulationScenario) GetDescription() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *SimulationScenario) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -95,6 +105,7 @@ func (x *SimulationScenario) GetSymbol() string {
 	return ""
 }
 
+// GetType 获取类型.
 func (x *SimulationScenario) GetType() string {
 	if x != nil {
 		return x.Type
@@ -102,6 +113,7 @@ func (x *SimulationScenario) GetType() string {
 	return ""
 }
 
+// GetParameters 获取Parameters.
 func (x *SimulationScenario) GetParameters() string {
 	if x != nil {
 		return x.Parameters
@@ -109,6 +121,7 @@ func (x *SimulationScenario) GetParameters() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *SimulationScenario) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -116,6 +129,7 @@ func (x *SimulationScenario) GetStatus() string {
 	return ""
 }
 
+// GetStartTime 获取开始时间.
 func (x *SimulationScenario) GetStartTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.StartTime
@@ -123,6 +137,7 @@ func (x *SimulationScenario) GetStartTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetEndTime 获取结束时间.
 func (x *SimulationScenario) GetEndTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.EndTime
@@ -130,16 +145,18 @@ func (x *SimulationScenario) GetEndTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// StartSimulationRequest 表示开始Simulation请求结构体。
 type StartSimulationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Type          string                 `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
-	Parameters    string                 `protobuf:"bytes,4,opt,name=parameters,proto3" json:"parameters,omitempty"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"` // 名称
+	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Type          string                 `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"` // 类型
+	Parameters    string                 `protobuf:"bytes,4,opt,name=parameters,proto3" json:"parameters,omitempty"` // Parameters
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *StartSimulationRequest) Reset() {
 	*x = StartSimulationRequest{}
 	mi := &file_api_market_simulation_market_simulation_proto_msgTypes[1]
@@ -147,12 +164,15 @@ func (x *StartSimulationRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *StartSimulationRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*StartSimulationRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *StartSimulationRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_simulation_market_simulation_proto_msgTypes[1]
 	if x != nil {
@@ -166,10 +186,12 @@ func (x *StartSimulationRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use StartSimulationRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*StartSimulationRequest) Descriptor() ([]byte, []int) {
 	return file_api_market_simulation_market_simulation_proto_rawDescGZIP(), []int{1}
 }
 
+// GetName 获取名称.
 func (x *StartSimulationRequest) GetName() string {
 	if x != nil {
 		return x.Name
@@ -177,6 +199,7 @@ func (x *StartSimulationRequest) GetName() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *StartSimulationRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -184,6 +207,7 @@ func (x *StartSimulationRequest) GetSymbol() string {
 	return ""
 }
 
+// GetType 获取类型.
 func (x *StartSimulationRequest) GetType() string {
 	if x != nil {
 		return x.Type
@@ -191,6 +215,7 @@ func (x *StartSimulationRequest) GetType() string {
 	return ""
 }
 
+// GetParameters 获取Parameters.
 func (x *StartSimulationRequest) GetParameters() string {
 	if x != nil {
 		return x.Parameters
@@ -198,13 +223,15 @@ func (x *StartSimulationRequest) GetParameters() string {
 	return ""
 }
 
+// StartSimulationResponse 表示开始Simulation响应结构体。
 type StartSimulationResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	SimulationId  string                 `protobuf:"bytes,1,opt,name=simulation_id,json=simulationId,proto3" json:"simulation_id,omitempty"`
+	SimulationId  string                 `protobuf:"bytes,1,opt,name=simulation_id,json=simulationId,proto3" json:"simulation_id,omitempty"` // Simulation唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *StartSimulationResponse) Reset() {
 	*x = StartSimulationResponse{}
 	mi := &file_api_market_simulation_market_simulation_proto_msgTypes[2]
@@ -212,12 +239,15 @@ func (x *StartSimulationResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *StartSimulationResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*StartSimulationResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *StartSimulationResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_simulation_market_simulation_proto_msgTypes[2]
 	if x != nil {
@@ -231,10 +261,12 @@ func (x *StartSimulationResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use StartSimulationResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*StartSimulationResponse) Descriptor() ([]byte, []int) {
 	return file_api_market_simulation_market_simulation_proto_rawDescGZIP(), []int{2}
 }
 
+// GetSimulationId 获取Simulation唯一标识.
 func (x *StartSimulationResponse) GetSimulationId() string {
 	if x != nil {
 		return x.SimulationId
@@ -242,13 +274,15 @@ func (x *StartSimulationResponse) GetSimulationId() string {
 	return ""
 }
 
+// StopSimulationRequest 表示停止Simulation请求结构体。
 type StopSimulationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	SimulationId  string                 `protobuf:"bytes,1,opt,name=simulation_id,json=simulationId,proto3" json:"simulation_id,omitempty"`
+	SimulationId  string                 `protobuf:"bytes,1,opt,name=simulation_id,json=simulationId,proto3" json:"simulation_id,omitempty"` // Simulation唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *StopSimulationRequest) Reset() {
 	*x = StopSimulationRequest{}
 	mi := &file_api_market_simulation_market_simulation_proto_msgTypes[3]
@@ -256,12 +290,15 @@ func (x *StopSimulationRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *StopSimulationRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*StopSimulationRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *StopSimulationRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_simulation_market_simulation_proto_msgTypes[3]
 	if x != nil {
@@ -275,10 +312,12 @@ func (x *StopSimulationRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use StopSimulationRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*StopSimulationRequest) Descriptor() ([]byte, []int) {
 	return file_api_market_simulation_market_simulation_proto_rawDescGZIP(), []int{3}
 }
 
+// GetSimulationId 获取Simulation唯一标识.
 func (x *StopSimulationRequest) GetSimulationId() string {
 	if x != nil {
 		return x.SimulationId
@@ -286,13 +325,15 @@ func (x *StopSimulationRequest) GetSimulationId() string {
 	return ""
 }
 
+// StopSimulationResponse 表示停止Simulation响应结构体。
 type StopSimulationResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"` // 成功
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *StopSimulationResponse) Reset() {
 	*x = StopSimulationResponse{}
 	mi := &file_api_market_simulation_market_simulation_proto_msgTypes[4]
@@ -300,12 +341,15 @@ func (x *StopSimulationResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *StopSimulationResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*StopSimulationResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *StopSimulationResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_simulation_market_simulation_proto_msgTypes[4]
 	if x != nil {
@@ -319,10 +363,12 @@ func (x *StopSimulationResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use StopSimulationResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*StopSimulationResponse) Descriptor() ([]byte, []int) {
 	return file_api_market_simulation_market_simulation_proto_rawDescGZIP(), []int{4}
 }
 
+// GetSuccess 获取成功.
 func (x *StopSimulationResponse) GetSuccess() bool {
 	if x != nil {
 		return x.Success
@@ -330,13 +376,15 @@ func (x *StopSimulationResponse) GetSuccess() bool {
 	return false
 }
 
+// GetSimulationStatusRequest 表示获取SimulationSTATUS请求结构体。
 type GetSimulationStatusRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	SimulationId  string                 `protobuf:"bytes,1,opt,name=simulation_id,json=simulationId,proto3" json:"simulation_id,omitempty"`
+	SimulationId  string                 `protobuf:"bytes,1,opt,name=simulation_id,json=simulationId,proto3" json:"simulation_id,omitempty"` // Simulation唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetSimulationStatusRequest) Reset() {
 	*x = GetSimulationStatusRequest{}
 	mi := &file_api_market_simulation_market_simulation_proto_msgTypes[5]
@@ -344,12 +392,15 @@ func (x *GetSimulationStatusRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetSimulationStatusRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetSimulationStatusRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetSimulationStatusRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_simulation_market_simulation_proto_msgTypes[5]
 	if x != nil {
@@ -363,10 +414,12 @@ func (x *GetSimulationStatusRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetSimulationStatusRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetSimulationStatusRequest) Descriptor() ([]byte, []int) {
 	return file_api_market_simulation_market_simulation_proto_rawDescGZIP(), []int{5}
 }
 
+// GetSimulationId 获取Simulation唯一标识.
 func (x *GetSimulationStatusRequest) GetSimulationId() string {
 	if x != nil {
 		return x.SimulationId
@@ -374,13 +427,15 @@ func (x *GetSimulationStatusRequest) GetSimulationId() string {
 	return ""
 }
 
+// GetSimulationStatusResponse 表示获取SimulationSTATUS响应结构体。
 type GetSimulationStatusResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Scenario      *SimulationScenario    `protobuf:"bytes,1,opt,name=scenario,proto3" json:"scenario,omitempty"`
+	Scenario      *SimulationScenario    `protobuf:"bytes,1,opt,name=scenario,proto3" json:"scenario,omitempty"` // Scenario
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetSimulationStatusResponse) Reset() {
 	*x = GetSimulationStatusResponse{}
 	mi := &file_api_market_simulation_market_simulation_proto_msgTypes[6]
@@ -388,12 +443,15 @@ func (x *GetSimulationStatusResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetSimulationStatusResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetSimulationStatusResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetSimulationStatusResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_market_simulation_market_simulation_proto_msgTypes[6]
 	if x != nil {
@@ -407,10 +465,12 @@ func (x *GetSimulationStatusResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetSimulationStatusResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetSimulationStatusResponse) Descriptor() ([]byte, []int) {
 	return file_api_market_simulation_market_simulation_proto_rawDescGZIP(), []int{6}
 }
 
+// GetScenario 获取Scenario.
 func (x *GetSimulationStatusResponse) GetScenario() *SimulationScenario {
 	if x != nil {
 		return x.Scenario
@@ -517,7 +577,7 @@ func file_api_market_simulation_market_simulation_proto_init() {
 		DependencyIndexes: file_api_market_simulation_market_simulation_proto_depIdxs,
 		MessageInfos:      file_api_market_simulation_market_simulation_proto_msgTypes,
 	}.Build()
-	File_api_market_simulation_market_simulation_proto = out.File
+	File_api_market_simulation_market_simulation_proto = out.File // File_api_market_simulation_market_simulation_proto 文件API市场simulation市场simulationProto
 	file_api_market_simulation_market_simulation_proto_goTypes = nil
 	file_api_market_simulation_market_simulation_proto_depIdxs = nil
 }

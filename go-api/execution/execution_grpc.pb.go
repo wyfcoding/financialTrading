@@ -19,9 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ExecutionService_ExecuteOrder_FullMethodName        = "/execution.ExecutionService/ExecuteOrder"
-	ExecutionService_GetExecutionHistory_FullMethodName = "/execution.ExecutionService/GetExecutionHistory"
-	ExecutionService_SubscribeExecutions_FullMethodName = "/execution.ExecutionService/SubscribeExecutions"
+	ExecutionService_ExecuteOrder_FullMethodName        = "/execution.ExecutionService/ExecuteOrder" // ExecutionService_ExecuteOrder_FullMethodName ExecutionSERVICEExecute订单FullMethod名称
+	ExecutionService_GetExecutionHistory_FullMethodName = "/execution.ExecutionService/GetExecutionHistory" // ExecutionService_GetExecutionHistory_FullMethodName ExecutionSERVICE获取ExecutionHistoryFullMethod名称
+	ExecutionService_SubscribeExecutions_FullMethodName = "/execution.ExecutionService/SubscribeExecutions" // ExecutionService_SubscribeExecutions_FullMethodName ExecutionSERVICESubscribeExecutionsFullMethod名称
 )
 
 // ExecutionServiceClient is the client API for ExecutionService service.
@@ -29,6 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // 执行服务
+// ExecutionServiceClient 表示ExecutionSERVICE客户端结构体。
 type ExecutionServiceClient interface {
 	// 执行订单
 	ExecuteOrder(ctx context.Context, in *ExecuteOrderRequest, opts ...grpc.CallOption) (*ExecutionResponse, error)
@@ -42,10 +43,12 @@ type executionServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
+// NewExecutionServiceClient 创建新的创建一个新的实例ExecutionSERVICE客户端.
 func NewExecutionServiceClient(cc grpc.ClientConnInterface) ExecutionServiceClient {
 	return &executionServiceClient{cc}
 }
 
+// ExecuteOrder 执行Execute订单逻辑。
 func (c *executionServiceClient) ExecuteOrder(ctx context.Context, in *ExecuteOrderRequest, opts ...grpc.CallOption) (*ExecutionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ExecutionResponse)
@@ -56,6 +59,7 @@ func (c *executionServiceClient) ExecuteOrder(ctx context.Context, in *ExecuteOr
 	return out, nil
 }
 
+// GetExecutionHistory 获取ExecutionHistory.
 func (c *executionServiceClient) GetExecutionHistory(ctx context.Context, in *GetExecutionHistoryRequest, opts ...grpc.CallOption) (*ExecutionHistoryResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ExecutionHistoryResponse)
@@ -66,6 +70,7 @@ func (c *executionServiceClient) GetExecutionHistory(ctx context.Context, in *Ge
 	return out, nil
 }
 
+// SubscribeExecutions 执行SubscribeExecutions逻辑。
 func (c *executionServiceClient) SubscribeExecutions(ctx context.Context, in *SubscribeExecutionsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ExecutionUpdate], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &ExecutionService_ServiceDesc.Streams[0], ExecutionService_SubscribeExecutions_FullMethodName, cOpts...)
@@ -90,6 +95,7 @@ type ExecutionService_SubscribeExecutionsClient = grpc.ServerStreamingClient[Exe
 // for forward compatibility.
 //
 // 执行服务
+// ExecutionServiceServer 表示ExecutionSERVICE服务端结构体。
 type ExecutionServiceServer interface {
 	// 执行订单
 	ExecuteOrder(context.Context, *ExecuteOrderRequest) (*ExecutionResponse, error)
@@ -105,14 +111,18 @@ type ExecutionServiceServer interface {
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
+// UnimplementedExecutionServiceServer 表示未实现的ExecutionSERVICE服务端结构体。
 type UnimplementedExecutionServiceServer struct{}
 
+// ExecuteOrder 执行Execute订单逻辑。
 func (UnimplementedExecutionServiceServer) ExecuteOrder(context.Context, *ExecuteOrderRequest) (*ExecutionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExecuteOrder not implemented")
 }
+// GetExecutionHistory 获取ExecutionHistory.
 func (UnimplementedExecutionServiceServer) GetExecutionHistory(context.Context, *GetExecutionHistoryRequest) (*ExecutionHistoryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetExecutionHistory not implemented")
 }
+// SubscribeExecutions 执行SubscribeExecutions逻辑。
 func (UnimplementedExecutionServiceServer) SubscribeExecutions(*SubscribeExecutionsRequest, grpc.ServerStreamingServer[ExecutionUpdate]) error {
 	return status.Errorf(codes.Unimplemented, "method SubscribeExecutions not implemented")
 }
@@ -122,10 +132,12 @@ func (UnimplementedExecutionServiceServer) testEmbeddedByValue()                
 // UnsafeExecutionServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to ExecutionServiceServer will
 // result in compilation errors.
+// UnsafeExecutionServiceServer 表示UnsafeExecutionSERVICE服务端结构体。
 type UnsafeExecutionServiceServer interface {
 	mustEmbedUnimplementedExecutionServiceServer()
 }
 
+// RegisterExecutionServiceServer 执行RegisterExecutionSERVICE服务端逻辑。
 func RegisterExecutionServiceServer(s grpc.ServiceRegistrar, srv ExecutionServiceServer) {
 	// If the following call pancis, it indicates UnimplementedExecutionServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an

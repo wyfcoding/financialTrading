@@ -20,72 +20,72 @@ service QuantService {
 
 // 策略信息
 message Strategy {
-  string id = 1;
-  string name = 2;
-  string description = 3;
+  string id = 1; // 唯一标识
+  string name = 2; // 名称
+  string description = 3; // 描述
   string script = 4; // 策略脚本或配置
-  string status = 5; // ACTIVE, INACTIVE
-  google.protobuf.Timestamp created_at = 6;
-  google.protobuf.Timestamp updated_at = 7;
+  string status = 5; // 状态
+  google.protobuf.Timestamp created_at = 6; // 创建时间
+  google.protobuf.Timestamp updated_at = 7; // 更新时间
 }
 
 // 回测结果
 message BacktestResult {
-  string id = 1;
-  string strategy_id = 2;
-  string symbol = 3;
-  google.protobuf.Timestamp start_time = 4;
-  google.protobuf.Timestamp end_time = 5;
-  double total_return = 6;
-  double max_drawdown = 7;
-  double sharpe_ratio = 8;
-  int32 total_trades = 9;
-  string status = 10; // RUNNING, COMPLETED, FAILED
-  google.protobuf.Timestamp created_at = 11;
+  string id = 1; // 唯一标识
+  string strategy_id = 2; // 策略ID
+  string symbol = 3; // 交易对符号
+  google.protobuf.Timestamp start_time = 4; // 开始时间
+  google.protobuf.Timestamp end_time = 5; // 结束时间
+  double total_return = 6; // 总数return
+  double max_drawdown = 7; // 最大drawdown
+  double sharpe_ratio = 8; // 夏普比率
+  int32 total_trades = 9; // 总数trades
+  string status = 10; // 状态
+  google.protobuf.Timestamp created_at = 11; // 创建时间
 }
 
 // 创建策略请求
 message CreateStrategyRequest {
-  string name = 1;
-  string description = 2;
-  string script = 3;
+  string name = 1; // 名称
+  string description = 2; // 描述
+  string script = 3; // 脚本
 }
 
 // 创建策略响应
 message CreateStrategyResponse {
-  string strategy_id = 1;
+  string strategy_id = 1; // 策略ID
 }
 
 // 获取策略请求
 message GetStrategyRequest {
-  string id = 1;
+  string id = 1; // 唯一标识
 }
 
 // 获取策略响应
 message GetStrategyResponse {
-  Strategy strategy = 1;
+  Strategy strategy = 1; // 策略
 }
 
 // 运行回测请求
 message RunBacktestRequest {
-  string strategy_id = 1;
-  string symbol = 2;
-  google.protobuf.Timestamp start_time = 3;
-  google.protobuf.Timestamp end_time = 4;
-  double initial_capital = 5;
+  string strategy_id = 1; // 策略ID
+  string symbol = 2; // 交易对符号
+  google.protobuf.Timestamp start_time = 3; // 开始时间
+  google.protobuf.Timestamp end_time = 4; // 结束时间
+  double initial_capital = 5; // initial资金
 }
 
 // 运行回测响应
 message RunBacktestResponse {
-  string backtest_id = 1;
+  string backtest_id = 1; // 回测ID
 }
 
 // 获取回测结果请求
 message GetBacktestResultRequest {
-  string id = 1;
+  string id = 1; // 唯一标识
 }
 
 // 获取回测结果响应
 message GetBacktestResultResponse {
-  BacktestResult result = 1;
+  BacktestResult result = 1; // 结果
 }

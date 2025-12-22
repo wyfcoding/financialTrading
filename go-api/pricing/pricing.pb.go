@@ -22,16 +22,18 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// OptionContract 表示OptionContract结构体。
 type OptionContract struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"` // CALL, PUT
-	StrikePrice   float64                `protobuf:"fixed64,3,opt,name=strike_price,json=strikePrice,proto3" json:"strike_price,omitempty"`
-	ExpiryDate    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expiry_date,json=expiryDate,proto3" json:"expiry_date,omitempty"`
+	Symbol        string                 `protobuf:"bytes,1,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"` // 类型
+	StrikePrice   float64                `protobuf:"fixed64,3,opt,name=strike_price,json=strikePrice,proto3" json:"strike_price,omitempty"` // Strike价格
+	ExpiryDate    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expiry_date,json=expiryDate,proto3" json:"expiry_date,omitempty"` // ExpiryDate
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *OptionContract) Reset() {
 	*x = OptionContract{}
 	mi := &file_api_pricing_pricing_proto_msgTypes[0]
@@ -39,12 +41,15 @@ func (x *OptionContract) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *OptionContract) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*OptionContract) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *OptionContract) ProtoReflect() protoreflect.Message {
 	mi := &file_api_pricing_pricing_proto_msgTypes[0]
 	if x != nil {
@@ -58,10 +63,12 @@ func (x *OptionContract) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use OptionContract.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*OptionContract) Descriptor() ([]byte, []int) {
 	return file_api_pricing_pricing_proto_rawDescGZIP(), []int{0}
 }
 
+// GetSymbol 获取交易对.
 func (x *OptionContract) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -69,6 +76,7 @@ func (x *OptionContract) GetSymbol() string {
 	return ""
 }
 
+// GetType 获取类型.
 func (x *OptionContract) GetType() string {
 	if x != nil {
 		return x.Type
@@ -76,6 +84,7 @@ func (x *OptionContract) GetType() string {
 	return ""
 }
 
+// GetStrikePrice 获取Strike价格.
 func (x *OptionContract) GetStrikePrice() float64 {
 	if x != nil {
 		return x.StrikePrice
@@ -83,6 +92,7 @@ func (x *OptionContract) GetStrikePrice() float64 {
 	return 0
 }
 
+// GetExpiryDate 获取ExpiryDate.
 func (x *OptionContract) GetExpiryDate() *timestamppb.Timestamp {
 	if x != nil {
 		return x.ExpiryDate
@@ -90,17 +100,19 @@ func (x *OptionContract) GetExpiryDate() *timestamppb.Timestamp {
 	return nil
 }
 
+// Greeks 表示Greeks结构体。
 type Greeks struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Delta         float64                `protobuf:"fixed64,1,opt,name=delta,proto3" json:"delta,omitempty"`
-	Gamma         float64                `protobuf:"fixed64,2,opt,name=gamma,proto3" json:"gamma,omitempty"`
-	Theta         float64                `protobuf:"fixed64,3,opt,name=theta,proto3" json:"theta,omitempty"`
-	Vega          float64                `protobuf:"fixed64,4,opt,name=vega,proto3" json:"vega,omitempty"`
-	Rho           float64                `protobuf:"fixed64,5,opt,name=rho,proto3" json:"rho,omitempty"`
+	Delta         float64                `protobuf:"fixed64,1,opt,name=delta,proto3" json:"delta,omitempty"` // Delta
+	Gamma         float64                `protobuf:"fixed64,2,opt,name=gamma,proto3" json:"gamma,omitempty"` // Gamma
+	Theta         float64                `protobuf:"fixed64,3,opt,name=theta,proto3" json:"theta,omitempty"` // Theta
+	Vega          float64                `protobuf:"fixed64,4,opt,name=vega,proto3" json:"vega,omitempty"` // Vega
+	Rho           float64                `protobuf:"fixed64,5,opt,name=rho,proto3" json:"rho,omitempty"` // Rho
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *Greeks) Reset() {
 	*x = Greeks{}
 	mi := &file_api_pricing_pricing_proto_msgTypes[1]
@@ -108,12 +120,15 @@ func (x *Greeks) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *Greeks) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*Greeks) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *Greeks) ProtoReflect() protoreflect.Message {
 	mi := &file_api_pricing_pricing_proto_msgTypes[1]
 	if x != nil {
@@ -127,10 +142,12 @@ func (x *Greeks) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use Greeks.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*Greeks) Descriptor() ([]byte, []int) {
 	return file_api_pricing_pricing_proto_rawDescGZIP(), []int{1}
 }
 
+// GetDelta 获取Delta.
 func (x *Greeks) GetDelta() float64 {
 	if x != nil {
 		return x.Delta
@@ -138,6 +155,7 @@ func (x *Greeks) GetDelta() float64 {
 	return 0
 }
 
+// GetGamma 获取Gamma.
 func (x *Greeks) GetGamma() float64 {
 	if x != nil {
 		return x.Gamma
@@ -145,6 +163,7 @@ func (x *Greeks) GetGamma() float64 {
 	return 0
 }
 
+// GetTheta 获取Theta.
 func (x *Greeks) GetTheta() float64 {
 	if x != nil {
 		return x.Theta
@@ -152,6 +171,7 @@ func (x *Greeks) GetTheta() float64 {
 	return 0
 }
 
+// GetVega 获取Vega.
 func (x *Greeks) GetVega() float64 {
 	if x != nil {
 		return x.Vega
@@ -159,6 +179,7 @@ func (x *Greeks) GetVega() float64 {
 	return 0
 }
 
+// GetRho 获取Rho.
 func (x *Greeks) GetRho() float64 {
 	if x != nil {
 		return x.Rho
@@ -166,16 +187,18 @@ func (x *Greeks) GetRho() float64 {
 	return 0
 }
 
+// GetOptionPriceRequest 表示获取Option价格请求结构体。
 type GetOptionPriceRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	Contract        *OptionContract        `protobuf:"bytes,1,opt,name=contract,proto3" json:"contract,omitempty"`
-	UnderlyingPrice float64                `protobuf:"fixed64,2,opt,name=underlying_price,json=underlyingPrice,proto3" json:"underlying_price,omitempty"`
-	Volatility      float64                `protobuf:"fixed64,3,opt,name=volatility,proto3" json:"volatility,omitempty"`
-	RiskFreeRate    float64                `protobuf:"fixed64,4,opt,name=risk_free_rate,json=riskFreeRate,proto3" json:"risk_free_rate,omitempty"`
+	Contract        *OptionContract        `protobuf:"bytes,1,opt,name=contract,proto3" json:"contract,omitempty"` // Contract
+	UnderlyingPrice float64                `protobuf:"fixed64,2,opt,name=underlying_price,json=underlyingPrice,proto3" json:"underlying_price,omitempty"` // Underlying价格
+	Volatility      float64                `protobuf:"fixed64,3,opt,name=volatility,proto3" json:"volatility,omitempty"` // Volatility
+	RiskFreeRate    float64                `protobuf:"fixed64,4,opt,name=risk_free_rate,json=riskFreeRate,proto3" json:"risk_free_rate,omitempty"` // 风险闲Rate
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetOptionPriceRequest) Reset() {
 	*x = GetOptionPriceRequest{}
 	mi := &file_api_pricing_pricing_proto_msgTypes[2]
@@ -183,12 +206,15 @@ func (x *GetOptionPriceRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetOptionPriceRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetOptionPriceRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetOptionPriceRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_pricing_pricing_proto_msgTypes[2]
 	if x != nil {
@@ -202,10 +228,12 @@ func (x *GetOptionPriceRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetOptionPriceRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetOptionPriceRequest) Descriptor() ([]byte, []int) {
 	return file_api_pricing_pricing_proto_rawDescGZIP(), []int{2}
 }
 
+// GetContract 获取Contract.
 func (x *GetOptionPriceRequest) GetContract() *OptionContract {
 	if x != nil {
 		return x.Contract
@@ -213,6 +241,7 @@ func (x *GetOptionPriceRequest) GetContract() *OptionContract {
 	return nil
 }
 
+// GetUnderlyingPrice 获取Underlying价格.
 func (x *GetOptionPriceRequest) GetUnderlyingPrice() float64 {
 	if x != nil {
 		return x.UnderlyingPrice
@@ -220,6 +249,7 @@ func (x *GetOptionPriceRequest) GetUnderlyingPrice() float64 {
 	return 0
 }
 
+// GetVolatility 获取Volatility.
 func (x *GetOptionPriceRequest) GetVolatility() float64 {
 	if x != nil {
 		return x.Volatility
@@ -227,6 +257,7 @@ func (x *GetOptionPriceRequest) GetVolatility() float64 {
 	return 0
 }
 
+// GetRiskFreeRate 获取RiskFreeRate.
 func (x *GetOptionPriceRequest) GetRiskFreeRate() float64 {
 	if x != nil {
 		return x.RiskFreeRate
@@ -234,14 +265,16 @@ func (x *GetOptionPriceRequest) GetRiskFreeRate() float64 {
 	return 0
 }
 
+// GetOptionPriceResponse 表示获取Option价格响应结构体。
 type GetOptionPriceResponse struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	Price           float64                `protobuf:"fixed64,1,opt,name=price,proto3" json:"price,omitempty"`
-	CalculationTime *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=calculation_time,json=calculationTime,proto3" json:"calculation_time,omitempty"`
+	Price           float64                `protobuf:"fixed64,1,opt,name=price,proto3" json:"price,omitempty"` // 价格
+	CalculationTime *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=calculation_time,json=calculationTime,proto3" json:"calculation_time,omitempty"` // Calculation时间
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetOptionPriceResponse) Reset() {
 	*x = GetOptionPriceResponse{}
 	mi := &file_api_pricing_pricing_proto_msgTypes[3]
@@ -249,12 +282,15 @@ func (x *GetOptionPriceResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetOptionPriceResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetOptionPriceResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetOptionPriceResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_pricing_pricing_proto_msgTypes[3]
 	if x != nil {
@@ -268,10 +304,12 @@ func (x *GetOptionPriceResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetOptionPriceResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetOptionPriceResponse) Descriptor() ([]byte, []int) {
 	return file_api_pricing_pricing_proto_rawDescGZIP(), []int{3}
 }
 
+// GetPrice 获取价格.
 func (x *GetOptionPriceResponse) GetPrice() float64 {
 	if x != nil {
 		return x.Price
@@ -279,6 +317,7 @@ func (x *GetOptionPriceResponse) GetPrice() float64 {
 	return 0
 }
 
+// GetCalculationTime 获取Calculation时间.
 func (x *GetOptionPriceResponse) GetCalculationTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CalculationTime
@@ -286,16 +325,18 @@ func (x *GetOptionPriceResponse) GetCalculationTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// GetGreeksRequest 表示获取Greeks请求结构体。
 type GetGreeksRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	Contract        *OptionContract        `protobuf:"bytes,1,opt,name=contract,proto3" json:"contract,omitempty"`
-	UnderlyingPrice float64                `protobuf:"fixed64,2,opt,name=underlying_price,json=underlyingPrice,proto3" json:"underlying_price,omitempty"`
-	Volatility      float64                `protobuf:"fixed64,3,opt,name=volatility,proto3" json:"volatility,omitempty"`
-	RiskFreeRate    float64                `protobuf:"fixed64,4,opt,name=risk_free_rate,json=riskFreeRate,proto3" json:"risk_free_rate,omitempty"`
+	Contract        *OptionContract        `protobuf:"bytes,1,opt,name=contract,proto3" json:"contract,omitempty"` // Contract
+	UnderlyingPrice float64                `protobuf:"fixed64,2,opt,name=underlying_price,json=underlyingPrice,proto3" json:"underlying_price,omitempty"` // Underlying价格
+	Volatility      float64                `protobuf:"fixed64,3,opt,name=volatility,proto3" json:"volatility,omitempty"` // Volatility
+	RiskFreeRate    float64                `protobuf:"fixed64,4,opt,name=risk_free_rate,json=riskFreeRate,proto3" json:"risk_free_rate,omitempty"` // 风险闲Rate
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetGreeksRequest) Reset() {
 	*x = GetGreeksRequest{}
 	mi := &file_api_pricing_pricing_proto_msgTypes[4]
@@ -303,12 +344,15 @@ func (x *GetGreeksRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetGreeksRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetGreeksRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetGreeksRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_pricing_pricing_proto_msgTypes[4]
 	if x != nil {
@@ -322,10 +366,12 @@ func (x *GetGreeksRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetGreeksRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetGreeksRequest) Descriptor() ([]byte, []int) {
 	return file_api_pricing_pricing_proto_rawDescGZIP(), []int{4}
 }
 
+// GetContract 获取Contract.
 func (x *GetGreeksRequest) GetContract() *OptionContract {
 	if x != nil {
 		return x.Contract
@@ -333,6 +379,7 @@ func (x *GetGreeksRequest) GetContract() *OptionContract {
 	return nil
 }
 
+// GetUnderlyingPrice 获取Underlying价格.
 func (x *GetGreeksRequest) GetUnderlyingPrice() float64 {
 	if x != nil {
 		return x.UnderlyingPrice
@@ -340,6 +387,7 @@ func (x *GetGreeksRequest) GetUnderlyingPrice() float64 {
 	return 0
 }
 
+// GetVolatility 获取Volatility.
 func (x *GetGreeksRequest) GetVolatility() float64 {
 	if x != nil {
 		return x.Volatility
@@ -347,6 +395,7 @@ func (x *GetGreeksRequest) GetVolatility() float64 {
 	return 0
 }
 
+// GetRiskFreeRate 获取RiskFreeRate.
 func (x *GetGreeksRequest) GetRiskFreeRate() float64 {
 	if x != nil {
 		return x.RiskFreeRate
@@ -354,14 +403,16 @@ func (x *GetGreeksRequest) GetRiskFreeRate() float64 {
 	return 0
 }
 
+// GetGreeksResponse 表示获取Greeks响应结构体。
 type GetGreeksResponse struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	Greeks          *Greeks                `protobuf:"bytes,1,opt,name=greeks,proto3" json:"greeks,omitempty"`
-	CalculationTime *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=calculation_time,json=calculationTime,proto3" json:"calculation_time,omitempty"`
+	Greeks          *Greeks                `protobuf:"bytes,1,opt,name=greeks,proto3" json:"greeks,omitempty"` // Greeks
+	CalculationTime *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=calculation_time,json=calculationTime,proto3" json:"calculation_time,omitempty"` // Calculation时间
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetGreeksResponse) Reset() {
 	*x = GetGreeksResponse{}
 	mi := &file_api_pricing_pricing_proto_msgTypes[5]
@@ -369,12 +420,15 @@ func (x *GetGreeksResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetGreeksResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetGreeksResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetGreeksResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_pricing_pricing_proto_msgTypes[5]
 	if x != nil {
@@ -388,10 +442,12 @@ func (x *GetGreeksResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetGreeksResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetGreeksResponse) Descriptor() ([]byte, []int) {
 	return file_api_pricing_pricing_proto_rawDescGZIP(), []int{5}
 }
 
+// GetGreeks 获取Greeks.
 func (x *GetGreeksResponse) GetGreeks() *Greeks {
 	if x != nil {
 		return x.Greeks
@@ -399,6 +455,7 @@ func (x *GetGreeksResponse) GetGreeks() *Greeks {
 	return nil
 }
 
+// GetCalculationTime 获取Calculation时间.
 func (x *GetGreeksResponse) GetCalculationTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CalculationTime
@@ -506,7 +563,7 @@ func file_api_pricing_pricing_proto_init() {
 		DependencyIndexes: file_api_pricing_pricing_proto_depIdxs,
 		MessageInfos:      file_api_pricing_pricing_proto_msgTypes,
 	}.Build()
-	File_api_pricing_pricing_proto = out.File
+	File_api_pricing_pricing_proto = out.File // File_api_pricing_pricing_proto 文件APIpricingpricingProto
 	file_api_pricing_pricing_proto_goTypes = nil
 	file_api_pricing_pricing_proto_depIdxs = nil
 }

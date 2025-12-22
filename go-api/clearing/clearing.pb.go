@@ -21,18 +21,20 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// SettleTradeRequest 表示Settle成交请求结构体。
 type SettleTradeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TradeId       string                 `protobuf:"bytes,1,opt,name=trade_id,json=tradeId,proto3" json:"trade_id,omitempty"`
-	BuyUserId     string                 `protobuf:"bytes,2,opt,name=buy_user_id,json=buyUserId,proto3" json:"buy_user_id,omitempty"`
-	SellUserId    string                 `protobuf:"bytes,3,opt,name=sell_user_id,json=sellUserId,proto3" json:"sell_user_id,omitempty"`
-	Symbol        string                 `protobuf:"bytes,4,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Quantity      string                 `protobuf:"bytes,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	Price         string                 `protobuf:"bytes,6,opt,name=price,proto3" json:"price,omitempty"`
+	TradeId       string                 `protobuf:"bytes,1,opt,name=trade_id,json=tradeId,proto3" json:"trade_id,omitempty"` // 成交唯一标识
+	BuyUserId     string                 `protobuf:"bytes,2,opt,name=buy_user_id,json=buyUserId,proto3" json:"buy_user_id,omitempty"` // BuyUSER唯一标识
+	SellUserId    string                 `protobuf:"bytes,3,opt,name=sell_user_id,json=sellUserId,proto3" json:"sell_user_id,omitempty"` // SellUSER唯一标识
+	Symbol        string                 `protobuf:"bytes,4,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Quantity      string                 `protobuf:"bytes,5,opt,name=quantity,proto3" json:"quantity,omitempty"` // 数量
+	Price         string                 `protobuf:"bytes,6,opt,name=price,proto3" json:"price,omitempty"` // 价格
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *SettleTradeRequest) Reset() {
 	*x = SettleTradeRequest{}
 	mi := &file_api_clearing_clearing_proto_msgTypes[0]
@@ -40,12 +42,15 @@ func (x *SettleTradeRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *SettleTradeRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*SettleTradeRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *SettleTradeRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_clearing_clearing_proto_msgTypes[0]
 	if x != nil {
@@ -59,10 +64,12 @@ func (x *SettleTradeRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use SettleTradeRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*SettleTradeRequest) Descriptor() ([]byte, []int) {
 	return file_api_clearing_clearing_proto_rawDescGZIP(), []int{0}
 }
 
+// GetTradeId 获取成交唯一标识.
 func (x *SettleTradeRequest) GetTradeId() string {
 	if x != nil {
 		return x.TradeId
@@ -70,6 +77,7 @@ func (x *SettleTradeRequest) GetTradeId() string {
 	return ""
 }
 
+// GetBuyUserId 获取BuyUSER唯一标识.
 func (x *SettleTradeRequest) GetBuyUserId() string {
 	if x != nil {
 		return x.BuyUserId
@@ -77,6 +85,7 @@ func (x *SettleTradeRequest) GetBuyUserId() string {
 	return ""
 }
 
+// GetSellUserId 获取SellUSER唯一标识.
 func (x *SettleTradeRequest) GetSellUserId() string {
 	if x != nil {
 		return x.SellUserId
@@ -84,6 +93,7 @@ func (x *SettleTradeRequest) GetSellUserId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *SettleTradeRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -91,6 +101,7 @@ func (x *SettleTradeRequest) GetSymbol() string {
 	return ""
 }
 
+// GetQuantity 获取数量.
 func (x *SettleTradeRequest) GetQuantity() string {
 	if x != nil {
 		return x.Quantity
@@ -98,6 +109,7 @@ func (x *SettleTradeRequest) GetQuantity() string {
 	return ""
 }
 
+// GetPrice 获取价格.
 func (x *SettleTradeRequest) GetPrice() string {
 	if x != nil {
 		return x.Price
@@ -105,17 +117,19 @@ func (x *SettleTradeRequest) GetPrice() string {
 	return ""
 }
 
+// SettlementResponse 表示Settlement响应结构体。
 type SettlementResponse struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	SettlementId   string                 `protobuf:"bytes,1,opt,name=settlement_id,json=settlementId,proto3" json:"settlement_id,omitempty"`
-	TradeId        string                 `protobuf:"bytes,2,opt,name=trade_id,json=tradeId,proto3" json:"trade_id,omitempty"`
-	Status         string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
-	SettlementTime int64                  `protobuf:"varint,4,opt,name=settlement_time,json=settlementTime,proto3" json:"settlement_time,omitempty"`
-	ErrorMessage   string                 `protobuf:"bytes,5,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	SettlementId   string                 `protobuf:"bytes,1,opt,name=settlement_id,json=settlementId,proto3" json:"settlement_id,omitempty"` // Settlement唯一标识
+	TradeId        string                 `protobuf:"bytes,2,opt,name=trade_id,json=tradeId,proto3" json:"trade_id,omitempty"` // 成交唯一标识
+	Status         string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	SettlementTime int64                  `protobuf:"varint,4,opt,name=settlement_time,json=settlementTime,proto3" json:"settlement_time,omitempty"` // Settlement时间
+	ErrorMessage   string                 `protobuf:"bytes,5,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"` // 错误消息
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *SettlementResponse) Reset() {
 	*x = SettlementResponse{}
 	mi := &file_api_clearing_clearing_proto_msgTypes[1]
@@ -123,12 +137,15 @@ func (x *SettlementResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *SettlementResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*SettlementResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *SettlementResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_clearing_clearing_proto_msgTypes[1]
 	if x != nil {
@@ -142,10 +159,12 @@ func (x *SettlementResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use SettlementResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*SettlementResponse) Descriptor() ([]byte, []int) {
 	return file_api_clearing_clearing_proto_rawDescGZIP(), []int{1}
 }
 
+// GetSettlementId 获取Settlement唯一标识.
 func (x *SettlementResponse) GetSettlementId() string {
 	if x != nil {
 		return x.SettlementId
@@ -153,6 +172,7 @@ func (x *SettlementResponse) GetSettlementId() string {
 	return ""
 }
 
+// GetTradeId 获取成交唯一标识.
 func (x *SettlementResponse) GetTradeId() string {
 	if x != nil {
 		return x.TradeId
@@ -160,6 +180,7 @@ func (x *SettlementResponse) GetTradeId() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *SettlementResponse) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -167,6 +188,7 @@ func (x *SettlementResponse) GetStatus() string {
 	return ""
 }
 
+// GetSettlementTime 获取Settlement时间.
 func (x *SettlementResponse) GetSettlementTime() int64 {
 	if x != nil {
 		return x.SettlementTime
@@ -174,6 +196,7 @@ func (x *SettlementResponse) GetSettlementTime() int64 {
 	return 0
 }
 
+// GetErrorMessage 获取错误消息.
 func (x *SettlementResponse) GetErrorMessage() string {
 	if x != nil {
 		return x.ErrorMessage
@@ -181,14 +204,16 @@ func (x *SettlementResponse) GetErrorMessage() string {
 	return ""
 }
 
+// GetSettlementsRequest 表示获取Settlements请求结构体。
 type GetSettlementsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"` // 限制
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetSettlementsRequest) Reset() {
 	*x = GetSettlementsRequest{}
 	mi := &file_api_clearing_clearing_proto_msgTypes[2]
@@ -196,12 +221,15 @@ func (x *GetSettlementsRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetSettlementsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetSettlementsRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetSettlementsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_clearing_clearing_proto_msgTypes[2]
 	if x != nil {
@@ -215,10 +243,12 @@ func (x *GetSettlementsRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetSettlementsRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetSettlementsRequest) Descriptor() ([]byte, []int) {
 	return file_api_clearing_clearing_proto_rawDescGZIP(), []int{2}
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *GetSettlementsRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -226,6 +256,7 @@ func (x *GetSettlementsRequest) GetUserId() string {
 	return ""
 }
 
+// GetLimit 获取限制.
 func (x *GetSettlementsRequest) GetLimit() int32 {
 	if x != nil {
 		return x.Limit
@@ -233,16 +264,18 @@ func (x *GetSettlementsRequest) GetLimit() int32 {
 	return 0
 }
 
+// Settlement 表示Settlement结构体。
 type Settlement struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	SettlementId   string                 `protobuf:"bytes,1,opt,name=settlement_id,json=settlementId,proto3" json:"settlement_id,omitempty"`
-	TradeId        string                 `protobuf:"bytes,2,opt,name=trade_id,json=tradeId,proto3" json:"trade_id,omitempty"`
-	Status         string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
-	SettlementTime int64                  `protobuf:"varint,4,opt,name=settlement_time,json=settlementTime,proto3" json:"settlement_time,omitempty"`
+	SettlementId   string                 `protobuf:"bytes,1,opt,name=settlement_id,json=settlementId,proto3" json:"settlement_id,omitempty"` // Settlement唯一标识
+	TradeId        string                 `protobuf:"bytes,2,opt,name=trade_id,json=tradeId,proto3" json:"trade_id,omitempty"` // 成交唯一标识
+	Status         string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	SettlementTime int64                  `protobuf:"varint,4,opt,name=settlement_time,json=settlementTime,proto3" json:"settlement_time,omitempty"` // Settlement时间
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *Settlement) Reset() {
 	*x = Settlement{}
 	mi := &file_api_clearing_clearing_proto_msgTypes[3]
@@ -250,12 +283,15 @@ func (x *Settlement) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *Settlement) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*Settlement) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *Settlement) ProtoReflect() protoreflect.Message {
 	mi := &file_api_clearing_clearing_proto_msgTypes[3]
 	if x != nil {
@@ -269,10 +305,12 @@ func (x *Settlement) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use Settlement.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*Settlement) Descriptor() ([]byte, []int) {
 	return file_api_clearing_clearing_proto_rawDescGZIP(), []int{3}
 }
 
+// GetSettlementId 获取Settlement唯一标识.
 func (x *Settlement) GetSettlementId() string {
 	if x != nil {
 		return x.SettlementId
@@ -280,6 +318,7 @@ func (x *Settlement) GetSettlementId() string {
 	return ""
 }
 
+// GetTradeId 获取成交唯一标识.
 func (x *Settlement) GetTradeId() string {
 	if x != nil {
 		return x.TradeId
@@ -287,6 +326,7 @@ func (x *Settlement) GetTradeId() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *Settlement) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -294,6 +334,7 @@ func (x *Settlement) GetStatus() string {
 	return ""
 }
 
+// GetSettlementTime 获取Settlement时间.
 func (x *Settlement) GetSettlementTime() int64 {
 	if x != nil {
 		return x.SettlementTime
@@ -301,13 +342,15 @@ func (x *Settlement) GetSettlementTime() int64 {
 	return 0
 }
 
+// SettlementsResponse 表示Settlements响应结构体。
 type SettlementsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Settlements   []*Settlement          `protobuf:"bytes,1,rep,name=settlements,proto3" json:"settlements,omitempty"`
+	Settlements   []*Settlement          `protobuf:"bytes,1,rep,name=settlements,proto3" json:"settlements,omitempty"` // Settlements
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *SettlementsResponse) Reset() {
 	*x = SettlementsResponse{}
 	mi := &file_api_clearing_clearing_proto_msgTypes[4]
@@ -315,12 +358,15 @@ func (x *SettlementsResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *SettlementsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*SettlementsResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *SettlementsResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_clearing_clearing_proto_msgTypes[4]
 	if x != nil {
@@ -334,10 +380,12 @@ func (x *SettlementsResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use SettlementsResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*SettlementsResponse) Descriptor() ([]byte, []int) {
 	return file_api_clearing_clearing_proto_rawDescGZIP(), []int{4}
 }
 
+// GetSettlements 获取Settlements.
 func (x *SettlementsResponse) GetSettlements() []*Settlement {
 	if x != nil {
 		return x.Settlements
@@ -345,13 +393,15 @@ func (x *SettlementsResponse) GetSettlements() []*Settlement {
 	return nil
 }
 
+// ExecuteEODClearingRequest 表示ExecuteEODClearing请求结构体。
 type ExecuteEODClearingRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ClearingDate  string                 `protobuf:"bytes,1,opt,name=clearing_date,json=clearingDate,proto3" json:"clearing_date,omitempty"`
+	ClearingDate  string                 `protobuf:"bytes,1,opt,name=clearing_date,json=clearingDate,proto3" json:"clearing_date,omitempty"` // ClearingDate
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *ExecuteEODClearingRequest) Reset() {
 	*x = ExecuteEODClearingRequest{}
 	mi := &file_api_clearing_clearing_proto_msgTypes[5]
@@ -359,12 +409,15 @@ func (x *ExecuteEODClearingRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *ExecuteEODClearingRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*ExecuteEODClearingRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *ExecuteEODClearingRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_clearing_clearing_proto_msgTypes[5]
 	if x != nil {
@@ -378,10 +431,12 @@ func (x *ExecuteEODClearingRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use ExecuteEODClearingRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*ExecuteEODClearingRequest) Descriptor() ([]byte, []int) {
 	return file_api_clearing_clearing_proto_rawDescGZIP(), []int{5}
 }
 
+// GetClearingDate 获取ClearingDate.
 func (x *ExecuteEODClearingRequest) GetClearingDate() string {
 	if x != nil {
 		return x.ClearingDate
@@ -389,17 +444,19 @@ func (x *ExecuteEODClearingRequest) GetClearingDate() string {
 	return ""
 }
 
+// EODClearingResponse 表示EODClearing响应结构体。
 type EODClearingResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ClearingId    string                 `protobuf:"bytes,1,opt,name=clearing_id,json=clearingId,proto3" json:"clearing_id,omitempty"`
-	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	StartTime     int64                  `protobuf:"varint,3,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	EndTime       int64                  `protobuf:"varint,4,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
-	TradesSettled int64                  `protobuf:"varint,5,opt,name=trades_settled,json=tradesSettled,proto3" json:"trades_settled,omitempty"`
+	ClearingId    string                 `protobuf:"bytes,1,opt,name=clearing_id,json=clearingId,proto3" json:"clearing_id,omitempty"` // Clearing唯一标识
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	StartTime     int64                  `protobuf:"varint,3,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"` // 开始时间
+	EndTime       int64                  `protobuf:"varint,4,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"` // 结束时间
+	TradesSettled int64                  `protobuf:"varint,5,opt,name=trades_settled,json=tradesSettled,proto3" json:"trades_settled,omitempty"` // TradesSettled
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *EODClearingResponse) Reset() {
 	*x = EODClearingResponse{}
 	mi := &file_api_clearing_clearing_proto_msgTypes[6]
@@ -407,12 +464,15 @@ func (x *EODClearingResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *EODClearingResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*EODClearingResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *EODClearingResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_clearing_clearing_proto_msgTypes[6]
 	if x != nil {
@@ -426,10 +486,12 @@ func (x *EODClearingResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use EODClearingResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*EODClearingResponse) Descriptor() ([]byte, []int) {
 	return file_api_clearing_clearing_proto_rawDescGZIP(), []int{6}
 }
 
+// GetClearingId 获取Clearing唯一标识.
 func (x *EODClearingResponse) GetClearingId() string {
 	if x != nil {
 		return x.ClearingId
@@ -437,6 +499,7 @@ func (x *EODClearingResponse) GetClearingId() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *EODClearingResponse) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -444,6 +507,7 @@ func (x *EODClearingResponse) GetStatus() string {
 	return ""
 }
 
+// GetStartTime 获取开始时间.
 func (x *EODClearingResponse) GetStartTime() int64 {
 	if x != nil {
 		return x.StartTime
@@ -451,6 +515,7 @@ func (x *EODClearingResponse) GetStartTime() int64 {
 	return 0
 }
 
+// GetEndTime 获取结束时间.
 func (x *EODClearingResponse) GetEndTime() int64 {
 	if x != nil {
 		return x.EndTime
@@ -458,6 +523,7 @@ func (x *EODClearingResponse) GetEndTime() int64 {
 	return 0
 }
 
+// GetTradesSettled 获取TradesSettled.
 func (x *EODClearingResponse) GetTradesSettled() int64 {
 	if x != nil {
 		return x.TradesSettled
@@ -465,13 +531,15 @@ func (x *EODClearingResponse) GetTradesSettled() int64 {
 	return 0
 }
 
+// GetClearingStatusRequest 表示获取ClearingSTATUS请求结构体。
 type GetClearingStatusRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ClearingId    string                 `protobuf:"bytes,1,opt,name=clearing_id,json=clearingId,proto3" json:"clearing_id,omitempty"`
+	ClearingId    string                 `protobuf:"bytes,1,opt,name=clearing_id,json=clearingId,proto3" json:"clearing_id,omitempty"` // Clearing唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetClearingStatusRequest) Reset() {
 	*x = GetClearingStatusRequest{}
 	mi := &file_api_clearing_clearing_proto_msgTypes[7]
@@ -479,12 +547,15 @@ func (x *GetClearingStatusRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetClearingStatusRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetClearingStatusRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetClearingStatusRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_clearing_clearing_proto_msgTypes[7]
 	if x != nil {
@@ -498,10 +569,12 @@ func (x *GetClearingStatusRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetClearingStatusRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetClearingStatusRequest) Descriptor() ([]byte, []int) {
 	return file_api_clearing_clearing_proto_rawDescGZIP(), []int{7}
 }
 
+// GetClearingId 获取Clearing唯一标识.
 func (x *GetClearingStatusRequest) GetClearingId() string {
 	if x != nil {
 		return x.ClearingId
@@ -509,17 +582,19 @@ func (x *GetClearingStatusRequest) GetClearingId() string {
 	return ""
 }
 
+// ClearingStatusResponse 表示ClearingSTATUS响应结构体。
 type ClearingStatusResponse struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
-	ClearingId         string                 `protobuf:"bytes,1,opt,name=clearing_id,json=clearingId,proto3" json:"clearing_id,omitempty"`
-	Status             string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	ProgressPercentage int64                  `protobuf:"varint,3,opt,name=progress_percentage,json=progressPercentage,proto3" json:"progress_percentage,omitempty"`
-	TradesProcessed    int64                  `protobuf:"varint,4,opt,name=trades_processed,json=tradesProcessed,proto3" json:"trades_processed,omitempty"`
-	TradesTotal        int64                  `protobuf:"varint,5,opt,name=trades_total,json=tradesTotal,proto3" json:"trades_total,omitempty"`
+	ClearingId         string                 `protobuf:"bytes,1,opt,name=clearing_id,json=clearingId,proto3" json:"clearing_id,omitempty"` // Clearing唯一标识
+	Status             string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	ProgressPercentage int64                  `protobuf:"varint,3,opt,name=progress_percentage,json=progressPercentage,proto3" json:"progress_percentage,omitempty"` // ProgressPercentage
+	TradesProcessed    int64                  `protobuf:"varint,4,opt,name=trades_processed,json=tradesProcessed,proto3" json:"trades_processed,omitempty"` // TradesProcessed
+	TradesTotal        int64                  `protobuf:"varint,5,opt,name=trades_total,json=tradesTotal,proto3" json:"trades_total,omitempty"` // Trades总数
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *ClearingStatusResponse) Reset() {
 	*x = ClearingStatusResponse{}
 	mi := &file_api_clearing_clearing_proto_msgTypes[8]
@@ -527,12 +602,15 @@ func (x *ClearingStatusResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *ClearingStatusResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*ClearingStatusResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *ClearingStatusResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_clearing_clearing_proto_msgTypes[8]
 	if x != nil {
@@ -546,10 +624,12 @@ func (x *ClearingStatusResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use ClearingStatusResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*ClearingStatusResponse) Descriptor() ([]byte, []int) {
 	return file_api_clearing_clearing_proto_rawDescGZIP(), []int{8}
 }
 
+// GetClearingId 获取Clearing唯一标识.
 func (x *ClearingStatusResponse) GetClearingId() string {
 	if x != nil {
 		return x.ClearingId
@@ -557,6 +637,7 @@ func (x *ClearingStatusResponse) GetClearingId() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *ClearingStatusResponse) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -564,6 +645,7 @@ func (x *ClearingStatusResponse) GetStatus() string {
 	return ""
 }
 
+// GetProgressPercentage 获取ProgressPercentage.
 func (x *ClearingStatusResponse) GetProgressPercentage() int64 {
 	if x != nil {
 		return x.ProgressPercentage
@@ -571,6 +653,7 @@ func (x *ClearingStatusResponse) GetProgressPercentage() int64 {
 	return 0
 }
 
+// GetTradesProcessed 获取TradesProcessed.
 func (x *ClearingStatusResponse) GetTradesProcessed() int64 {
 	if x != nil {
 		return x.TradesProcessed
@@ -578,6 +661,7 @@ func (x *ClearingStatusResponse) GetTradesProcessed() int64 {
 	return 0
 }
 
+// GetTradesTotal 获取Trades总数.
 func (x *ClearingStatusResponse) GetTradesTotal() int64 {
 	if x != nil {
 		return x.TradesTotal
@@ -701,7 +785,7 @@ func file_api_clearing_clearing_proto_init() {
 		DependencyIndexes: file_api_clearing_clearing_proto_depIdxs,
 		MessageInfos:      file_api_clearing_clearing_proto_msgTypes,
 	}.Build()
-	File_api_clearing_clearing_proto = out.File
+	File_api_clearing_clearing_proto = out.File // File_api_clearing_clearing_proto 文件APIclearingclearingProto
 	file_api_clearing_clearing_proto_goTypes = nil
 	file_api_clearing_clearing_proto_depIdxs = nil
 }

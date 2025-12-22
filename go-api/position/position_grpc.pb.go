@@ -19,10 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PositionService_GetPositions_FullMethodName       = "/position.PositionService/GetPositions"
-	PositionService_GetPosition_FullMethodName        = "/position.PositionService/GetPosition"
-	PositionService_GetPositionSummary_FullMethodName = "/position.PositionService/GetPositionSummary"
-	PositionService_ClosePosition_FullMethodName      = "/position.PositionService/ClosePosition"
+	PositionService_GetPositions_FullMethodName       = "/position.PositionService/GetPositions" // PositionService_GetPositions_FullMethodName PositionSERVICE获取PositionsFullMethod名称
+	PositionService_GetPosition_FullMethodName        = "/position.PositionService/GetPosition" // PositionService_GetPosition_FullMethodName PositionSERVICE获取PositionFullMethod名称
+	PositionService_GetPositionSummary_FullMethodName = "/position.PositionService/GetPositionSummary" // PositionService_GetPositionSummary_FullMethodName PositionSERVICE获取PositionSummaryFullMethod名称
+	PositionService_ClosePosition_FullMethodName      = "/position.PositionService/ClosePosition" // PositionService_ClosePosition_FullMethodName PositionSERVICE关闭PositionFullMethod名称
 )
 
 // PositionServiceClient is the client API for PositionService service.
@@ -30,6 +30,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // 持仓服务
+// PositionServiceClient 表示PositionSERVICE客户端结构体。
 type PositionServiceClient interface {
 	// 获取持仓列表
 	GetPositions(ctx context.Context, in *GetPositionsRequest, opts ...grpc.CallOption) (*PositionsResponse, error)
@@ -45,10 +46,12 @@ type positionServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
+// NewPositionServiceClient 创建新的创建一个新的实例PositionSERVICE客户端.
 func NewPositionServiceClient(cc grpc.ClientConnInterface) PositionServiceClient {
 	return &positionServiceClient{cc}
 }
 
+// GetPositions 获取Positions.
 func (c *positionServiceClient) GetPositions(ctx context.Context, in *GetPositionsRequest, opts ...grpc.CallOption) (*PositionsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PositionsResponse)
@@ -59,6 +62,7 @@ func (c *positionServiceClient) GetPositions(ctx context.Context, in *GetPositio
 	return out, nil
 }
 
+// GetPosition 获取Position.
 func (c *positionServiceClient) GetPosition(ctx context.Context, in *GetPositionRequest, opts ...grpc.CallOption) (*PositionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PositionResponse)
@@ -69,6 +73,7 @@ func (c *positionServiceClient) GetPosition(ctx context.Context, in *GetPosition
 	return out, nil
 }
 
+// GetPositionSummary 获取PositionSummary.
 func (c *positionServiceClient) GetPositionSummary(ctx context.Context, in *GetPositionSummaryRequest, opts ...grpc.CallOption) (*PositionSummaryResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PositionSummaryResponse)
@@ -79,6 +84,7 @@ func (c *positionServiceClient) GetPositionSummary(ctx context.Context, in *GetP
 	return out, nil
 }
 
+// ClosePosition 执行关闭Position逻辑。
 func (c *positionServiceClient) ClosePosition(ctx context.Context, in *ClosePositionRequest, opts ...grpc.CallOption) (*PositionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PositionResponse)
@@ -94,6 +100,7 @@ func (c *positionServiceClient) ClosePosition(ctx context.Context, in *ClosePosi
 // for forward compatibility.
 //
 // 持仓服务
+// PositionServiceServer 表示PositionSERVICE服务端结构体。
 type PositionServiceServer interface {
 	// 获取持仓列表
 	GetPositions(context.Context, *GetPositionsRequest) (*PositionsResponse, error)
@@ -111,17 +118,22 @@ type PositionServiceServer interface {
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
+// UnimplementedPositionServiceServer 表示未实现的PositionSERVICE服务端结构体。
 type UnimplementedPositionServiceServer struct{}
 
+// GetPositions 获取Positions.
 func (UnimplementedPositionServiceServer) GetPositions(context.Context, *GetPositionsRequest) (*PositionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPositions not implemented")
 }
+// GetPosition 获取Position.
 func (UnimplementedPositionServiceServer) GetPosition(context.Context, *GetPositionRequest) (*PositionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPosition not implemented")
 }
+// GetPositionSummary 获取PositionSummary.
 func (UnimplementedPositionServiceServer) GetPositionSummary(context.Context, *GetPositionSummaryRequest) (*PositionSummaryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPositionSummary not implemented")
 }
+// ClosePosition 执行关闭Position逻辑。
 func (UnimplementedPositionServiceServer) ClosePosition(context.Context, *ClosePositionRequest) (*PositionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClosePosition not implemented")
 }
@@ -131,10 +143,12 @@ func (UnimplementedPositionServiceServer) testEmbeddedByValue()                 
 // UnsafePositionServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to PositionServiceServer will
 // result in compilation errors.
+// UnsafePositionServiceServer 表示UnsafePositionSERVICE服务端结构体。
 type UnsafePositionServiceServer interface {
 	mustEmbedUnimplementedPositionServiceServer()
 }
 
+// RegisterPositionServiceServer 执行RegisterPositionSERVICE服务端逻辑。
 func RegisterPositionServiceServer(s grpc.ServiceRegistrar, srv PositionServiceServer) {
 	// If the following call pancis, it indicates UnimplementedPositionServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an

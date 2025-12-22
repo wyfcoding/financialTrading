@@ -31,83 +31,83 @@ service ExecutionService {
 // ExecuteOrderRequest 消息定义了执行订单时需要提供的参数。
 message ExecuteOrderRequest {
   // order_id 是客户方生成的订单唯一标识符。
-  string order_id = 1;
+  string order_id = 1; // 订单唯一标识
   // user_id 是发起订单的用户的ID。
-  string user_id = 2;
+  string user_id = 2; // 用户唯一标识
   // symbol 是交易对，例如 "BTC/USDT"。
-  string symbol = 3;
+  string symbol = 3; // 交易对符号
   // side 是交易方向 ("BUY" 或 "SELL")。
-  string side = 4;
+  string side = 4; // 交易方向
   // price 是订单的价格（对于市价单，此字段可能为空）。
-  string price = 5;
+  string price = 5; // 价格
   // quantity 是订单的数量。
-  string quantity = 6;
+  string quantity = 6; // 数量
 }
 
 // ExecutionResponse 消息返回单次订单执行请求的直接响应。
 message ExecutionResponse {
   // execution_id 是本次执行操作生成的唯一ID。
-  string execution_id = 1;
+  string execution_id = 1; // 执行唯一标识
   // order_id 是关联的订单ID。
-  string order_id = 2;
+  string order_id = 2; // 订单唯一标识
   // status 是订单执行的初步状态 (例如 "ACCEPTED", "REJECTED", "PARTIALLY_FILLED", "FILLED")。
-  string status = 3;
+  string status = 3; // 状态
   // executed_quantity 是已成交的数量。
-  string executed_quantity = 4;
+  string executed_quantity = 4; // executed数量
   // executed_price 是成交的平均价格。
-  string executed_price = 5;
+  string executed_price = 5; // executed价格
   // timestamp 是执行发生时的时间戳。
-  int64 timestamp = 6;
+  int64 timestamp = 6; // 时间戳
   // error_message 如果订单被拒绝，此处将包含原因。
-  string error_message = 7;
+  string error_message = 7; // error消息
 }
 
 // GetExecutionHistoryRequest 消息定义了查询执行历史时需要提供的参数。
 message GetExecutionHistoryRequest {
   // user_id 是要查询的用户的ID。
-  string user_id = 1;
+  string user_id = 1; // 用户唯一标识
   // symbol 是可选的过滤条件，用于只查询特定交易对的历史。
-  string symbol = 2;
+  string symbol = 2; // 交易对符号
   // limit 用于限制返回的记录数量。
-  int32 limit = 3;
+  int32 limit = 3; // 限制
 }
 
 // ExecutionRecord 消息定义了单条历史成交记录的结构。
 message ExecutionRecord {
   // execution_id 是成交记录的唯一ID。
-  string execution_id = 1;
+  string execution_id = 1; // 执行唯一标识
   // order_id 是关联的订单ID。
-  string order_id = 2;
+  string order_id = 2; // 订单唯一标识
   // symbol 是交易对。
-  string symbol = 3;
+  string symbol = 3; // 交易对符号
   // executed_quantity 是成交数量。
-  string executed_quantity = 4;
+  string executed_quantity = 4; // executed数量
   // executed_price 是成交价格。
-  string executed_price = 5;
+  string executed_price = 5; // executed价格
   // timestamp 是成交时间戳。
-  int64 timestamp = 6;
+  int64 timestamp = 6; // 时间戳
 }
 
 // ExecutionHistoryResponse 消息返回一个包含多条成交记录的列表。
 message ExecutionHistoryResponse {
   // executions 是一个成交记录的列表。
-  repeated ExecutionRecord executions = 1;
+  repeated ExecutionRecord executions = 1; // 执行列表
 }
 
 // SubscribeExecutionsRequest 消息定义了订阅执行更新时需要提供的参数。
 message SubscribeExecutionsRequest {
   // user_id 用于指定订阅哪个用户的执行更新。
-  string user_id = 1;
+  string user_id = 1; // 用户唯一标识
 }
 
 // ExecutionUpdate 消息是服务器向客户端推送的实时执行更新。
 message ExecutionUpdate {
   // execution_id 是成交的唯一ID。
-  string execution_id = 1;
+  string execution_id = 1; // 执行唯一标识
   // order_id 是关联的订单ID。
-  string order_id = 2;
+  string order_id = 2; // 订单唯一标识
   // status 是订单的最新状态 (例如 "PARTIALLY_FILLED", "FILLED")。
-  string status = 3;
+  string status = 3; // 状态
   // timestamp 是更新发生时的时间戳。
-  int64 timestamp = 4;
+  int64 timestamp = 4; // 时间戳
 }

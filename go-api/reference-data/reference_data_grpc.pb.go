@@ -19,10 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ReferenceDataService_GetSymbol_FullMethodName     = "/reference_data.ReferenceDataService/GetSymbol"
-	ReferenceDataService_ListSymbols_FullMethodName   = "/reference_data.ReferenceDataService/ListSymbols"
-	ReferenceDataService_GetExchange_FullMethodName   = "/reference_data.ReferenceDataService/GetExchange"
-	ReferenceDataService_ListExchanges_FullMethodName = "/reference_data.ReferenceDataService/ListExchanges"
+	ReferenceDataService_GetSymbol_FullMethodName     = "/reference_data.ReferenceDataService/GetSymbol" // ReferenceDataService_GetSymbol_FullMethodName ReferenceDATASERVICE获取交易对FullMethod名称
+	ReferenceDataService_ListSymbols_FullMethodName   = "/reference_data.ReferenceDataService/ListSymbols" // ReferenceDataService_ListSymbols_FullMethodName ReferenceDATASERVICELISTSymbolsFullMethod名称
+	ReferenceDataService_GetExchange_FullMethodName   = "/reference_data.ReferenceDataService/GetExchange" // ReferenceDataService_GetExchange_FullMethodName ReferenceDATASERVICE获取ExchangeFullMethod名称
+	ReferenceDataService_ListExchanges_FullMethodName = "/reference_data.ReferenceDataService/ListExchanges" // ReferenceDataService_ListExchanges_FullMethodName ReferenceDATASERVICELISTExchangesFullMethod名称
 )
 
 // ReferenceDataServiceClient is the client API for ReferenceDataService service.
@@ -30,6 +30,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // ReferenceDataService 提供参考数据管理服务
+// ReferenceDataServiceClient 表示ReferenceDATASERVICE客户端结构体。
 type ReferenceDataServiceClient interface {
 	// 获取交易对信息
 	GetSymbol(ctx context.Context, in *GetSymbolRequest, opts ...grpc.CallOption) (*GetSymbolResponse, error)
@@ -45,10 +46,12 @@ type referenceDataServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
+// NewReferenceDataServiceClient 创建新的创建一个新的实例ReferenceDATASERVICE客户端.
 func NewReferenceDataServiceClient(cc grpc.ClientConnInterface) ReferenceDataServiceClient {
 	return &referenceDataServiceClient{cc}
 }
 
+// GetSymbol 获取交易对.
 func (c *referenceDataServiceClient) GetSymbol(ctx context.Context, in *GetSymbolRequest, opts ...grpc.CallOption) (*GetSymbolResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetSymbolResponse)
@@ -59,6 +62,7 @@ func (c *referenceDataServiceClient) GetSymbol(ctx context.Context, in *GetSymbo
 	return out, nil
 }
 
+// ListSymbols 执行LISTSymbols逻辑。
 func (c *referenceDataServiceClient) ListSymbols(ctx context.Context, in *ListSymbolsRequest, opts ...grpc.CallOption) (*ListSymbolsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListSymbolsResponse)
@@ -69,6 +73,7 @@ func (c *referenceDataServiceClient) ListSymbols(ctx context.Context, in *ListSy
 	return out, nil
 }
 
+// GetExchange 获取Exchange.
 func (c *referenceDataServiceClient) GetExchange(ctx context.Context, in *GetExchangeRequest, opts ...grpc.CallOption) (*GetExchangeResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetExchangeResponse)
@@ -79,6 +84,7 @@ func (c *referenceDataServiceClient) GetExchange(ctx context.Context, in *GetExc
 	return out, nil
 }
 
+// ListExchanges 执行LISTExchanges逻辑。
 func (c *referenceDataServiceClient) ListExchanges(ctx context.Context, in *ListExchangesRequest, opts ...grpc.CallOption) (*ListExchangesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListExchangesResponse)
@@ -94,6 +100,7 @@ func (c *referenceDataServiceClient) ListExchanges(ctx context.Context, in *List
 // for forward compatibility.
 //
 // ReferenceDataService 提供参考数据管理服务
+// ReferenceDataServiceServer 表示ReferenceDATASERVICE服务端结构体。
 type ReferenceDataServiceServer interface {
 	// 获取交易对信息
 	GetSymbol(context.Context, *GetSymbolRequest) (*GetSymbolResponse, error)
@@ -111,17 +118,22 @@ type ReferenceDataServiceServer interface {
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
+// UnimplementedReferenceDataServiceServer 表示未实现的ReferenceDATASERVICE服务端结构体。
 type UnimplementedReferenceDataServiceServer struct{}
 
+// GetSymbol 获取交易对.
 func (UnimplementedReferenceDataServiceServer) GetSymbol(context.Context, *GetSymbolRequest) (*GetSymbolResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSymbol not implemented")
 }
+// ListSymbols 执行LISTSymbols逻辑。
 func (UnimplementedReferenceDataServiceServer) ListSymbols(context.Context, *ListSymbolsRequest) (*ListSymbolsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSymbols not implemented")
 }
+// GetExchange 获取Exchange.
 func (UnimplementedReferenceDataServiceServer) GetExchange(context.Context, *GetExchangeRequest) (*GetExchangeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetExchange not implemented")
 }
+// ListExchanges 执行LISTExchanges逻辑。
 func (UnimplementedReferenceDataServiceServer) ListExchanges(context.Context, *ListExchangesRequest) (*ListExchangesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListExchanges not implemented")
 }
@@ -131,10 +143,12 @@ func (UnimplementedReferenceDataServiceServer) testEmbeddedByValue()            
 // UnsafeReferenceDataServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to ReferenceDataServiceServer will
 // result in compilation errors.
+// UnsafeReferenceDataServiceServer 表示UnsafeReferenceDATASERVICE服务端结构体。
 type UnsafeReferenceDataServiceServer interface {
 	mustEmbedUnimplementedReferenceDataServiceServer()
 }
 
+// RegisterReferenceDataServiceServer 执行RegisterReferenceDATASERVICE服务端逻辑。
 func RegisterReferenceDataServiceServer(s grpc.ServiceRegistrar, srv ReferenceDataServiceServer) {
 	// If the following call pancis, it indicates UnimplementedReferenceDataServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an

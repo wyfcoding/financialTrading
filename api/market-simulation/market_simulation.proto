@@ -18,46 +18,46 @@ service MarketSimulationService {
 
 // 模拟场景
 message SimulationScenario {
-  string id = 1;
-  string name = 2;
-  string description = 3;
-  string symbol = 4;
-  string type = 5; // RANDOM_WALK, REPLAY, SHOCK
-  string parameters = 6; // JSON string
-  string status = 7; // RUNNING, STOPPED
-  google.protobuf.Timestamp start_time = 8;
-  google.protobuf.Timestamp end_time = 9;
+  string id = 1; // 唯一标识
+  string name = 2; // 名称
+  string description = 3; // 描述
+  string symbol = 4; // 交易对符号
+  string type = 5; // 类型
+  string parameters = 6; // 参数
+  string status = 7; // 状态
+  google.protobuf.Timestamp start_time = 8; // 开始时间
+  google.protobuf.Timestamp end_time = 9; // 结束时间
 }
 
 // 启动模拟请求
 message StartSimulationRequest {
-  string name = 1;
-  string symbol = 2;
-  string type = 3;
-  string parameters = 4;
+  string name = 1; // 名称
+  string symbol = 2; // 交易对符号
+  string type = 3; // 类型
+  string parameters = 4; // 参数
 }
 
 // 启动模拟响应
 message StartSimulationResponse {
-  string simulation_id = 1;
+  string simulation_id = 1; // 模拟ID
 }
 
 // 停止模拟请求
 message StopSimulationRequest {
-  string simulation_id = 1;
+  string simulation_id = 1; // 模拟ID
 }
 
 // 停止模拟响应
 message StopSimulationResponse {
-  bool success = 1;
+  bool success = 1; // 成功
 }
 
 // 获取模拟状态请求
 message GetSimulationStatusRequest {
-  string simulation_id = 1;
+  string simulation_id = 1; // 模拟ID
 }
 
 // 获取模拟状态响应
 message GetSimulationStatusResponse {
-  SimulationScenario scenario = 1;
+  SimulationScenario scenario = 1; // 场景
 }

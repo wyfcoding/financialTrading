@@ -18,73 +18,73 @@ service MatchingEngineService {
 
 // 提交订单请求
 message SubmitOrderRequest {
-  string order_id = 1;
-  string symbol = 2;
-  string side = 3;
-  string price = 4;
-  string quantity = 5;
+  string order_id = 1; // 订单唯一标识
+  string symbol = 2; // 交易对符号
+  string side = 3; // 交易方向
+  string price = 4; // 价格
+  string quantity = 5; // 数量
 }
 
 // 撮合结果
 message MatchResult {
-  string order_id = 1;
-  repeated Trade matched_trades = 2;
-  string remaining_quantity = 3;
-  string status = 4;
+  string order_id = 1; // 订单唯一标识
+  repeated Trade matched_trades = 2; // matched交易列表
+  string remaining_quantity = 3; // remaining数量
+  string status = 4; // 状态
 }
 
 // 成交记录
 message Trade {
-  string trade_id = 1;
-  string buy_order_id = 2;
-  string sell_order_id = 3;
-  string price = 4;
-  string quantity = 5;
-  int64 timestamp = 6;
+  string trade_id = 1; // 成交id
+  string buy_order_id = 2; // 订单唯一标识
+  string sell_order_id = 3; // 订单唯一标识
+  string price = 4; // 价格
+  string quantity = 5; // 数量
+  int64 timestamp = 6; // 时间戳
 }
 
 // 获取订单簿请求
 message GetOrderBookRequest {
-  string symbol = 1;
-  int32 depth = 2;
+  string symbol = 1; // 交易对符号
+  int32 depth = 2; // 深度
 }
 
 // 订单簿层级
 message OrderBookLevel {
-  string price = 1;
-  string quantity = 2;
+  string price = 1; // 价格
+  string quantity = 2; // 数量
 }
 
 // 订单簿快照
 message OrderBookSnapshot {
-  string symbol = 1;
-  repeated OrderBookLevel bids = 2;
-  repeated OrderBookLevel asks = 3;
-  int64 timestamp = 4;
+  string symbol = 1; // 交易对符号
+  repeated OrderBookLevel bids = 2; // 买入
+  repeated OrderBookLevel asks = 3; // 卖出
+  int64 timestamp = 4; // 时间戳
 }
 
 // 获取成交记录请求
 message GetTradesRequest {
-  string symbol = 1;
-  int32 limit = 2;
+  string symbol = 1; // 交易对符号
+  int32 limit = 2; // 限制
 }
 
 // 成交记录响应
 message TradesResponse {
-  string symbol = 1;
-  repeated Trade trades = 2;
+  string symbol = 1; // 交易对符号
+  repeated Trade trades = 2; // 交易列表
 }
 
 // 订阅成交更新请求
 message SubscribeTradesRequest {
-  repeated string symbols = 1;
+  repeated string symbols = 1; // 交易对符号
 }
 
 // 成交更新
 message TradeUpdate {
-  string trade_id = 1;
-  string symbol = 2;
-  string price = 3;
-  string quantity = 4;
-  int64 timestamp = 5;
+  string trade_id = 1; // 成交id
+  string symbol = 2; // 交易对符号
+  string price = 3; // 价格
+  string quantity = 4; // 数量
+  int64 timestamp = 5; // 时间戳
 }

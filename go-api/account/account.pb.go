@@ -21,15 +21,17 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// CreateAccountRequest 表示创建ACCOUNT请求结构体。
 type CreateAccountRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	AccountType   string                 `protobuf:"bytes,2,opt,name=account_type,json=accountType,proto3" json:"account_type,omitempty"`
-	Currency      string                 `protobuf:"bytes,3,opt,name=currency,proto3" json:"currency,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	AccountType   string                 `protobuf:"bytes,2,opt,name=account_type,json=accountType,proto3" json:"account_type,omitempty"` // ACCOUNT类型
+	Currency      string                 `protobuf:"bytes,3,opt,name=currency,proto3" json:"currency,omitempty"` // 货币
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *CreateAccountRequest) Reset() {
 	*x = CreateAccountRequest{}
 	mi := &file_api_account_account_proto_msgTypes[0]
@@ -37,12 +39,15 @@ func (x *CreateAccountRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *CreateAccountRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*CreateAccountRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *CreateAccountRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_account_account_proto_msgTypes[0]
 	if x != nil {
@@ -56,10 +61,12 @@ func (x *CreateAccountRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use CreateAccountRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*CreateAccountRequest) Descriptor() ([]byte, []int) {
 	return file_api_account_account_proto_rawDescGZIP(), []int{0}
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *CreateAccountRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -67,6 +74,7 @@ func (x *CreateAccountRequest) GetUserId() string {
 	return ""
 }
 
+// GetAccountType 获取ACCOUNT类型.
 func (x *CreateAccountRequest) GetAccountType() string {
 	if x != nil {
 		return x.AccountType
@@ -74,6 +82,7 @@ func (x *CreateAccountRequest) GetAccountType() string {
 	return ""
 }
 
+// GetCurrency 获取货币.
 func (x *CreateAccountRequest) GetCurrency() string {
 	if x != nil {
 		return x.Currency
@@ -81,20 +90,22 @@ func (x *CreateAccountRequest) GetCurrency() string {
 	return ""
 }
 
+// AccountResponse 表示ACCOUNT响应结构体。
 type AccountResponse struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
-	AccountId        string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	UserId           string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	AccountType      string                 `protobuf:"bytes,3,opt,name=account_type,json=accountType,proto3" json:"account_type,omitempty"`
-	Currency         string                 `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
-	Balance          string                 `protobuf:"bytes,5,opt,name=balance,proto3" json:"balance,omitempty"`
-	AvailableBalance string                 `protobuf:"bytes,6,opt,name=available_balance,json=availableBalance,proto3" json:"available_balance,omitempty"`
-	CreatedAt        int64                  `protobuf:"varint,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt        int64                  `protobuf:"varint,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	AccountId        string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"` // ACCOUNT唯一标识
+	UserId           string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	AccountType      string                 `protobuf:"bytes,3,opt,name=account_type,json=accountType,proto3" json:"account_type,omitempty"` // ACCOUNT类型
+	Currency         string                 `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"` // 货币
+	Balance          string                 `protobuf:"bytes,5,opt,name=balance,proto3" json:"balance,omitempty"` // 余额
+	AvailableBalance string                 `protobuf:"bytes,6,opt,name=available_balance,json=availableBalance,proto3" json:"available_balance,omitempty"` // Available余额
+	CreatedAt        int64                  `protobuf:"varint,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // Created在
+	UpdatedAt        int64                  `protobuf:"varint,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"` // Updated在
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *AccountResponse) Reset() {
 	*x = AccountResponse{}
 	mi := &file_api_account_account_proto_msgTypes[1]
@@ -102,12 +113,15 @@ func (x *AccountResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *AccountResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*AccountResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *AccountResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_account_account_proto_msgTypes[1]
 	if x != nil {
@@ -121,10 +135,12 @@ func (x *AccountResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use AccountResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*AccountResponse) Descriptor() ([]byte, []int) {
 	return file_api_account_account_proto_rawDescGZIP(), []int{1}
 }
 
+// GetAccountId 获取ACCOUNT唯一标识.
 func (x *AccountResponse) GetAccountId() string {
 	if x != nil {
 		return x.AccountId
@@ -132,6 +148,7 @@ func (x *AccountResponse) GetAccountId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *AccountResponse) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -139,6 +156,7 @@ func (x *AccountResponse) GetUserId() string {
 	return ""
 }
 
+// GetAccountType 获取ACCOUNT类型.
 func (x *AccountResponse) GetAccountType() string {
 	if x != nil {
 		return x.AccountType
@@ -146,6 +164,7 @@ func (x *AccountResponse) GetAccountType() string {
 	return ""
 }
 
+// GetCurrency 获取货币.
 func (x *AccountResponse) GetCurrency() string {
 	if x != nil {
 		return x.Currency
@@ -153,6 +172,7 @@ func (x *AccountResponse) GetCurrency() string {
 	return ""
 }
 
+// GetBalance 获取余额.
 func (x *AccountResponse) GetBalance() string {
 	if x != nil {
 		return x.Balance
@@ -160,6 +180,7 @@ func (x *AccountResponse) GetBalance() string {
 	return ""
 }
 
+// GetAvailableBalance 获取Available余额.
 func (x *AccountResponse) GetAvailableBalance() string {
 	if x != nil {
 		return x.AvailableBalance
@@ -167,6 +188,7 @@ func (x *AccountResponse) GetAvailableBalance() string {
 	return ""
 }
 
+// GetCreatedAt 获取Created在.
 func (x *AccountResponse) GetCreatedAt() int64 {
 	if x != nil {
 		return x.CreatedAt
@@ -174,6 +196,7 @@ func (x *AccountResponse) GetCreatedAt() int64 {
 	return 0
 }
 
+// GetUpdatedAt 获取Updated在.
 func (x *AccountResponse) GetUpdatedAt() int64 {
 	if x != nil {
 		return x.UpdatedAt
@@ -181,14 +204,16 @@ func (x *AccountResponse) GetUpdatedAt() int64 {
 	return 0
 }
 
+// GetAccountRequest 表示获取ACCOUNT请求结构体。
 type GetAccountRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"` // ACCOUNT唯一标识
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetAccountRequest) Reset() {
 	*x = GetAccountRequest{}
 	mi := &file_api_account_account_proto_msgTypes[2]
@@ -196,12 +221,15 @@ func (x *GetAccountRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetAccountRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetAccountRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetAccountRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_account_account_proto_msgTypes[2]
 	if x != nil {
@@ -215,10 +243,12 @@ func (x *GetAccountRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetAccountRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetAccountRequest) Descriptor() ([]byte, []int) {
 	return file_api_account_account_proto_rawDescGZIP(), []int{2}
 }
 
+// GetAccountId 获取ACCOUNT唯一标识.
 func (x *GetAccountRequest) GetAccountId() string {
 	if x != nil {
 		return x.AccountId
@@ -226,6 +256,7 @@ func (x *GetAccountRequest) GetAccountId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *GetAccountRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -233,15 +264,17 @@ func (x *GetAccountRequest) GetUserId() string {
 	return ""
 }
 
+// UpdateAccountRequest 表示更新ACCOUNT请求结构体。
 type UpdateAccountRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Updates       map[string]string      `protobuf:"bytes,3,rep,name=updates,proto3" json:"updates,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"` // ACCOUNT唯一标识
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Updates       map[string]string      `protobuf:"bytes,3,rep,name=updates,proto3" json:"updates,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // Updates
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *UpdateAccountRequest) Reset() {
 	*x = UpdateAccountRequest{}
 	mi := &file_api_account_account_proto_msgTypes[3]
@@ -249,12 +282,15 @@ func (x *UpdateAccountRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *UpdateAccountRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*UpdateAccountRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *UpdateAccountRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_account_account_proto_msgTypes[3]
 	if x != nil {
@@ -268,10 +304,12 @@ func (x *UpdateAccountRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use UpdateAccountRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*UpdateAccountRequest) Descriptor() ([]byte, []int) {
 	return file_api_account_account_proto_rawDescGZIP(), []int{3}
 }
 
+// GetAccountId 获取ACCOUNT唯一标识.
 func (x *UpdateAccountRequest) GetAccountId() string {
 	if x != nil {
 		return x.AccountId
@@ -279,6 +317,7 @@ func (x *UpdateAccountRequest) GetAccountId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *UpdateAccountRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -286,6 +325,7 @@ func (x *UpdateAccountRequest) GetUserId() string {
 	return ""
 }
 
+// GetUpdates 获取Updates.
 func (x *UpdateAccountRequest) GetUpdates() map[string]string {
 	if x != nil {
 		return x.Updates
@@ -293,14 +333,16 @@ func (x *UpdateAccountRequest) GetUpdates() map[string]string {
 	return nil
 }
 
+// GetBalanceRequest 表示获取余额请求结构体。
 type GetBalanceRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"` // ACCOUNT唯一标识
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetBalanceRequest) Reset() {
 	*x = GetBalanceRequest{}
 	mi := &file_api_account_account_proto_msgTypes[4]
@@ -308,12 +350,15 @@ func (x *GetBalanceRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetBalanceRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetBalanceRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetBalanceRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_account_account_proto_msgTypes[4]
 	if x != nil {
@@ -327,10 +372,12 @@ func (x *GetBalanceRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetBalanceRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetBalanceRequest) Descriptor() ([]byte, []int) {
 	return file_api_account_account_proto_rawDescGZIP(), []int{4}
 }
 
+// GetAccountId 获取ACCOUNT唯一标识.
 func (x *GetBalanceRequest) GetAccountId() string {
 	if x != nil {
 		return x.AccountId
@@ -338,6 +385,7 @@ func (x *GetBalanceRequest) GetAccountId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *GetBalanceRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -345,17 +393,19 @@ func (x *GetBalanceRequest) GetUserId() string {
 	return ""
 }
 
+// BalanceResponse 表示余额响应结构体。
 type BalanceResponse struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
-	AccountId        string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	Balance          string                 `protobuf:"bytes,2,opt,name=balance,proto3" json:"balance,omitempty"`
-	AvailableBalance string                 `protobuf:"bytes,3,opt,name=available_balance,json=availableBalance,proto3" json:"available_balance,omitempty"`
-	FrozenBalance    string                 `protobuf:"bytes,4,opt,name=frozen_balance,json=frozenBalance,proto3" json:"frozen_balance,omitempty"`
-	Timestamp        int64                  `protobuf:"varint,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	AccountId        string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"` // ACCOUNT唯一标识
+	Balance          string                 `protobuf:"bytes,2,opt,name=balance,proto3" json:"balance,omitempty"` // 余额
+	AvailableBalance string                 `protobuf:"bytes,3,opt,name=available_balance,json=availableBalance,proto3" json:"available_balance,omitempty"` // Available余额
+	FrozenBalance    string                 `protobuf:"bytes,4,opt,name=frozen_balance,json=frozenBalance,proto3" json:"frozen_balance,omitempty"` // Frozen余额
+	Timestamp        int64                  `protobuf:"varint,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Timestamp
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *BalanceResponse) Reset() {
 	*x = BalanceResponse{}
 	mi := &file_api_account_account_proto_msgTypes[5]
@@ -363,12 +413,15 @@ func (x *BalanceResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *BalanceResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*BalanceResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *BalanceResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_account_account_proto_msgTypes[5]
 	if x != nil {
@@ -382,10 +435,12 @@ func (x *BalanceResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use BalanceResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*BalanceResponse) Descriptor() ([]byte, []int) {
 	return file_api_account_account_proto_rawDescGZIP(), []int{5}
 }
 
+// GetAccountId 获取ACCOUNT唯一标识.
 func (x *BalanceResponse) GetAccountId() string {
 	if x != nil {
 		return x.AccountId
@@ -393,6 +448,7 @@ func (x *BalanceResponse) GetAccountId() string {
 	return ""
 }
 
+// GetBalance 获取余额.
 func (x *BalanceResponse) GetBalance() string {
 	if x != nil {
 		return x.Balance
@@ -400,6 +456,7 @@ func (x *BalanceResponse) GetBalance() string {
 	return ""
 }
 
+// GetAvailableBalance 获取Available余额.
 func (x *BalanceResponse) GetAvailableBalance() string {
 	if x != nil {
 		return x.AvailableBalance
@@ -407,6 +464,7 @@ func (x *BalanceResponse) GetAvailableBalance() string {
 	return ""
 }
 
+// GetFrozenBalance 获取Frozen余额.
 func (x *BalanceResponse) GetFrozenBalance() string {
 	if x != nil {
 		return x.FrozenBalance
@@ -414,6 +472,7 @@ func (x *BalanceResponse) GetFrozenBalance() string {
 	return ""
 }
 
+// GetTimestamp 获取Timestamp.
 func (x *BalanceResponse) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
@@ -421,16 +480,18 @@ func (x *BalanceResponse) GetTimestamp() int64 {
 	return 0
 }
 
+// DepositRequest 表示Deposit请求结构体。
 type DepositRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Amount        string                 `protobuf:"bytes,3,opt,name=amount,proto3" json:"amount,omitempty"`
-	Currency      string                 `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"` // ACCOUNT唯一标识
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Amount        string                 `protobuf:"bytes,3,opt,name=amount,proto3" json:"amount,omitempty"` // 金额
+	Currency      string                 `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"` // 货币
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *DepositRequest) Reset() {
 	*x = DepositRequest{}
 	mi := &file_api_account_account_proto_msgTypes[6]
@@ -438,12 +499,15 @@ func (x *DepositRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *DepositRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*DepositRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *DepositRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_account_account_proto_msgTypes[6]
 	if x != nil {
@@ -457,10 +521,12 @@ func (x *DepositRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use DepositRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*DepositRequest) Descriptor() ([]byte, []int) {
 	return file_api_account_account_proto_rawDescGZIP(), []int{6}
 }
 
+// GetAccountId 获取ACCOUNT唯一标识.
 func (x *DepositRequest) GetAccountId() string {
 	if x != nil {
 		return x.AccountId
@@ -468,6 +534,7 @@ func (x *DepositRequest) GetAccountId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *DepositRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -475,6 +542,7 @@ func (x *DepositRequest) GetUserId() string {
 	return ""
 }
 
+// GetAmount 获取金额.
 func (x *DepositRequest) GetAmount() string {
 	if x != nil {
 		return x.Amount
@@ -482,6 +550,7 @@ func (x *DepositRequest) GetAmount() string {
 	return ""
 }
 
+// GetCurrency 获取货币.
 func (x *DepositRequest) GetCurrency() string {
 	if x != nil {
 		return x.Currency
@@ -489,17 +558,19 @@ func (x *DepositRequest) GetCurrency() string {
 	return ""
 }
 
+// WithdrawRequest 表示Withdraw请求结构体。
 type WithdrawRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Amount        string                 `protobuf:"bytes,3,opt,name=amount,proto3" json:"amount,omitempty"`
-	Currency      string                 `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
-	Address       string                 `protobuf:"bytes,5,opt,name=address,proto3" json:"address,omitempty"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"` // ACCOUNT唯一标识
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Amount        string                 `protobuf:"bytes,3,opt,name=amount,proto3" json:"amount,omitempty"` // 金额
+	Currency      string                 `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"` // 货币
+	Address       string                 `protobuf:"bytes,5,opt,name=address,proto3" json:"address,omitempty"` // 地址
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *WithdrawRequest) Reset() {
 	*x = WithdrawRequest{}
 	mi := &file_api_account_account_proto_msgTypes[7]
@@ -507,12 +578,15 @@ func (x *WithdrawRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *WithdrawRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*WithdrawRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *WithdrawRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_account_account_proto_msgTypes[7]
 	if x != nil {
@@ -526,10 +600,12 @@ func (x *WithdrawRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use WithdrawRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*WithdrawRequest) Descriptor() ([]byte, []int) {
 	return file_api_account_account_proto_rawDescGZIP(), []int{7}
 }
 
+// GetAccountId 获取ACCOUNT唯一标识.
 func (x *WithdrawRequest) GetAccountId() string {
 	if x != nil {
 		return x.AccountId
@@ -537,6 +613,7 @@ func (x *WithdrawRequest) GetAccountId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *WithdrawRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -544,6 +621,7 @@ func (x *WithdrawRequest) GetUserId() string {
 	return ""
 }
 
+// GetAmount 获取金额.
 func (x *WithdrawRequest) GetAmount() string {
 	if x != nil {
 		return x.Amount
@@ -551,6 +629,7 @@ func (x *WithdrawRequest) GetAmount() string {
 	return ""
 }
 
+// GetCurrency 获取货币.
 func (x *WithdrawRequest) GetCurrency() string {
 	if x != nil {
 		return x.Currency
@@ -558,6 +637,7 @@ func (x *WithdrawRequest) GetCurrency() string {
 	return ""
 }
 
+// GetAddress 获取地址.
 func (x *WithdrawRequest) GetAddress() string {
 	if x != nil {
 		return x.Address
@@ -565,18 +645,20 @@ func (x *WithdrawRequest) GetAddress() string {
 	return ""
 }
 
+// TransactionResponse 表示Transaction响应结构体。
 type TransactionResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TransactionId string                 `protobuf:"bytes,1,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
-	AccountId     string                 `protobuf:"bytes,2,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	Type          string                 `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
-	Amount        string                 `protobuf:"bytes,4,opt,name=amount,proto3" json:"amount,omitempty"`
-	Status        string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	TransactionId string                 `protobuf:"bytes,1,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"` // Transaction唯一标识
+	AccountId     string                 `protobuf:"bytes,2,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"` // ACCOUNT唯一标识
+	Type          string                 `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"` // 类型
+	Amount        string                 `protobuf:"bytes,4,opt,name=amount,proto3" json:"amount,omitempty"` // 金额
+	Status        string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	Timestamp     int64                  `protobuf:"varint,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Timestamp
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *TransactionResponse) Reset() {
 	*x = TransactionResponse{}
 	mi := &file_api_account_account_proto_msgTypes[8]
@@ -584,12 +666,15 @@ func (x *TransactionResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *TransactionResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*TransactionResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *TransactionResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_account_account_proto_msgTypes[8]
 	if x != nil {
@@ -603,10 +688,12 @@ func (x *TransactionResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use TransactionResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*TransactionResponse) Descriptor() ([]byte, []int) {
 	return file_api_account_account_proto_rawDescGZIP(), []int{8}
 }
 
+// GetTransactionId 获取Transaction唯一标识.
 func (x *TransactionResponse) GetTransactionId() string {
 	if x != nil {
 		return x.TransactionId
@@ -614,6 +701,7 @@ func (x *TransactionResponse) GetTransactionId() string {
 	return ""
 }
 
+// GetAccountId 获取ACCOUNT唯一标识.
 func (x *TransactionResponse) GetAccountId() string {
 	if x != nil {
 		return x.AccountId
@@ -621,6 +709,7 @@ func (x *TransactionResponse) GetAccountId() string {
 	return ""
 }
 
+// GetType 获取类型.
 func (x *TransactionResponse) GetType() string {
 	if x != nil {
 		return x.Type
@@ -628,6 +717,7 @@ func (x *TransactionResponse) GetType() string {
 	return ""
 }
 
+// GetAmount 获取金额.
 func (x *TransactionResponse) GetAmount() string {
 	if x != nil {
 		return x.Amount
@@ -635,6 +725,7 @@ func (x *TransactionResponse) GetAmount() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *TransactionResponse) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -642,6 +733,7 @@ func (x *TransactionResponse) GetStatus() string {
 	return ""
 }
 
+// GetTimestamp 获取Timestamp.
 func (x *TransactionResponse) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
@@ -649,15 +741,17 @@ func (x *TransactionResponse) GetTimestamp() int64 {
 	return 0
 }
 
+// GetTransactionHistoryRequest 表示获取TransactionHistory请求结构体。
 type GetTransactionHistoryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"` // ACCOUNT唯一标识
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"` // 限制
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetTransactionHistoryRequest) Reset() {
 	*x = GetTransactionHistoryRequest{}
 	mi := &file_api_account_account_proto_msgTypes[9]
@@ -665,12 +759,15 @@ func (x *GetTransactionHistoryRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetTransactionHistoryRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetTransactionHistoryRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetTransactionHistoryRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_account_account_proto_msgTypes[9]
 	if x != nil {
@@ -684,10 +781,12 @@ func (x *GetTransactionHistoryRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetTransactionHistoryRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetTransactionHistoryRequest) Descriptor() ([]byte, []int) {
 	return file_api_account_account_proto_rawDescGZIP(), []int{9}
 }
 
+// GetAccountId 获取ACCOUNT唯一标识.
 func (x *GetTransactionHistoryRequest) GetAccountId() string {
 	if x != nil {
 		return x.AccountId
@@ -695,6 +794,7 @@ func (x *GetTransactionHistoryRequest) GetAccountId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *GetTransactionHistoryRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -702,6 +802,7 @@ func (x *GetTransactionHistoryRequest) GetUserId() string {
 	return ""
 }
 
+// GetLimit 获取限制.
 func (x *GetTransactionHistoryRequest) GetLimit() int32 {
 	if x != nil {
 		return x.Limit
@@ -709,17 +810,19 @@ func (x *GetTransactionHistoryRequest) GetLimit() int32 {
 	return 0
 }
 
+// Transaction 表示Transaction结构体。
 type Transaction struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TransactionId string                 `protobuf:"bytes,1,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
-	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	Amount        string                 `protobuf:"bytes,3,opt,name=amount,proto3" json:"amount,omitempty"`
-	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	TransactionId string                 `protobuf:"bytes,1,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"` // Transaction唯一标识
+	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"` // 类型
+	Amount        string                 `protobuf:"bytes,3,opt,name=amount,proto3" json:"amount,omitempty"` // 金额
+	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	Timestamp     int64                  `protobuf:"varint,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Timestamp
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *Transaction) Reset() {
 	*x = Transaction{}
 	mi := &file_api_account_account_proto_msgTypes[10]
@@ -727,12 +830,15 @@ func (x *Transaction) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *Transaction) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*Transaction) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *Transaction) ProtoReflect() protoreflect.Message {
 	mi := &file_api_account_account_proto_msgTypes[10]
 	if x != nil {
@@ -746,10 +852,12 @@ func (x *Transaction) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use Transaction.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*Transaction) Descriptor() ([]byte, []int) {
 	return file_api_account_account_proto_rawDescGZIP(), []int{10}
 }
 
+// GetTransactionId 获取Transaction唯一标识.
 func (x *Transaction) GetTransactionId() string {
 	if x != nil {
 		return x.TransactionId
@@ -757,6 +865,7 @@ func (x *Transaction) GetTransactionId() string {
 	return ""
 }
 
+// GetType 获取类型.
 func (x *Transaction) GetType() string {
 	if x != nil {
 		return x.Type
@@ -764,6 +873,7 @@ func (x *Transaction) GetType() string {
 	return ""
 }
 
+// GetAmount 获取金额.
 func (x *Transaction) GetAmount() string {
 	if x != nil {
 		return x.Amount
@@ -771,6 +881,7 @@ func (x *Transaction) GetAmount() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *Transaction) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -778,6 +889,7 @@ func (x *Transaction) GetStatus() string {
 	return ""
 }
 
+// GetTimestamp 获取Timestamp.
 func (x *Transaction) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
@@ -785,13 +897,15 @@ func (x *Transaction) GetTimestamp() int64 {
 	return 0
 }
 
+// TransactionHistoryResponse 表示TransactionHistory响应结构体。
 type TransactionHistoryResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Transactions  []*Transaction         `protobuf:"bytes,1,rep,name=transactions,proto3" json:"transactions,omitempty"`
+	Transactions  []*Transaction         `protobuf:"bytes,1,rep,name=transactions,proto3" json:"transactions,omitempty"` // Transactions
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *TransactionHistoryResponse) Reset() {
 	*x = TransactionHistoryResponse{}
 	mi := &file_api_account_account_proto_msgTypes[11]
@@ -799,12 +913,15 @@ func (x *TransactionHistoryResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *TransactionHistoryResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*TransactionHistoryResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *TransactionHistoryResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_account_account_proto_msgTypes[11]
 	if x != nil {
@@ -818,10 +935,12 @@ func (x *TransactionHistoryResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use TransactionHistoryResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*TransactionHistoryResponse) Descriptor() ([]byte, []int) {
 	return file_api_account_account_proto_rawDescGZIP(), []int{11}
 }
 
+// GetTransactions 获取Transactions.
 func (x *TransactionHistoryResponse) GetTransactions() []*Transaction {
 	if x != nil {
 		return x.Transactions
@@ -989,7 +1108,7 @@ func file_api_account_account_proto_init() {
 		DependencyIndexes: file_api_account_account_proto_depIdxs,
 		MessageInfos:      file_api_account_account_proto_msgTypes,
 	}.Build()
-	File_api_account_account_proto = out.File
+	File_api_account_account_proto = out.File // File_api_account_account_proto 文件APIACCOUNTACCOUNTProto
 	file_api_account_account_proto_goTypes = nil
 	file_api_account_account_proto_depIdxs = nil
 }

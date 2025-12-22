@@ -19,9 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MarketSimulationService_StartSimulation_FullMethodName     = "/market_simulation.MarketSimulationService/StartSimulation"
-	MarketSimulationService_StopSimulation_FullMethodName      = "/market_simulation.MarketSimulationService/StopSimulation"
-	MarketSimulationService_GetSimulationStatus_FullMethodName = "/market_simulation.MarketSimulationService/GetSimulationStatus"
+	MarketSimulationService_StartSimulation_FullMethodName     = "/market_simulation.MarketSimulationService/StartSimulation" // MarketSimulationService_StartSimulation_FullMethodName 市场SimulationSERVICE开始SimulationFullMethod名称
+	MarketSimulationService_StopSimulation_FullMethodName      = "/market_simulation.MarketSimulationService/StopSimulation" // MarketSimulationService_StopSimulation_FullMethodName 市场SimulationSERVICE停止SimulationFullMethod名称
+	MarketSimulationService_GetSimulationStatus_FullMethodName = "/market_simulation.MarketSimulationService/GetSimulationStatus" // MarketSimulationService_GetSimulationStatus_FullMethodName 市场SimulationSERVICE获取SimulationSTATUSFullMethod名称
 )
 
 // MarketSimulationServiceClient is the client API for MarketSimulationService service.
@@ -29,6 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // MarketSimulationService 提供市场模拟服务
+// MarketSimulationServiceClient 表示市场SimulationSERVICE客户端结构体。
 type MarketSimulationServiceClient interface {
 	// 启动模拟
 	StartSimulation(ctx context.Context, in *StartSimulationRequest, opts ...grpc.CallOption) (*StartSimulationResponse, error)
@@ -42,10 +43,12 @@ type marketSimulationServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
+// NewMarketSimulationServiceClient 创建新的创建一个新的实例市场SimulationSERVICE客户端.
 func NewMarketSimulationServiceClient(cc grpc.ClientConnInterface) MarketSimulationServiceClient {
 	return &marketSimulationServiceClient{cc}
 }
 
+// StartSimulation 执行开始Simulation逻辑。
 func (c *marketSimulationServiceClient) StartSimulation(ctx context.Context, in *StartSimulationRequest, opts ...grpc.CallOption) (*StartSimulationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(StartSimulationResponse)
@@ -56,6 +59,7 @@ func (c *marketSimulationServiceClient) StartSimulation(ctx context.Context, in 
 	return out, nil
 }
 
+// StopSimulation 执行停止Simulation逻辑。
 func (c *marketSimulationServiceClient) StopSimulation(ctx context.Context, in *StopSimulationRequest, opts ...grpc.CallOption) (*StopSimulationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(StopSimulationResponse)
@@ -66,6 +70,7 @@ func (c *marketSimulationServiceClient) StopSimulation(ctx context.Context, in *
 	return out, nil
 }
 
+// GetSimulationStatus 获取SimulationSTATUS.
 func (c *marketSimulationServiceClient) GetSimulationStatus(ctx context.Context, in *GetSimulationStatusRequest, opts ...grpc.CallOption) (*GetSimulationStatusResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetSimulationStatusResponse)
@@ -81,6 +86,7 @@ func (c *marketSimulationServiceClient) GetSimulationStatus(ctx context.Context,
 // for forward compatibility.
 //
 // MarketSimulationService 提供市场模拟服务
+// MarketSimulationServiceServer 表示市场SimulationSERVICE服务端结构体。
 type MarketSimulationServiceServer interface {
 	// 启动模拟
 	StartSimulation(context.Context, *StartSimulationRequest) (*StartSimulationResponse, error)
@@ -96,14 +102,18 @@ type MarketSimulationServiceServer interface {
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
+// UnimplementedMarketSimulationServiceServer 表示未实现的市场SimulationSERVICE服务端结构体。
 type UnimplementedMarketSimulationServiceServer struct{}
 
+// StartSimulation 执行开始Simulation逻辑。
 func (UnimplementedMarketSimulationServiceServer) StartSimulation(context.Context, *StartSimulationRequest) (*StartSimulationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StartSimulation not implemented")
 }
+// StopSimulation 执行停止Simulation逻辑。
 func (UnimplementedMarketSimulationServiceServer) StopSimulation(context.Context, *StopSimulationRequest) (*StopSimulationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopSimulation not implemented")
 }
+// GetSimulationStatus 获取SimulationSTATUS.
 func (UnimplementedMarketSimulationServiceServer) GetSimulationStatus(context.Context, *GetSimulationStatusRequest) (*GetSimulationStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSimulationStatus not implemented")
 }
@@ -114,10 +124,12 @@ func (UnimplementedMarketSimulationServiceServer) testEmbeddedByValue() {}
 // UnsafeMarketSimulationServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to MarketSimulationServiceServer will
 // result in compilation errors.
+// UnsafeMarketSimulationServiceServer 表示Unsafe市场SimulationSERVICE服务端结构体。
 type UnsafeMarketSimulationServiceServer interface {
 	mustEmbedUnimplementedMarketSimulationServiceServer()
 }
 
+// RegisterMarketSimulationServiceServer 执行Register市场SimulationSERVICE服务端逻辑。
 func RegisterMarketSimulationServiceServer(s grpc.ServiceRegistrar, srv MarketSimulationServiceServer) {
 	// If the following call pancis, it indicates UnimplementedMarketSimulationServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an

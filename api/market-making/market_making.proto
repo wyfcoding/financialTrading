@@ -18,61 +18,61 @@ service MarketMakingService {
 
 // 报价策略
 message QuoteStrategy {
-  string id = 1;
-  string symbol = 2;
+  string id = 1; // 唯一标识
+  string symbol = 2; // 交易对符号
   double spread = 3; // 目标点差
-  double min_order_size = 4;
-  double max_order_size = 5;
-  double max_position = 6;
-  string status = 7; // ACTIVE, PAUSED
-  google.protobuf.Timestamp created_at = 8;
-  google.protobuf.Timestamp updated_at = 9;
+  double min_order_size = 4; // 最小订单大小
+  double max_order_size = 5; // 最大订单大小
+  double max_position = 6; // 最大position
+  string status = 7; // 状态
+  google.protobuf.Timestamp created_at = 8; // 创建时间
+  google.protobuf.Timestamp updated_at = 9; // 更新时间
 }
 
 // 做市绩效
 message MarketMakingPerformance {
-  string symbol = 1;
-  double total_pnl = 2;
-  double total_volume = 3;
-  int32 total_trades = 4;
-  double sharpe_ratio = 5;
-  google.protobuf.Timestamp start_time = 6;
-  google.protobuf.Timestamp end_time = 7;
+  string symbol = 1; // 交易对符号
+  double total_pnl = 2; // 总数pnl
+  double total_volume = 3; // 总数volume
+  int32 total_trades = 4; // 总数trades
+  double sharpe_ratio = 5; // 夏普比率
+  google.protobuf.Timestamp start_time = 6; // 开始时间
+  google.protobuf.Timestamp end_time = 7; // 结束时间
 }
 
 // 设置策略请求
 message SetStrategyRequest {
-  string symbol = 1;
-  double spread = 2;
-  double min_order_size = 3;
-  double max_order_size = 4;
-  double max_position = 5;
-  string status = 6;
+  string symbol = 1; // 交易对符号
+  double spread = 2; // 价差
+  double min_order_size = 3; // 最小订单大小
+  double max_order_size = 4; // 最大订单大小
+  double max_position = 5; // 最大position
+  string status = 6; // 状态
 }
 
 // 设置策略响应
 message SetStrategyResponse {
-  string strategy_id = 1;
+  string strategy_id = 1; // 策略ID
 }
 
 // 获取策略请求
 message GetStrategyRequest {
-  string symbol = 1;
+  string symbol = 1; // 交易对符号
 }
 
 // 获取策略响应
 message GetStrategyResponse {
-  QuoteStrategy strategy = 1;
+  QuoteStrategy strategy = 1; // 策略
 }
 
 // 获取绩效请求
 message GetPerformanceRequest {
-  string symbol = 1;
-  google.protobuf.Timestamp start_time = 2;
-  google.protobuf.Timestamp end_time = 3;
+  string symbol = 1; // 交易对符号
+  google.protobuf.Timestamp start_time = 2; // 开始时间
+  google.protobuf.Timestamp end_time = 3; // 结束时间
 }
 
 // 获取绩效响应
 message GetPerformanceResponse {
-  MarketMakingPerformance performance = 1;
+  MarketMakingPerformance performance = 1; // 表现
 }

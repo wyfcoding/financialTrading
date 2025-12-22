@@ -18,66 +18,66 @@ service RiskService {
 
 // 评估风险请求
 message AssessRiskRequest {
-  string user_id = 1;
-  string symbol = 2;
-  string side = 3;
-  string quantity = 4;
-  string price = 5;
+  string user_id = 1; // 用户唯一标识
+  string symbol = 2; // 交易对符号
+  string side = 3; // 交易方向
+  string quantity = 4; // 数量
+  string price = 5; // 价格
 }
 
 // 风险评估响应
 message RiskAssessmentResponse {
-  string risk_level = 1; // LOW, MEDIUM, HIGH, CRITICAL
-  string risk_score = 2;
-  string margin_requirement = 3;
-  bool is_allowed = 4;
-  string reason = 5;
+  string risk_level = 1; // risk等级
+  string risk_score = 2; // risk分数
+  string margin_requirement = 3; // 利润率requirement
+  bool is_allowed = 4; // 是allowed
+  string reason = 5; // 原因
 }
 
 // 获取风险指标请求
 message GetRiskMetricsRequest {
-  string user_id = 1;
+  string user_id = 1; // 用户唯一标识
 }
 
 // 风险指标响应
 message RiskMetricsResponse {
   string var_95 = 1; // 风险价值 (Value at Risk)
-  string var_99 = 2;
-  string max_drawdown = 3;
-  string sharpe_ratio = 4;
-  string correlation = 5;
+  string var_99 = 2; // 变量
+  string max_drawdown = 3; // 最大drawdown
+  string sharpe_ratio = 4; // 夏普比率
+  string correlation = 5; // 相关性
 }
 
 // 检查风险限额请求
 message CheckRiskLimitRequest {
-  string user_id = 1;
-  string limit_type = 2; // POSITION_SIZE, DAILY_LOSS, LEVERAGE
+  string user_id = 1; // 用户唯一标识
+  string limit_type = 2; // 限制类型
 }
 
 // 风险限额响应
 message RiskLimitResponse {
-  string limit_type = 1;
-  string limit_value = 2;
-  string current_value = 3;
-  string remaining = 4;
-  bool is_exceeded = 5;
+  string limit_type = 1; // 限制类型
+  string limit_value = 2; // 限制value
+  string current_value = 3; // current值
+  string remaining = 4; // 剩余
+  bool is_exceeded = 5; // 是exceeded
 }
 
 // 获取风险告警请求
 message GetRiskAlertsRequest {
-  string user_id = 1;
+  string user_id = 1; // 用户唯一标识
 }
 
 // 风险告警
 message RiskAlert {
-  string alert_id = 1;
-  string alert_type = 2;
-  string severity = 3;
-  string message = 4;
-  int64 timestamp = 5;
+  string alert_id = 1; // 告警ID
+  string alert_type = 2; // alert类型
+  string severity = 3; // 严重程度
+  string message = 4; // 消息
+  int64 timestamp = 5; // 时间戳
 }
 
 // 风险告警响应
 message RiskAlertsResponse {
-  repeated RiskAlert alerts = 1;
+  repeated RiskAlert alerts = 1; // 告警
 }

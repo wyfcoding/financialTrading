@@ -18,55 +18,55 @@ service PositionService {
 
 // 获取持仓列表请求
 message GetPositionsRequest {
-  string user_id = 1;
-  string symbol = 2;
-  int32 page = 3;
-  int32 page_size = 4;
+  string user_id = 1; // 用户唯一标识
+  string symbol = 2; // 交易对符号
+  int32 page = 3; // 页码
+  int32 page_size = 4; // 页码大小
 }
 
 // 持仓响应
 message PositionResponse {
-  string position_id = 1;
-  string user_id = 2;
-  string symbol = 3;
-  string side = 4;
-  string quantity = 5;
-  string entry_price = 6;
-  string current_price = 7;
-  string unrealized_pnl = 8;
-  string realized_pnl = 9;
-  int64 opened_at = 10;
-  int64 closed_at = 11;
+  string position_id = 1; // 位置ID
+  string user_id = 2; // 用户唯一标识
+  string symbol = 3; // 交易对符号
+  string side = 4; // 交易方向
+  string quantity = 5; // 数量
+  string entry_price = 6; // entry价格
+  string current_price = 7; // current价格
+  string unrealized_pnl = 8; // 未实现pnl
+  string realized_pnl = 9; // 已实现pnl
+  int64 opened_at = 10; // opened在
+  int64 closed_at = 11; // closed在
 }
 
 // 持仓列表响应
 message PositionsResponse {
-  repeated PositionResponse positions = 1;
-  int64 total = 2;
+  repeated PositionResponse positions = 1; // 位置列表
+  int64 total = 2; // 总数
 }
 
 // 获取持仓请求
 message GetPositionRequest {
-  string position_id = 1;
-  string user_id = 2;
+  string position_id = 1; // 位置ID
+  string user_id = 2; // 用户唯一标识
 }
 
 // 获取持仓汇总请求
 message GetPositionSummaryRequest {
-  string user_id = 1;
+  string user_id = 1; // 用户唯一标识
 }
 
 // 持仓汇总响应
 message PositionSummaryResponse {
-  int64 total_positions = 1;
-  string total_unrealized_pnl = 2;
-  string total_realized_pnl = 3;
-  repeated PositionResponse positions = 4;
+  int64 total_positions = 1; // 总数positions
+  string total_unrealized_pnl = 2; // 总数unrealizedpnl
+  string total_realized_pnl = 3; // 总数realizedpnl
+  repeated PositionResponse positions = 4; // 位置列表
 }
 
 // 平仓请求
 message ClosePositionRequest {
-  string position_id = 1;
-  string user_id = 2;
-  string close_price = 3;
+  string position_id = 1; // 位置ID
+  string user_id = 2; // 用户唯一标识
+  string close_price = 3; // close价格
 }

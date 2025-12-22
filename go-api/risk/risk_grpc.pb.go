@@ -19,10 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RiskService_AssessRisk_FullMethodName     = "/risk.RiskService/AssessRisk"
-	RiskService_GetRiskMetrics_FullMethodName = "/risk.RiskService/GetRiskMetrics"
-	RiskService_CheckRiskLimit_FullMethodName = "/risk.RiskService/CheckRiskLimit"
-	RiskService_GetRiskAlerts_FullMethodName  = "/risk.RiskService/GetRiskAlerts"
+	RiskService_AssessRisk_FullMethodName     = "/risk.RiskService/AssessRisk" // RiskService_AssessRisk_FullMethodName RiskSERVICEAssessRiskFullMethod名称
+	RiskService_GetRiskMetrics_FullMethodName = "/risk.RiskService/GetRiskMetrics" // RiskService_GetRiskMetrics_FullMethodName RiskSERVICE获取RiskMetricsFullMethod名称
+	RiskService_CheckRiskLimit_FullMethodName = "/risk.RiskService/CheckRiskLimit" // RiskService_CheckRiskLimit_FullMethodName RiskSERVICECheckRisk限制FullMethod名称
+	RiskService_GetRiskAlerts_FullMethodName  = "/risk.RiskService/GetRiskAlerts" // RiskService_GetRiskAlerts_FullMethodName RiskSERVICE获取RiskAlertsFullMethod名称
 )
 
 // RiskServiceClient is the client API for RiskService service.
@@ -30,6 +30,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // 风险管理服务
+// RiskServiceClient 表示RiskSERVICE客户端结构体。
 type RiskServiceClient interface {
 	// 评估风险
 	AssessRisk(ctx context.Context, in *AssessRiskRequest, opts ...grpc.CallOption) (*RiskAssessmentResponse, error)
@@ -45,10 +46,12 @@ type riskServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
+// NewRiskServiceClient 创建新的创建一个新的实例RiskSERVICE客户端.
 func NewRiskServiceClient(cc grpc.ClientConnInterface) RiskServiceClient {
 	return &riskServiceClient{cc}
 }
 
+// AssessRisk 执行AssessRisk逻辑。
 func (c *riskServiceClient) AssessRisk(ctx context.Context, in *AssessRiskRequest, opts ...grpc.CallOption) (*RiskAssessmentResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RiskAssessmentResponse)
@@ -59,6 +62,7 @@ func (c *riskServiceClient) AssessRisk(ctx context.Context, in *AssessRiskReques
 	return out, nil
 }
 
+// GetRiskMetrics 获取RiskMetrics.
 func (c *riskServiceClient) GetRiskMetrics(ctx context.Context, in *GetRiskMetricsRequest, opts ...grpc.CallOption) (*RiskMetricsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RiskMetricsResponse)
@@ -69,6 +73,7 @@ func (c *riskServiceClient) GetRiskMetrics(ctx context.Context, in *GetRiskMetri
 	return out, nil
 }
 
+// CheckRiskLimit 执行CheckRisk限制逻辑。
 func (c *riskServiceClient) CheckRiskLimit(ctx context.Context, in *CheckRiskLimitRequest, opts ...grpc.CallOption) (*RiskLimitResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RiskLimitResponse)
@@ -79,6 +84,7 @@ func (c *riskServiceClient) CheckRiskLimit(ctx context.Context, in *CheckRiskLim
 	return out, nil
 }
 
+// GetRiskAlerts 获取RiskAlerts.
 func (c *riskServiceClient) GetRiskAlerts(ctx context.Context, in *GetRiskAlertsRequest, opts ...grpc.CallOption) (*RiskAlertsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RiskAlertsResponse)
@@ -94,6 +100,7 @@ func (c *riskServiceClient) GetRiskAlerts(ctx context.Context, in *GetRiskAlerts
 // for forward compatibility.
 //
 // 风险管理服务
+// RiskServiceServer 表示RiskSERVICE服务端结构体。
 type RiskServiceServer interface {
 	// 评估风险
 	AssessRisk(context.Context, *AssessRiskRequest) (*RiskAssessmentResponse, error)
@@ -111,17 +118,22 @@ type RiskServiceServer interface {
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
+// UnimplementedRiskServiceServer 表示未实现的RiskSERVICE服务端结构体。
 type UnimplementedRiskServiceServer struct{}
 
+// AssessRisk 执行AssessRisk逻辑。
 func (UnimplementedRiskServiceServer) AssessRisk(context.Context, *AssessRiskRequest) (*RiskAssessmentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AssessRisk not implemented")
 }
+// GetRiskMetrics 获取RiskMetrics.
 func (UnimplementedRiskServiceServer) GetRiskMetrics(context.Context, *GetRiskMetricsRequest) (*RiskMetricsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRiskMetrics not implemented")
 }
+// CheckRiskLimit 执行CheckRisk限制逻辑。
 func (UnimplementedRiskServiceServer) CheckRiskLimit(context.Context, *CheckRiskLimitRequest) (*RiskLimitResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CheckRiskLimit not implemented")
 }
+// GetRiskAlerts 获取RiskAlerts.
 func (UnimplementedRiskServiceServer) GetRiskAlerts(context.Context, *GetRiskAlertsRequest) (*RiskAlertsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRiskAlerts not implemented")
 }
@@ -131,10 +143,12 @@ func (UnimplementedRiskServiceServer) testEmbeddedByValue()                     
 // UnsafeRiskServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to RiskServiceServer will
 // result in compilation errors.
+// UnsafeRiskServiceServer 表示UnsafeRiskSERVICE服务端结构体。
 type UnsafeRiskServiceServer interface {
 	mustEmbedUnimplementedRiskServiceServer()
 }
 
+// RegisterRiskServiceServer 执行RegisterRiskSERVICE服务端逻辑。
 func RegisterRiskServiceServer(s grpc.ServiceRegistrar, srv RiskServiceServer) {
 	// If the following call pancis, it indicates UnimplementedRiskServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an

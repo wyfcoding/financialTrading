@@ -22,20 +22,22 @@ const (
 )
 
 // 创建订单请求
+// CreateOrderRequest 表示创建订单请求结构体。
 type CreateOrderRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Side          string                 `protobuf:"bytes,3,opt,name=side,proto3" json:"side,omitempty"`                            // BUY or SELL
-	OrderType     string                 `protobuf:"bytes,4,opt,name=order_type,json=orderType,proto3" json:"order_type,omitempty"` // LIMIT, MARKET, STOP_LOSS, TAKE_PROFIT
-	Price         string                 `protobuf:"bytes,5,opt,name=price,proto3" json:"price,omitempty"`
-	Quantity      string                 `protobuf:"bytes,6,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	TimeInForce   string                 `protobuf:"bytes,7,opt,name=time_in_force,json=timeInForce,proto3" json:"time_in_force,omitempty"` // GTC, IOC, FOK
-	ClientOrderId string                 `protobuf:"bytes,8,opt,name=client_order_id,json=clientOrderId,proto3" json:"client_order_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Side          string                 `protobuf:"bytes,3,opt,name=side,proto3" json:"side,omitempty"` // 方向
+	OrderType     string                 `protobuf:"bytes,4,opt,name=order_type,json=orderType,proto3" json:"order_type,omitempty"` // 订购类型
+	Price         string                 `protobuf:"bytes,5,opt,name=price,proto3" json:"price,omitempty"` // 价格
+	Quantity      string                 `protobuf:"bytes,6,opt,name=quantity,proto3" json:"quantity,omitempty"` // 数量
+	TimeInForce   string                 `protobuf:"bytes,7,opt,name=time_in_force,json=timeInForce,proto3" json:"time_in_force,omitempty"` // 时间InForce
+	ClientOrderId string                 `protobuf:"bytes,8,opt,name=client_order_id,json=clientOrderId,proto3" json:"client_order_id,omitempty"` // 客户端订单唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *CreateOrderRequest) Reset() {
 	*x = CreateOrderRequest{}
 	mi := &file_api_order_order_proto_msgTypes[0]
@@ -43,12 +45,15 @@ func (x *CreateOrderRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *CreateOrderRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*CreateOrderRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *CreateOrderRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_order_order_proto_msgTypes[0]
 	if x != nil {
@@ -62,10 +67,12 @@ func (x *CreateOrderRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use CreateOrderRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*CreateOrderRequest) Descriptor() ([]byte, []int) {
 	return file_api_order_order_proto_rawDescGZIP(), []int{0}
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *CreateOrderRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -73,6 +80,7 @@ func (x *CreateOrderRequest) GetUserId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *CreateOrderRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -80,6 +88,7 @@ func (x *CreateOrderRequest) GetSymbol() string {
 	return ""
 }
 
+// GetSide 获取交易方向.
 func (x *CreateOrderRequest) GetSide() string {
 	if x != nil {
 		return x.Side
@@ -87,6 +96,7 @@ func (x *CreateOrderRequest) GetSide() string {
 	return ""
 }
 
+// GetOrderType 获取订单类型.
 func (x *CreateOrderRequest) GetOrderType() string {
 	if x != nil {
 		return x.OrderType
@@ -94,6 +104,7 @@ func (x *CreateOrderRequest) GetOrderType() string {
 	return ""
 }
 
+// GetPrice 获取价格.
 func (x *CreateOrderRequest) GetPrice() string {
 	if x != nil {
 		return x.Price
@@ -101,6 +112,7 @@ func (x *CreateOrderRequest) GetPrice() string {
 	return ""
 }
 
+// GetQuantity 获取数量.
 func (x *CreateOrderRequest) GetQuantity() string {
 	if x != nil {
 		return x.Quantity
@@ -108,6 +120,7 @@ func (x *CreateOrderRequest) GetQuantity() string {
 	return ""
 }
 
+// GetTimeInForce 获取时间在...里面Force.
 func (x *CreateOrderRequest) GetTimeInForce() string {
 	if x != nil {
 		return x.TimeInForce
@@ -115,6 +128,7 @@ func (x *CreateOrderRequest) GetTimeInForce() string {
 	return ""
 }
 
+// GetClientOrderId 获取客户端订单唯一标识.
 func (x *CreateOrderRequest) GetClientOrderId() string {
 	if x != nil {
 		return x.ClientOrderId
@@ -123,25 +137,27 @@ func (x *CreateOrderRequest) GetClientOrderId() string {
 }
 
 // 订单响应
+// OrderResponse 表示订单响应结构体。
 type OrderResponse struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	OrderId        string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	UserId         string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Symbol         string                 `protobuf:"bytes,3,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Side           string                 `protobuf:"bytes,4,opt,name=side,proto3" json:"side,omitempty"`
-	OrderType      string                 `protobuf:"bytes,5,opt,name=order_type,json=orderType,proto3" json:"order_type,omitempty"`
-	Price          string                 `protobuf:"bytes,6,opt,name=price,proto3" json:"price,omitempty"`
-	Quantity       string                 `protobuf:"bytes,7,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	FilledQuantity string                 `protobuf:"bytes,8,opt,name=filled_quantity,json=filledQuantity,proto3" json:"filled_quantity,omitempty"`
-	Status         string                 `protobuf:"bytes,9,opt,name=status,proto3" json:"status,omitempty"` // PENDING, OPEN, PARTIALLY_FILLED, FILLED, CANCELLED, REJECTED
-	TimeInForce    string                 `protobuf:"bytes,10,opt,name=time_in_force,json=timeInForce,proto3" json:"time_in_force,omitempty"`
-	CreatedAt      int64                  `protobuf:"varint,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt      int64                  `protobuf:"varint,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	ErrorMessage   string                 `protobuf:"bytes,13,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	OrderId        string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"` // 订单唯一标识
+	UserId         string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Symbol         string                 `protobuf:"bytes,3,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Side           string                 `protobuf:"bytes,4,opt,name=side,proto3" json:"side,omitempty"` // 交易方向
+	OrderType      string                 `protobuf:"bytes,5,opt,name=order_type,json=orderType,proto3" json:"order_type,omitempty"` // 订单类型
+	Price          string                 `protobuf:"bytes,6,opt,name=price,proto3" json:"price,omitempty"` // 价格
+	Quantity       string                 `protobuf:"bytes,7,opt,name=quantity,proto3" json:"quantity,omitempty"` // 数量
+	FilledQuantity string                 `protobuf:"bytes,8,opt,name=filled_quantity,json=filledQuantity,proto3" json:"filled_quantity,omitempty"` // Filled数量
+	Status         string                 `protobuf:"bytes,9,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	TimeInForce    string                 `protobuf:"bytes,10,opt,name=time_in_force,json=timeInForce,proto3" json:"time_in_force,omitempty"` // 时间在...里面Force
+	CreatedAt      int64                  `protobuf:"varint,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // Created在
+	UpdatedAt      int64                  `protobuf:"varint,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"` // Updated在
+	ErrorMessage   string                 `protobuf:"bytes,13,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"` // 错误消息
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *OrderResponse) Reset() {
 	*x = OrderResponse{}
 	mi := &file_api_order_order_proto_msgTypes[1]
@@ -149,12 +165,15 @@ func (x *OrderResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *OrderResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*OrderResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *OrderResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_order_order_proto_msgTypes[1]
 	if x != nil {
@@ -168,10 +187,12 @@ func (x *OrderResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use OrderResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*OrderResponse) Descriptor() ([]byte, []int) {
 	return file_api_order_order_proto_rawDescGZIP(), []int{1}
 }
 
+// GetOrderId 获取订单唯一标识.
 func (x *OrderResponse) GetOrderId() string {
 	if x != nil {
 		return x.OrderId
@@ -179,6 +200,7 @@ func (x *OrderResponse) GetOrderId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *OrderResponse) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -186,6 +208,7 @@ func (x *OrderResponse) GetUserId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *OrderResponse) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -193,6 +216,7 @@ func (x *OrderResponse) GetSymbol() string {
 	return ""
 }
 
+// GetSide 获取交易方向.
 func (x *OrderResponse) GetSide() string {
 	if x != nil {
 		return x.Side
@@ -200,6 +224,7 @@ func (x *OrderResponse) GetSide() string {
 	return ""
 }
 
+// GetOrderType 获取订单类型.
 func (x *OrderResponse) GetOrderType() string {
 	if x != nil {
 		return x.OrderType
@@ -207,6 +232,7 @@ func (x *OrderResponse) GetOrderType() string {
 	return ""
 }
 
+// GetPrice 获取价格.
 func (x *OrderResponse) GetPrice() string {
 	if x != nil {
 		return x.Price
@@ -214,6 +240,7 @@ func (x *OrderResponse) GetPrice() string {
 	return ""
 }
 
+// GetQuantity 获取数量.
 func (x *OrderResponse) GetQuantity() string {
 	if x != nil {
 		return x.Quantity
@@ -221,6 +248,7 @@ func (x *OrderResponse) GetQuantity() string {
 	return ""
 }
 
+// GetFilledQuantity 获取Filled数量.
 func (x *OrderResponse) GetFilledQuantity() string {
 	if x != nil {
 		return x.FilledQuantity
@@ -228,6 +256,7 @@ func (x *OrderResponse) GetFilledQuantity() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *OrderResponse) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -235,6 +264,7 @@ func (x *OrderResponse) GetStatus() string {
 	return ""
 }
 
+// GetTimeInForce 获取时间在...里面Force.
 func (x *OrderResponse) GetTimeInForce() string {
 	if x != nil {
 		return x.TimeInForce
@@ -242,6 +272,7 @@ func (x *OrderResponse) GetTimeInForce() string {
 	return ""
 }
 
+// GetCreatedAt 获取Created在.
 func (x *OrderResponse) GetCreatedAt() int64 {
 	if x != nil {
 		return x.CreatedAt
@@ -249,6 +280,7 @@ func (x *OrderResponse) GetCreatedAt() int64 {
 	return 0
 }
 
+// GetUpdatedAt 获取Updated在.
 func (x *OrderResponse) GetUpdatedAt() int64 {
 	if x != nil {
 		return x.UpdatedAt
@@ -256,6 +288,7 @@ func (x *OrderResponse) GetUpdatedAt() int64 {
 	return 0
 }
 
+// GetErrorMessage 获取错误消息.
 func (x *OrderResponse) GetErrorMessage() string {
 	if x != nil {
 		return x.ErrorMessage
@@ -264,14 +297,16 @@ func (x *OrderResponse) GetErrorMessage() string {
 }
 
 // 取消订单请求
+// CancelOrderRequest 表示取消订单请求结构体。
 type CancelOrderRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	OrderId       string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	OrderId       string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"` // 订单唯一标识
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *CancelOrderRequest) Reset() {
 	*x = CancelOrderRequest{}
 	mi := &file_api_order_order_proto_msgTypes[2]
@@ -279,12 +314,15 @@ func (x *CancelOrderRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *CancelOrderRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*CancelOrderRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *CancelOrderRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_order_order_proto_msgTypes[2]
 	if x != nil {
@@ -298,10 +336,12 @@ func (x *CancelOrderRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use CancelOrderRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*CancelOrderRequest) Descriptor() ([]byte, []int) {
 	return file_api_order_order_proto_rawDescGZIP(), []int{2}
 }
 
+// GetOrderId 获取订单唯一标识.
 func (x *CancelOrderRequest) GetOrderId() string {
 	if x != nil {
 		return x.OrderId
@@ -309,6 +349,7 @@ func (x *CancelOrderRequest) GetOrderId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *CancelOrderRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -317,16 +358,18 @@ func (x *CancelOrderRequest) GetUserId() string {
 }
 
 // 修改订单请求
+// ModifyOrderRequest 表示Modify订单请求结构体。
 type ModifyOrderRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	OrderId       string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Price         string                 `protobuf:"bytes,3,opt,name=price,proto3" json:"price,omitempty"`
-	Quantity      string                 `protobuf:"bytes,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	OrderId       string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"` // 订单唯一标识
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Price         string                 `protobuf:"bytes,3,opt,name=price,proto3" json:"price,omitempty"` // 价格
+	Quantity      string                 `protobuf:"bytes,4,opt,name=quantity,proto3" json:"quantity,omitempty"` // 数量
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *ModifyOrderRequest) Reset() {
 	*x = ModifyOrderRequest{}
 	mi := &file_api_order_order_proto_msgTypes[3]
@@ -334,12 +377,15 @@ func (x *ModifyOrderRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *ModifyOrderRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*ModifyOrderRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *ModifyOrderRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_order_order_proto_msgTypes[3]
 	if x != nil {
@@ -353,10 +399,12 @@ func (x *ModifyOrderRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use ModifyOrderRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*ModifyOrderRequest) Descriptor() ([]byte, []int) {
 	return file_api_order_order_proto_rawDescGZIP(), []int{3}
 }
 
+// GetOrderId 获取订单唯一标识.
 func (x *ModifyOrderRequest) GetOrderId() string {
 	if x != nil {
 		return x.OrderId
@@ -364,6 +412,7 @@ func (x *ModifyOrderRequest) GetOrderId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *ModifyOrderRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -371,6 +420,7 @@ func (x *ModifyOrderRequest) GetUserId() string {
 	return ""
 }
 
+// GetPrice 获取价格.
 func (x *ModifyOrderRequest) GetPrice() string {
 	if x != nil {
 		return x.Price
@@ -378,6 +428,7 @@ func (x *ModifyOrderRequest) GetPrice() string {
 	return ""
 }
 
+// GetQuantity 获取数量.
 func (x *ModifyOrderRequest) GetQuantity() string {
 	if x != nil {
 		return x.Quantity
@@ -386,14 +437,16 @@ func (x *ModifyOrderRequest) GetQuantity() string {
 }
 
 // 获取订单请求
+// GetOrderRequest 表示获取订单请求结构体。
 type GetOrderRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	OrderId       string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	OrderId       string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"` // 订单唯一标识
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *GetOrderRequest) Reset() {
 	*x = GetOrderRequest{}
 	mi := &file_api_order_order_proto_msgTypes[4]
@@ -401,12 +454,15 @@ func (x *GetOrderRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *GetOrderRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*GetOrderRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *GetOrderRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_order_order_proto_msgTypes[4]
 	if x != nil {
@@ -420,10 +476,12 @@ func (x *GetOrderRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use GetOrderRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*GetOrderRequest) Descriptor() ([]byte, []int) {
 	return file_api_order_order_proto_rawDescGZIP(), []int{4}
 }
 
+// GetOrderId 获取订单唯一标识.
 func (x *GetOrderRequest) GetOrderId() string {
 	if x != nil {
 		return x.OrderId
@@ -431,6 +489,7 @@ func (x *GetOrderRequest) GetOrderId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *GetOrderRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -439,17 +498,19 @@ func (x *GetOrderRequest) GetUserId() string {
 }
 
 // 获取订单列表请求
+// ListOrdersRequest 表示LISTOrders请求结构体。
 type ListOrdersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
-	Page          int32                  `protobuf:"varint,4,opt,name=page,proto3" json:"page,omitempty"`
-	PageSize      int32                  `protobuf:"varint,5,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Symbol        string                 `protobuf:"bytes,2,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	Page          int32                  `protobuf:"varint,4,opt,name=page,proto3" json:"page,omitempty"` // 页码
+	PageSize      int32                  `protobuf:"varint,5,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"` // 页码大小
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *ListOrdersRequest) Reset() {
 	*x = ListOrdersRequest{}
 	mi := &file_api_order_order_proto_msgTypes[5]
@@ -457,12 +518,15 @@ func (x *ListOrdersRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *ListOrdersRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*ListOrdersRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *ListOrdersRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_order_order_proto_msgTypes[5]
 	if x != nil {
@@ -476,10 +540,12 @@ func (x *ListOrdersRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use ListOrdersRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*ListOrdersRequest) Descriptor() ([]byte, []int) {
 	return file_api_order_order_proto_rawDescGZIP(), []int{5}
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *ListOrdersRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -487,6 +553,7 @@ func (x *ListOrdersRequest) GetUserId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *ListOrdersRequest) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -494,6 +561,7 @@ func (x *ListOrdersRequest) GetSymbol() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *ListOrdersRequest) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -501,6 +569,7 @@ func (x *ListOrdersRequest) GetStatus() string {
 	return ""
 }
 
+// GetPage 获取页码.
 func (x *ListOrdersRequest) GetPage() int32 {
 	if x != nil {
 		return x.Page
@@ -508,6 +577,7 @@ func (x *ListOrdersRequest) GetPage() int32 {
 	return 0
 }
 
+// GetPageSize 获取页码大小.
 func (x *ListOrdersRequest) GetPageSize() int32 {
 	if x != nil {
 		return x.PageSize
@@ -516,16 +586,18 @@ func (x *ListOrdersRequest) GetPageSize() int32 {
 }
 
 // 订单列表响应
+// ListOrdersResponse 表示LISTOrders响应结构体。
 type ListOrdersResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Orders        []*OrderResponse       `protobuf:"bytes,1,rep,name=orders,proto3" json:"orders,omitempty"`
-	Total         int64                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
-	Page          int32                  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"`
-	PageSize      int32                  `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	Orders        []*OrderResponse       `protobuf:"bytes,1,rep,name=orders,proto3" json:"orders,omitempty"` // Orders
+	Total         int64                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"` // 总数
+	Page          int32                  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"` // 页码
+	PageSize      int32                  `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"` // 页码大小
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *ListOrdersResponse) Reset() {
 	*x = ListOrdersResponse{}
 	mi := &file_api_order_order_proto_msgTypes[6]
@@ -533,12 +605,15 @@ func (x *ListOrdersResponse) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *ListOrdersResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*ListOrdersResponse) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *ListOrdersResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_order_order_proto_msgTypes[6]
 	if x != nil {
@@ -552,10 +627,12 @@ func (x *ListOrdersResponse) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use ListOrdersResponse.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*ListOrdersResponse) Descriptor() ([]byte, []int) {
 	return file_api_order_order_proto_rawDescGZIP(), []int{6}
 }
 
+// GetOrders 获取Orders.
 func (x *ListOrdersResponse) GetOrders() []*OrderResponse {
 	if x != nil {
 		return x.Orders
@@ -563,6 +640,7 @@ func (x *ListOrdersResponse) GetOrders() []*OrderResponse {
 	return nil
 }
 
+// GetTotal 获取总数.
 func (x *ListOrdersResponse) GetTotal() int64 {
 	if x != nil {
 		return x.Total
@@ -570,6 +648,7 @@ func (x *ListOrdersResponse) GetTotal() int64 {
 	return 0
 }
 
+// GetPage 获取页码.
 func (x *ListOrdersResponse) GetPage() int32 {
 	if x != nil {
 		return x.Page
@@ -577,6 +656,7 @@ func (x *ListOrdersResponse) GetPage() int32 {
 	return 0
 }
 
+// GetPageSize 获取页码大小.
 func (x *ListOrdersResponse) GetPageSize() int32 {
 	if x != nil {
 		return x.PageSize
@@ -585,14 +665,16 @@ func (x *ListOrdersResponse) GetPageSize() int32 {
 }
 
 // 订阅订单请求
+// SubscribeOrdersRequest 表示SubscribeOrders请求结构体。
 type SubscribeOrdersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Symbols       []string               `protobuf:"bytes,2,rep,name=symbols,proto3" json:"symbols,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Symbols       []string               `protobuf:"bytes,2,rep,name=symbols,proto3" json:"symbols,omitempty"` // Symbols
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *SubscribeOrdersRequest) Reset() {
 	*x = SubscribeOrdersRequest{}
 	mi := &file_api_order_order_proto_msgTypes[7]
@@ -600,12 +682,15 @@ func (x *SubscribeOrdersRequest) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *SubscribeOrdersRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*SubscribeOrdersRequest) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *SubscribeOrdersRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_order_order_proto_msgTypes[7]
 	if x != nil {
@@ -619,10 +704,12 @@ func (x *SubscribeOrdersRequest) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use SubscribeOrdersRequest.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*SubscribeOrdersRequest) Descriptor() ([]byte, []int) {
 	return file_api_order_order_proto_rawDescGZIP(), []int{7}
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *SubscribeOrdersRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -630,6 +717,7 @@ func (x *SubscribeOrdersRequest) GetUserId() string {
 	return ""
 }
 
+// GetSymbols 获取Symbols.
 func (x *SubscribeOrdersRequest) GetSymbols() []string {
 	if x != nil {
 		return x.Symbols
@@ -638,18 +726,20 @@ func (x *SubscribeOrdersRequest) GetSymbols() []string {
 }
 
 // 订单更新
+// OrderUpdate 表示订单更新结构体。
 type OrderUpdate struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	OrderId        string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	UserId         string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Symbol         string                 `protobuf:"bytes,3,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	Status         string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
-	FilledQuantity string                 `protobuf:"bytes,5,opt,name=filled_quantity,json=filledQuantity,proto3" json:"filled_quantity,omitempty"`
-	Timestamp      int64                  `protobuf:"varint,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	OrderId        string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"` // 订单唯一标识
+	UserId         string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // USER唯一标识
+	Symbol         string                 `protobuf:"bytes,3,opt,name=symbol,proto3" json:"symbol,omitempty"` // 交易对
+	Status         string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"` // 状态
+	FilledQuantity string                 `protobuf:"bytes,5,opt,name=filled_quantity,json=filledQuantity,proto3" json:"filled_quantity,omitempty"` // Filled数量
+	Timestamp      int64                  `protobuf:"varint,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Timestamp
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
+// Reset 执行重置逻辑。
 func (x *OrderUpdate) Reset() {
 	*x = OrderUpdate{}
 	mi := &file_api_order_order_proto_msgTypes[8]
@@ -657,12 +747,15 @@ func (x *OrderUpdate) Reset() {
 	ms.StoreMessageInfo(mi)
 }
 
+// String 字符串表示。
 func (x *OrderUpdate) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
+// ProtoMessage 执行Proto消息逻辑。
 func (*OrderUpdate) ProtoMessage() {}
 
+// ProtoReflect 执行ProtoReflect逻辑。
 func (x *OrderUpdate) ProtoReflect() protoreflect.Message {
 	mi := &file_api_order_order_proto_msgTypes[8]
 	if x != nil {
@@ -676,10 +769,12 @@ func (x *OrderUpdate) ProtoReflect() protoreflect.Message {
 }
 
 // Deprecated: Use OrderUpdate.ProtoReflect.Descriptor instead.
+// Descriptor 执行Descriptor逻辑。
 func (*OrderUpdate) Descriptor() ([]byte, []int) {
 	return file_api_order_order_proto_rawDescGZIP(), []int{8}
 }
 
+// GetOrderId 获取订单唯一标识.
 func (x *OrderUpdate) GetOrderId() string {
 	if x != nil {
 		return x.OrderId
@@ -687,6 +782,7 @@ func (x *OrderUpdate) GetOrderId() string {
 	return ""
 }
 
+// GetUserId 获取USER唯一标识.
 func (x *OrderUpdate) GetUserId() string {
 	if x != nil {
 		return x.UserId
@@ -694,6 +790,7 @@ func (x *OrderUpdate) GetUserId() string {
 	return ""
 }
 
+// GetSymbol 获取交易对.
 func (x *OrderUpdate) GetSymbol() string {
 	if x != nil {
 		return x.Symbol
@@ -701,6 +798,7 @@ func (x *OrderUpdate) GetSymbol() string {
 	return ""
 }
 
+// GetStatus 获取STATUS.
 func (x *OrderUpdate) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -708,6 +806,7 @@ func (x *OrderUpdate) GetStatus() string {
 	return ""
 }
 
+// GetFilledQuantity 获取Filled数量.
 func (x *OrderUpdate) GetFilledQuantity() string {
 	if x != nil {
 		return x.FilledQuantity
@@ -715,6 +814,7 @@ func (x *OrderUpdate) GetFilledQuantity() string {
 	return ""
 }
 
+// GetTimestamp 获取Timestamp.
 func (x *OrderUpdate) GetTimestamp() int64 {
 	if x != nil {
 		return x.Timestamp
@@ -860,7 +960,7 @@ func file_api_order_order_proto_init() {
 		DependencyIndexes: file_api_order_order_proto_depIdxs,
 		MessageInfos:      file_api_order_order_proto_msgTypes,
 	}.Build()
-	File_api_order_order_proto = out.File
+	File_api_order_order_proto = out.File // File_api_order_order_proto 文件API订单订单Proto
 	file_api_order_order_proto_goTypes = nil
 	file_api_order_order_proto_depIdxs = nil
 }

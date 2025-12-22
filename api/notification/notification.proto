@@ -16,41 +16,41 @@ service NotificationService {
 
 // 通知
 message Notification {
-  string id = 1;
-  string user_id = 2;
-  string type = 3; // EMAIL, SMS, WEBHOOK
-  string subject = 4;
-  string content = 5;
-  string status = 6; // PENDING, SENT, FAILED
-  string error_message = 7;
-  google.protobuf.Timestamp created_at = 8;
-  google.protobuf.Timestamp sent_at = 9;
+  string id = 1; // 唯一标识
+  string user_id = 2; // 用户唯一标识
+  string type = 3; // 类型
+  string subject = 4; // 主题
+  string content = 5; // 内容
+  string status = 6; // 状态
+  string error_message = 7; // error消息
+  google.protobuf.Timestamp created_at = 8; // 创建时间
+  google.protobuf.Timestamp sent_at = 9; // sent在
 }
 
 // 发送通知请求
 message SendNotificationRequest {
-  string user_id = 1;
-  string type = 2;
-  string subject = 3;
-  string content = 4;
-  string target = 5; // Email address, Phone number, or URL
+  string user_id = 1; // 用户唯一标识
+  string type = 2; // 类型
+  string subject = 3; // 主题
+  string content = 4; // 内容
+  string target = 5; // 目标
 }
 
 // 发送通知响应
 message SendNotificationResponse {
-  string notification_id = 1;
-  string status = 2;
+  string notification_id = 1; // 通知ID
+  string status = 2; // 状态
 }
 
 // 获取通知历史请求
 message GetNotificationHistoryRequest {
-  string user_id = 1;
-  int32 page_size = 2;
-  string page_token = 3;
+  string user_id = 1; // 用户唯一标识
+  int32 page_size = 2; // 页码大小
+  string page_token = 3; // 页码令牌
 }
 
 // 获取通知历史响应
 message GetNotificationHistoryResponse {
-  repeated Notification notifications = 1;
-  string next_page_token = 2;
+  repeated Notification notifications = 1; // 通知列表
+  string next_page_token = 2; // 下一个页码令牌
 }

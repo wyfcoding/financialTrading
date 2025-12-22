@@ -19,8 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PricingService_GetOptionPrice_FullMethodName = "/pricing.PricingService/GetOptionPrice"
-	PricingService_GetGreeks_FullMethodName      = "/pricing.PricingService/GetGreeks"
+	PricingService_GetOptionPrice_FullMethodName = "/pricing.PricingService/GetOptionPrice" // PricingService_GetOptionPrice_FullMethodName PricingSERVICE获取Option价格FullMethod名称
+	PricingService_GetGreeks_FullMethodName      = "/pricing.PricingService/GetGreeks" // PricingService_GetGreeks_FullMethodName PricingSERVICE获取GreeksFullMethod名称
 )
 
 // PricingServiceClient is the client API for PricingService service.
@@ -28,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // PricingService 提供期权定价与希腊字母计算服务
+// PricingServiceClient 表示PricingSERVICE客户端结构体。
 type PricingServiceClient interface {
 	// 获取期权价格
 	GetOptionPrice(ctx context.Context, in *GetOptionPriceRequest, opts ...grpc.CallOption) (*GetOptionPriceResponse, error)
@@ -39,10 +40,12 @@ type pricingServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
+// NewPricingServiceClient 创建新的创建一个新的实例PricingSERVICE客户端.
 func NewPricingServiceClient(cc grpc.ClientConnInterface) PricingServiceClient {
 	return &pricingServiceClient{cc}
 }
 
+// GetOptionPrice 获取Option价格.
 func (c *pricingServiceClient) GetOptionPrice(ctx context.Context, in *GetOptionPriceRequest, opts ...grpc.CallOption) (*GetOptionPriceResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetOptionPriceResponse)
@@ -53,6 +56,7 @@ func (c *pricingServiceClient) GetOptionPrice(ctx context.Context, in *GetOption
 	return out, nil
 }
 
+// GetGreeks 获取Greeks.
 func (c *pricingServiceClient) GetGreeks(ctx context.Context, in *GetGreeksRequest, opts ...grpc.CallOption) (*GetGreeksResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetGreeksResponse)
@@ -68,6 +72,7 @@ func (c *pricingServiceClient) GetGreeks(ctx context.Context, in *GetGreeksReque
 // for forward compatibility.
 //
 // PricingService 提供期权定价与希腊字母计算服务
+// PricingServiceServer 表示PricingSERVICE服务端结构体。
 type PricingServiceServer interface {
 	// 获取期权价格
 	GetOptionPrice(context.Context, *GetOptionPriceRequest) (*GetOptionPriceResponse, error)
@@ -81,11 +86,14 @@ type PricingServiceServer interface {
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
+// UnimplementedPricingServiceServer 表示未实现的PricingSERVICE服务端结构体。
 type UnimplementedPricingServiceServer struct{}
 
+// GetOptionPrice 获取Option价格.
 func (UnimplementedPricingServiceServer) GetOptionPrice(context.Context, *GetOptionPriceRequest) (*GetOptionPriceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOptionPrice not implemented")
 }
+// GetGreeks 获取Greeks.
 func (UnimplementedPricingServiceServer) GetGreeks(context.Context, *GetGreeksRequest) (*GetGreeksResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGreeks not implemented")
 }
@@ -95,10 +103,12 @@ func (UnimplementedPricingServiceServer) testEmbeddedByValue()                  
 // UnsafePricingServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to PricingServiceServer will
 // result in compilation errors.
+// UnsafePricingServiceServer 表示UnsafePricingSERVICE服务端结构体。
 type UnsafePricingServiceServer interface {
 	mustEmbedUnimplementedPricingServiceServer()
 }
 
+// RegisterPricingServiceServer 执行RegisterPricingSERVICE服务端逻辑。
 func RegisterPricingServiceServer(s grpc.ServiceRegistrar, srv PricingServiceServer) {
 	// If the following call pancis, it indicates UnimplementedPricingServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
