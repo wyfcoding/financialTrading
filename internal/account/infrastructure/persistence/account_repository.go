@@ -94,7 +94,6 @@ func (r *accountRepositoryImpl) GetByUser(ctx context.Context, userID string) ([
 // UpdateBalance 实现了 domain.AccountRepository.UpdateBalance 方法。
 // 它使用 `clauses.Locking{Strength: "UPDATE"}` 来获取行锁，确保并发更新的原子性和一致性。
 func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, accountID string, newBalance, newAvailable, newFrozen decimal.Decimal) error {
-
 	result := r.db.WithContext(ctx).Model(&domain.Account{}).Where("account_id = ?", accountID).Updates(map[string]any{
 		"balance":           newBalance,
 		"available_balance": newAvailable,

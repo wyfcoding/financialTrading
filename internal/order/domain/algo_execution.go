@@ -103,7 +103,8 @@ func (s *AlgoExecutionService) GenerateSlices(order *AlgoOrder) ([]Slice, error)
 func (s *AlgoExecutionService) CalculateVWAP(trades []struct {
 	Price    decimal.Decimal
 	Quantity decimal.Decimal
-}) decimal.Decimal {
+},
+) decimal.Decimal {
 	totalPV := decimal.Zero
 	totalVolume := decimal.Zero
 

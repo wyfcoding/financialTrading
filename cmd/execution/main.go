@@ -2,7 +2,6 @@ package main
 
 import (
 	"log/slog"
-
 	"time"
 
 	"github.com/wyfcoding/pkg/grpcclient"
