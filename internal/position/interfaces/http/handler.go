@@ -10,13 +10,13 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 )
 
-// PositionHandler HTTP 处理器
+// HTTP 处理器
 // 负责处理与持仓管理相关的 HTTP 请求
 type PositionHandler struct {
 	positionService *application.PositionApplicationService // 持仓应用服务
 }
 
-// NewPositionHandler 创建 HTTP 处理器
+// 创建 HTTP 处理器
 // positionService: 注入的持仓应用服务
 func NewPositionHandler(positionService *application.PositionApplicationService) *PositionHandler {
 	return &PositionHandler{
@@ -24,7 +24,7 @@ func NewPositionHandler(positionService *application.PositionApplicationService)
 	}
 }
 
-// RegisterRoutes 注册路由
+// 注册路由
 func (h *PositionHandler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1/positions")
 	{
@@ -118,7 +118,7 @@ func (h *PositionHandler) ClosePosition(c *gin.Context) {
 		return
 	}
 
-	// Return updated position
+	// 返回更新后的持仓信息
 	dto, err := h.positionService.GetPosition(c.Request.Context(), positionID)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"status": "closed", "message": "Position closed but failed to fetch updated details"})

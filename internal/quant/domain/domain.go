@@ -1,4 +1,4 @@
-// Package domain 包含量化服务的领域模型
+// 包 量化服务的领域模型
 package domain
 
 import (

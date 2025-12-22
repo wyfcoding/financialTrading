@@ -1,4 +1,4 @@
-// Package repository 包含基础设施层实现
+// 包 基础设施层实现
 package repository
 
 import (
@@ -25,12 +25,12 @@ type NotificationModel struct {
 	ErrorMessage string `gorm:"column:error_message;type:text;comment:错误信息"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (NotificationModel) TableName() string {
 	return "notifications"
 }
 
-// ToDomain 将数据库模型转换为领域实体
+// 将数据库模型转换为领域实体
 func (m *NotificationModel) ToDomain() *domain.Notification {
 	return &domain.Notification{
 		Model:        m.Model,

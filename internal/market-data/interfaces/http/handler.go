@@ -9,13 +9,13 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 )
 
-// Handler HTTP 处理器
+// HTTP 处理器
 // 负责处理与市场数据相关的 HTTP 请求
 type Handler struct {
 	quoteService *application.QuoteApplicationService // 行情应用服务
 }
 
-// NewHandler 创建 HTTP 处理器实例
+// 创建 HTTP 处理器实例
 // quoteService: 注入的行情应用服务
 func NewHandler(quoteService *application.QuoteApplicationService) *Handler {
 	return &Handler{
@@ -171,7 +171,7 @@ type HistoricalQuotesResponse struct {
 	Data []*QuoteResponse `json:"data"`
 }
 
-// RegisterRoutes 注册路由
+// 注册路由
 func (h *Handler) RegisterRoutes(router *gin.Engine) {
 	v1 := router.Group("/api/v1/market-data")
 	{

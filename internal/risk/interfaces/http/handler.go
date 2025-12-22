@@ -9,13 +9,13 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 )
 
-// RiskHandler HTTP 处理器
+// HTTP 处理器
 // 负责处理与风险管理相关的 HTTP 请求
 type RiskHandler struct {
 	riskService *application.RiskApplicationService // 风险应用服务
 }
 
-// NewRiskHandler 创建 HTTP 处理器
+// 创建 HTTP 处理器
 // riskService: 注入的风险应用服务
 func NewRiskHandler(riskService *application.RiskApplicationService) *RiskHandler {
 	return &RiskHandler{
@@ -23,7 +23,7 @@ func NewRiskHandler(riskService *application.RiskApplicationService) *RiskHandle
 	}
 }
 
-// RegisterRoutes 注册路由
+// 注册路由
 func (h *RiskHandler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1/risk")
 	{

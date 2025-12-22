@@ -20,8 +20,8 @@ type GridStrategy struct {
 type Grid struct {
 	Price    decimal.Decimal
 	Quantity decimal.Decimal
-	Status   GridStatus // WAITING, FILLED
-	Side     string     // BUY, SELL
+	Status   GridStatus // 状态: WAITING(等待中), FILLED(已成交)
+	Side     string     // 方向: BUY(买入), SELL(卖出)
 }
 
 // GridStatus 网格状态

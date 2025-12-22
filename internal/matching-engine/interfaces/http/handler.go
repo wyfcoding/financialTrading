@@ -9,13 +9,13 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 )
 
-// MatchingHandler HTTP 处理器
+// HTTP 处理器
 // 负责处理与撮合引擎相关的 HTTP 请求
 type MatchingHandler struct {
 	matchingService *application.MatchingApplicationService // 撮合应用服务
 }
 
-// NewMatchingHandler 创建 HTTP 处理器
+// 创建 HTTP 处理器
 // matchingService: 注入的撮合应用服务
 func NewMatchingHandler(matchingService *application.MatchingApplicationService) *MatchingHandler {
 	return &MatchingHandler{
@@ -23,7 +23,7 @@ func NewMatchingHandler(matchingService *application.MatchingApplicationService)
 	}
 }
 
-// RegisterRoutes 注册路由
+// 注册路由
 func (h *MatchingHandler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1/matching")
 	{

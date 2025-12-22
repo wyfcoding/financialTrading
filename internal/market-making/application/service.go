@@ -1,4 +1,4 @@
-// Package application 包含做市服务的用例逻辑
+// 包 做市服务的用例逻辑
 package application
 
 import (

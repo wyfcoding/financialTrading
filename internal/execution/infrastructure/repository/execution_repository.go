@@ -1,4 +1,4 @@
-// Package repository 包含了仓储接口的具体实现。
+// 包 了仓储接口的具体实现。
 // 这一层负责与具体的数据存储（此处为数据库）进行交互。
 package repository
 

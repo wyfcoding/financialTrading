@@ -9,19 +9,19 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 )
 
-// ReferenceDataHandler HTTP 处理器
+// HTTP 处理器
 // 负责处理与参考数据相关的 HTTP 请求
 type ReferenceDataHandler struct {
 	app *application.ReferenceDataService // 参考数据应用服务
 }
 
-// NewReferenceDataHandler 创建 HTTP 处理器实例
+// 创建 HTTP 处理器实例
 // app: 注入的参考数据应用服务
 func NewReferenceDataHandler(app *application.ReferenceDataService) *ReferenceDataHandler {
 	return &ReferenceDataHandler{app: app}
 }
 
-// RegisterRoutes 注册路由
+// 注册路由
 // 将处理器方法绑定到 Gin 路由引擎
 func (h *ReferenceDataHandler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1/reference-data")

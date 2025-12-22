@@ -1,4 +1,4 @@
-// Package repository 包含仓储实现
+// 包 仓储实现
 package repository
 
 import (
@@ -42,7 +42,7 @@ type PositionModel struct {
 	Status string `gorm:"column:status;type:varchar(20);index;not null" json:"status"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (PositionModel) TableName() string {
 	return "positions"
 }
@@ -208,7 +208,7 @@ func (pr *PositionRepositoryImpl) Close(ctx context.Context, positionID string, 
 	return nil
 }
 
-// modelToDomain 将数据库模型转换为领域对象
+// 将数据库模型转换为领域对象
 func (pr *PositionRepositoryImpl) modelToDomain(model *PositionModel) *domain.Position {
 	quantity, _ := decimal.NewFromString(model.Quantity)
 	entryPrice, _ := decimal.NewFromString(model.EntryPrice)

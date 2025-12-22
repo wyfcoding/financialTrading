@@ -8,19 +8,19 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 )
 
-// MarketSimulationHandler HTTP 处理器
+// HTTP 处理器
 // 负责处理与市场模拟相关的 HTTP 请求
 type MarketSimulationHandler struct {
 	app *application.MarketSimulationService // 市场模拟应用服务
 }
 
-// NewMarketSimulationHandler 创建 HTTP 处理器实例
+// 创建 HTTP 处理器实例
 // app: 注入的市场模拟应用服务
 func NewMarketSimulationHandler(app *application.MarketSimulationService) *MarketSimulationHandler {
 	return &MarketSimulationHandler{app: app}
 }
 
-// RegisterRoutes 注册路由
+// 注册路由
 // 将处理器方法绑定到 Gin 路由引擎
 func (h *MarketSimulationHandler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1/market-simulation")

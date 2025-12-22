@@ -1,4 +1,4 @@
-// Package application 包含量化服务的用例逻辑
+// 包 量化服务的用例逻辑
 package application
 
 import (

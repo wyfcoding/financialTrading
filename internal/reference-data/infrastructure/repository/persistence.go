@@ -1,4 +1,4 @@
-// Package infrastructure 包含基础设施层实现
+// 包 基础设施层实现
 package repository
 
 import (
@@ -24,12 +24,12 @@ type SymbolModel struct {
 	PricePrecision float64 `gorm:"column:price_precision;type:decimal(20,8);default:0;comment:价格精度"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (SymbolModel) TableName() string {
 	return "symbols"
 }
 
-// ToDomain 将数据库模型转换为领域实体
+// 将数据库模型转换为领域实体
 func (m *SymbolModel) ToDomain() *domain.Symbol {
 	return &domain.Symbol{
 		Model:          m.Model,
@@ -55,7 +55,7 @@ type ExchangeModel struct {
 	Timezone string `gorm:"column:timezone;type:varchar(50);comment:时区"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (ExchangeModel) TableName() string {
 	return "exchanges"
 }

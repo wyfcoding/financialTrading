@@ -1,4 +1,4 @@
-// Package application 包含撮合引擎服务的用例逻辑
+// 包 撮合引擎服务的用例逻辑
 package application
 
 import (

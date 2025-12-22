@@ -1,4 +1,4 @@
-// Package application 包含通知服务的用例逻辑
+// 包 通知服务的用例逻辑
 package application
 
 import (

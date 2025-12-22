@@ -40,7 +40,7 @@ type OrderModel struct {
 	Remark string `gorm:"column:remark;type:text" json:"remark"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (OrderModel) TableName() string {
 	return "orders"
 }
@@ -206,7 +206,7 @@ func (or *OrderRepositoryImpl) Delete(ctx context.Context, orderID string) error
 	return nil
 }
 
-// modelToDomain 将数据库模型转换为领域对象
+// 将数据库模型转换为领域对象
 func (or *OrderRepositoryImpl) modelToDomain(model *OrderModel) *domain.Order {
 	price, _ := decimal.NewFromString(model.Price)
 	quantity, _ := decimal.NewFromString(model.Quantity)

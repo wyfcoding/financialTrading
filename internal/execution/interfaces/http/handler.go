@@ -9,13 +9,13 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 )
 
-// ExecutionHandler HTTP 处理器
+// HTTP 处理器
 // 负责处理与订单执行相关的 HTTP 请求
 type ExecutionHandler struct {
 	executionService *application.ExecutionApplicationService // 执行应用服务
 }
 
-// NewExecutionHandler 创建 HTTP 处理器实例
+// 创建 HTTP 处理器实例
 // executionService: 注入的执行应用服务
 func NewExecutionHandler(executionService *application.ExecutionApplicationService) *ExecutionHandler {
 	return &ExecutionHandler{
@@ -23,7 +23,7 @@ func NewExecutionHandler(executionService *application.ExecutionApplicationServi
 	}
 }
 
-// RegisterRoutes 注册路由
+// 注册路由
 // 将处理器方法绑定到 Gin 路由引擎
 func (h *ExecutionHandler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1/execution")

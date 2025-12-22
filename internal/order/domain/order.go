@@ -1,4 +1,4 @@
-// Package domain 包含订单服务的领域模型
+// 包 订单服务的领域模型
 package domain
 
 import (
@@ -42,9 +42,9 @@ const (
 type TimeInForce string
 
 const (
-	TimeInForceGTC TimeInForce = "GTC" // Good Till Cancel
-	TimeInForceIOC TimeInForce = "IOC" // Immediate Or Cancel
-	TimeInForceFOK TimeInForce = "FOK" // Fill Or Kill
+	TimeInForceGTC TimeInForce = "GTC" // 成交为止 (Good Till Cancel)
+	TimeInForceIOC TimeInForce = "IOC" // 立即成交否则取消 (Immediate Or Cancel)
+	TimeInForceFOK TimeInForce = "FOK" // 全部成交否则取消 (Fill Or Kill)
 )
 
 // Order 订单实体

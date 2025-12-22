@@ -45,7 +45,7 @@ func (r *accountRepositoryImpl) fromDomainAccount(entity *domain.Account) *domai
 func (r *accountRepositoryImpl) Save(ctx context.Context, account *domain.Account) error {
 	dbModel := r.fromDomainAccount(account)
 
-	// OnConflict: 如果 account_id 已存在，则更新所有字段。
+	// 冲突处理: 如果 account_id 已存在，则更新所有字段。
 	if err := r.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "account_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"user_id", "account_type", "currency", "balance", "available_balance", "frozen_balance"}),

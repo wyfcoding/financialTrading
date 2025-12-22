@@ -1,4 +1,4 @@
-// Package grpc 包含 gRPC 处理器（Handler）的实现。
+// 包  gRPC 处理器（Handler）的实现。
 // 这一层是接口层（Interfaces Layer）的一部分，负责适配外部的 gRPC 请求，
 // 并将其转换为对应用层（Application Layer）的调用。
 package grpc
@@ -20,7 +20,7 @@ type GRPCHandler struct {
 	appService                            *application.ClearingApplicationService // 依赖注入的应用服务实例
 }
 
-// NewGRPCHandler 是 GRPCHandler 的构造函数。
+// 创建 gRPC 处理器实例。
 //
 // @param appService 注入的清算应用服务实例。
 // @return *GRPCHandler 返回一个新的 gRPC 处理器实例。

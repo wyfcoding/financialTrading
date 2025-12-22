@@ -8,13 +8,13 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 )
 
-// OrderHandler HTTP 处理器
+// HTTP 处理器
 // 负责处理与订单相关的 HTTP 请求
 type OrderHandler struct {
 	orderService *application.OrderApplicationService // 订单应用服务
 }
 
-// NewOrderHandler 创建 HTTP 处理器实例
+// 创建 HTTP 处理器实例
 // orderService: 注入的订单应用服务
 func NewOrderHandler(orderService *application.OrderApplicationService) *OrderHandler {
 	return &OrderHandler{
@@ -22,7 +22,7 @@ func NewOrderHandler(orderService *application.OrderApplicationService) *OrderHa
 	}
 }
 
-// RegisterRoutes 注册路由
+// 注册路由
 // 将处理器方法绑定到 Gin 路由引擎
 func (h *OrderHandler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1/orders")

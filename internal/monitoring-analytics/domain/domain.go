@@ -1,4 +1,4 @@
-// Package domain 包含监控分析服务的领域模型
+// 包 监控分析服务的领域模型
 package domain
 
 import (
@@ -29,7 +29,7 @@ type Metric struct {
 type SystemHealth struct {
 	gorm.Model
 	ServiceName string    `gorm:"column:service_name;type:varchar(100);index;not null" json:"service_name"`
-	Status      string    `gorm:"column:status;type:varchar(20);not null" json:"status"` // UP, DOWN, DEGRADED
+	Status      string    `gorm:"column:status;type:varchar(20);not null" json:"status"` // 状态: UP(正常), DOWN(停止), DEGRADED(降级)
 	Message     string    `gorm:"column:message;type:text" json:"message"`
 	LastChecked time.Time `gorm:"column:last_checked;not null" json:"last_checked"`
 }

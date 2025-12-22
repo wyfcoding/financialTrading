@@ -1,4 +1,4 @@
-// Package repository 包含仓储实现
+// 包 仓储实现
 package repository
 
 import (
@@ -39,7 +39,7 @@ type RiskAssessmentModel struct {
 	Reason string `gorm:"column:reason;type:text" json:"reason"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (RiskAssessmentModel) TableName() string {
 	return "risk_assessments"
 }
@@ -121,7 +121,7 @@ func (rar *RiskAssessmentRepositoryImpl) GetLatestByUser(ctx context.Context, us
 	return rar.modelToDomain(&model), nil
 }
 
-// modelToDomain 将数据库模型转换为领域对象
+// 将数据库模型转换为领域对象
 func (rar *RiskAssessmentRepositoryImpl) modelToDomain(model *RiskAssessmentModel) *domain.RiskAssessment {
 	quantity, _ := decimal.NewFromString(model.Quantity)
 	price, _ := decimal.NewFromString(model.Price)
@@ -150,9 +150,9 @@ type RiskMetricsModel struct {
 	gorm.Model
 	// 用户 ID
 	UserID string `gorm:"column:user_id;type:varchar(50);uniqueIndex;not null" json:"user_id"`
-	// VaR 95%
+	// 在 95% 置信水平下的风险价值 (Value at Risk)
 	VaR95 string `gorm:"column:var_95;type:decimal(20,8);not null" json:"var_95"`
-	// VaR 99%
+	// 在 99% 置信水平下的风险价值 (Value at Risk)
 	VaR99 string `gorm:"column:var_99;type:decimal(20,8);not null" json:"var_99"`
 	// 最大回撤
 	MaxDrawdown string `gorm:"column:max_drawdown;type:decimal(20,8);not null" json:"max_drawdown"`
@@ -162,7 +162,7 @@ type RiskMetricsModel struct {
 	Correlation string `gorm:"column:correlation;type:decimal(20,8);not null" json:"correlation"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (RiskMetricsModel) TableName() string {
 	return "risk_metrics"
 }
@@ -240,7 +240,7 @@ func (rmr *RiskMetricsRepositoryImpl) Update(ctx context.Context, metrics *domai
 	return nil
 }
 
-// modelToDomain 将数据库模型转换为领域对象
+// 将数据库模型转换为领域对象
 func (rmr *RiskMetricsRepositoryImpl) modelToDomain(model *RiskMetricsModel) *domain.RiskMetrics {
 	var95, _ := decimal.NewFromString(model.VaR95)
 	var99, _ := decimal.NewFromString(model.VaR99)
@@ -277,7 +277,7 @@ type RiskLimitModel struct {
 	IsExceeded bool `gorm:"column:is_exceeded;type:boolean;not null" json:"is_exceeded"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (RiskLimitModel) TableName() string {
 	return "risk_limits"
 }
@@ -372,7 +372,7 @@ func (rlr *RiskLimitRepositoryImpl) Update(ctx context.Context, limit *domain.Ri
 	return nil
 }
 
-// modelToDomain 将数据库模型转换为领域对象
+// 将数据库模型转换为领域对象
 func (rlr *RiskLimitRepositoryImpl) modelToDomain(model *RiskLimitModel) *domain.RiskLimit {
 	limitValue, _ := decimal.NewFromString(model.LimitValue)
 	currentValue, _ := decimal.NewFromString(model.CurrentValue)
@@ -405,7 +405,7 @@ type RiskAlertModel struct {
 	Message string `gorm:"column:message;type:text;not null" json:"message"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (RiskAlertModel) TableName() string {
 	return "risk_alerts"
 }
@@ -478,7 +478,7 @@ func (rar *RiskAlertRepositoryImpl) DeleteRead(ctx context.Context, alertID stri
 	return nil
 }
 
-// modelToDomain 将数据库模型转换为领域对象
+// 将数据库模型转换为领域对象
 func (rar *RiskAlertRepositoryImpl) modelToDomain(model *RiskAlertModel) *domain.RiskAlert {
 	return &domain.RiskAlert{
 		Model:     model.Model,

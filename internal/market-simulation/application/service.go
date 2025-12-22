@@ -1,4 +1,4 @@
-// Package application 包含市场模拟服务的用例逻辑
+// 包 市场模拟服务的用例逻辑
 package application
 
 import (

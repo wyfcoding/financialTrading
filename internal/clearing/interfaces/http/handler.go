@@ -1,4 +1,4 @@
-// Package http 包含 HTTP 处理器（Handler）的实现。
+// 包  HTTP 处理器（Handler）的实现。
 // 这一层是接口层（Interfaces Layer）的一部分，使用 Gin 框架，
 // 负责适配外部的 HTTP 请求，并将其转换为对应用层的调用。
 package http

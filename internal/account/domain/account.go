@@ -1,4 +1,4 @@
-// Package domain 包含账户服务的领域模型
+// 包 账户服务的领域模型
 package domain
 
 import (

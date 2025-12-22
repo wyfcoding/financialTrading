@@ -1,4 +1,4 @@
-// Package repository 包含基础设施层实现
+// 包 基础设施层实现
 package repository
 
 import (
@@ -24,12 +24,12 @@ type SimulationScenarioModel struct {
 	Status      string `gorm:"column:status;type:varchar(20);default:'STOPPED';comment:状态"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (SimulationScenarioModel) TableName() string {
 	return "simulation_scenarios"
 }
 
-// ToDomain 将数据库模型转换为领域实体
+// 将数据库模型转换为领域实体
 func (m *SimulationScenarioModel) ToDomain() *domain.SimulationScenario {
 	return &domain.SimulationScenario{
 		Model:       m.Model,

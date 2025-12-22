@@ -1,4 +1,4 @@
-// Package application 包含订单服务的用例逻辑
+// 包 订单服务的用例逻辑
 package application
 
 import (

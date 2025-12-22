@@ -1,4 +1,4 @@
-// Package domain 包含持仓服务的领域模型
+// 包 持仓服务的领域模型
 package domain
 
 import (

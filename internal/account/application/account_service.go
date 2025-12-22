@@ -1,4 +1,4 @@
-// Package application 包含账户服务的用例逻辑
+// 包 账户服务的用例逻辑
 package application
 
 import (

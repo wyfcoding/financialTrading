@@ -19,7 +19,7 @@ type StrategyModel struct {
 	Status      string `gorm:"column:status;type:varchar(20);default:'ACTIVE'"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (StrategyModel) TableName() string {
 	return "strategies"
 }
@@ -88,7 +88,7 @@ type BacktestResultModel struct {
 	Status      string    `gorm:"column:status;type:varchar(20);default:'RUNNING'"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (BacktestResultModel) TableName() string {
 	return "backtest_results"
 }

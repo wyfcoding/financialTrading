@@ -1,4 +1,4 @@
-// Package domain 包含参考数据服务的领域模型
+// 包 参考数据服务的领域模型
 package domain
 
 import (

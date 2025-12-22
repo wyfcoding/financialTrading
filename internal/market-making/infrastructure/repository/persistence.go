@@ -1,4 +1,4 @@
-// Package repository 包含基础设施层实现
+// 包 基础设施层实现
 package repository
 
 import (
@@ -24,12 +24,12 @@ type QuoteStrategyModel struct {
 	Status       string  `gorm:"column:status;type:varchar(20);default:'ACTIVE';comment:状态"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (QuoteStrategyModel) TableName() string {
 	return "quote_strategies"
 }
 
-// ToDomain 将数据库模型转换为领域实体
+// 将数据库模型转换为领域实体
 func (m *QuoteStrategyModel) ToDomain() *domain.QuoteStrategy {
 	return &domain.QuoteStrategy{
 		Model:        m.Model,
@@ -67,7 +67,7 @@ func (r *QuoteStrategyRepositoryImpl) Save(ctx context.Context, strategy *domain
 		MaxPosition:  strategy.MaxPosition,
 		Status:       string(strategy.Status),
 	}
-	// Upsert
+	// 更新或插入 (Upsert)
 	if err := r.db.WithContext(ctx).Where(QuoteStrategyModel{Symbol: strategy.Symbol}).Assign(model).FirstOrCreate(model).Error; err != nil {
 		logging.Error(ctx, "Failed to save quote strategy",
 			"symbol", strategy.Symbol,
@@ -106,7 +106,7 @@ type PerformanceModel struct {
 	SharpeRatio float64 `gorm:"column:sharpe_ratio;type:decimal(10,4);default:0;comment:夏普比率"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (PerformanceModel) TableName() string {
 	return "market_making_performance"
 }

@@ -1,4 +1,4 @@
-// Package repository 包含仓储实现
+// 包 仓储实现
 package repository
 
 import (
@@ -32,7 +32,7 @@ type TradeModel struct {
 	Timestamp int64 `gorm:"column:timestamp;type:bigint;index;not null" json:"timestamp"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (TradeModel) TableName() string {
 	return "trades"
 }

@@ -1,4 +1,4 @@
-// Package domain 包含定价服务的领域模型
+// 包 定价服务的领域模型
 package domain
 
 import (

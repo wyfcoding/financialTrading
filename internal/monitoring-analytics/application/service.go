@@ -1,4 +1,4 @@
-// Package application 包含监控分析服务的用例逻辑
+// 包 监控分析服务的用例逻辑
 package application
 
 import (

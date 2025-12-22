@@ -1,4 +1,4 @@
-// Package application 包含定价服务的用例逻辑
+// 包 定价服务的用例逻辑
 package application
 
 import (
@@ -72,27 +72,27 @@ func (s *PricingService) GetGreeks(ctx context.Context, contract domain.OptionCo
 
 	greeks := &domain.Greeks{}
 
-	// Delta
+	// Delta: 标的价格变化导致的期权价格变化率
 	if contract.Type == domain.OptionTypeCall {
 		greeks.Delta = normalCDF(d1)
 	} else {
 		greeks.Delta = normalCDF(d1) - 1
 	}
 
-	// Gamma (对于看涨和看跌期权相同)
+	// Gamma: Delta 随标的价格变化的速率
 	greeks.Gamma = normalPDF(d1) / (underlyingPrice * volatility * math.Sqrt(timeToExpiry))
 
-	// Vega (对于看涨和看跌期权相同)
-	greeks.Vega = underlyingPrice * normalPDF(d1) * math.Sqrt(timeToExpiry) / 100 // 通常表示为每 1% 变化的敏感度
+	// Vega: 波动率变化导致的期权价格变化 (每 1% 变化的敏感度)
+	greeks.Vega = underlyingPrice * normalPDF(d1) * math.Sqrt(timeToExpiry) / 100
 
-	// Theta
+	// Theta: 时间流逝导致的期权价格变化 (时间损耗)
 	if contract.Type == domain.OptionTypeCall {
 		greeks.Theta = (-underlyingPrice*normalPDF(d1)*volatility/(2*math.Sqrt(timeToExpiry)) - riskFreeRate*contract.StrikePrice*math.Exp(-riskFreeRate*timeToExpiry)*normalCDF(d2)) / 365
 	} else {
 		greeks.Theta = (-underlyingPrice*normalPDF(d1)*volatility/(2*math.Sqrt(timeToExpiry)) + riskFreeRate*contract.StrikePrice*math.Exp(-riskFreeRate*timeToExpiry)*normalCDF(-d2)) / 365
 	}
 
-	// Rho
+	// Rho: 利率变化导致的期权价格变化
 	if contract.Type == domain.OptionTypeCall {
 		greeks.Rho = contract.StrikePrice * timeToExpiry * math.Exp(-riskFreeRate*timeToExpiry) * normalCDF(d2) / 100
 	} else {

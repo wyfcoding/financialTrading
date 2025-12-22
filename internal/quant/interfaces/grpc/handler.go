@@ -1,4 +1,4 @@
-// Package grpc 包含 gRPC 处理器实现
+// 包  gRPC 处理器实现
 package grpc
 
 import (

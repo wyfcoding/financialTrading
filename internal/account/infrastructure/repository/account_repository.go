@@ -1,4 +1,4 @@
-// Package repository 包含仓储实现
+// 包 仓储实现
 package repository
 
 import (
@@ -31,7 +31,7 @@ type AccountModel struct {
 	FrozenBalance string `gorm:"column:frozen_balance;type:decimal(20,8);not null" json:"frozen_balance"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (AccountModel) TableName() string {
 	return "accounts"
 }
@@ -130,7 +130,7 @@ func (ar *AccountRepositoryImpl) UpdateBalance(ctx context.Context, accountID st
 	return nil
 }
 
-// modelToDomain 将数据库模型转换为领域对象
+// 将数据库模型转换为领域对象
 func (ar *AccountRepositoryImpl) modelToDomain(model *AccountModel) *domain.Account {
 	balance, _ := decimal.NewFromString(model.Balance)
 	availableBalance, _ := decimal.NewFromString(model.AvailableBalance)
@@ -163,7 +163,7 @@ type TransactionModel struct {
 	Status string `gorm:"column:status;type:varchar(20);not null" json:"status"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (TransactionModel) TableName() string {
 	return "transactions"
 }

@@ -1,4 +1,4 @@
-// Package domain 包含通知服务的领域模型
+// 包 通知服务的领域模型
 package domain
 
 import (

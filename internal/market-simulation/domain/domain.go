@@ -1,4 +1,4 @@
-// Package domain 包含市场模拟服务的领域模型
+// 包 市场模拟服务的领域模型
 package domain
 
 import (

@@ -1,4 +1,4 @@
-// Package application 包含风险管理服务的用例逻辑、DTO、事务边界与补偿策略
+// 包 风险管理服务的用例逻辑、DTO、事务边界与补偿策略
 package application
 
 import (
@@ -138,7 +138,9 @@ func (ras *RiskApplicationService) AssessRisk(ctx context.Context, req *AssessRi
 			Message:   fmt.Sprintf("High risk detected for %s: %s", req.Symbol, reason),
 			CreatedAt: time.Now(),
 		}
-		_ = ras.alertRepo.Save(ctx, alert)
+		if err := ras.alertRepo.Save(ctx, alert); err != nil {
+			logging.Error(ctx, "Failed to save risk alert", "user_id", req.UserID, "error", err)
+		}
 	}
 
 	logging.Debug(ctx, "Risk assessment completed",

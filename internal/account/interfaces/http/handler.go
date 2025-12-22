@@ -9,13 +9,13 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 )
 
-// AccountHandler HTTP 处理器
+// HTTP 处理器
 // 负责处理与账户相关的 HTTP 请求
 type AccountHandler struct {
 	accountService *application.AccountApplicationService // 账户应用服务
 }
 
-// NewAccountHandler 创建 HTTP 处理器实例
+// 创建 HTTP 处理器实例
 // accountService: 注入的账户应用服务
 func NewAccountHandler(accountService *application.AccountApplicationService) *AccountHandler {
 	return &AccountHandler{
@@ -23,7 +23,7 @@ func NewAccountHandler(accountService *application.AccountApplicationService) *A
 	}
 }
 
-// RegisterRoutes 注册路由
+// 注册路由
 func (h *AccountHandler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1")
 	{

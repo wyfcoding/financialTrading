@@ -1,4 +1,4 @@
-// Package domain 包含做市服务的领域模型
+// 包 做市服务的领域模型
 package domain
 
 import (

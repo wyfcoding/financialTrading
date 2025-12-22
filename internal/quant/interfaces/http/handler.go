@@ -9,19 +9,19 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 )
 
-// QuantHandler HTTP 处理器
+// HTTP 处理器
 // 负责处理与量化策略和回测相关的 HTTP 请求
 type QuantHandler struct {
 	app *application.QuantService // 量化应用服务
 }
 
-// NewQuantHandler 创建 HTTP 处理器实例
+// 创建 HTTP 处理器实例
 // app: 注入的量化应用服务
 func NewQuantHandler(app *application.QuantService) *QuantHandler {
 	return &QuantHandler{app: app}
 }
 
-// RegisterRoutes 注册路由
+// 注册路由
 // 将处理器方法绑定到 Gin 路由引擎
 func (h *QuantHandler) RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1/quant")

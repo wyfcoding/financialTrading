@@ -1,4 +1,4 @@
-// Package application 包含清算服务的用例逻辑(Use Cases)。
+// 包 清算服务的用例逻辑(Use Cases)。
 // 这一层负责编排领域对象和仓储，以完成具体的业务功能。
 package application
 

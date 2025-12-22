@@ -40,14 +40,16 @@ type ServiceClients struct {
 const BootstrapName = "matching-engine"
 
 func main() {
-	app.NewBuilder(BootstrapName).
+	if err := app.NewBuilder(BootstrapName).
 		WithConfig(&configpkg.Config{}).
 		WithService(initService).
 		WithGRPC(registerGRPC).
 		WithGin(registerGin).
 		WithGinMiddleware(middleware.CORS()).
 		Build().
-		Run()
+		Run(); err != nil {
+		slog.Error("application run failed", "error", err)
+	}
 }
 
 func registerGRPC(s *grpc.Server, srv any) {

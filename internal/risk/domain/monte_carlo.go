@@ -1,4 +1,4 @@
-// Package domain 包含风险管理服务的领域模型
+// 包 风险管理服务的领域模型
 package domain
 
 import (
@@ -39,8 +39,8 @@ func CalculateVaR(input MonteCarloInput) *MonteCarloResult {
 	for i := 0; i < input.Iterations; i++ {
 		price := input.S
 		for j := 0; j < input.Steps; j++ {
-			// 几何布朗运动 (GBM): dS = S * (mu * dt + sigma * dW)
-			// S(t+dt) = S(t) * exp((mu - 0.5 * sigma^2) * dt + sigma * sqrt(dt) * Z)
+			// 几何布朗运动 (GBM) 模拟公式: dS = S * (mu * dt + sigma * dW)
+			// 计算公式: S(t+dt) = S(t) * exp((mu - 0.5 * sigma^2) * dt + sigma * sqrt(dt) * Z)
 			z := r.NormFloat64()
 			price *= math.Exp((input.Mu-0.5*input.Sigma*input.Sigma)*dt + input.Sigma*math.Sqrt(dt)*z)
 		}

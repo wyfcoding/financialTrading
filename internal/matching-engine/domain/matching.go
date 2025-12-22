@@ -1,4 +1,4 @@
-// Package domain 包含撮合引擎的领域模型
+// 包 撮合引擎的领域模型
 package domain
 
 import (

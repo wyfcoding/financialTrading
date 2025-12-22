@@ -1,4 +1,4 @@
-// Package application 包含参考数据服务的用例逻辑
+// 包 参考数据服务的用例逻辑
 package application
 
 import (

@@ -1,4 +1,4 @@
-// Package repository 包含了仓储接口的具体实现。
+// 包 了仓储接口的具体实现。
 // 这一层负责与具体的数据存储（如数据库、缓存）进行交互，实现了领域层定义的仓储接口。
 package repository
 
@@ -180,7 +180,7 @@ type EODClearingModel struct {
 	TotalTrades   int64  `gorm:"column:total_trades;type:bigint;not null"`
 }
 
-// TableName 指定表名。
+// 指定表名。
 func (EODClearingModel) TableName() string {
 	return "eod_clearings"
 }

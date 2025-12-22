@@ -1,4 +1,4 @@
-// Package domain 包含风险管理服务的领域模型、实体、聚合、值对象、领域服务、仓储接口
+// 包 风险管理服务的领域模型、实体、聚合、值对象、领域服务、仓储接口
 package domain
 
 import (
@@ -55,9 +55,9 @@ type RiskMetrics struct {
 	gorm.Model
 	// 用户 ID
 	UserID string `gorm:"column:user_id;type:varchar(50);uniqueIndex;not null" json:"user_id"`
-	// VaR 95%
+	// 在 95% 置信水平下的风险价值 (Value at Risk)
 	VaR95 decimal.Decimal `gorm:"column:var_95;type:decimal(20,8);not null" json:"var_95"`
-	// VaR 99%
+	// 在 99% 置信水平下的风险价值 (Value at Risk)
 	VaR99 decimal.Decimal `gorm:"column:var_99;type:decimal(20,8);not null" json:"var_99"`
 	// 最大回撤
 	MaxDrawdown decimal.Decimal `gorm:"column:max_drawdown;type:decimal(20,8);not null" json:"max_drawdown"`

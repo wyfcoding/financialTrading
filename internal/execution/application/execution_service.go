@@ -1,4 +1,4 @@
-// Package application 包含执行服务的用例逻辑 (Use Cases)。
+// 包 执行服务的用例逻辑 (Use Cases)。
 // 这一层负责编排领域对象、仓储和外部服务（如果需要），以完成具体的业务功能。
 package application
 

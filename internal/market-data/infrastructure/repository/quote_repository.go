@@ -34,7 +34,7 @@ type QuoteModel struct {
 	Source string `gorm:"column:source;type:varchar(50);not null" json:"source"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (QuoteModel) TableName() string {
 	return "market_quotes"
 }
@@ -129,7 +129,7 @@ func (qr *QuoteRepositoryImpl) DeleteExpired(ctx context.Context, beforeTime int
 	return nil
 }
 
-// modelToDomain 将数据库模型转换为领域对象
+// 将数据库模型转换为领域对象
 func (qr *QuoteRepositoryImpl) modelToDomain(model *QuoteModel) *domain.Quote {
 	bidPrice, _ := parseDecimal(model.BidPrice)
 	askPrice, _ := parseDecimal(model.AskPrice)

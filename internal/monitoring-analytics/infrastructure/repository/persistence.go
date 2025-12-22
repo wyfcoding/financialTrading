@@ -1,4 +1,4 @@
-// Package repository 包含基础设施层实现
+// 包 基础设施层实现
 package repository
 
 import (
@@ -22,12 +22,12 @@ type MetricModel struct {
 	Timestamp time.Time `gorm:"column:timestamp;index;not null;comment:时间戳"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (MetricModel) TableName() string {
 	return "metrics"
 }
 
-// ToDomain 将数据库模型转换为领域实体
+// 将数据库模型转换为领域实体
 func (m *MetricModel) ToDomain() *domain.Metric {
 	var tags map[string]string
 	_ = json.Unmarshal([]byte(m.Tags), &tags)
@@ -103,7 +103,7 @@ type SystemHealthModel struct {
 	LastChecked time.Time `gorm:"column:last_checked;not null;comment:最后检查时间"`
 }
 
-// TableName 指定表名
+// 指定表名
 func (SystemHealthModel) TableName() string {
 	return "system_health"
 }
