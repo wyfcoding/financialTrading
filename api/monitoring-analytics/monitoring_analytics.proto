@@ -2,64 +2,82 @@ syntax = "proto3";
 
 package monitoring_analytics;
 
-option go_package = "github.com/fynnwu/FinancialTrading/go-api/monitoring-analytics;monitoring_analytics";
-
 import "google/protobuf/timestamp.proto";
 
-// MonitoringAnalyticsService 提供监控和分析服务
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/monitoring-analytics;monitoring_analytics";
+
+// 监控分析服务，负责收集系统指标、追踪性能及健康度检测。
 service MonitoringAnalyticsService {
-  // 记录指标
-  rpc RecordMetric (RecordMetricRequest) returns (RecordMetricResponse);
-  // 获取指标
-  rpc GetMetrics (GetMetricsRequest) returns (GetMetricsResponse);
-  // 获取系统健康状态
-  rpc GetSystemHealth (GetSystemHealthRequest) returns (GetSystemHealthResponse);
+  // 上报系统运行指标数据。
+  rpc RecordMetric(RecordMetricRequest) returns (RecordMetricResponse);
+
+  // 查询历史监控指标时间序列。
+  rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse);
+
+  // 轮询或获取各微服务的健康存活状态。
+  rpc GetSystemHealth(GetSystemHealthRequest) returns (GetSystemHealthResponse);
 }
 
-// 指标
+// 监控指标。
 message Metric {
-  string name = 1; // 名称
-  double value = 2; // 值
-  map<string, string> tags = 3; // tags
-  google.protobuf.Timestamp timestamp = 4; // 时间戳
+  // 指标 Key（如 cpu_usage）。
+  string name = 1;
+  // 数值。
+  double value = 2;
+  // 维度标签集。
+  map<string, string> tags = 3;
+  // 采集时间戳。
+  google.protobuf.Timestamp timestamp = 4;
 }
 
-// 系统健康状态
+// 系统健康状态详情。
 message SystemHealth {
-  string service_name = 1; // 服务名称
-  string status = 2; // 状态
-  string message = 3; // 消息
-  google.protobuf.Timestamp last_checked = 4; // 最后检查
+  // 节点/服务名。
+  string service_name = 1;
+  // 存活状态。
+  string status = 2;
+  // 异常消息。
+  string message = 3;
+  // 最后自检时间。
+  google.protobuf.Timestamp last_checked = 4;
 }
 
-// 记录指标请求
+// 指标录入请求。
 message RecordMetricRequest {
-  Metric metric = 1; // 指标
+  // 待上报数据。
+  Metric metric = 1;
 }
 
-// 记录指标响应
+// 录入结果回执。
 message RecordMetricResponse {
-  bool success = 1; // 成功
+  // 是否成功。
+  bool success = 1;
 }
 
-// 获取指标请求
+// 历史指标请求。
 message GetMetricsRequest {
-  string name = 1; // 名称
-  google.protobuf.Timestamp start_time = 2; // 开始时间
-  google.protobuf.Timestamp end_time = 3; // 结束时间
+  // 指标名称。
+  string name = 1;
+  // 开始时间。
+  google.protobuf.Timestamp start_time = 2;
+  // 结束时间。
+  google.protobuf.Timestamp end_time = 3;
 }
 
-// 获取指标响应
+// 历史指标响应。
 message GetMetricsResponse {
-  repeated Metric metrics = 1; // 指标
+  // 数据序列。
+  repeated Metric metrics = 1;
 }
 
-// 获取系统健康请求
+// 健康检查请求。
 message GetSystemHealthRequest {
-  string service_name = 1; // 服务名称
+  // 可选的服务名过滤。
+  string service_name = 1;
 }
 
-// 获取系统健康响应
+// 健康检查列表响应。
 message GetSystemHealthResponse {
-  repeated SystemHealth health_statuses = 1; // 健康statuses
+  // 各节点健康状态序列。
+  repeated SystemHealth health_statuses = 1;
 }

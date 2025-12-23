@@ -2,90 +2,125 @@ syntax = "proto3";
 
 package quant;
 
-option go_package = "github.com/fynnwu/FinancialTrading/go-api/quant;quant";
-
 import "google/protobuf/timestamp.proto";
 
-// QuantService 提供量化策略管理与回测服务
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/quant;quant";
+
+// 量化研发服务。
 service QuantService {
-  // 创建策略
-  rpc CreateStrategy (CreateStrategyRequest) returns (CreateStrategyResponse);
-  // 获取策略
-  rpc GetStrategy (GetStrategyRequest) returns (GetStrategyResponse);
-  // 运行回测
-  rpc RunBacktest (RunBacktestRequest) returns (RunBacktestResponse);
-  // 获取回测结果
-  rpc GetBacktestResult (GetBacktestResultRequest) returns (GetBacktestResultResponse);
+  // 定义新策略。
+  rpc CreateStrategy(CreateStrategyRequest) returns (CreateStrategyResponse);
+
+  // 检索策略详情。
+  rpc GetStrategy(GetStrategyRequest) returns (GetStrategyResponse);
+
+  // 提交回测任务。
+  rpc RunBacktest(RunBacktestRequest) returns (RunBacktestResponse);
+
+  // 查询回测结果报告。
+  rpc GetBacktestResult(GetBacktestResultRequest) returns (GetBacktestResultResponse);
 }
 
-// 策略信息
+// 策略档案。
 message Strategy {
-  string id = 1; // 唯一标识
-  string name = 2; // 名称
-  string description = 3; // 描述
-  string script = 4; // 策略脚本或配置
-  string status = 5; // 状态
-  google.protobuf.Timestamp created_at = 6; // 创建时间
-  google.protobuf.Timestamp updated_at = 7; // 更新时间
+  // 唯一 ID。
+  string id = 1;
+  // 名称。
+  string name = 2;
+  // 简介。
+  string description = 3;
+  // 脚本或配置串。
+  string script = 4;
+  // 状态。
+  string status = 5;
+  // 录入日期。
+  google.protobuf.Timestamp created_at = 6;
+  // 修改日期。
+  google.protobuf.Timestamp updated_at = 7;
 }
 
-// 回测结果
+// 回测报告。
 message BacktestResult {
-  string id = 1; // 唯一标识
-  string strategy_id = 2; // 策略ID
-  string symbol = 3; // 交易对符号
-  google.protobuf.Timestamp start_time = 4; // 开始时间
-  google.protobuf.Timestamp end_time = 5; // 结束时间
-  double total_return = 6; // 总数return
-  double max_drawdown = 7; // 最大drawdown
-  double sharpe_ratio = 8; // 夏普比率
-  int32 total_trades = 9; // 总数trades
-  string status = 10; // 状态
-  google.protobuf.Timestamp created_at = 11; // 创建时间
+  // 结果 ID。
+  string id = 1;
+  // 关联策略 ID。
+  string strategy_id = 2;
+  // 目标品种。
+  string symbol = 3;
+  // 起始日期。
+  google.protobuf.Timestamp start_time = 4;
+  // 结束日期。
+  google.protobuf.Timestamp end_time = 5;
+  // 收益率。
+  double total_return = 6;
+  // 峰值回撤。
+  double max_drawdown = 7;
+  // 风险调整收益。
+  double sharpe_ratio = 8;
+  // 累计笔数。
+  int32 total_trades = 9;
+  // 任务状态。
+  string status = 10;
+  // 运行时间。
+  google.protobuf.Timestamp created_at = 11;
 }
 
-// 创建策略请求
+// 录入请求。
 message CreateStrategyRequest {
-  string name = 1; // 名称
-  string description = 2; // 描述
-  string script = 3; // 脚本
+  // 名称。
+  string name = 1;
+  // 介绍。
+  string description = 2;
+  // 脚本内容。
+  string script = 3;
 }
 
-// 创建策略响应
+// 录入响应。
 message CreateStrategyResponse {
-  string strategy_id = 1; // 策略ID
+  // 策略 ID。
+  string strategy_id = 1;
 }
 
-// 获取策略请求
+// 查询请求。
 message GetStrategyRequest {
-  string id = 1; // 唯一标识
+  // 记录 ID。
+  string id = 1;
 }
 
-// 获取策略响应
+// 查询响应。
 message GetStrategyResponse {
-  Strategy strategy = 1; // 策略
+  // 策略实体。
+  Strategy strategy = 1;
 }
 
-// 运行回测请求
+// 回测请求。
 message RunBacktestRequest {
-  string strategy_id = 1; // 策略ID
-  string symbol = 2; // 交易对符号
-  google.protobuf.Timestamp start_time = 3; // 开始时间
-  google.protobuf.Timestamp end_time = 4; // 结束时间
-  double initial_capital = 5; // initial资金
+  // 策略 ID。
+  string strategy_id = 1;
+  // 交易对。
+  string symbol = 2;
+  // 开始。
+  google.protobuf.Timestamp start_time = 3;
+  // 结束。
+  google.protobuf.Timestamp end_time = 4;
+  // 模拟资金。
+  double initial_capital = 5;
 }
 
-// 运行回测响应
+// 回测响应。
 message RunBacktestResponse {
-  string backtest_id = 1; // 回测ID
+  // 任务 ID。
+  string backtest_id = 1;
 }
 
-// 获取回测结果请求
+// 报告查询。
 message GetBacktestResultRequest {
-  string id = 1; // 唯一标识
+  // 任务 ID。
+  string id = 1;
 }
 
-// 获取回测结果响应
+// 报告详情。
 message GetBacktestResultResponse {
-  BacktestResult result = 1; // 结果
+  // 报告实体。
+  BacktestResult result = 1;
 }

@@ -4,69 +4,99 @@ package position;
 
 option go_package = "github.com/fynnwu/FinancialTrading/go-api/position;position";
 
-// 持仓服务
+// 持仓管理服务。
 service PositionService {
-  // 获取持仓列表
+  // 列表查询持仓。
   rpc GetPositions(GetPositionsRequest) returns (PositionsResponse);
-  // 获取持仓详情
+
+  // 查询单笔持仓。
   rpc GetPosition(GetPositionRequest) returns (PositionResponse);
-  // 获取持仓汇总
+
+  // 汇总持仓统计。
   rpc GetPositionSummary(GetPositionSummaryRequest) returns (PositionSummaryResponse);
-  // 平仓
+
+  // 执行平仓。
   rpc ClosePosition(ClosePositionRequest) returns (PositionResponse);
 }
 
-// 获取持仓列表请求
+// 列表请求。
 message GetPositionsRequest {
-  string user_id = 1; // 用户唯一标识
-  string symbol = 2; // 交易对符号
-  int32 page = 3; // 页码
-  int32 page_size = 4; // 页码大小
+  // 用户 ID。
+  string user_id = 1;
+  // 交易对筛选。
+  string symbol = 2;
+  // 页码。
+  int32 page = 3;
+  // 每页大小。
+  int32 page_size = 4;
 }
 
-// 持仓响应
+// 持仓明细。
 message PositionResponse {
-  string position_id = 1; // 位置ID
-  string user_id = 2; // 用户唯一标识
-  string symbol = 3; // 交易对符号
-  string side = 4; // 交易方向
-  string quantity = 5; // 数量
-  string entry_price = 6; // entry价格
-  string current_price = 7; // current价格
-  string unrealized_pnl = 8; // 未实现pnl
-  string realized_pnl = 9; // 已实现pnl
-  int64 opened_at = 10; // opened在
-  int64 closed_at = 11; // closed在
+  // 持仓 ID。
+  string position_id = 1;
+  // 用户 ID。
+  string user_id = 2;
+  // 交易对。
+  string symbol = 3;
+  // 方向。
+  string side = 4;
+  // 数量。
+  string quantity = 5;
+  // 开仓价。
+  string entry_price = 6;
+  // 当前价。
+  string current_price = 7;
+  // 未实现盈亏。
+  string unrealized_pnl = 8;
+  // 已实现盈亏。
+  string realized_pnl = 9;
+  // 开仓时间。
+  int64 opened_at = 10;
+  // 平仓时间。
+  int64 closed_at = 11;
 }
 
-// 持仓列表响应
+// 列表响应。
 message PositionsResponse {
-  repeated PositionResponse positions = 1; // 位置列表
-  int64 total = 2; // 总数
+  // 记录列表。
+  repeated PositionResponse positions = 1;
+  // 总记录数。
+  int64 total = 2;
 }
 
-// 获取持仓请求
+// 单查请求。
 message GetPositionRequest {
-  string position_id = 1; // 位置ID
-  string user_id = 2; // 用户唯一标识
+  // 持仓 ID。
+  string position_id = 1;
+  // 用户 ID。
+  string user_id = 2;
 }
 
-// 获取持仓汇总请求
+// 汇总请求。
 message GetPositionSummaryRequest {
-  string user_id = 1; // 用户唯一标识
+  // 用户 ID。
+  string user_id = 1;
 }
 
-// 持仓汇总响应
+// 汇总响应。
 message PositionSummaryResponse {
-  int64 total_positions = 1; // 总数positions
-  string total_unrealized_pnl = 2; // 总数unrealizedpnl
-  string total_realized_pnl = 3; // 总数realizedpnl
-  repeated PositionResponse positions = 4; // 位置列表
+  // 总持仓笔数。
+  int64 total_positions = 1;
+  // 总未实现盈亏。
+  string total_unrealized_pnl = 2;
+  // 总已实现盈亏。
+  string total_realized_pnl = 3;
+  // 持仓快照列表。
+  repeated PositionResponse positions = 4;
 }
 
-// 平仓请求
+// 平仓请求。
 message ClosePositionRequest {
-  string position_id = 1; // 位置ID
-  string user_id = 2; // 用户唯一标识
-  string close_price = 3; // close价格
+  // 持仓 ID。
+  string position_id = 1;
+  // 用户 ID。
+  string user_id = 2;
+  // 平仓价格。
+  string close_price = 3;
 }

@@ -2,92 +2,127 @@ syntax = "proto3";
 
 package reference_data;
 
-option go_package = "github.com/fynnwu/FinancialTrading/go-api/reference-data;reference_data";
-
 import "google/protobuf/timestamp.proto";
 
-// ReferenceDataService 提供参考数据管理服务
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/reference-data;reference_data";
+
+// 参考数据服务，管理交易对参数、交易所配置及货币元数据。
 service ReferenceDataService {
-  // 获取交易对信息
-  rpc GetSymbol (GetSymbolRequest) returns (GetSymbolResponse);
-  // 列出所有交易对
-  rpc ListSymbols (ListSymbolsRequest) returns (ListSymbolsResponse);
-  
-  // 获取交易所信息
-  rpc GetExchange (GetExchangeRequest) returns (GetExchangeResponse);
-  // 列出所有交易所
-  rpc ListExchanges (ListExchangesRequest) returns (ListExchangesResponse);
+  // 查询合约或交易对的具体参数。
+  rpc GetSymbol(GetSymbolRequest) returns (GetSymbolResponse);
+
+  // 获取系统中所有受支持的交易对列表。
+  rpc ListSymbols(ListSymbolsRequest) returns (ListSymbolsResponse);
+
+  // 查询合作交易所的静态信息。
+  rpc GetExchange(GetExchangeRequest) returns (GetExchangeResponse);
+
+  // 获取系统中所有已对接的交易所。
+  rpc ListExchanges(ListExchangesRequest) returns (ListExchangesResponse);
 }
 
-// 交易对信息
+// 交易对元数据。
 message Symbol {
-  string id = 1; // 唯一标识
-  string base_currency = 2; // base货币
-  string quote_currency = 3; // quote货币
-  string exchange_id = 4; // 交易所ID
-  string symbol_code = 5; // 交易对代码
-  string status = 6; // 状态
-  double min_order_size = 7; // 最小订单大小
-  double price_precision = 8; // 价格precision
-  google.protobuf.Timestamp created_at = 9; // 创建时间
-  google.protobuf.Timestamp updated_at = 10; // 更新时间
+  // 系统 ID。
+  string id = 1;
+  // 主币。
+  string base_currency = 2;
+  // 计价币。
+  string quote_currency = 3;
+  // 挂载交易所。
+  string exchange_id = 4;
+  // 显示代码 (如 BTC/USDT)。
+  string symbol_code = 5;
+  // 激活状态。
+  string status = 6;
+  // 最小单笔委托量。
+  double min_order_size = 7;
+  // 价格小数位数。
+  double price_precision = 8;
+  // 创建时间。
+  google.protobuf.Timestamp created_at = 9;
+  // 修改时间。
+  google.protobuf.Timestamp updated_at = 10;
 }
 
-// 交易所信息
+// 交易所元数据。
 message Exchange {
-  string id = 1; // 唯一标识
-  string name = 2; // 名称
-  string country = 3; // 国家
-  string status = 4; // 状态
-  string timezone = 5; // 时区
-  google.protobuf.Timestamp created_at = 6; // 创建时间
-  google.protobuf.Timestamp updated_at = 7; // 更新时间
+  // 系统 ID。
+  string id = 1;
+  // 官方名称。
+  string name = 2;
+  // 所在地区。
+  string country = 3;
+  // 连接状态。
+  string status = 4;
+  // 标准时区。
+  string timezone = 5;
+  // 创建日期。
+  google.protobuf.Timestamp created_at = 6;
+  // 修改日期。
+  google.protobuf.Timestamp updated_at = 7;
 }
 
-// 获取交易对请求
+// 交易对查询请求。
 message GetSymbolRequest {
-  string id = 1; // 唯一标识
-  string symbol_code = 2; // 交易对符号
+  // 记录 ID。
+  string id = 1;
+  // 业务代码。
+  string symbol_code = 2;
 }
 
-// 获取交易对响应
+// 详情响应。
 message GetSymbolResponse {
-  Symbol symbol = 1; // 交易对符号
+  // 交易对实体。
+  Symbol symbol = 1;
 }
 
-// 列出交易对请求
+// 交易对分页请求。
 message ListSymbolsRequest {
-  string exchange_id = 1; // 交易所ID
-  string status = 2; // 状态
-  int32 page_size = 3; // 页码大小
-  string page_token = 4; // 页码令牌
+  // 交易所筛选。
+  string exchange_id = 1;
+  // 状态筛选。
+  string status = 2;
+  // 数量。
+  int32 page_size = 3;
+  // 翻页令牌。
+  string page_token = 4;
 }
 
-// 列出交易对响应
+// 交易对分页响应。
 message ListSymbolsResponse {
-  repeated Symbol symbols = 1; // 交易对符号
-  string next_page_token = 2; // 下一个页码令牌
+  // 实体序列。
+  repeated Symbol symbols = 1;
+  // 令牌。
+  string next_page_token = 2;
 }
 
-// 获取交易所请求
+// 交易所查询。
 message GetExchangeRequest {
-  string id = 1; // 唯一标识
-  string name = 2; // 名称
+  // 记录 ID。
+  string id = 1;
+  // 交易所名。
+  string name = 2;
 }
 
-// 获取交易所响应
+// 交易所详情。
 message GetExchangeResponse {
-  Exchange exchange = 1; // 交易所
+  // 实体。
+  Exchange exchange = 1;
 }
 
-// 列出交易所请求
+// 交易所列表请求。
 message ListExchangesRequest {
-  int32 page_size = 1; // 页码大小
-  string page_token = 2; // 页码令牌
+  // 数量。
+  int32 page_size = 1;
+  // 令牌。
+  string page_token = 2;
 }
 
-// 列出交易所响应
+// 交易所列表响应。
 message ListExchangesResponse {
-  repeated Exchange exchanges = 1; // 交易所
-  string next_page_token = 2; // 下一个页码令牌
+  // 交易所序列。
+  repeated Exchange exchanges = 1;
+  // 令牌。
+  string next_page_token = 2;
 }

@@ -4,80 +4,113 @@ package risk;
 
 option go_package = "github.com/fynnwu/FinancialTrading/go-api/risk;risk";
 
-// 风险管理服务
+// 风险管理服务，负责交易风控评分、关键指标监控及限额管理。
 service RiskService {
-  // 评估风险
+  // 在交易前对该笔委托进行全方位风险度量。
   rpc AssessRisk(AssessRiskRequest) returns (RiskAssessmentResponse);
-  // 获取风险指标
+
+  // 获取用户的多维度风险统计数据 (如 VaR)。
   rpc GetRiskMetrics(GetRiskMetricsRequest) returns (RiskMetricsResponse);
-  // 检查风险限额
+
+  // 验证交易量或持仓量是否在规定红线内。
   rpc CheckRiskLimit(CheckRiskLimitRequest) returns (RiskLimitResponse);
-  // 获取风险警告
+
+  // 检索系统或行为触发的告警记录。
   rpc GetRiskAlerts(GetRiskAlertsRequest) returns (RiskAlertsResponse);
 }
 
-// 评估风险请求
+// 风险评估请求。
 message AssessRiskRequest {
-  string user_id = 1; // 用户唯一标识
-  string symbol = 2; // 交易对符号
-  string side = 3; // 交易方向
-  string quantity = 4; // 数量
-  string price = 5; // 价格
+  // 用户 ID。
+  string user_id = 1;
+  // 交易对。
+  string symbol = 2;
+  // 方向。
+  string side = 3;
+  // 数量。
+  string quantity = 4;
+  // 价格。
+  string price = 5;
 }
 
-// 风险评估响应
+// 评估结果响应。
 message RiskAssessmentResponse {
-  string risk_level = 1; // risk等级
-  string risk_score = 2; // risk分数
-  string margin_requirement = 3; // 利润率requirement
-  bool is_allowed = 4; // 是allowed
-  string reason = 5; // 原因
+  // 等级标识。
+  string risk_level = 1;
+  // 量化分数。
+  string risk_score = 2;
+  // 保证金门槛。
+  string margin_requirement = 3;
+  // 准入开关。
+  bool is_allowed = 4;
+  // 原因概要。
+  string reason = 5;
 }
 
-// 获取风险指标请求
+// 指标查询请求。
 message GetRiskMetricsRequest {
-  string user_id = 1; // 用户唯一标识
+  // 用户 ID。
+  string user_id = 1;
 }
 
-// 风险指标响应
+// 指标响应。
 message RiskMetricsResponse {
-  string var_95 = 1; // 风险价值 (Value at Risk)
-  string var_99 = 2; // 变量
-  string max_drawdown = 3; // 最大drawdown
-  string sharpe_ratio = 4; // 夏普比率
-  string correlation = 5; // 相关性
+  // 95% 在险价值。
+  string var_95 = 1;
+  // 99% 在险价值。
+  string var_99 = 2;
+  // 历史最大回撤。
+  string max_drawdown = 3;
+  // 风险回报比。
+  string sharpe_ratio = 4;
+  // 资产相关系数。
+  string correlation = 5;
 }
 
-// 检查风险限额请求
+// 限额检查请求。
 message CheckRiskLimitRequest {
-  string user_id = 1; // 用户唯一标识
-  string limit_type = 2; // 限制类型
+  // 用户 ID。
+  string user_id = 1;
+  // 限制维度。
+  string limit_type = 2;
 }
 
-// 风险限额响应
+// 限额响应详情。
 message RiskLimitResponse {
-  string limit_type = 1; // 限制类型
-  string limit_value = 2; // 限制value
-  string current_value = 3; // current值
-  string remaining = 4; // 剩余
-  bool is_exceeded = 5; // 是exceeded
+  // 维度。
+  string limit_type = 1;
+  // 预设上限。
+  string limit_value = 2;
+  // 实时用量。
+  string current_value = 3;
+  // 剩余配额。
+  string remaining = 4;
+  // 溢出标记。
+  bool is_exceeded = 5;
 }
 
-// 获取风险告警请求
+// 告警查询请求。
 message GetRiskAlertsRequest {
-  string user_id = 1; // 用户唯一标识
+  // 用户 ID。
+  string user_id = 1;
 }
 
-// 风险告警
+// 风险告警详情。
 message RiskAlert {
-  string alert_id = 1; // 告警ID
-  string alert_type = 2; // alert类型
-  string severity = 3; // 严重程度
-  string message = 4; // 消息
-  int64 timestamp = 5; // 时间戳
+  // 告警 ID。
+  string alert_id = 1;
+  // 类型标识。
+  string alert_type = 2;
+  // 严重性。
+  string severity = 3;
+  // 详细详情。
+  string message = 4;
+  // 发生日期。
+  int64 timestamp = 5;
 }
 
-// 风险告警响应
+// 告警查询结果。
 message RiskAlertsResponse {
-  repeated RiskAlert alerts = 1; // 告警
+  // 告警序列。
+  repeated RiskAlert alerts = 1;
 }

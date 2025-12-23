@@ -4,100 +4,146 @@ package order;
 
 option go_package = "github.com/fynnwu/FinancialTrading/go-api/order;order";
 
-// 订单服务
+// 订单管理服务。
 service OrderService {
-  // 创建订单
+  // 创建订单。
   rpc CreateOrder(CreateOrderRequest) returns (OrderResponse);
-  // 取消订单
+  // 撤单。
   rpc CancelOrder(CancelOrderRequest) returns (OrderResponse);
-  // 修改订单
+  // 修改。
   rpc ModifyOrder(ModifyOrderRequest) returns (OrderResponse);
-  // 获取订单详情
+  // 详情。
   rpc GetOrder(GetOrderRequest) returns (OrderResponse);
-  // 获取订单列表
+  // 列表。
   rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse);
-  // 订阅订单更新（流式）
+  // 实时推送。
   rpc SubscribeOrders(SubscribeOrdersRequest) returns (stream OrderUpdate);
 }
 
-// 创建订单请求
+// 下单请求。
 message CreateOrderRequest {
-  string user_id = 1; // 用户唯一标识
-  string symbol = 2; // 交易对符号
-  string side = 3; // 买入或卖出
-  string order_type = 4; // 限价、市价、止损、止盈
-  string price = 5; // 价格
-  string quantity = 6; // 数量
-  string time_in_force = 7; // 撤单前有效(GTC)、立即成交否则取消(IOC)、全部成交否则取消(FOK)
-  string client_order_id = 8; // 订单唯一标识
+  // 用户 ID。
+  string user_id = 1;
+  // 交易对。
+  string symbol = 2;
+  // 方向。
+  string side = 3;
+  // 类别。
+  string order_type = 4;
+  // 委托价。
+  string price = 5;
+  // 委托量。
+  string quantity = 6;
+  // 有效期策略。
+  string time_in_force = 7;
+  // 客户单 ID。
+  string client_order_id = 8;
 }
 
-// 订单响应
+// 订单详情。
 message OrderResponse {
-  string order_id = 1; // 订单唯一标识
-  string user_id = 2; // 用户唯一标识
-  string symbol = 3; // 交易对符号
-  string side = 4; // 交易方向
-  string order_type = 5; // 订单类型
-  string price = 6; // 价格
-  string quantity = 7; // 数量
-  string filled_quantity = 8; // filled数量
-  string status = 9; // 待定、已开放、部分成交、已成交、已取消、已拒绝
-  string time_in_force = 10; // 时间在...里面force
-  int64 created_at = 11; // 创建时间
-  int64 updated_at = 12; // 更新时间
-  string error_message = 13; // error消息
+  // 订单 ID。
+  string order_id = 1;
+  // 用户 ID。
+  string user_id = 2;
+  // 交易对。
+  string symbol = 3;
+  // 方向。
+  string side = 4;
+  // 类别。
+  string order_type = 5;
+  // 委托价。
+  string price = 6;
+  // 委托量。
+  string quantity = 7;
+  // 成交量。
+  string filled_quantity = 8;
+  // 状态。
+  string status = 9;
+  // 有效期。
+  string time_in_force = 10;
+  // 建立时间。
+  int64 created_at = 11;
+  // 更新时间。
+  int64 updated_at = 12;
+  // 异常消息。
+  string error_message = 13;
 }
 
-// 取消订单请求
+// 撤单请求。
 message CancelOrderRequest {
-  string order_id = 1; // 订单唯一标识
-  string user_id = 2; // 用户唯一标识
+  // 订单 ID。
+  string order_id = 1;
+  // 用户 ID。
+  string user_id = 2;
 }
 
-// 修改订单请求
+// 修改请求。
 message ModifyOrderRequest {
-  string order_id = 1; // 订单唯一标识
-  string user_id = 2; // 用户唯一标识
-  string price = 3; // 价格
-  string quantity = 4; // 数量
+  // 订单 ID。
+  string order_id = 1;
+  // 用户 ID。
+  string user_id = 2;
+  // 价格。
+  string price = 3;
+  // 数量。
+  string quantity = 4;
 }
 
-// 获取订单请求
+// 查询请求。
 message GetOrderRequest {
-  string order_id = 1; // 订单唯一标识
-  string user_id = 2; // 用户唯一标识
+  // 订单 ID。
+  string order_id = 1;
+  // 用户 ID。
+  string user_id = 2;
 }
 
-// 获取订单列表请求
+// 列表请求。
 message ListOrdersRequest {
-  string user_id = 1; // 用户唯一标识
-  string symbol = 2; // 交易对符号
-  string status = 3; // 状态
-  int32 page = 4; // 页码
-  int32 page_size = 5; // 页码大小
+  // 用户 ID。
+  string user_id = 1;
+  // 交易对筛选。
+  string symbol = 2;
+  // 状态筛选。
+  string status = 3;
+  // 页码。
+  int32 page = 4;
+  // 每页大小。
+  int32 page_size = 5;
 }
 
-// 订单列表响应
+// 列表响应。
 message ListOrdersResponse {
-  repeated OrderResponse orders = 1; // 订单列表
-  int64 total = 2; // 总数
-  int32 page = 3; // 页码
-  int32 page_size = 4; // 页码大小
+  // 记录序列。
+  repeated OrderResponse orders = 1;
+  // 总笔数。
+  int64 total = 2;
+  // 当前页。
+  int32 page = 3;
+  // 分页大小。
+  int32 page_size = 4;
 }
 
-// 订阅订单请求
+// 订阅请求。
 message SubscribeOrdersRequest {
-  string user_id = 1; // 用户唯一标识
-  repeated string symbols = 2; // 交易对符号
+  // 用户 ID。
+  string user_id = 1;
+  // 标的列表。
+  repeated string symbols = 2;
 }
 
-// 订单更新
+// 状态更新推送。
 message OrderUpdate {
-  string order_id = 1; // 订单唯一标识
-  string user_id = 2; // 用户唯一标识
-  string symbol = 3; // 交易对符号
-  string status = 4; // 状态
-  string filled_quantity = 5; // filled数量
-  int64 timestamp = 6; // 时间戳
+  // 订单 ID。
+  string order_id = 1;
+  // 用户 ID。
+  string user_id = 2;
+  // 交易对。
+  string symbol = 3;
+  // 最新状态。
+  string status = 4;
+  // 当前成交量。
+  string filled_quantity = 5;
+  // 更新时间。
+  int64 timestamp = 6;
 }

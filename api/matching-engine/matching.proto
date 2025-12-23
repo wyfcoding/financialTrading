@@ -4,87 +4,123 @@ package matching_engine;
 
 option go_package = "github.com/fynnwu/FinancialTrading/go-api/matching-engine;matching_engine";
 
-// 撮合引擎服务
+// 核心撮合引擎服务。
 service MatchingEngineService {
-  // 提交订单进行撮合
+  // 提交撮合。
   rpc SubmitOrder(SubmitOrderRequest) returns (MatchResult);
-  // 获取订单簿
+
+  // 获取订单簿。
   rpc GetOrderBook(GetOrderBookRequest) returns (OrderBookSnapshot);
-  // 获取成交记录
+
+  // 获取成交流水。
   rpc GetTrades(GetTradesRequest) returns (TradesResponse);
-  // 订阅成交更新（流式）
+
+  // 订阅成交流。
   rpc SubscribeTrades(SubscribeTradesRequest) returns (stream TradeUpdate);
 }
 
-// 提交订单请求
+// 撮合请求。
 message SubmitOrderRequest {
-  string order_id = 1; // 订单唯一标识
-  string symbol = 2; // 交易对符号
-  string side = 3; // 交易方向
-  string price = 4; // 价格
-  string quantity = 5; // 数量
+  // 订单 ID。
+  string order_id = 1;
+  // 交易对。
+  string symbol = 2;
+  // 方向。
+  string side = 3;
+  // 价格。
+  string price = 4;
+  // 数量。
+  string quantity = 5;
 }
 
-// 撮合结果
+// 撮合回执。
 message MatchResult {
-  string order_id = 1; // 订单唯一标识
-  repeated Trade matched_trades = 2; // matched交易列表
-  string remaining_quantity = 3; // remaining数量
-  string status = 4; // 状态
+  // 订单 ID。
+  string order_id = 1;
+  // 成交明细序列。
+  repeated Trade matched_trades = 2;
+  // 剩余数量。
+  string remaining_quantity = 3;
+  // 最终状态。
+  string status = 4;
 }
 
-// 成交记录
+// 成交详情。
 message Trade {
-  string trade_id = 1; // 成交id
-  string buy_order_id = 2; // 订单唯一标识
-  string sell_order_id = 3; // 订单唯一标识
-  string price = 4; // 价格
-  string quantity = 5; // 数量
-  int64 timestamp = 6; // 时间戳
+  // 成交 ID。
+  string trade_id = 1;
+  // 买单 ID。
+  string buy_order_id = 2;
+  // 卖单 ID。
+  string sell_order_id = 3;
+  // 价格。
+  string price = 4;
+  // 数量。
+  string quantity = 5;
+  // 时间。
+  int64 timestamp = 6;
 }
 
-// 获取订单簿请求
+// 深度请求。
 message GetOrderBookRequest {
-  string symbol = 1; // 交易对符号
-  int32 depth = 2; // 深度
+  // 交易对。
+  string symbol = 1;
+  // 档位。
+  int32 depth = 2;
 }
 
-// 订单簿层级
+// 价位明细。
 message OrderBookLevel {
-  string price = 1; // 价格
-  string quantity = 2; // 数量
+  // 价格。
+  string price = 1;
+  // 总量。
+  string quantity = 2;
 }
 
-// 订单簿快照
+// 深度快照。
 message OrderBookSnapshot {
-  string symbol = 1; // 交易对符号
-  repeated OrderBookLevel bids = 2; // 买入
-  repeated OrderBookLevel asks = 3; // 卖出
-  int64 timestamp = 4; // 时间戳
+  // 交易对。
+  string symbol = 1;
+  // 买盘序列。
+  repeated OrderBookLevel bids = 2;
+  // 卖盘序列。
+  repeated OrderBookLevel asks = 3;
+  // 时间。
+  int64 timestamp = 4;
 }
 
-// 获取成交记录请求
+// 成交查询。
 message GetTradesRequest {
-  string symbol = 1; // 交易对符号
-  int32 limit = 2; // 限制
+  // 交易对。
+  string symbol = 1;
+  // 限制。
+  int32 limit = 2;
 }
 
-// 成交记录响应
+// 成交列表。
 message TradesResponse {
-  string symbol = 1; // 交易对符号
-  repeated Trade trades = 2; // 交易列表
+  // 交易对。
+  string symbol = 1;
+  // 记录序列。
+  repeated Trade trades = 2;
 }
 
-// 订阅成交更新请求
+// 订阅请求。
 message SubscribeTradesRequest {
-  repeated string symbols = 1; // 交易对符号
+  // 标的列表。
+  repeated string symbols = 1;
 }
 
-// 成交更新
+// 成交推送。
 message TradeUpdate {
-  string trade_id = 1; // 成交id
-  string symbol = 2; // 交易对符号
-  string price = 3; // 价格
-  string quantity = 4; // 数量
-  int64 timestamp = 5; // 时间戳
+  // 成交 ID。
+  string trade_id = 1;
+  // 交易对。
+  string symbol = 2;
+  // 价格。
+  string price = 3;
+  // 数量。
+  string quantity = 4;
+  // 时间。
+  int64 timestamp = 5;
 }

@@ -4,117 +4,170 @@ package market_data;
 
 option go_package = "github.com/fynnwu/FinancialTrading/go-api/market-data;market_data";
 
-// 市场数据服务
+// 市场行情服务。
 service MarketDataService {
-  // 获取最新行情
+  // 查询最新价格快照。
   rpc GetLatestQuote(GetLatestQuoteRequest) returns (QuoteResponse);
-  // 获取 K 线数据
+
+  // 查询历史 K 线。
   rpc GetKlines(GetKlinesRequest) returns (KlinesResponse);
-  // 获取订单簿快照
+
+  // 查询实时订单簿。
   rpc GetOrderBook(GetOrderBookRequest) returns (OrderBookResponse);
-  // 订阅行情更新（流式）
+
+  // 流式订阅行情更新。
   rpc SubscribeQuotes(SubscribeQuotesRequest) returns (stream QuoteUpdate);
-  // 获取交易历史
+
+  // 获取全网成交历史。
   rpc GetTrades(GetTradesRequest) returns (TradesResponse);
 }
 
-// 获取最新行情请求
+// 快照请求。
 message GetLatestQuoteRequest {
-  string symbol = 1; // 交易对符号
+  // 交易对。
+  string symbol = 1;
 }
 
-// 行情响应
+// 快照响应。
 message QuoteResponse {
-  string symbol = 1; // 交易对符号
-  double bid_price = 2; // bid价格
-  double ask_price = 3; // ask价格
-  double bid_size = 4; // bid大小
-  double ask_size = 5; // ask大小
-  double last_price = 6; // last价格
-  double last_size = 7; // last大小
-  int64 timestamp = 8; // 时间戳
+  // 交易对。
+  string symbol = 1;
+  // 买一价。
+  double bid_price = 2;
+  // 卖一价。
+  double ask_price = 3;
+  // 买盘量。
+  double bid_size = 4;
+  // 卖盘量。
+  double ask_size = 5;
+  // 现价。
+  double last_price = 6;
+  // 现手量。
+  double last_size = 7;
+  // 时间戳。
+  int64 timestamp = 8;
 }
 
-// 获取 K 线请求
+// K 线请求。
 message GetKlinesRequest {
-  string symbol = 1; // 交易对符号
-  string interval = 2; // 间隔
-  int32 limit = 3; // 限制
+  // 交易对。
+  string symbol = 1;
+  // 周期。
+  string interval = 2;
+  // 限制条数。
+  int32 limit = 3;
 }
 
-// K 线数据
+// K 线单点。
 message Kline {
-  int64 open_time = 1; // open时间
-  double open = 2; // 打开
-  double high = 3; // 最高
-  double low = 4; // 最低
-  double close = 5; // 关闭
-  double volume = 6; // 成交量
-  int64 close_time = 7; // close时间
+  // 开盘时间。
+  int64 open_time = 1;
+  // 开盘价。
+  double open = 2;
+  // 最高价。
+  double high = 3;
+  // 最低价。
+  double low = 4;
+  // 收盘价。
+  double close = 5;
+  // 成交量。
+  double volume = 6;
+  // 收盘时间。
+  int64 close_time = 7;
 }
 
-// K 线响应
+// K 线响应。
 message KlinesResponse {
-  string symbol = 1; // 交易对符号
-  string interval = 2; // 间隔
-  repeated Kline klines = 3; // K线
+  // 交易对。
+  string symbol = 1;
+  // 周期。
+  string interval = 2;
+  // 数据序列。
+  repeated Kline klines = 3;
 }
 
-// 获取订单簿请求
+// 订单簿请求。
 message GetOrderBookRequest {
-  string symbol = 1; // 交易对符号
-  int32 depth = 2; // 默认 20
+  // 交易对。
+  string symbol = 1;
+  // 档位深度。
+  int32 depth = 2;
 }
 
-// 订单簿层级
+// 订单簿档位。
 message OrderBookLevel {
-  double price = 1; // 价格
-  double quantity = 2; // 数量
+  // 价格。
+  double price = 1;
+  // 数量。
+  double quantity = 2;
 }
 
-// 订单簿响应
+// 订单簿响应。
 message OrderBookResponse {
-  string symbol = 1; // 交易对符号
-  repeated OrderBookLevel bids = 2; // 买入
-  repeated OrderBookLevel asks = 3; // 卖出
-  int64 timestamp = 4; // 时间戳
+  // 交易对。
+  string symbol = 1;
+  // 买盘。
+  repeated OrderBookLevel bids = 2;
+  // 卖盘。
+  repeated OrderBookLevel asks = 3;
+  // 时间戳。
+  int64 timestamp = 4;
 }
 
-// 订阅行情请求
+// 订阅请求。
 message SubscribeQuotesRequest {
-  repeated string symbols = 1; // 交易对符号
+  // 目标代码列表。
+  repeated string symbols = 1;
 }
 
-// 行情更新
+// 实时推送。
 message QuoteUpdate {
-  string symbol = 1; // 交易对符号
-  double bid_price = 2; // bid价格
-  double ask_price = 3; // ask价格
-  double bid_size = 4; // bid大小
-  double ask_size = 5; // ask大小
-  double last_price = 6; // last价格
-  double last_size = 7; // last大小
-  int64 timestamp = 8; // 时间戳
+  // 交易对。
+  string symbol = 1;
+  // 买一价。
+  double bid_price = 2;
+  // 卖一价。
+  double ask_price = 3;
+  // 买盘量。
+  double bid_size = 4;
+  // 卖盘量。
+  double ask_size = 5;
+  // 现价。
+  double last_price = 6;
+  // 现手。
+  double last_size = 7;
+  // 时间戳。
+  int64 timestamp = 8;
 }
 
-// 获取交易历史请求
+// 成交请求。
 message GetTradesRequest {
-  string symbol = 1; // 交易对符号
-  int32 limit = 2; // 限制
+  // 交易对。
+  string symbol = 1;
+  // 记录数。
+  int32 limit = 2;
 }
 
-// 交易记录
+// 公变成交记录。
 message TradeRecord {
-  string trade_id = 1; // 成交id
-  string symbol = 2; // 交易对符号
-  double price = 3; // 价格
-  double quantity = 4; // 数量
-  string side = 5; // 买入或卖出
-  int64 timestamp = 6; // 时间戳
+  // 成交 ID。
+  string trade_id = 1;
+  // 交易对。
+  string symbol = 2;
+  // 价格。
+  double price = 3;
+  // 数量。
+  double quantity = 4;
+  // 方向。
+  string side = 5;
+  // 时间。
+  int64 timestamp = 6;
 }
 
-// 交易历史响应
+// 成交响应。
 message TradesResponse {
-  string symbol = 1; // 交易对符号
-  repeated TradeRecord trades = 2; // 交易列表
+  // 交易对。
+  string symbol = 1;
+  // 记录序列。
+  repeated TradeRecord trades = 2;
 }

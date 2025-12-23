@@ -2,55 +2,77 @@ syntax = "proto3";
 
 package notification;
 
-option go_package = "github.com/fynnwu/FinancialTrading/go-api/notification;notification";
-
 import "google/protobuf/timestamp.proto";
 
-// NotificationService 提供通知服务
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/notification;notification";
+
+// 消息通知服务。
 service NotificationService {
-  // 发送通知
-  rpc SendNotification (SendNotificationRequest) returns (SendNotificationResponse);
-  // 获取通知历史
-  rpc GetNotificationHistory (GetNotificationHistoryRequest) returns (GetNotificationHistoryResponse);
+  // 发送通知消息。
+  rpc SendNotification(SendNotificationRequest) returns (SendNotificationResponse);
+
+  // 查询历史通知。
+  rpc GetNotificationHistory(GetNotificationHistoryRequest) returns (GetNotificationHistoryResponse);
 }
 
-// 通知
+// 通知详情。
 message Notification {
-  string id = 1; // 唯一标识
-  string user_id = 2; // 用户唯一标识
-  string type = 3; // 类型
-  string subject = 4; // 主题
-  string content = 5; // 内容
-  string status = 6; // 状态
-  string error_message = 7; // error消息
-  google.protobuf.Timestamp created_at = 8; // 创建时间
-  google.protobuf.Timestamp sent_at = 9; // sent在
+  // 唯一 ID。
+  string id = 1;
+  // 接收人 ID。
+  string user_id = 2;
+  // 类别。
+  string type = 3;
+  // 标题。
+  string subject = 4;
+  // 正文。
+  string content = 5;
+  // 发送状态。
+  string status = 6;
+  // 失败异常原因。
+  string error_message = 7;
+  // 建立时间。
+  google.protobuf.Timestamp created_at = 8;
+  // 发出时间。
+  google.protobuf.Timestamp sent_at = 9;
 }
 
-// 发送通知请求
+// 发送请求。
 message SendNotificationRequest {
-  string user_id = 1; // 用户唯一标识
-  string type = 2; // 类型
-  string subject = 3; // 主题
-  string content = 4; // 内容
-  string target = 5; // 目标
+  // 用户 ID。
+  string user_id = 1;
+  // 类别。
+  string type = 2;
+  // 标题。
+  string subject = 3;
+  // 内容。
+  string content = 4;
+  // 发送目标地址。
+  string target = 5;
 }
 
-// 发送通知响应
+// 发送响应。
 message SendNotificationResponse {
-  string notification_id = 1; // 通知ID
-  string status = 2; // 状态
+  // 通知 ID。
+  string notification_id = 1;
+  // 当前状态。
+  string status = 2;
 }
 
-// 获取通知历史请求
+// 历史查询请求。
 message GetNotificationHistoryRequest {
-  string user_id = 1; // 用户唯一标识
-  int32 page_size = 2; // 页码大小
-  string page_token = 3; // 页码令牌
+  // 用户 ID。
+  string user_id = 1;
+  // 每页条数。
+  int32 page_size = 2;
+  // 翻页令牌。
+  string page_token = 3;
 }
 
-// 获取通知历史响应
+// 历史响应。
 message GetNotificationHistoryResponse {
-  repeated Notification notifications = 1; // 通知列表
-  string next_page_token = 2; // 下一个页码令牌
+  // 记录序列。
+  repeated Notification notifications = 1;
+  // 下一页令牌。
+  string next_page_token = 2;
 }

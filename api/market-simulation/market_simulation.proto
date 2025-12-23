@@ -2,62 +2,82 @@ syntax = "proto3";
 
 package market_simulation;
 
-option go_package = "github.com/fynnwu/FinancialTrading/go-api/market-simulation;market_simulation";
-
 import "google/protobuf/timestamp.proto";
 
-// MarketSimulationService 提供市场模拟服务
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/market-simulation;market_simulation";
+
+// 市场模拟服务，用于创建、管理及回溯金融市场模拟场景。
 service MarketSimulationService {
-  // 启动模拟
-  rpc StartSimulation (StartSimulationRequest) returns (StartSimulationResponse);
-  // 停止模拟
-  rpc StopSimulation (StopSimulationRequest) returns (StopSimulationResponse);
-  // 获取模拟状态
-  rpc GetSimulationStatus (GetSimulationStatusRequest) returns (GetSimulationStatusResponse);
+  // 启动一个新的市场模拟任务。
+  rpc StartSimulation(StartSimulationRequest) returns (StartSimulationResponse);
+
+  // 立即终止正在进行的模拟任务。
+  rpc StopSimulation(StopSimulationRequest) returns (StopSimulationResponse);
+
+  // 获取指定模拟任务的进度及参数详情。
+  rpc GetSimulationStatus(GetSimulationStatusRequest) returns (GetSimulationStatusResponse);
 }
 
-// 模拟场景
+// 模拟场景详情。
 message SimulationScenario {
-  string id = 1; // 唯一标识
-  string name = 2; // 名称
-  string description = 3; // 描述
-  string symbol = 4; // 交易对符号
-  string type = 5; // 类型
-  string parameters = 6; // 参数
-  string status = 7; // 状态
-  google.protobuf.Timestamp start_time = 8; // 开始时间
-  google.protobuf.Timestamp end_time = 9; // 结束时间
+  // 唯一 ID。
+  string id = 1;
+  // 场景显示名称。
+  string name = 2;
+  // 详细描述。
+  string description = 3;
+  // 目标交易对。
+  string symbol = 4;
+  // 模拟算法类型。
+  string type = 5;
+  // 场景运行参数 (JSON)。
+  string parameters = 6;
+  // 当前运行状态。
+  string status = 7;
+  // 实际开始时间。
+  google.protobuf.Timestamp start_time = 8;
+  // 预计/实际结束时间。
+  google.protobuf.Timestamp end_time = 9;
 }
 
-// 启动模拟请求
+// 启动请求。
 message StartSimulationRequest {
-  string name = 1; // 名称
-  string symbol = 2; // 交易对符号
-  string type = 3; // 类型
-  string parameters = 4; // 参数
+  // 场景名称。
+  string name = 1;
+  // 交易对。
+  string symbol = 2;
+  // 模型类型。
+  string type = 3;
+  // 配置参数。
+  string parameters = 4;
 }
 
-// 启动模拟响应
+// 启动响应。
 message StartSimulationResponse {
-  string simulation_id = 1; // 模拟ID
+  // 任务 ID。
+  string simulation_id = 1;
 }
 
-// 停止模拟请求
+// 停止请求。
 message StopSimulationRequest {
-  string simulation_id = 1; // 模拟ID
+  // 任务 ID。
+  string simulation_id = 1;
 }
 
-// 停止模拟响应
+// 停止结果。
 message StopSimulationResponse {
-  bool success = 1; // 成功
+  // 是否停止成功。
+  bool success = 1;
 }
 
-// 获取模拟状态请求
+// 状态查询请求。
 message GetSimulationStatusRequest {
-  string simulation_id = 1; // 模拟ID
+  // 任务 ID。
+  string simulation_id = 1;
 }
 
-// 获取模拟状态响应
+// 状态详情。
 message GetSimulationStatusResponse {
-  SimulationScenario scenario = 1; // 场景
+  // 模拟任务实体。
+  SimulationScenario scenario = 1;
 }

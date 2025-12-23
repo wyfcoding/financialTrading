@@ -2,59 +2,81 @@ syntax = "proto3";
 
 package pricing;
 
-option go_package = "github.com/fynnwu/FinancialTrading/go-api/pricing;pricing";
-
 import "google/protobuf/timestamp.proto";
 
-// PricingService 提供期权定价与希腊字母计算服务
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/pricing;pricing";
+
+// 期权定价服务，负责理论价格计算及希腊字母风险指标提取。
 service PricingService {
-  // 获取期权价格
-  rpc GetOptionPrice (GetOptionPriceRequest) returns (GetOptionPriceResponse);
-  // 获取希腊字母
-  rpc GetGreeks (GetGreeksRequest) returns (GetGreeksResponse);
+  // 计算期权理论价值。
+  rpc GetOptionPrice(GetOptionPriceRequest) returns (GetOptionPriceResponse);
+
+  // 计算期权的 Delta, Gamma, Theta, Vega, Rho 等指标。
+  rpc GetGreeks(GetGreeksRequest) returns (GetGreeksResponse);
 }
 
-// 期权合约
+// 期权合约定义。
 message OptionContract {
-  string symbol = 1; // 交易对符号
-  string type = 2; // 类型
-  double strike_price = 3; // strike价格
-  google.protobuf.Timestamp expiry_date = 4; // 过期date
+  // 标的代码。
+  string symbol = 1;
+  // 期权类型 (CALL/PUT)。
+  string type = 2;
+  // 执行价格。
+  double strike_price = 3;
+  // 到期日。
+  google.protobuf.Timestamp expiry_date = 4;
 }
 
-// 希腊字母
+// 希腊字母风险指标。
 message Greeks {
-  double delta = 1; // Delta值
-  double gamma = 2; // Gamma值
-  double theta = 3; // Theta值
-  double vega = 4; // Vega值
-  double rho = 5; // Rho值
+  // 价格敏感度。
+  double delta = 1;
+  // 价格二阶敏感度。
+  double gamma = 2;
+  // 时间衰减敏感度。
+  double theta = 3;
+  // 波动率敏感度。
+  double vega = 4;
+  // 利率敏感度。
+  double rho = 5;
 }
 
-// 获取期权价格请求
+// 定价请求。
 message GetOptionPriceRequest {
-  OptionContract contract = 1; // 合约
-  double underlying_price = 2; // underlying价格
-  double volatility = 3; // 波动率
-  double risk_free_rate = 4; // 风险free率
+  // 目标合约。
+  OptionContract contract = 1;
+  // 标的当前价格。
+  double underlying_price = 2;
+  // 预估波动率。
+  double volatility = 3;
+  // 无风险利率。
+  double risk_free_rate = 4;
 }
 
-// 获取期权价格响应
+// 定价响应。
 message GetOptionPriceResponse {
-  double price = 1; // 价格
-  google.protobuf.Timestamp calculation_time = 2; // calculation时间
+  // 理论公允价格。
+  double price = 1;
+  // 计算完成时间戳。
+  google.protobuf.Timestamp calculation_time = 2;
 }
 
-// 获取希腊字母请求
+// 希腊字母请求。
 message GetGreeksRequest {
-  OptionContract contract = 1; // 合约
-  double underlying_price = 2; // underlying价格
-  double volatility = 3; // 波动率
-  double risk_free_rate = 4; // 风险free率
+  // 目标合约。
+  OptionContract contract = 1;
+  // 标的价格。
+  double underlying_price = 2;
+  // 波动率。
+  double volatility = 3;
+  // 利率。
+  double risk_free_rate = 4;
 }
 
-// 获取希腊字母响应
+// 风险指标响应。
 message GetGreeksResponse {
-  Greeks greeks = 1; // 希腊字母
-  google.protobuf.Timestamp calculation_time = 2; // calculation时间
+  // 指标结果集。
+  Greeks greeks = 1;
+  // 计算时间戳。
+  google.protobuf.Timestamp calculation_time = 2;
 }

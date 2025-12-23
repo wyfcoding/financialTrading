@@ -4,190 +4,168 @@ package account;
 
 option go_package = "github.com/fynnwu/FinancialTrading/go-api/account;account";
 
-// AccountService 定义了账户相关的 gRPC 服务接口。
-// 该服务负责管理用户账户信息、余额、以及资金的存取等核心功能。
+// 账户服务，负责多资产余额体系、资金存取流水及账户基本信息维护。
 service AccountService {
-  // CreateAccount 用于创建一个新的用户账户。
-  //
-  // @param CreateAccountRequest 包含创建账户所需的信息，如用户ID、账户类型和货币。
-  // @return AccountResponse 返回新创建的账户详细信息。
+  // 初始化用户特定资产类别的子账户。
   rpc CreateAccount(CreateAccountRequest) returns (AccountResponse);
 
-  // GetAccount 用于获取指定账户的详细信息。
-  //
-  // @param GetAccountRequest 包含账户ID或用户ID，用于查询。
-  // @return AccountResponse 返回查询到的账户详细信息。
+  // 获取账户层面的静态配置及状态详情。
   rpc GetAccount(GetAccountRequest) returns (AccountResponse);
 
-  // UpdateAccount 用于更新现有账户的信息。
-  //
-  // @param UpdateAccountRequest 包含需要更新的账户ID和要修改的字段。
-  // @return AccountResponse 返回更新后的账户详细信息。
+  // 更新子账户的属性或权限开关。
   rpc UpdateAccount(UpdateAccountRequest) returns (AccountResponse);
 
-  // GetBalance 用于查询指定账户的余额信息。
-  //
-  // @param GetBalanceRequest 包含要查询的账户ID。
-  // @return BalanceResponse 返回详细的余额信息，包括总余额、可用余额和冻结余额。
+  // 实时查询账户的可用、冻结及总余额。
   rpc GetBalance(GetBalanceRequest) returns (BalanceResponse);
 
-  // Deposit 用于向指定账户充值。
-  //
-  // @param DepositRequest 包含充值的账户ID、金额和货币。
-  // @return TransactionResponse 返回此次充值交易的记录。
+  // 执行外部入账操作（充值）。
   rpc Deposit(DepositRequest) returns (TransactionResponse);
 
-  // Withdraw 用于从指定账户提现。
-  //
-  // @param WithdrawRequest 包含提现的账户ID、金额、货币和提现地址。
-  // @return TransactionResponse 返回此次提现交易的记录。
+  // 发起外部出账操作（提现）。
   rpc Withdraw(WithdrawRequest) returns (TransactionResponse);
 
-  // GetTransactionHistory 用于获取指定账户的交易历史记录。
-  //
-  // @param GetTransactionHistoryRequest 包含要查询的账户ID和查询条数限制。
-  // @return TransactionHistoryResponse 返回一个包含多条交易记录的列表。
+  // 检索账户下所有资金变动明细历史。
   rpc GetTransactionHistory(GetTransactionHistoryRequest) returns (TransactionHistoryResponse);
 }
 
-// CreateAccountRequest 消息定义了创建新账户时需要提供的参数。
+// 账户开设请求。
 message CreateAccountRequest {
-  // user_id 是用户的唯一标识符。
-  string user_id = 1; // 用户唯一标识
-  // account_type 是账户的类型（例如：现货、合约、杠杆）。
-  string account_type = 2; // 账户类型
-  // currency 是账户的计价货币（例如：USDT, BTC, ETH）。
-  string currency = 3; // 货币
+  // 用户 ID。
+  string user_id = 1;
+  // 类型 (SPOT, MARGIN)。
+  string account_type = 2;
+  // 结算本币。
+  string currency = 3;
 }
 
-// AccountResponse 消息返回账户的详细信息。
+// 账户详细档案。
 message AccountResponse {
-  // account_id 是账户的唯一标识符。
-  string account_id = 1; // 账户id
-  // user_id 是所属用户的唯一标识符。
-  string user_id = 2; // 用户唯一标识
-  // account_type 是账户的类型。
-  string account_type = 3; // 账户类型
-  // currency 是账户的计价货币。
-  string currency = 4; // 货币
-  // balance 是账户的总余额（字符串格式以支持高精度）。
-  string balance = 5; // 余额
-  // available_balance 是账户的可用余额。
-  string available_balance = 6; // available余额
-  // created_at 是账户创建的时间戳（Unix apoch）。
-  int64 created_at = 7; // 创建时间
-  // updated_at 是账户信息最后更新的时间戳（Unix apoch）。
-  int64 updated_at = 8; // 更新时间
+  // 账户唯一 ID。
+  string account_id = 1;
+  // 归属人。
+  string user_id = 2;
+  // 账户类型名。
+  string account_type = 3;
+  // 货币代码。
+  string currency = 4;
+  // 实时总额。
+  string balance = 5;
+  // 可用总额。
+  string available_balance = 6;
+  // 建立日期戳。
+  int64 created_at = 7;
+  // 修改日期戳。
+  int64 updated_at = 8;
 }
 
-// GetAccountRequest 消息定义了查询账户信息时需要提供的参数。
+// 账户查询条件。
 message GetAccountRequest {
-  // account_id 是要查询的账户的唯一标识符。
-  string account_id = 1; // 账户id
-  // user_id 也可以用于查询，特别是在一个用户拥有多个账户的场景下。
-  string user_id = 2; // 用户唯一标识
+  // 子账户 ID。
+  string account_id = 1;
+  // 所有人 ID。
+  string user_id = 2;
 }
 
-// UpdateAccountRequest 消息定义了更新账户信息时需要提供的参数。
+// 属性更新请求。
 message UpdateAccountRequest {
-  // account_id 是要更新的账户的唯一标识符。
-  string account_id = 1; // 账户id
-  // user_id 用于验证操作权限。
-  string user_id = 2; // 用户唯一标识
-  // updates 是一个包含待更新字段的映射，键为字段名，值为新的字段值。
-  map<string, string> updates = 3; // updates
+  // 目标 ID。
+  string account_id = 1;
+  // 行为人 ID。
+  string user_id = 2;
+  // 变更字段集。
+  map<string, string> updates = 3;
 }
 
-// GetBalanceRequest 消息定义了查询余额时需要提供的参数。
+// 余额查询请求。
 message GetBalanceRequest {
-  // account_id 是要查询余额的账户的唯一标识符。
-  string account_id = 1; // 账户id
-  // user_id 用于权限校验。
-  string user_id = 2; // 用户唯一标识
+  // 账户 ID。
+  string account_id = 1;
+  // 所有人 ID。
+  string user_id = 2;
 }
 
-// BalanceResponse 消息返回账户的详细余额信息。
+// 余额实时快照。
 message BalanceResponse {
-  // account_id 是账户的唯一标识符。
-  string account_id = 1; // 账户id
-  // balance 是账户的总余额。
-  string balance = 2; // 余额
-  // available_balance 是当前可用于交易或提现的余额。
-  string available_balance = 3; // available余额
-  // frozen_balance 是因挂单等原因被冻结的余额。
-  string frozen_balance = 4; // frozen余额
-  // timestamp 是余额信息生成时的时间戳。
-  int64 timestamp = 5; // 时间戳
+  // 账户 ID。
+  string account_id = 1;
+  // 系统总额。
+  string balance = 2;
+  // 自由额度。
+  string available_balance = 3;
+  // 挂单冻结。
+  string frozen_balance = 4;
+  // 快照生成日期。
+  int64 timestamp = 5;
 }
 
-// DepositRequest 消息定义了充值时需要提供的参数。
+// 充值请求。
 message DepositRequest {
-  // account_id 是充值目标账户的唯一标识符。
-  string account_id = 1; // 账户id
-  // user_id 用于权限校验。
-  string user_id = 2; // 用户唯一标识
-  // amount 是充值的金额。
-  string amount = 3; // 金额
-  // currency 是充值的货币类型。
-  string currency = 4; // 货币
+  // 目标账户。
+  string account_id = 1;
+  // 用户 ID。
+  string user_id = 2;
+  // 金额数值。
+  string amount = 3;
+  // 币种。
+  string currency = 4;
 }
 
-// WithdrawRequest 消息定义了提现时需要提供的参数。
+// 提现请求。
 message WithdrawRequest {
-  // account_id 是提现来源账户的唯一标识符。
-  string account_id = 1; // 账户id
-  // user_id 用于权限校验。
-  string user_id = 2; // 用户唯一标识
-  // amount 是提现的金额。
-  string amount = 3; // 金额
-  // currency 是提现的货币类型。
-  string currency = 4; // 货币
-  // address 是提现的目标地址。
-  string address = 5; // 地址
+  // 来源账户。
+  string account_id = 1;
+  // 发起人。
+  string user_id = 2;
+  // 金额数值。
+  string amount = 3;
+  // 币种。
+  string currency = 4;
+  // 链上/外部目标地。
+  string address = 5;
 }
 
-// TransactionResponse 消息返回单次交易（如充值、提现）的结果。
+// 资金事务回执。
 message TransactionResponse {
-  // transaction_id 是交易的唯一标识符。
-  string transaction_id = 1; // 事务ID
-  // account_id 是与该交易关联的账户ID。
-  string account_id = 2; // 账户id
-  // type 是交易类型（例如 "DEPOSIT", "WITHDRAW"）。
-  string type = 3; // 类型
-  // amount 是交易涉及的金额。
-  string amount = 4; // 金额
-  // status 是交易的当前状态（例如 "PENDING", "COMPLETED", "FAILED"）。
-  string status = 5; // 状态
-  // timestamp 是交易发生时的时间戳。
-  int64 timestamp = 6; // 时间戳
+  // 业务流水号。
+  string transaction_id = 1;
+  // 关联子账户。
+  string account_id = 2;
+  // 操作动作 (DEPOSIT, WITHDRAW)。
+  string type = 3;
+  // 变动数额。
+  string amount = 4;
+  // 流程状态。
+  string status = 5;
+  // 确认日期。
+  int64 timestamp = 6;
 }
 
-// GetTransactionHistoryRequest 消息定义了查询交易历史时需要提供的参数。
+// 流水查询。
 message GetTransactionHistoryRequest {
-  // account_id 是要查询的账户ID。
-  string account_id = 1; // 账户id
-  // user_id 用于权限校验。
-  string user_id = 2; // 用户唯一标识
-  // limit 用于限制返回的交易记录数量。
-  int32 limit = 3; // 限制
+  // 目标账户。
+  string account_id = 1;
+  // 所有人。
+  string user_id = 2;
+  // 数量限制。
+  int32 limit = 3;
 }
 
-// Transaction 消息定义了单条交易记录的结构。
+// 单条流水明细。
 message Transaction {
-  // transaction_id 是交易的唯一标识符。
-  string transaction_id = 1; // 事务ID
-  // type 是交易类型。
-  string type = 2; // 类型
-  // amount 是交易金额。
-  string amount = 3; // 金额
-  // status 是交易状态。
-  string status = 4; // 状态
-  // timestamp 是交易发生时的时间戳。
-  int64 timestamp = 5; // 时间戳
+  // 事务 ID。
+  string transaction_id = 1;
+  // 类别标识。
+  string type = 2;
+  // 变更数值。
+  string amount = 3;
+  // 当前进度。
+  string status = 4;
+  // 发生时间。
+  int64 timestamp = 5;
 }
 
-// TransactionHistoryResponse 消息返回一个包含多条交易记录的列表。
+// 流水列表响应。
 message TransactionHistoryResponse {
-  // transactions 是一个交易记录列表。
-  repeated Transaction transactions = 1; // 事务列表
+  // 事务序列。
+  repeated Transaction transactions = 1;
 }
