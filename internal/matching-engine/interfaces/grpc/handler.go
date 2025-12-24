@@ -4,7 +4,7 @@ package grpc
 import (
 	"context"
 
-	pb "github.com/wyfcoding/financialTrading/go-api/matching-engine"
+	pb "github.com/wyfcoding/financialTrading/go-api/matching_engine/v1"
 	"github.com/wyfcoding/financialTrading/internal/matching-engine/application"
 	"github.com/wyfcoding/pkg/algorithm"
 	"google.golang.org/grpc/codes"
@@ -28,7 +28,7 @@ func NewGRPCHandler(appService *application.MatchingApplicationService) *GRPCHan
 
 // SubmitOrder 提交订单
 // 处理 gRPC SubmitOrder 请求
-func (h *GRPCHandler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderRequest) (*pb.MatchResult, error) {
+func (h *GRPCHandler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderRequest) (*pb.SubmitOrderResponse, error) {
 	// 调用应用服务提交订单
 	result, err := h.appService.SubmitOrder(ctx, &application.SubmitOrderRequest{
 		OrderID:  req.OrderId,
@@ -46,7 +46,7 @@ func (h *GRPCHandler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderReques
 		pbTrades = append(pbTrades, h.toProtoTrade(trade))
 	}
 
-	return &pb.MatchResult{
+	return &pb.SubmitOrderResponse{
 		OrderId:           result.OrderID,
 		MatchedTrades:     pbTrades,
 		RemainingQuantity: result.RemainingQuantity.String(),
@@ -56,7 +56,7 @@ func (h *GRPCHandler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderReques
 
 // GetOrderBook 获取订单簿
 // 处理 gRPC GetOrderBook 请求
-func (h *GRPCHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequest) (*pb.OrderBookSnapshot, error) {
+func (h *GRPCHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequest) (*pb.GetOrderBookResponse, error) {
 	snapshot, err := h.appService.GetOrderBook(ctx, req.Symbol, int(req.Depth))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get order book: %v", err)
@@ -78,7 +78,7 @@ func (h *GRPCHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequ
 		})
 	}
 
-	return &pb.OrderBookSnapshot{
+	return &pb.GetOrderBookResponse{
 		Symbol:    snapshot.Symbol,
 		Bids:      pbBids,
 		Asks:      pbAsks,
@@ -88,7 +88,7 @@ func (h *GRPCHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequ
 
 // GetTrades 获取成交记录
 // 处理 gRPC GetTrades 请求
-func (h *GRPCHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (*pb.TradesResponse, error) {
+func (h *GRPCHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (*pb.GetTradesResponse, error) {
 	trades, err := h.appService.GetTrades(ctx, req.Symbol, int(req.Limit))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get trades: %v", err)
@@ -99,7 +99,7 @@ func (h *GRPCHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (
 		pbTrades = append(pbTrades, h.toProtoTrade(trade))
 	}
 
-	return &pb.TradesResponse{
+	return &pb.GetTradesResponse{
 		Symbol: req.Symbol,
 		Trades: pbTrades,
 	}, nil

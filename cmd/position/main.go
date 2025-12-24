@@ -7,7 +7,7 @@ import (
 	"github.com/wyfcoding/pkg/grpcclient"
 
 	"github.com/gin-gonic/gin"
-	pb "github.com/wyfcoding/financialTrading/go-api/position"
+	pb "github.com/wyfcoding/financialTrading/go-api/position/v1"
 	"github.com/wyfcoding/financialTrading/internal/position/application"
 	"github.com/wyfcoding/financialTrading/internal/position/infrastructure/repository"
 	grpchandler "github.com/wyfcoding/financialTrading/internal/position/interfaces/grpc"

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	pb "github.com/wyfcoding/financialTrading/go-api/quant"
+	pb "github.com/wyfcoding/financialTrading/go-api/quant/v1"
 	"github.com/wyfcoding/financialTrading/internal/quant/application"
 	"github.com/wyfcoding/financialTrading/internal/quant/infrastructure/client"
 	"github.com/wyfcoding/financialTrading/internal/quant/infrastructure/repository"

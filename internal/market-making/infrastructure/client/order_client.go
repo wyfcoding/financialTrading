@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/wyfcoding/financialTrading/go-api/order"
+	orderv1 "github.com/wyfcoding/financialTrading/go-api/order/v1"
 	"github.com/wyfcoding/financialTrading/internal/market-making/domain"
 	"github.com/wyfcoding/pkg/grpcclient"
 	"github.com/wyfcoding/pkg/logging"
@@ -13,7 +13,7 @@ import (
 
 // OrderClientImpl 订单服务客户端实现
 type OrderClientImpl struct {
-	client order.OrderServiceClient
+	client orderv1.OrderServiceClient
 }
 
 // NewOrderClient 创建订单服务客户端
@@ -24,20 +24,20 @@ func NewOrderClient(cfg grpcclient.ClientConfig) (domain.OrderClient, error) {
 	}
 
 	return &OrderClientImpl{
-		client: order.NewOrderServiceClient(conn),
+		client: orderv1.NewOrderServiceClient(conn),
 	}, nil
 }
 
 // NewOrderClientFromConn 从现有连接创建客户端
 func NewOrderClientFromConn(conn *grpc.ClientConn) domain.OrderClient {
 	return &OrderClientImpl{
-		client: order.NewOrderServiceClient(conn),
+		client: orderv1.NewOrderServiceClient(conn),
 	}
 }
 
 // PlaceOrder 下单
 func (c *OrderClientImpl) PlaceOrder(ctx context.Context, symbol string, side string, price, quantity float64) (string, error) {
-	req := &order.CreateOrderRequest{
+	req := &orderv1.CreateOrderRequest{
 		Symbol:    symbol,
 		Side:      side,
 		Price:     fmt.Sprintf("%f", price),
@@ -58,5 +58,9 @@ func (c *OrderClientImpl) PlaceOrder(ctx context.Context, symbol string, side st
 		return "", err
 	}
 
-	return resp.OrderId, nil
+	if resp.Order == nil {
+		return "", fmt.Errorf("order response is nil")
+	}
+
+	return resp.Order.OrderId, nil
 }

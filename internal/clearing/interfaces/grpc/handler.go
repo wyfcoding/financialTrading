@@ -5,8 +5,9 @@ package grpc
 
 import (
 	"context"
+	"time"
 
-	pb "github.com/wyfcoding/financialTrading/go-api/clearing"
+	pb "github.com/wyfcoding/financialTrading/go-api/clearing/v1"
 	"github.com/wyfcoding/financialTrading/internal/clearing/application"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -32,7 +33,7 @@ func NewGRPCHandler(appService *application.ClearingApplicationService) *GRPCHan
 
 // SettleTrade 实现了 gRPC 的 SettleTrade 方法。
 // 它接收 gRPC 请求，将其转换为应用层的 DTO，然后调用应用服务来处理。
-func (h *GRPCHandler) SettleTrade(ctx context.Context, req *pb.SettleTradeRequest) (*pb.SettlementResponse, error) {
+func (h *GRPCHandler) SettleTrade(ctx context.Context, req *pb.SettleTradeRequest) (*pb.SettleTradeResponse, error) {
 	// 1. 将 gRPC 请求对象 (*pb.SettleTradeRequest) 转换为应用层 DTO (*application.SettleTradeRequest)。
 	//    这是接口层的核心职责之一：数据转换。
 	appReq := &application.SettleTradeRequest{
@@ -54,15 +55,16 @@ func (h *GRPCHandler) SettleTrade(ctx context.Context, req *pb.SettleTradeReques
 	}
 
 	// 4. 构建并返回 gRPC 响应,填充从应用服务返回的 settlementID。
-	return &pb.SettlementResponse{
+	return &pb.SettleTradeResponse{
 		TradeId:      req.TradeId,
 		Status:       "COMPLETED", // 假设状态为已完成
 		SettlementId: settlementID,
+		SettlementTime: time.Now().Unix(),
 	}, nil
 }
 
 // ExecuteEODClearing 实现了 gRPC 的 ExecuteEODClearing 方法。
-func (h *GRPCHandler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEODClearingRequest) (*pb.EODClearingResponse, error) {
+func (h *GRPCHandler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEODClearingRequest) (*pb.ExecuteEODClearingResponse, error) {
 	// 调用应用服务启动日终清算流程,接收返回的 clearingID。
 	clearingID, err := h.appService.ExecuteEODClearing(ctx, req.ClearingDate)
 	if err != nil {
@@ -70,14 +72,15 @@ func (h *GRPCHandler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEOD
 	}
 
 	// 返回包含 clearingID 的响应,表示任务已开始。
-	return &pb.EODClearingResponse{
+	return &pb.ExecuteEODClearingResponse{
 		Status:     "PROCESSING", // 表示任务已开始处理
 		ClearingId: clearingID,
+		StartTime:  time.Now().Unix(),
 	}, nil
 }
 
 // GetClearingStatus 实现了 gRPC 的 GetClearingStatus 方法。
-func (h *GRPCHandler) GetClearingStatus(ctx context.Context, req *pb.GetClearingStatusRequest) (*pb.ClearingStatusResponse, error) {
+func (h *GRPCHandler) GetClearingStatus(ctx context.Context, req *pb.GetClearingStatusRequest) (*pb.GetClearingStatusResponse, error) {
 	// 调用应用服务获取清算任务状态。
 	clearing, err := h.appService.GetClearingStatus(ctx, req.ClearingId)
 	if err != nil {
@@ -95,7 +98,7 @@ func (h *GRPCHandler) GetClearingStatus(ctx context.Context, req *pb.GetClearing
 	}
 
 	// 将从应用层获取的领域对象转换为 gRPC 响应对象。
-	return &pb.ClearingStatusResponse{
+	return &pb.GetClearingStatusResponse{
 		ClearingId:         clearing.ClearingID,
 		Status:             clearing.Status,
 		TradesProcessed:    clearing.TradesSettled,

@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package api.pricing.v1;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/pricing/v1;pricingv1";
+
+import "google/protobuf/timestamp.proto";
+
+// 金融定价服务。
+service PricingService {
+  // 获取期权理论价。
+  rpc GetOptionPrice (GetOptionPriceRequest) returns (GetOptionPriceResponse);
+
+  // 敏感度分析。
+  rpc GetGreeks (GetGreeksRequest) returns (GetGreeksResponse);
+}
+
+// 标的合约档案。
+message OptionContract {
+  // 标的代码。
+  string symbol = 1; 
+  // 类别。
+  string type = 2; 
+  // 履约价格。
+  double strike_price = 3; 
+  // 截止日期。
+  google.protobuf.Timestamp expiry_date = 4; 
+}
+
+// 敏感度系数。
+message Greeks {
+  // 一阶导。
+  double delta = 1; 
+  // 二阶导。
+  double gamma = 2; 
+  // 时间衰减。
+  double theta = 3; 
+  // 波动率因子。
+  double vega = 4; 
+  // 利率因子。
+  double rho = 5; 
+}
+
+// 定价请求载荷。
+message GetOptionPriceRequest {
+  // 合约元数据。
+  OptionContract contract = 1; 
+  // 当前价。
+  double underlying_price = 2; 
+  // 预计波动。
+  double volatility = 3; 
+  // 宏观利率。
+  double risk_free_rate = 4; 
+}
+
+// 定价响应。
+message GetOptionPriceResponse {
+  // 理论值。
+  double price = 1; 
+  // 统计时刻。
+  google.protobuf.Timestamp calculation_time = 2; 
+}
+
+// 分析请求载荷。
+message GetGreeksRequest {
+  // 合约档案。
+  OptionContract contract = 1; 
+  // 现价值。
+  double underlying_price = 2; 
+  // 波动系数。
+  double volatility = 3; 
+  // 基准利率。
+  double risk_free_rate = 4; 
+}
+
+// 分析结果详情。
+message GetGreeksResponse {
+  // 系数合集。
+  Greeks greeks = 1; 
+  // 分析时刻。
+  google.protobuf.Timestamp calculation_time = 2; 
+}

@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+package api.reference_data.v1;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/reference-data/v1;referencedatav1";
+
+import "google/protobuf/timestamp.proto";
+
+// 静态基础档案服务。
+service ReferenceDataService {
+  // 品种详情。
+  rpc GetSymbol (GetSymbolRequest) returns (GetSymbolResponse);
+
+  // 品种列表。
+  rpc ListSymbols (ListSymbolsRequest) returns (ListSymbolsResponse);
+  
+  // 交易所详情。
+  rpc GetExchange (GetExchangeRequest) returns (GetExchangeResponse);
+
+  // 交易所列表。
+  rpc ListExchanges (ListExchangesRequest) returns (ListExchangesResponse);
+}
+
+// 交易品种档案。
+message Symbol {
+  // 唯一 ID。
+  string id = 1; 
+  // 主资产。
+  string base_currency = 2; 
+  // 计价资产。
+  string quote_currency = 3; 
+  // 宿主机构。
+  string exchange_id = 4; 
+  // 显示代码。
+  string symbol_code = 5; 
+  // 存续状态。
+  string status = 6; 
+  // 最小单量。
+  double min_order_size = 7; 
+  // 价格步进精度。
+  double price_precision = 8; 
+  // 录入时刻。
+  google.protobuf.Timestamp created_at = 9; 
+  // 修改时刻。
+  google.protobuf.Timestamp updated_at = 10; 
+}
+
+// 交易所档案。
+message Exchange {
+  // 唯一 ID。
+  string id = 1; 
+  // 官方全称。
+  string name = 2; 
+  // 所在地。
+  string country = 3; 
+  // 运行状态。
+  string status = 4; 
+  // 业务时区。
+  string timezone = 5; 
+  // 录入时刻。
+  google.protobuf.Timestamp created_at = 6; 
+  // 修改时刻。
+  google.protobuf.Timestamp updated_at = 7; 
+}
+
+// 查询载荷。
+message GetSymbolRequest {
+  // ID。
+  string id = 1; 
+  // 代码标识。
+  string symbol_code = 2; 
+}
+
+// 查询详情。
+message GetSymbolResponse {
+  // 档案快照。
+  Symbol symbol = 1; 
+}
+
+// 检索载荷。
+message ListSymbolsRequest {
+  // 宿主过滤。
+  string exchange_id = 1; 
+  // 状态过滤。
+  string status = 2; 
+  // 长度。
+  int32 page_size = 3; 
+  // 令牌。
+  string page_token = 4; 
+}
+
+// 检索序列。
+message ListSymbolsResponse {
+  // 记录序列。
+  repeated Symbol symbols = 1; 
+  // 翻页令牌。
+  string next_page_token = 2; 
+}
+
+// 查询载荷。
+message GetExchangeRequest {
+  // 记录 ID。
+  string id = 1; 
+  // 机构名称。
+  string name = 2; 
+}
+
+// 查询详情。
+message GetExchangeResponse {
+  // 档案快照。
+  Exchange exchange = 1; 
+}
+
+// 列表载荷。
+message ListExchangesRequest {
+  // 限长。
+  int32 page_size = 1; 
+  // 令牌。
+  string page_token = 2; 
+}
+
+// 列表序列。
+message ListExchangesResponse {
+  // 记录序列。
+  repeated Exchange exchanges = 1; 
+  // 令牌。
+  string next_page_token = 2; 
+}

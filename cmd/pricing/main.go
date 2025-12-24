@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	pb "github.com/wyfcoding/financialTrading/go-api/pricing"
+	pb "github.com/wyfcoding/financialTrading/go-api/pricing/v1"
 	"github.com/wyfcoding/financialTrading/internal/pricing/application"
 	"github.com/wyfcoding/financialTrading/internal/pricing/infrastructure/client"
 	grpchandler "github.com/wyfcoding/financialTrading/internal/pricing/interfaces/grpc"

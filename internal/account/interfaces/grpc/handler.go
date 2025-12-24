@@ -5,7 +5,7 @@ import (
 	"context"
 
 	"github.com/shopspring/decimal"
-	pb "github.com/wyfcoding/financialTrading/go-api/account"
+	pb "github.com/wyfcoding/financialTrading/go-api/account/v1"
 	"github.com/wyfcoding/financialTrading/internal/account/application"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -28,7 +28,7 @@ func NewGRPCHandler(appService *application.AccountApplicationService) *GRPCHand
 
 // CreateAccount 创建账户
 // 处理 gRPC CreateAccount 请求
-func (h *GRPCHandler) CreateAccount(ctx context.Context, req *pb.CreateAccountRequest) (*pb.AccountResponse, error) {
+func (h *GRPCHandler) CreateAccount(ctx context.Context, req *pb.CreateAccountRequest) (*pb.CreateAccountResponse, error) {
 	// 调用应用服务创建账户
 	dto, err := h.appService.CreateAccount(ctx, &application.CreateAccountRequest{
 		UserID:      req.UserId,
@@ -39,41 +39,45 @@ func (h *GRPCHandler) CreateAccount(ctx context.Context, req *pb.CreateAccountRe
 		return nil, status.Errorf(codes.Internal, "failed to create account: %v", err)
 	}
 
-	return &pb.AccountResponse{
-		AccountId:        dto.AccountID,
-		UserId:           dto.UserID,
-		AccountType:      dto.AccountType,
-		Currency:         dto.Currency,
-		Balance:          dto.Balance,
-		AvailableBalance: dto.AvailableBalance,
-		CreatedAt:        dto.CreatedAt,
-		UpdatedAt:        dto.UpdatedAt,
+	return &pb.CreateAccountResponse{
+		Account: &pb.AccountResponse{
+			AccountId:        dto.AccountID,
+			UserId:           dto.UserID,
+			AccountType:      dto.AccountType,
+			Currency:         dto.Currency,
+			Balance:          dto.Balance,
+			AvailableBalance: dto.AvailableBalance,
+			CreatedAt:        dto.CreatedAt,
+			UpdatedAt:        dto.UpdatedAt,
+		},
 	}, nil
 }
 
 // GetAccount 获取账户信息
 // 处理 gRPC GetAccount 请求
-func (h *GRPCHandler) GetAccount(ctx context.Context, req *pb.GetAccountRequest) (*pb.AccountResponse, error) {
+func (h *GRPCHandler) GetAccount(ctx context.Context, req *pb.GetAccountRequest) (*pb.GetAccountResponse, error) {
 	dto, err := h.appService.GetAccount(ctx, req.AccountId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get account: %v", err)
 	}
 
-	return &pb.AccountResponse{
-		AccountId:        dto.AccountID,
-		UserId:           dto.UserID,
-		AccountType:      dto.AccountType,
-		Currency:         dto.Currency,
-		Balance:          dto.Balance,
-		AvailableBalance: dto.AvailableBalance,
-		CreatedAt:        dto.CreatedAt,
-		UpdatedAt:        dto.UpdatedAt,
+	return &pb.GetAccountResponse{
+		Account: &pb.AccountResponse{
+			AccountId:        dto.AccountID,
+			UserId:           dto.UserID,
+			AccountType:      dto.AccountType,
+			Currency:         dto.Currency,
+			Balance:          dto.Balance,
+			AvailableBalance: dto.AvailableBalance,
+			CreatedAt:        dto.CreatedAt,
+			UpdatedAt:        dto.UpdatedAt,
+		},
 	}, nil
 }
 
 // Deposit 账户充值
 // 处理 gRPC Deposit 请求
-func (h *GRPCHandler) Deposit(ctx context.Context, req *pb.DepositRequest) (*pb.TransactionResponse, error) {
+func (h *GRPCHandler) Deposit(ctx context.Context, req *pb.DepositRequest) (*pb.DepositResponse, error) {
 	amount, err := decimal.NewFromString(req.Amount)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid amount: %v", err)
@@ -84,7 +88,7 @@ func (h *GRPCHandler) Deposit(ctx context.Context, req *pb.DepositRequest) (*pb.
 		return nil, status.Errorf(codes.Internal, "failed to deposit: %v", err)
 	}
 
-	return &pb.TransactionResponse{
+	return &pb.DepositResponse{
 		AccountId: req.AccountId,
 		Type:      "DEPOSIT",
 		Amount:    req.Amount,
@@ -95,13 +99,13 @@ func (h *GRPCHandler) Deposit(ctx context.Context, req *pb.DepositRequest) (*pb.
 
 // GetBalance 获取账户余额
 // 处理 gRPC GetBalance 请求
-func (h *GRPCHandler) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb.BalanceResponse, error) {
+func (h *GRPCHandler) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb.GetBalanceResponse, error) {
 	dto, err := h.appService.GetAccount(ctx, req.AccountId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get account: %v", err)
 	}
 
-	return &pb.BalanceResponse{
+	return &pb.GetBalanceResponse{
 		AccountId:        dto.AccountID,
 		Balance:          dto.Balance,
 		AvailableBalance: dto.AvailableBalance,

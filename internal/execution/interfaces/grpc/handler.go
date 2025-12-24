@@ -4,7 +4,7 @@ package grpc
 import (
 	"context"
 
-	pb "github.com/wyfcoding/financialTrading/go-api/execution"
+	pb "github.com/wyfcoding/financialTrading/go-api/execution/v1"
 	"github.com/wyfcoding/financialTrading/internal/execution/application"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -28,7 +28,7 @@ func NewGRPCHandler(appService *application.ExecutionApplicationService) *GRPCHa
 // ExecuteOrder 执行订单
 // 处理 gRPC ExecuteOrder 请求
 // 接收 Proto 定义的订单参数，调用应用服务执行订单，并返回 Proto 定义的响应
-func (h *GRPCHandler) ExecuteOrder(ctx context.Context, req *pb.ExecuteOrderRequest) (*pb.ExecutionResponse, error) {
+func (h *GRPCHandler) ExecuteOrder(ctx context.Context, req *pb.ExecuteOrderRequest) (*pb.ExecuteOrderResponse, error) {
 	// 调用应用服务执行订单
 	dto, err := h.appService.ExecuteOrder(ctx, &application.ExecuteOrderRequest{
 		OrderID:  req.OrderId,
@@ -43,7 +43,7 @@ func (h *GRPCHandler) ExecuteOrder(ctx context.Context, req *pb.ExecuteOrderRequ
 	}
 
 	// 返回执行结果
-	return &pb.ExecutionResponse{
+	return &pb.ExecuteOrderResponse{
 		ExecutionId:      dto.ExecutionID,
 		OrderId:          dto.OrderID,
 		Status:           dto.Status,
@@ -55,7 +55,7 @@ func (h *GRPCHandler) ExecuteOrder(ctx context.Context, req *pb.ExecuteOrderRequ
 
 // GetExecutionHistory 获取执行历史
 // 处理 gRPC GetExecutionHistory 请求
-func (h *GRPCHandler) GetExecutionHistory(ctx context.Context, req *pb.GetExecutionHistoryRequest) (*pb.ExecutionHistoryResponse, error) {
+func (h *GRPCHandler) GetExecutionHistory(ctx context.Context, req *pb.GetExecutionHistoryRequest) (*pb.GetExecutionHistoryResponse, error) {
 	// 如果未指定限制，则使用默认值
 	limit := int(req.Limit)
 	if limit <= 0 {
@@ -79,7 +79,7 @@ func (h *GRPCHandler) GetExecutionHistory(ctx context.Context, req *pb.GetExecut
 		})
 	}
 
-	return &pb.ExecutionHistoryResponse{
+	return &pb.GetExecutionHistoryResponse{
 		Executions: records,
 	}, nil
 }

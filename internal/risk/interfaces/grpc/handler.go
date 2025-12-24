@@ -4,7 +4,7 @@ package grpc
 import (
 	"context"
 
-	pb "github.com/wyfcoding/financialTrading/go-api/risk"
+	pb "github.com/wyfcoding/financialTrading/go-api/risk/v1"
 	"github.com/wyfcoding/financialTrading/internal/risk/application"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -27,7 +27,7 @@ func NewGRPCHandler(appService *application.RiskApplicationService) *GRPCHandler
 
 // AssessRisk 评估交易风险
 // 处理 gRPC AssessRisk 请求
-func (h *GRPCHandler) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest) (*pb.RiskAssessmentResponse, error) {
+func (h *GRPCHandler) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest) (*pb.AssessRiskResponse, error) {
 	// 调用应用服务评估风险
 	dto, err := h.appService.AssessRisk(ctx, &application.AssessRiskRequest{
 		UserID:   req.UserId,
@@ -40,7 +40,7 @@ func (h *GRPCHandler) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest)
 		return nil, status.Errorf(codes.Internal, "failed to assess risk: %v", err)
 	}
 
-	return &pb.RiskAssessmentResponse{
+	return &pb.AssessRiskResponse{
 		RiskLevel:         dto.RiskLevel,
 		RiskScore:         dto.RiskScore,
 		MarginRequirement: dto.MarginRequirement,
@@ -51,24 +51,26 @@ func (h *GRPCHandler) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest)
 
 // GetRiskMetrics 获取风险指标
 // 处理 gRPC GetRiskMetrics 请求
-func (h *GRPCHandler) GetRiskMetrics(ctx context.Context, req *pb.GetRiskMetricsRequest) (*pb.RiskMetricsResponse, error) {
+func (h *GRPCHandler) GetRiskMetrics(ctx context.Context, req *pb.GetRiskMetricsRequest) (*pb.GetRiskMetricsResponse, error) {
 	metrics, err := h.appService.GetRiskMetrics(ctx, req.UserId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get risk metrics: %v", err)
 	}
 
-	return &pb.RiskMetricsResponse{
-		Var_95:      metrics.VaR95.String(),
-		Var_99:      metrics.VaR99.String(),
-		MaxDrawdown: metrics.MaxDrawdown.String(),
-		SharpeRatio: metrics.SharpeRatio.String(),
-		Correlation: metrics.Correlation.String(),
+	return &pb.GetRiskMetricsResponse{
+		Metrics: &pb.RiskMetrics{
+			Var_95:      metrics.VaR95.String(),
+			Var_99:      metrics.VaR99.String(),
+			MaxDrawdown: metrics.MaxDrawdown.String(),
+			SharpeRatio: metrics.SharpeRatio.String(),
+			Correlation: metrics.Correlation.String(),
+		},
 	}, nil
 }
 
 // CheckRiskLimit 检查风险限额
 // 处理 gRPC CheckRiskLimit 请求
-func (h *GRPCHandler) CheckRiskLimit(ctx context.Context, req *pb.CheckRiskLimitRequest) (*pb.RiskLimitResponse, error) {
+func (h *GRPCHandler) CheckRiskLimit(ctx context.Context, req *pb.CheckRiskLimitRequest) (*pb.CheckRiskLimitResponse, error) {
 	limit, err := h.appService.CheckRiskLimit(ctx, req.UserId, req.LimitType)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to check risk limit: %v", err)
@@ -76,7 +78,7 @@ func (h *GRPCHandler) CheckRiskLimit(ctx context.Context, req *pb.CheckRiskLimit
 
 	remaining := limit.LimitValue.Sub(limit.CurrentValue)
 
-	return &pb.RiskLimitResponse{
+	return &pb.CheckRiskLimitResponse{
 		LimitType:    limit.LimitType,
 		LimitValue:   limit.LimitValue.String(),
 		CurrentValue: limit.CurrentValue.String(),
@@ -87,7 +89,7 @@ func (h *GRPCHandler) CheckRiskLimit(ctx context.Context, req *pb.CheckRiskLimit
 
 // GetRiskAlerts 获取风险告警
 // 处理 gRPC GetRiskAlerts 请求
-func (h *GRPCHandler) GetRiskAlerts(ctx context.Context, req *pb.GetRiskAlertsRequest) (*pb.RiskAlertsResponse, error) {
+func (h *GRPCHandler) GetRiskAlerts(ctx context.Context, req *pb.GetRiskAlertsRequest) (*pb.GetRiskAlertsResponse, error) {
 	alerts, err := h.appService.GetRiskAlerts(ctx, req.UserId, 100) // Default limit
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get risk alerts: %v", err)
@@ -104,7 +106,7 @@ func (h *GRPCHandler) GetRiskAlerts(ctx context.Context, req *pb.GetRiskAlertsRe
 		})
 	}
 
-	return &pb.RiskAlertsResponse{
+	return &pb.GetRiskAlertsResponse{
 		Alerts: pbAlerts,
 	}, nil
 }

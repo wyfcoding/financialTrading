@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package api.clearing.v1;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/clearing/v1;clearingv1";
+
+// 清算服务。
+service ClearingService {
+  // 结算单笔交易。
+  rpc SettleTrade(SettleTradeRequest) returns (SettleTradeResponse);
+
+  // 获取清算记录。
+  rpc GetSettlements(GetSettlementsRequest) returns (GetSettlementsResponse);
+
+  // 执行日终清算。
+  rpc ExecuteEODClearing(ExecuteEODClearingRequest) returns (ExecuteEODClearingResponse);
+
+  // 查询清算状态。
+  rpc GetClearingStatus(GetClearingStatusRequest) returns (GetClearingStatusResponse);
+}
+
+// 清算记录。
+message Settlement {
+  // 结算 ID。
+  string settlement_id = 1; 
+  // 成交 ID。
+  string trade_id = 2; 
+  // 状态。
+  string status = 3; 
+  // 时间。
+  int64 settlement_time = 4; 
+}
+
+// 结算请求。
+message SettleTradeRequest {
+  // 成交 ID。
+  string trade_id = 1; 
+  // 买方。
+  string buy_user_id = 2; 
+  // 卖方。
+  string sell_user_id = 3; 
+  // 交易对。
+  string symbol = 4; 
+  // 数量。
+  string quantity = 5; 
+  // 价格。
+  string price = 6; 
+}
+
+// 结算响应。
+message SettleTradeResponse {
+  // 结算 ID。
+  string settlement_id = 1; 
+  // 关联成交 ID。
+  string trade_id = 2; 
+  // 结算状态。
+  string status = 3; 
+  // 结算时间。
+  int64 settlement_time = 4; 
+  // 错误消息。
+  string error_message = 5; 
+}
+
+// 查询请求。
+message GetSettlementsRequest {
+  // 用户 ID。
+  string user_id = 1; 
+  // 数量限制。
+  int32 limit = 2; 
+}
+
+// 查询响应。
+message GetSettlementsResponse {
+  // 结算列表。
+  repeated Settlement settlements = 1; 
+}
+
+// 日终请求。
+message ExecuteEODClearingRequest {
+  // 清算日期。
+  string clearing_date = 1; 
+}
+
+// 日终响应。
+message ExecuteEODClearingResponse {
+  // 清算任务 ID。
+  string clearing_id = 1; 
+  // 状态。
+  string status = 2; 
+  // 开始时间。
+  int64 start_time = 3; 
+  // 结束时间。
+  int64 end_time = 4; 
+  // 已结算笔数。
+  int64 trades_settled = 5; 
+}
+
+// 状态请求。
+message GetClearingStatusRequest {
+  // 任务 ID。
+  string clearing_id = 1; 
+}
+
+// 状态响应。
+message GetClearingStatusResponse {
+  // 任务 ID。
+  string clearing_id = 1; 
+  // 任务状态。
+  string status = 2; 
+  // 进度百分比。
+  int64 progress_percentage = 3; 
+  // 已处理笔数。
+  int64 trades_processed = 4; 
+  // 总笔数。
+  int64 trades_total = 5; 
+}

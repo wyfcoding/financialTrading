@@ -4,7 +4,7 @@ package grpc
 import (
 	"context"
 
-	pb "github.com/wyfcoding/financialTrading/go-api/market-simulation"
+	pb "github.com/wyfcoding/financialTrading/go-api/market_simulation/v1"
 	"github.com/wyfcoding/financialTrading/internal/market-simulation/application"
 	"github.com/wyfcoding/financialTrading/internal/market-simulation/domain"
 	"google.golang.org/protobuf/types/known/timestamppb"

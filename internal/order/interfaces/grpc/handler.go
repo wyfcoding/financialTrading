@@ -4,7 +4,7 @@ package grpc
 import (
 	"context"
 
-	pb "github.com/wyfcoding/financialTrading/go-api/order"
+	pb "github.com/wyfcoding/financialTrading/go-api/order/v1"
 	"github.com/wyfcoding/financialTrading/internal/order/application"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -29,7 +29,7 @@ func NewGRPCHandler(appService *application.OrderApplicationService) *GRPCHandle
 
 // CreateOrder 创建订单
 // 处理 gRPC CreateOrder 请求
-func (h *GRPCHandler) CreateOrder(ctx context.Context, req *pb.CreateOrderRequest) (*pb.OrderResponse, error) {
+func (h *GRPCHandler) CreateOrder(ctx context.Context, req *pb.CreateOrderRequest) (*pb.CreateOrderResponse, error) {
 	// 调用应用服务创建订单
 	dto, err := h.appService.CreateOrder(ctx, &application.CreateOrderRequest{
 		UserID:        req.UserId,
@@ -46,34 +46,40 @@ func (h *GRPCHandler) CreateOrder(ctx context.Context, req *pb.CreateOrderReques
 	}
 
 	// 返回创建成功的订单
-	return h.toProtoResponse(dto), nil
+	return &pb.CreateOrderResponse{
+		Order: h.toProtoOrder(dto),
+	}, nil
 }
 
 // CancelOrder 取消订单
 // 处理 gRPC CancelOrder 请求
-func (h *GRPCHandler) CancelOrder(ctx context.Context, req *pb.CancelOrderRequest) (*pb.OrderResponse, error) {
+func (h *GRPCHandler) CancelOrder(ctx context.Context, req *pb.CancelOrderRequest) (*pb.CancelOrderResponse, error) {
 	// 调用应用服务取消订单
 	dto, err := h.appService.CancelOrder(ctx, req.OrderId, req.UserId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to cancel order: %v", err)
 	}
 
-	return h.toProtoResponse(dto), nil
+	return &pb.CancelOrderResponse{
+		Order: h.toProtoOrder(dto),
+	}, nil
 }
 
 // GetOrder 获取订单详情
 // 处理 gRPC GetOrder 请求
-func (h *GRPCHandler) GetOrder(ctx context.Context, req *pb.GetOrderRequest) (*pb.OrderResponse, error) {
+func (h *GRPCHandler) GetOrder(ctx context.Context, req *pb.GetOrderRequest) (*pb.GetOrderResponse, error) {
 	dto, err := h.appService.GetOrder(ctx, req.OrderId, req.UserId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get order: %v", err)
 	}
 
-	return h.toProtoResponse(dto), nil
+	return &pb.GetOrderResponse{
+		Order: h.toProtoOrder(dto),
+	}, nil
 }
 
-func (h *GRPCHandler) toProtoResponse(dto *application.OrderDTO) *pb.OrderResponse {
-	return &pb.OrderResponse{
+func (h *GRPCHandler) toProtoOrder(dto *application.OrderDTO) *pb.Order {
+	return &pb.Order{
 		OrderId:        dto.OrderID,
 		UserId:         dto.UserID,
 		Symbol:         dto.Symbol,

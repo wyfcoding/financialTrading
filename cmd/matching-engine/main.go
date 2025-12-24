@@ -7,7 +7,7 @@ import (
 	"github.com/wyfcoding/pkg/grpcclient"
 
 	"github.com/gin-gonic/gin"
-	pb "github.com/wyfcoding/financialTrading/go-api/matching-engine"
+	pb "github.com/wyfcoding/financialTrading/go-api/matching_engine/v1"
 	"github.com/wyfcoding/financialTrading/internal/matching-engine/application"
 	"github.com/wyfcoding/financialTrading/internal/matching-engine/infrastructure/repository"
 	grpchandler "github.com/wyfcoding/financialTrading/internal/matching-engine/interfaces/grpc"

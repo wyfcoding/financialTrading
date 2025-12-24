@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package api.notification.v1;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/notification/v1;notificationv1";
+
+import "google/protobuf/timestamp.proto";
+
+// 业务通知管理。
+service NotificationService {
+  // 触发消息投递。
+  rpc SendNotification (SendNotificationRequest) returns (SendNotificationResponse);
+
+  // 查询通知履约历史。
+  rpc GetNotificationHistory (GetNotificationHistoryRequest) returns (GetNotificationHistoryResponse);
+}
+
+// 通知完整模型。
+message Notification {
+  // 唯一流水 ID。
+  string id = 1; 
+  // 目标人。
+  string user_id = 2; 
+  // 媒介分类。
+  string type = 3; 
+  // 标题。
+  string subject = 4; 
+  // 正文描述。
+  string content = 5; 
+  // 最终状态。
+  string status = 6; 
+  // 异常错误摘要。
+  string error_message = 7; 
+  // 建立时刻。
+  google.protobuf.Timestamp created_at = 8; 
+  // 发出时刻。
+  google.protobuf.Timestamp sent_at = 9; 
+}
+
+// 发送请求参数。
+message SendNotificationRequest {
+  // 用户鉴权 ID。
+  string user_id = 1; 
+  // 通道类别。
+  string type = 2; 
+  // 主题文本。
+  string subject = 3; 
+  // 详细详情。
+  string content = 4; 
+  // 目标地字符串（如手机号/邮箱）。
+  string target = 5; 
+}
+
+// 发送响应回执。
+message SendNotificationResponse {
+  // 流水号。
+  string notification_id = 1; 
+  // 实时状态。
+  string status = 2; 
+}
+
+// 列表查询条件。
+message GetNotificationHistoryRequest {
+  // 用户 ID。
+  string user_id = 1; 
+  // 页长限额。
+  int32 page_size = 2; 
+  // 分页令牌。
+  string page_token = 3; 
+}
+
+// 历史列表响应。
+message GetNotificationHistoryResponse {
+  // 记录档案序列。
+  repeated Notification notifications = 1; 
+  // 下续翻页令牌。
+  string next_page_token = 2; 
+}

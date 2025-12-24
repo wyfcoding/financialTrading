@@ -4,7 +4,7 @@ package grpc
 import (
 	"context"
 
-	pb "github.com/wyfcoding/financialTrading/go-api/notification"
+	pb "github.com/wyfcoding/financialTrading/go-api/notification/v1"
 	"github.com/wyfcoding/financialTrading/internal/notification/application"
 	"github.com/wyfcoding/financialTrading/internal/notification/domain"
 	"google.golang.org/protobuf/types/known/timestamppb"

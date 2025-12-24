@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
-	pb "github.com/wyfcoding/financialTrading/go-api/market-data"
+	pb "github.com/wyfcoding/financialTrading/go-api/market_data/v1"
 	"github.com/wyfcoding/financialTrading/internal/market-data/application"
 	"github.com/wyfcoding/pkg/logging"
 	"google.golang.org/grpc/codes"
@@ -29,7 +29,7 @@ func NewMarketDataHandler(quoteService *application.QuoteApplicationService) *Ma
 }
 
 // GetLatestQuote 获取最新行情
-func (h *MarketDataHandler) GetLatestQuote(ctx context.Context, req *pb.GetLatestQuoteRequest) (*pb.QuoteResponse, error) {
+func (h *MarketDataHandler) GetLatestQuote(ctx context.Context, req *pb.GetLatestQuoteRequest) (*pb.GetLatestQuoteResponse, error) {
 	// 验证输入
 	if req.Symbol == "" {
 		logging.Warn(ctx, "Invalid request: symbol is required")
@@ -51,7 +51,7 @@ func (h *MarketDataHandler) GetLatestQuote(ctx context.Context, req *pb.GetLates
 	}
 
 	// 转换为 protobuf 响应
-	resp := &pb.QuoteResponse{
+	resp := &pb.GetLatestQuoteResponse{
 		Symbol:    quoteDTO.Symbol,
 		BidPrice:  parseFloat(quoteDTO.BidPrice),
 		AskPrice:  parseFloat(quoteDTO.AskPrice),
@@ -66,7 +66,7 @@ func (h *MarketDataHandler) GetLatestQuote(ctx context.Context, req *pb.GetLates
 }
 
 // GetKlines 获取 K 线数据
-func (h *MarketDataHandler) GetKlines(ctx context.Context, req *pb.GetKlinesRequest) (*pb.KlinesResponse, error) {
+func (h *MarketDataHandler) GetKlines(ctx context.Context, req *pb.GetKlinesRequest) (*pb.GetKlinesResponse, error) {
 	// 验证输入
 	if req.Symbol == "" {
 		return nil, status.Error(codes.InvalidArgument, "symbol is required")
@@ -82,7 +82,7 @@ func (h *MarketDataHandler) GetKlines(ctx context.Context, req *pb.GetKlinesRequ
 	)
 
 	// 返回空响应（实现待补充）
-	return &pb.KlinesResponse{
+	return &pb.GetKlinesResponse{
 		Symbol:   req.Symbol,
 		Interval: req.Interval,
 		Klines:   make([]*pb.Kline, 0),
@@ -90,7 +90,7 @@ func (h *MarketDataHandler) GetKlines(ctx context.Context, req *pb.GetKlinesRequ
 }
 
 // GetOrderBook 获取订单簿
-func (h *MarketDataHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequest) (*pb.OrderBookResponse, error) {
+func (h *MarketDataHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequest) (*pb.GetOrderBookResponse, error) {
 	// 验证输入
 	if req.Symbol == "" {
 		return nil, status.Error(codes.InvalidArgument, "symbol is required")
@@ -107,7 +107,7 @@ func (h *MarketDataHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBo
 	)
 
 	// 返回空响应（实现待补充）
-	return &pb.OrderBookResponse{
+	return &pb.GetOrderBookResponse{
 		Symbol:    req.Symbol,
 		Bids:      make([]*pb.OrderBookLevel, 0),
 		Asks:      make([]*pb.OrderBookLevel, 0),
@@ -133,7 +133,7 @@ func (h *MarketDataHandler) SubscribeQuotes(req *pb.SubscribeQuotesRequest, stre
 }
 
 // GetTrades 获取交易历史
-func (h *MarketDataHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (*pb.TradesResponse, error) {
+func (h *MarketDataHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (*pb.GetTradesResponse, error) {
 	// 验证输入
 	if req.Symbol == "" {
 		return nil, status.Error(codes.InvalidArgument, "symbol is required")
@@ -150,7 +150,7 @@ func (h *MarketDataHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequ
 	)
 
 	// 返回空响应（实现待补充）
-	return &pb.TradesResponse{
+	return &pb.GetTradesResponse{
 		Symbol: req.Symbol,
 		Trades: make([]*pb.TradeRecord, 0),
 	}, nil

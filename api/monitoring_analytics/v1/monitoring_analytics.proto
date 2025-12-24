@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package api.monitoring_analytics.v1;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/monitoring-analytics/v1;monitoringanalyticsv1";
+
+import "google/protobuf/timestamp.proto";
+
+// 运维监控与质量分析。
+service MonitoringAnalyticsService {
+  // 性能指标录入。
+  rpc RecordMetric (RecordMetricRequest) returns (RecordMetricResponse);
+
+  // 历史指标拉取。
+  rpc GetMetrics (GetMetricsRequest) returns (GetMetricsResponse);
+
+  // 获取系统健康档案。
+  rpc GetSystemHealth (GetSystemHealthRequest) returns (GetSystemHealthResponse);
+}
+
+// 指标数据模型。
+message Metric {
+  // 指标键名。
+  string name = 1; 
+  // 量化值。
+  double value = 2; 
+  // 维度标识。
+  map<string, string> tags = 3; 
+  // 采集时刻。
+  google.protobuf.Timestamp timestamp = 4; 
+}
+
+// 节点生存快照。
+message SystemHealth {
+  // 模块标识。
+  string service_name = 1; 
+  // 生存标记。
+  string status = 2; 
+  // 提示信息。
+  string message = 3; 
+  // 最后自检日期。
+  google.protobuf.Timestamp last_checked = 4; 
+}
+
+// 录入请求载荷。
+message RecordMetricRequest {
+  // 数据点实体。
+  Metric metric = 1; 
+}
+
+// 录入响应详情。
+message RecordMetricResponse {
+  // 是否成功。
+  bool success = 1; 
+}
+
+// 检索请求参数。
+message GetMetricsRequest {
+  // 指标名称。
+  string name = 1; 
+  // 起点。
+  google.protobuf.Timestamp start_time = 2; 
+  // 终点。
+  google.protobuf.Timestamp end_time = 3; 
+}
+
+// 检索结果响应。
+message GetMetricsResponse {
+  // 记录集合。
+  repeated Metric metrics = 1; 
+}
+
+// 探测请求参数。
+message GetSystemHealthRequest {
+  // 目标节点。
+  string service_name = 1; 
+}
+
+// 探测响应回执。
+message GetSystemHealthResponse {
+  // 状态快照序列。
+  repeated SystemHealth health_statuses = 1; 
+}

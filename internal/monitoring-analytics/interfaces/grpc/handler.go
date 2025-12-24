@@ -4,7 +4,7 @@ package grpc
 import (
 	"context"
 
-	pb "github.com/wyfcoding/financialTrading/go-api/monitoring-analytics"
+	pb "github.com/wyfcoding/financialTrading/go-api/monitoring_analytics/v1"
 	"github.com/wyfcoding/financialTrading/internal/monitoring-analytics/application"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

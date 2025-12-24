@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	market_data "github.com/wyfcoding/financialTrading/go-api/market-data"
+	market_data "github.com/wyfcoding/financialTrading/go-api/market_data/v1"
 	"github.com/wyfcoding/financialTrading/internal/pricing/domain"
 	"github.com/wyfcoding/pkg/grpcclient"
 	"github.com/wyfcoding/pkg/logging"

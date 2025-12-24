@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package api.market_simulation.v1;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/market-simulation/v1;marketsimulationv1";
+
+import "google/protobuf/timestamp.proto";
+
+// 市场模拟服务。
+service MarketSimulationService {
+  // 启动场景。
+  rpc StartSimulation (StartSimulationRequest) returns (StartSimulationResponse);
+  
+  // 停止模拟。
+  rpc StopSimulation (StopSimulationRequest) returns (StopSimulationResponse);
+  
+  // 查询进度。
+  rpc GetSimulationStatus (GetSimulationStatusRequest) returns (GetSimulationStatusResponse);
+}
+
+// 模拟场景实体。
+message SimulationScenario {
+  // 场景 ID。
+  string id = 1; 
+  // 标题。
+  string name = 2; 
+  // 背景说明。
+  string description = 3; 
+  // 标的代码。
+  string symbol = 4; 
+  // 算法类型。
+  string type = 5; 
+  // 业务参数。
+  string parameters = 6; 
+  // 运行状态。
+  string status = 7; 
+  // 启动时刻。
+  google.protobuf.Timestamp start_time = 8; 
+  // 结束时刻。
+  google.protobuf.Timestamp end_time = 9; 
+}
+
+// 启动请求载荷。
+message StartSimulationRequest {
+  // 名称。
+  string name = 1; 
+  // 品种代码。
+  string symbol = 2; 
+  // 模型类型。
+  string type = 3; 
+  // 参数集。
+  string parameters = 4; 
+}
+
+// 启动响应详情。
+message StartSimulationResponse {
+  // 任务 ID。
+  string simulation_id = 1; 
+}
+
+// 停止请求载荷。
+message StopSimulationRequest {
+  // 任务 ID。
+  string simulation_id = 1; 
+}
+
+// 停止结果详情。
+message StopSimulationResponse {
+  // 是否执行成功。
+  bool success = 1; 
+}
+
+// 状态请求载荷。
+message GetSimulationStatusRequest {
+  // 任务 ID。
+  string simulation_id = 1; 
+}
+
+// 状态响应详情。
+message GetSimulationStatusResponse {
+  // 场景档案详情。
+  SimulationScenario scenario = 1; 
+}

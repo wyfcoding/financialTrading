@@ -6,7 +6,7 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/shopspring/decimal v1.4.0
-	github.com/wyfcoding/pkg v0.0.0-20251219030337-1bfb413ce019
+	github.com/wyfcoding/pkg v0.0.0-20251222040924-0bc81fd01b4e
 	google.golang.org/grpc v1.77.0
 	google.golang.org/protobuf v1.36.10
 	gorm.io/gorm v1.31.1

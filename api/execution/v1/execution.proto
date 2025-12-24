@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package api.execution.v1;
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/execution/v1;executionv1";
+
+// 交易执行服务。
+service ExecutionService {
+  // 执行订单。
+  rpc ExecuteOrder(ExecuteOrderRequest) returns (ExecuteOrderResponse);
+
+  // 历史记录。
+  rpc GetExecutionHistory(GetExecutionHistoryRequest) returns (GetExecutionHistoryResponse);
+
+  // 订阅执行更新。
+  rpc SubscribeExecutions(SubscribeExecutionsRequest) returns (stream SubscribeExecutionsResponse);
+}
+
+// 执行记录模型。
+message ExecutionRecord {
+  // 执行 ID。
+  string execution_id = 1; 
+  // 关联订单 ID。
+  string order_id = 2; 
+  // 标的。
+  string symbol = 3; 
+  // 成交量。
+  string executed_quantity = 4; 
+  // 成交价。
+  string executed_price = 5; 
+  // 成交时刻。
+  int64 timestamp = 6; 
+}
+
+// 执行请求。
+message ExecuteOrderRequest {
+  // 订单唯一标识。
+  string order_id = 1; 
+  // 用户 ID。
+  string user_id = 2; 
+  // 交易对。
+  string symbol = 3; 
+  // 方向。
+  string side = 4; 
+  // 委托价。
+  string price = 5; 
+  // 委托量。
+  string quantity = 6; 
+}
+
+// 执行结果。
+message ExecuteOrderResponse {
+  // 执行操作 ID。
+  string execution_id = 1; 
+  // 订单 ID。
+  string order_id = 2; 
+  // 执行状态。
+  string status = 3; 
+  // 累计成交量。
+  string executed_quantity = 4; 
+  // 成交均价。
+  string executed_price = 5; 
+  // 事件时间。
+  int64 timestamp = 6; 
+  // 异常详情。
+  string error_message = 7; 
+}
+
+// 历史请求。
+message GetExecutionHistoryRequest {
+  // 用户 ID。
+  string user_id = 1; 
+  // 品种过滤。
+  string symbol = 2; 
+  // 数量。
+  int32 limit = 3; 
+}
+
+// 历史响应。
+message GetExecutionHistoryResponse {
+  // 记录序列。
+  repeated ExecutionRecord executions = 1; 
+}
+
+// 订阅请求。
+message SubscribeExecutionsRequest {
+  // 目标用户。
+  string user_id = 1; 
+}
+
+// 推送推送更新。
+message SubscribeExecutionsResponse {
+  // 执行 ID。
+  string execution_id = 1; 
+  // 订单 ID。
+  string order_id = 2; 
+  // 最新状态。
+  string status = 3; 
+  // 时间。
+  int64 timestamp = 4; 
+}
