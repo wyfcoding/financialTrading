@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package api.clearing.v1;
 
-option go_package = "github.com/fynnwu/FinancialTrading/go-api/clearing/v1;clearingv1";
+option go_package = "github.com/wyfcoding/financialTrading/go-api/clearing/v1;clearingv1";
 
 // 清算服务。
 service ClearingService {

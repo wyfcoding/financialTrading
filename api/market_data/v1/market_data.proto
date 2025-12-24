@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package api.market_data.v1;
 
-option go_package = "github.com/fynnwu/FinancialTrading/go-api/market-data/v1;marketdatav1";
+option go_package = "github.com/wyfcoding/financialTrading/go-api/market-data/v1;marketdatav1";
 
 // 行情数据服务。
 service MarketDataService {
