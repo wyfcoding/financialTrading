@@ -1,4 +1,4 @@
-package marketmaking
+package main
 
 import (
 	"log/slog"

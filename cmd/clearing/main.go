@@ -1,4 +1,4 @@
-package clearing
+package main
 
 import (
 	"log/slog"

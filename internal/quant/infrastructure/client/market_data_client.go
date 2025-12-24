@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	market_data "github.com/wyfcoding/financialtrading/goapi/market_data/v1"
+	market_data "github.com/wyfcoding/financialtrading/goapi/marketdata/v1"
 	"github.com/wyfcoding/financialtrading/internal/quant/domain"
 	"github.com/wyfcoding/pkg/grpcclient"
 	"github.com/wyfcoding/pkg/logging"

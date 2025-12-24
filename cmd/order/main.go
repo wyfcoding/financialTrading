@@ -1,4 +1,4 @@
-package order
+package main
 
 import (
 	"log/slog"

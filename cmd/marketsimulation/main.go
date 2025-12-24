@@ -1,4 +1,4 @@
-package marketsimulation
+package main
 
 import (
 	"log/slog"

@@ -1,4 +1,4 @@
-package account
+package main
 
 import (
 	"log/slog"

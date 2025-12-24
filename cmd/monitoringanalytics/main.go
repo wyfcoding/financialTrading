@@ -1,4 +1,4 @@
-package monitoringanalytics
+package main
 
 import (
 	"log/slog"

@@ -1,4 +1,4 @@
-package referencedata
+package main
 
 import (
 	"log/slog"

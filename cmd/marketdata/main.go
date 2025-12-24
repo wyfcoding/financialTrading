@@ -1,4 +1,4 @@
-package marketdata
+package main
 
 import (
 	"log/slog"
@@ -7,7 +7,7 @@ import (
 	"github.com/wyfcoding/pkg/grpcclient"
 
 	"github.com/gin-gonic/gin"
-	pb "github.com/wyfcoding/financialtrading/goapi/market_data/v1"
+	pb "github.com/wyfcoding/financialtrading/goapi/marketdata/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/application"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/repository"
 	grpchandler "github.com/wyfcoding/financialtrading/internal/marketdata/interfaces/grpc"

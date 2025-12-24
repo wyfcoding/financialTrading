@@ -1,4 +1,4 @@
-package notification
+package main
 
 import (
 	"log/slog"

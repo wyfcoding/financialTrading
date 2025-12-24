@@ -1,4 +1,4 @@
-package execution
+package main
 
 import (
 	"log/slog"
