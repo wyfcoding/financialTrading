@@ -31,175 +31,175 @@ service AccountService {
 // 账户详细信息响应。
 message AccountResponse {
   // 账户 ID。
-  string account_id = 1; 
+  string account_id = 1;
   // 用户 ID。
-  string user_id = 2; 
+  string user_id = 2;
   // 账户类型。
-  string account_type = 3; 
+  string account_type = 3;
   // 计价货币。
-  string currency = 4; 
+  string currency = 4;
   // 总余额。
-  string balance = 5; 
+  string balance = 5;
   // 可用余额。
-  string available_balance = 6; 
+  string available_balance = 6;
   // 创建时间戳。
-  int64 created_at = 7; 
+  int64 created_at = 7;
   // 更新时间戳。
-  int64 updated_at = 8; 
+  int64 updated_at = 8;
 }
 
 // 资金事务记录。
 message Transaction {
   // 唯一流水号。
-  string transaction_id = 1; 
+  string transaction_id = 1;
   // 交易类型。
-  string type = 2; 
+  string type = 2;
   // 变动金额。
-  string amount = 3; 
+  string amount = 3;
   // 交易状态。
-  string status = 4; 
+  string status = 4;
   // 发生时间。
-  int64 timestamp = 5; 
+  int64 timestamp = 5;
 }
 
 // 开户请求。
 message CreateAccountRequest {
   // 用户 ID。
-  string user_id = 1; 
+  string user_id = 1;
   // 账户类型。
-  string account_type = 2; 
+  string account_type = 2;
   // 货币。
-  string currency = 3; 
+  string currency = 3;
 }
 
 // 开户结果。
 message CreateAccountResponse {
   // 账户信息。
-  AccountResponse account = 1; 
+  AccountResponse account = 1;
 }
 
 // 查询请求。
 message GetAccountRequest {
   // 账户 ID。
-  string account_id = 1; 
+  string account_id = 1;
   // 用户 ID。
-  string user_id = 2; 
+  string user_id = 2;
 }
 
 // 查询结果。
 message GetAccountResponse {
   // 账户信息。
-  AccountResponse account = 1; 
+  AccountResponse account = 1;
 }
 
 // 更新请求。
 message UpdateAccountRequest {
   // 账户 ID。
-  string account_id = 1; 
+  string account_id = 1;
   // 用户 ID。
-  string user_id = 2; 
+  string user_id = 2;
   // 更新字段映射。
-  map<string, string> updates = 3; 
+  map<string, string> updates = 3;
 }
 
 // 更新结果。
 message UpdateAccountResponse {
   // 账户信息。
-  AccountResponse account = 1; 
+  AccountResponse account = 1;
 }
 
 // 余额查询请求。
 message GetBalanceRequest {
   // 账户 ID。
-  string account_id = 1; 
+  string account_id = 1;
   // 用户 ID。
-  string user_id = 2; 
+  string user_id = 2;
 }
 
 // 余额结果。
 message GetBalanceResponse {
   // 账户 ID。
-  string account_id = 1; 
+  string account_id = 1;
   // 总余额。
-  string balance = 2; 
+  string balance = 2;
   // 可用余额。
-  string available_balance = 3; 
+  string available_balance = 3;
   // 冻结余额。
-  string frozen_balance = 4; 
+  string frozen_balance = 4;
   // 快照时间。
-  int64 timestamp = 5; 
+  int64 timestamp = 5;
 }
 
 // 充值请求。
 message DepositRequest {
   // 账户 ID。
-  string account_id = 1; 
+  string account_id = 1;
   // 用户 ID。
-  string user_id = 2; 
+  string user_id = 2;
   // 充值金额。
-  string amount = 3; 
+  string amount = 3;
   // 币种。
-  string currency = 4; 
+  string currency = 4;
 }
 
 // 充值结果。
 message DepositResponse {
   // 事务 ID。
-  string transaction_id = 1; 
+  string transaction_id = 1;
   // 关联账户。
-  string account_id = 2; 
+  string account_id = 2;
   // 类型。
-  string type = 3; 
+  string type = 3;
   // 金额。
-  string amount = 4; 
+  string amount = 4;
   // 状态。
-  string status = 5; 
+  string status = 5;
   // 时间戳。
-  int64 timestamp = 6; 
+  int64 timestamp = 6;
 }
 
 // 提现请求。
 message WithdrawRequest {
   // 账户 ID。
-  string account_id = 1; 
+  string account_id = 1;
   // 用户 ID。
-  string user_id = 2; 
+  string user_id = 2;
   // 提现金额。
-  string amount = 3; 
+  string amount = 3;
   // 币种。
-  string currency = 4; 
+  string currency = 4;
   // 提现地址。
-  string address = 5; 
+  string address = 5;
 }
 
 // 提现结果。
 message WithdrawResponse {
   // 事务 ID。
-  string transaction_id = 1; 
+  string transaction_id = 1;
   // 关联账户。
-  string account_id = 2; 
+  string account_id = 2;
   // 类型。
-  string type = 3; 
+  string type = 3;
   // 金额。
-  string amount = 4; 
+  string amount = 4;
   // 状态。
-  string status = 5; 
+  string status = 5;
   // 时间戳。
-  int64 timestamp = 6; 
+  int64 timestamp = 6;
 }
 
 // 历史查询请求。
 message GetTransactionHistoryRequest {
   // 账户 ID。
-  string account_id = 1; 
+  string account_id = 1;
   // 用户 ID。
-  string user_id = 2; 
+  string user_id = 2;
   // 笔数限制。
-  int32 limit = 3; 
+  int32 limit = 3;
 }
 
 // 历史记录。
 message GetTransactionHistoryResponse {
   // 流水列表。
-  repeated Transaction transactions = 1; 
+  repeated Transaction transactions = 1;
 }

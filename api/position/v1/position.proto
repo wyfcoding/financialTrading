@@ -8,13 +8,13 @@ option go_package = "github.com/fynnwu/FinancialTrading/go-api/position/v1;posit
 service PositionService {
   // 分页获取持仓。
   rpc GetPositions(GetPositionsRequest) returns (GetPositionsResponse);
-  
+
   // 详情。
   rpc GetPosition(GetPositionRequest) returns (GetPositionResponse);
-  
+
   // 统计。
   rpc GetPositionSummary(GetPositionSummaryRequest) returns (GetPositionSummaryResponse);
-  
+
   // 平仓。
   rpc ClosePosition(ClosePositionRequest) returns (ClosePositionResponse);
 }
@@ -22,93 +22,93 @@ service PositionService {
 // 持仓核心记录。
 message Position {
   // 持仓 ID。
-  string position_id = 1; 
+  string position_id = 1;
   // 所有人。
-  string user_id = 2; 
+  string user_id = 2;
   // 代码标识。
-  string symbol = 3; 
+  string symbol = 3;
   // 持仓方向 (LONG, SHORT)。
-  string side = 4; 
+  string side = 4;
   // 现持数量。
-  string quantity = 5; 
+  string quantity = 5;
   // 开仓成本价。
-  string entry_price = 6; 
+  string entry_price = 6;
   // 实时标的价格。
-  string current_price = 7; 
+  string current_price = 7;
   // 账面盈亏。
-  string unrealized_pnl = 8; 
+  string unrealized_pnl = 8;
   // 结转盈亏。
-  string realized_pnl = 9; 
+  string realized_pnl = 9;
   // 开仓时间。
-  int64 opened_at = 10; 
+  int64 opened_at = 10;
   // 完结时间。
-  int64 closed_at = 11; 
+  int64 closed_at = 11;
 }
 
 // 检索请求参数。
 message GetPositionsRequest {
   // 用户 ID。
-  string user_id = 1; 
+  string user_id = 1;
   // 代码过滤。
-  string symbol = 2; 
+  string symbol = 2;
   // 页码。
-  int32 page = 3; 
+  int32 page = 3;
   // 长度。
-  int32 page_size = 4; 
+  int32 page_size = 4;
 }
 
 // 检索结果序列。
 message GetPositionsResponse {
   // 档案快照集合。
-  repeated Position positions = 1; 
+  repeated Position positions = 1;
   // 总笔数。
-  int64 total = 2; 
+  int64 total = 2;
 }
 
 // 详情请求载荷。
 message GetPositionRequest {
   // 持仓 ID。
-  string position_id = 1; 
+  string position_id = 1;
   // 所有人。
-  string user_id = 2; 
+  string user_id = 2;
 }
 
 // 详情响应结果。
 message GetPositionResponse {
   // 档案快照。
-  Position position = 1; 
+  Position position = 1;
 }
 
 // 统计汇总请求。
 message GetPositionSummaryRequest {
   // 用户 ID。
-  string user_id = 1; 
+  string user_id = 1;
 }
 
 // 统计响应结果。
 message GetPositionSummaryResponse {
   // 持仓笔数。
-  int64 total_positions = 1; 
+  int64 total_positions = 1;
   // 全账面盈亏。
-  string total_unrealized_pnl = 2; 
+  string total_unrealized_pnl = 2;
   // 全实现盈亏。
-  string total_realized_pnl = 3; 
+  string total_realized_pnl = 3;
   // 各持仓明细快照。
-  repeated Position positions = 4; 
+  repeated Position positions = 4;
 }
 
 // 平仓操作载荷。
 message ClosePositionRequest {
   // 目标记录 ID。
-  string position_id = 1; 
+  string position_id = 1;
   // 用户鉴权 ID。
-  string user_id = 2; 
+  string user_id = 2;
   // 实际成交价。
-  string close_price = 3; 
+  string close_price = 3;
 }
 
 // 平仓响应快照。
 message ClosePositionResponse {
   // 最终档案快照。
-  Position position = 1; 
+  Position position = 1;
 }

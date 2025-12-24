@@ -18,11 +18,8 @@ help:
 
 # 生成所有 protobuf 文件
 proto:
-	@echo "Generating protobuf files..."
-	@for service in $(SERVICES); do \
-		echo "Generating proto for $$service..."; \
-		protoc --go_out=. --go-grpc_out=. --grpc-gateway_out=. api/$$service/*.proto || true; \
-	done
+	@echo "Generating protobuf files using script..."
+	@bash scripts/gen_proto.sh
 
 # 编译所有服务
 build-all:

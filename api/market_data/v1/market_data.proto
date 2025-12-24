@@ -8,16 +8,16 @@ option go_package = "github.com/fynnwu/FinancialTrading/go-api/market-data/v1;ma
 service MarketDataService {
   // 获取最新报价。
   rpc GetLatestQuote(GetLatestQuoteRequest) returns (GetLatestQuoteResponse);
-  
+
   // 获取 K 线历史。
   rpc GetKlines(GetKlinesRequest) returns (GetKlinesResponse);
-  
+
   // 获取订单簿。
   rpc GetOrderBook(GetOrderBookRequest) returns (GetOrderBookResponse);
-  
+
   // 订阅实时流。
   rpc SubscribeQuotes(SubscribeQuotesRequest) returns (stream SubscribeQuotesResponse);
-  
+
   // 获取成交历史。
   rpc GetTrades(GetTradesRequest) returns (GetTradesResponse);
 }
@@ -25,149 +25,149 @@ service MarketDataService {
 // K 线单元。
 message Kline {
   // 开始时刻。
-  int64 open_time = 1; 
+  int64 open_time = 1;
   // 开盘。
-  double open = 2; 
+  double open = 2;
   // 最高。
-  double high = 3; 
+  double high = 3;
   // 最低。
-  double low = 4; 
+  double low = 4;
   // 收盘。
-  double close = 5; 
+  double close = 5;
   // 成交规模。
-  double volume = 6; 
+  double volume = 6;
   // 结束时刻。
-  int64 close_time = 7; 
+  int64 close_time = 7;
 }
 
 // 深度档位。
 message OrderBookLevel {
   // 价格。
-  double price = 1; 
+  double price = 1;
   // 挂单量。
-  double quantity = 2; 
+  double quantity = 2;
 }
 
 // 成交记录模型。
 message TradeRecord {
   // 记录 ID。
-  string trade_id = 1; 
+  string trade_id = 1;
   // 代码标识。
-  string symbol = 2; 
+  string symbol = 2;
   // 价格。
-  double price = 3; 
+  double price = 3;
   // 数量。
-  double quantity = 4; 
+  double quantity = 4;
   // 买卖。
-  string side = 5; 
+  string side = 5;
   // 发生时间。
-  int64 timestamp = 6; 
+  int64 timestamp = 6;
 }
 
 // 报价请求。
 message GetLatestQuoteRequest {
   // 标的代码。
-  string symbol = 1; 
+  string symbol = 1;
 }
 
 // 报价结果。
 message GetLatestQuoteResponse {
   // 代码。
-  string symbol = 1; 
+  string symbol = 1;
   // 委买。
-  double bid_price = 2; 
+  double bid_price = 2;
   // 委卖。
-  double ask_price = 3; 
+  double ask_price = 3;
   // 买量。
-  double bid_size = 4; 
+  double bid_size = 4;
   // 卖量。
-  double ask_size = 5; 
+  double ask_size = 5;
   // 现价。
-  double last_price = 6; 
+  double last_price = 6;
   // 现量。
-  double last_size = 7; 
+  double last_size = 7;
   // 时间戳。
-  int64 timestamp = 8; 
+  int64 timestamp = 8;
 }
 
 // K 线请求。
 message GetKlinesRequest {
   // 代码。
-  string symbol = 1; 
+  string symbol = 1;
   // 周期 (1m, 5m, 1h, 1d)。
-  string interval = 2; 
+  string interval = 2;
   // 条数。
-  int32 limit = 3; 
+  int32 limit = 3;
 }
 
 // K 线结果。
 message GetKlinesResponse {
   // 代码。
-  string symbol = 1; 
+  string symbol = 1;
   // 周期。
-  string interval = 2; 
+  string interval = 2;
   // 序列。
-  repeated Kline klines = 3; 
+  repeated Kline klines = 3;
 }
 
 // 深度请求。
 message GetOrderBookRequest {
   // 代码标识。
-  string symbol = 1; 
+  string symbol = 1;
   // 层级深度。
-  int32 depth = 2; 
+  int32 depth = 2;
 }
 
 // 深度结果。
 message GetOrderBookResponse {
   // 品种。
-  string symbol = 1; 
+  string symbol = 1;
   // 买单。
-  repeated OrderBookLevel bids = 2; 
+  repeated OrderBookLevel bids = 2;
   // 卖单。
-  repeated OrderBookLevel asks = 3; 
+  repeated OrderBookLevel asks = 3;
   // 发生时刻。
-  int64 timestamp = 4; 
+  int64 timestamp = 4;
 }
 
 // 订阅请求参数。
 message SubscribeQuotesRequest {
   // 目标标的列表。
-  repeated string symbols = 1; 
+  repeated string symbols = 1;
 }
 
 // 推送报价数据。
 message SubscribeQuotesResponse {
   // 代码标识。
-  string symbol = 1; 
+  string symbol = 1;
   // 买一价。
-  double bid_price = 2; 
+  double bid_price = 2;
   // 卖一价。
-  double ask_price = 3; 
+  double ask_price = 3;
   // 买量。
-  double bid_size = 4; 
+  double bid_size = 4;
   // 卖量。
-  double ask_size = 5; 
+  double ask_size = 5;
   // 现价。
-  double last_price = 6; 
+  double last_price = 6;
   // 现量。
-  double last_size = 7; 
+  double last_size = 7;
   // 时间戳。
-  int64 timestamp = 8; 
+  int64 timestamp = 8;
 }
 
 // 成交查询。
 message GetTradesRequest {
   // 代码。
-  string symbol = 1; 
+  string symbol = 1;
   // 条数。
-  int32 limit = 2; 
+  int32 limit = 2;
 }
 
 // 成交结果列表。
 message GetTradesResponse {
   // 品种。
-  string symbol = 1; 
+  string symbol = 1;
   // 历史序列。
-  repeated TradeRecord trades = 2; 
+  repeated TradeRecord trades = 2;
 }

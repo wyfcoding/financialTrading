@@ -2,108 +2,108 @@ syntax = "proto3";
 
 package api.market_making.v1;
 
-option go_package = "github.com/fynnwu/FinancialTrading/go-api/market-making/v1;marketmakingv1";
-
 import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/fynnwu/FinancialTrading/go-api/market-making/v1;marketmakingv1";
 
 // 做市策略管理。
 service MarketMakingService {
   // 配置策略。
-  rpc SetStrategy (SetStrategyRequest) returns (SetStrategyResponse);
+  rpc SetStrategy(SetStrategyRequest) returns (SetStrategyResponse);
 
   // 获取当前策略详情。
-  rpc GetStrategy (GetStrategyRequest) returns (GetStrategyResponse);
+  rpc GetStrategy(GetStrategyRequest) returns (GetStrategyResponse);
 
   // 查询做市绩效。
-  rpc GetPerformance (GetPerformanceRequest) returns (GetPerformanceResponse);
+  rpc GetPerformance(GetPerformanceRequest) returns (GetPerformanceResponse);
 }
 
 // 做市报价配置。
 message QuoteStrategy {
   // 任务 ID。
-  string id = 1; 
+  string id = 1;
   // 标的代码。
-  string symbol = 2; 
+  string symbol = 2;
   // 目标点差。
-  double spread = 3; 
+  double spread = 3;
   // 最小委托量。
-  double min_order_size = 4; 
+  double min_order_size = 4;
   // 最大委托量。
-  double max_order_size = 5; 
+  double max_order_size = 5;
   // 允许最大净仓。
-  double max_position = 6; 
+  double max_position = 6;
   // 策略状态。
-  string status = 7; 
+  string status = 7;
   // 创建时间。
-  google.protobuf.Timestamp created_at = 8; 
+  google.protobuf.Timestamp created_at = 8;
   // 最后修改。
-  google.protobuf.Timestamp updated_at = 9; 
+  google.protobuf.Timestamp updated_at = 9;
 }
 
 // 做市业绩概览。
 message MarketMakingPerformance {
   // 交易对。
-  string symbol = 1; 
+  string symbol = 1;
   // 累计盈亏。
-  double total_pnl = 2; 
+  double total_pnl = 2;
   // 累计成交规模。
-  double total_volume = 3; 
+  double total_volume = 3;
   // 成交笔数。
-  int32 total_trades = 4; 
+  int32 total_trades = 4;
   // 夏普稳定性。
-  double sharpe_ratio = 5; 
+  double sharpe_ratio = 5;
   // 起始时间。
-  google.protobuf.Timestamp start_time = 6; 
+  google.protobuf.Timestamp start_time = 6;
   // 结束时间。
-  google.protobuf.Timestamp end_time = 7; 
+  google.protobuf.Timestamp end_time = 7;
 }
 
 // 策略设置请求。
 message SetStrategyRequest {
   // 品种标识。
-  string symbol = 1; 
+  string symbol = 1;
   // 买卖价差。
-  double spread = 2; 
+  double spread = 2;
   // 最小单量。
-  double min_order_size = 3; 
+  double min_order_size = 3;
   // 最大单量。
-  double max_order_size = 4; 
+  double max_order_size = 4;
   // 持仓红线。
-  double max_position = 5; 
+  double max_position = 5;
   // 运行开关。
-  string status = 6; 
+  string status = 6;
 }
 
 // 策略设置结果。
 message SetStrategyResponse {
   // 系统生成的策略 ID。
-  string strategy_id = 1; 
+  string strategy_id = 1;
 }
 
 // 详情请求。
 message GetStrategyRequest {
   // 代码标识。
-  string symbol = 1; 
+  string symbol = 1;
 }
 
 // 详情响应结果。
 message GetStrategyResponse {
   // 配置实体。
-  QuoteStrategy strategy = 1; 
+  QuoteStrategy strategy = 1;
 }
 
 // 绩效查询。
 message GetPerformanceRequest {
   // 代码标识。
-  string symbol = 1; 
+  string symbol = 1;
   // 统计起点。
-  google.protobuf.Timestamp start_time = 2; 
+  google.protobuf.Timestamp start_time = 2;
   // 统计终点。
-  google.protobuf.Timestamp end_time = 3; 
+  google.protobuf.Timestamp end_time = 3;
 }
 
 // 绩效响应结果。
 message GetPerformanceResponse {
   // 绩效实体档案。
-  MarketMakingPerformance performance = 1; 
+  MarketMakingPerformance performance = 1;
 }
