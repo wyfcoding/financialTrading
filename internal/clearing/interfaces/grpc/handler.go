@@ -56,9 +56,9 @@ func (h *GRPCHandler) SettleTrade(ctx context.Context, req *pb.SettleTradeReques
 
 	// 4. 构建并返回 gRPC 响应,填充从应用服务返回的 settlementID。
 	return &pb.SettleTradeResponse{
-		TradeId:      req.TradeId,
-		Status:       "COMPLETED", // 假设状态为已完成
-		SettlementId: settlementID,
+		TradeId:        req.TradeId,
+		Status:         "COMPLETED", // 假设状态为已完成
+		SettlementId:   settlementID,
 		SettlementTime: time.Now().Unix(),
 	}, nil
 }
