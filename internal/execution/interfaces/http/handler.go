@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/wyfcoding/financialTrading/internal/execution/application"
+	"github.com/wyfcoding/financialtrading/internal/execution/application"
 	"github.com/wyfcoding/pkg/logging"
 )
 

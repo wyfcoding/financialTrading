@@ -11,7 +11,7 @@ scrape_configs:
       - targets: ['localhost:9090']
 
   # MarketDataService
-  - job_name: 'market-data-service'
+  - job_name: 'marketdata-service'
     static_configs:
       - targets: ['localhost:9090']
     metrics_path: '/metrics'
@@ -23,7 +23,7 @@ scrape_configs:
     metrics_path: '/metrics'
 
   # MatchingEngineService
-  - job_name: 'matching-engine-service'
+  - job_name: 'matchingengine-service'
     static_configs:
       - targets: ['localhost:9092']
     metrics_path: '/metrics'
@@ -59,7 +59,7 @@ scrape_configs:
     metrics_path: '/metrics'
 
   # ReferenceDataService
-  - job_name: 'reference-data-service'
+  - job_name: 'referencedata-service'
     static_configs:
       - targets: ['localhost:9098']
     metrics_path: '/metrics'
@@ -77,7 +77,7 @@ scrape_configs:
     metrics_path: '/metrics'
 
   # MarketSimulationService
-  - job_name: 'market-simulation-service'
+  - job_name: 'marketsimulation-service'
     static_configs:
       - targets: ['localhost:9101']
     metrics_path: '/metrics'
@@ -89,13 +89,13 @@ scrape_configs:
     metrics_path: '/metrics'
 
   # MarketMakingService
-  - job_name: 'market-making-service'
+  - job_name: 'marketmaking-service'
     static_configs:
       - targets: ['localhost:9103']
     metrics_path: '/metrics'
 
   # MonitoringAnalyticsService
-  - job_name: 'monitoring-analytics-service'
+  - job_name: 'monitoringanalytics-service'
     static_configs:
       - targets: ['localhost:9104']
     metrics_path: '/metrics'

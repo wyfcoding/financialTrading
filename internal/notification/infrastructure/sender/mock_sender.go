@@ -3,7 +3,7 @@ package sender
 import (
 	"context"
 
-	"github.com/wyfcoding/financialTrading/internal/notification/domain"
+	"github.com/wyfcoding/financialtrading/internal/notification/domain"
 	"github.com/wyfcoding/pkg/logging"
 )
 

@@ -1,4 +1,4 @@
-module github.com/wyfcoding/financialTrading
+module github.com/wyfcoding/financialtrading
 
 go 1.25.5
 

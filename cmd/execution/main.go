@@ -1,4 +1,4 @@
-package main
+package execution
 
 import (
 	"log/slog"
@@ -7,11 +7,11 @@ import (
 	"github.com/wyfcoding/pkg/grpcclient"
 
 	"github.com/gin-gonic/gin"
-	pb "github.com/wyfcoding/financialTrading/go-api/execution/v1"
-	"github.com/wyfcoding/financialTrading/internal/execution/application"
-	"github.com/wyfcoding/financialTrading/internal/execution/infrastructure/repository"
-	grpchandler "github.com/wyfcoding/financialTrading/internal/execution/interfaces/grpc"
-	httphandler "github.com/wyfcoding/financialTrading/internal/execution/interfaces/http"
+	pb "github.com/wyfcoding/financialtrading/goapi/execution/v1"
+	"github.com/wyfcoding/financialtrading/internal/execution/application"
+	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/repository"
+	grpchandler "github.com/wyfcoding/financialtrading/internal/execution/interfaces/grpc"
+	httphandler "github.com/wyfcoding/financialtrading/internal/execution/interfaces/http"
 	"github.com/wyfcoding/pkg/app"
 	"github.com/wyfcoding/pkg/cache"
 	configpkg "github.com/wyfcoding/pkg/config"

@@ -1,15 +1,15 @@
-package main
+package pricing
 
 import (
 	"log/slog"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	pb "github.com/wyfcoding/financialTrading/go-api/pricing/v1"
-	"github.com/wyfcoding/financialTrading/internal/pricing/application"
-	"github.com/wyfcoding/financialTrading/internal/pricing/infrastructure/client"
-	grpchandler "github.com/wyfcoding/financialTrading/internal/pricing/interfaces/grpc"
-	httphandler "github.com/wyfcoding/financialTrading/internal/pricing/interfaces/http"
+	pb "github.com/wyfcoding/financialtrading/goapi/pricing/v1"
+	"github.com/wyfcoding/financialtrading/internal/pricing/application"
+	"github.com/wyfcoding/financialtrading/internal/pricing/infrastructure/client"
+	grpchandler "github.com/wyfcoding/financialtrading/internal/pricing/interfaces/grpc"
+	httphandler "github.com/wyfcoding/financialtrading/internal/pricing/interfaces/http"
 	"github.com/wyfcoding/pkg/app"
 	"github.com/wyfcoding/pkg/cache"
 	configpkg "github.com/wyfcoding/pkg/config"

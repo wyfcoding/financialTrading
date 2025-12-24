@@ -1,11 +1,11 @@
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
-  name: {{ include "market-data-service.fullname" . }}
+  name: {{ include "marketdata-service.fullname" . }}
   labels:
-    {{- include "market-data-service.labels" . | nindent 4 }}
+    {{- include "marketdata-service.labels" . | nindent 4 }}
 spec:
-  host: {{ include "market-data-service.fullname" . }}
+  host: {{ include "marketdata-service.fullname" . }}
   trafficPolicy:
     # 连接池配置
     connectionPool:

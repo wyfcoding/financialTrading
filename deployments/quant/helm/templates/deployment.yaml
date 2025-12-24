@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "market-data-service.fullname" . }}
+  name: {{ include "marketdata-service.fullname" . }}
   labels:
-    {{- include "market-data-service.labels" . | nindent 4 }}
+    {{- include "marketdata-service.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "market-data-service.selectorLabels" . | nindent 6 }}
+      {{- include "marketdata-service.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -19,13 +19,13 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "market-data-service.selectorLabels" . | nindent 8 }}
+        {{- include "marketdata-service.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "market-data-service.serviceAccountName" . }}
+      serviceAccountName: {{ include "marketdata-service.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       
@@ -65,12 +65,12 @@ spec:
             - name: APP_DATABASE_DSN
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "market-data-service.fullname" . }}-db
+                  name: {{ include "marketdata-service.fullname" . }}-db
                   key: dsn
             - name: APP_REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "market-data-service.fullname" . }}-redis
+                  name: {{ include "marketdata-service.fullname" . }}-redis
                   key: password
                   optional: true
           
@@ -93,18 +93,18 @@ spec:
           # 卷挂载
           volumeMounts:
             - name: config
-              mountPath: /etc/market-data-service
+              mountPath: /etc/marketdata-service
               readOnly: true
             - name: tmp
               mountPath: /tmp
             - name: logs
-              mountPath: /var/log/market-data-service
+              mountPath: /var/log/marketdata-service
       
       # 卷定义
       volumes:
         - name: config
           configMap:
-            name: {{ include "market-data-service.fullname" . }}-config
+            name: {{ include "marketdata-service.fullname" . }}-config
         - name: tmp
           emptyDir: {}
         - name: logs

@@ -1,0 +1,78 @@
+version = "1.0.0"
+
+[server]
+name = "matchingengine-service"
+environment = "dev"
+
+# MatchingEngineService 配置文件
+
+
+[server.http]
+addr = "0.0.0.0"
+port = 8082
+read_timeout = 30
+write_timeout = 30
+max_connections = 1000
+
+[server.grpc]
+addr = "0.0.0.0"
+port = 50053
+max_concurrent_streams = 1000
+idle_timeout = 300
+
+[data.database]
+driver = "mysql"
+dsn = "root:password@tcp(localhost:3306)/trading_system?charset=utf8mb4&parseTime=True&loc=Local"
+max_open_conns = 50
+max_idle_conns = 10
+conn_max_lifetime = 300
+log_enabled = false
+slow_query_threshold = 500
+
+[data.redis]
+addr = "localhost:6379"
+# port merged into addr
+password = ""
+db = 2
+max_pool_size = 20
+conn_timeout = 5
+read_timeout = 3
+write_timeout = 3
+
+[messagequeue.kafka]
+brokers = ["localhost:9092"]
+group_id = "matchingengine-service"
+partitions = 3
+replication = 1
+session_timeout = 10
+
+[log]
+level = "info"
+format = "json"
+output = "stdout"
+file_path = "logs/matchingengine-service.log"
+max_size = 100
+max_backups = 10
+max_age = 30
+compress = true
+with_caller = true
+with_stacktrace = false
+
+[tracing]
+enabled = true
+type = "jaeger"
+jaeger_endpoint = "http://localhost:14268/api/traces"
+sampling_rate = 0.1
+
+[metrics]
+enabled = true
+port = 9092
+path = "/metrics"
+
+[matchingengine]
+# 撮合规则：price_priority 或 time_priority
+matching_rule = "price_priority"
+# 最大订单簿深度
+max_orderbook_depth = 100
+# 是否启用实时推送
+enable_realtime_push = true

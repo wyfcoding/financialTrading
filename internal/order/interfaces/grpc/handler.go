@@ -4,8 +4,8 @@ package grpc
 import (
 	"context"
 
-	pb "github.com/wyfcoding/financialTrading/go-api/order/v1"
-	"github.com/wyfcoding/financialTrading/internal/order/application"
+	pb "github.com/wyfcoding/financialtrading/goapi/order/v1"
+	"github.com/wyfcoding/financialtrading/internal/order/application"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	market_data "github.com/wyfcoding/financialTrading/go-api/market_data/v1"
-	"github.com/wyfcoding/financialTrading/internal/quant/domain"
+	market_data "github.com/wyfcoding/financialtrading/goapi/market_data/v1"
+	"github.com/wyfcoding/financialtrading/internal/quant/domain"
 	"github.com/wyfcoding/pkg/grpcclient"
 	"github.com/wyfcoding/pkg/logging"
 	"google.golang.org/grpc"

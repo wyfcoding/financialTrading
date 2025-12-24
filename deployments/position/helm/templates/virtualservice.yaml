@@ -1,24 +1,24 @@
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
-  name: {{ include "market-data-service.fullname" . }}
+  name: {{ include "marketdata-service.fullname" . }}
   labels:
-    {{- include "market-data-service.labels" . | nindent 4 }}
+    {{- include "marketdata-service.labels" . | nindent 4 }}
 spec:
   hosts:
-    - "market-data.trading-system.local"
-    - "market-data-grpc.trading-system.local"
-    - {{ include "market-data-service.fullname" . }}
+    - "marketdata.trading-system.local"
+    - "marketdata-grpc.trading-system.local"
+    - {{ include "marketdata-service.fullname" . }}
   gateways:
-    - {{ include "market-data-service.fullname" . }}-gateway
+    - {{ include "marketdata-service.fullname" . }}-gateway
   http:
     # HTTP 路由
     - match:
         - uri:
-            prefix: "/api/v1/market-data"
+            prefix: "/api/v1/marketdata"
       route:
         - destination:
-            host: {{ include "market-data-service.fullname" . }}
+            host: {{ include "marketdata-service.fullname" . }}
             port:
               number: 8080
           weight: 100
@@ -32,7 +32,7 @@ spec:
             prefix: "/health"
       route:
         - destination:
-            host: {{ include "market-data-service.fullname" . }}
+            host: {{ include "marketdata-service.fullname" . }}
             port:
               number: 8080
           weight: 100
@@ -43,7 +43,7 @@ spec:
         - port: 50051
       route:
         - destination:
-            host: {{ include "market-data-service.fullname" . }}
+            host: {{ include "marketdata-service.fullname" . }}
             port:
               number: 50051
           weight: 100

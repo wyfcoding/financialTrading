@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "market-data-service.fullname" . }}-config
+  name: {{ include "marketdata-service.fullname" . }}-config
   labels:
-    {{- include "market-data-service.labels" . | nindent 4 }}
+    {{- include "marketdata-service.labels" . | nindent 4 }}
 data:
   config.toml: |
     service_name = "{{ .Values.config.service_name }}"
@@ -42,7 +42,7 @@ data:
     
     [kafka]
     brokers = [{{ range .Values.config.kafka.brokers }}"{{ . }}",{{ end }}]
-    group_id = "market-data-service"
+    group_id = "marketdata-service"
     partitions = 3
     replication = 1
     session_timeout = 10
@@ -51,7 +51,7 @@ data:
     level = "info"
     format = "json"
     output = "stdout"
-    file_path = "/var/log/market-data-service/app.log"
+    file_path = "/var/log/marketdata-service/app.log"
     max_size = 100
     max_backups = 10
     max_age = 30

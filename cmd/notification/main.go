@@ -1,4 +1,4 @@
-package main
+package notification
 
 import (
 	"log/slog"
@@ -7,12 +7,12 @@ import (
 	"github.com/wyfcoding/pkg/grpcclient"
 
 	"github.com/gin-gonic/gin"
-	pb "github.com/wyfcoding/financialTrading/go-api/notification/v1"
-	"github.com/wyfcoding/financialTrading/internal/notification/application"
-	"github.com/wyfcoding/financialTrading/internal/notification/infrastructure/repository"
-	"github.com/wyfcoding/financialTrading/internal/notification/infrastructure/sender"
-	grpchandler "github.com/wyfcoding/financialTrading/internal/notification/interfaces/grpc"
-	httphandler "github.com/wyfcoding/financialTrading/internal/notification/interfaces/http"
+	pb "github.com/wyfcoding/financialtrading/goapi/notification/v1"
+	"github.com/wyfcoding/financialtrading/internal/notification/application"
+	"github.com/wyfcoding/financialtrading/internal/notification/infrastructure/repository"
+	"github.com/wyfcoding/financialtrading/internal/notification/infrastructure/sender"
+	grpchandler "github.com/wyfcoding/financialtrading/internal/notification/interfaces/grpc"
+	httphandler "github.com/wyfcoding/financialtrading/internal/notification/interfaces/http"
 	"github.com/wyfcoding/pkg/app"
 	"github.com/wyfcoding/pkg/cache"
 	configpkg "github.com/wyfcoding/pkg/config"

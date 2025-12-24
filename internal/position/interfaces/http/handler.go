@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
-	"github.com/wyfcoding/financialTrading/internal/position/application"
+	"github.com/wyfcoding/financialtrading/internal/position/application"
 	"github.com/wyfcoding/pkg/logging"
 )
 

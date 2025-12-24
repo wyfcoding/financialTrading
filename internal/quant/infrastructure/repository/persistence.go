@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wyfcoding/financialTrading/internal/quant/domain"
+	"github.com/wyfcoding/financialtrading/internal/quant/domain"
 	"gorm.io/gorm"
 )
 

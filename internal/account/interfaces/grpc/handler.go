@@ -5,8 +5,8 @@ import (
 	"context"
 
 	"github.com/shopspring/decimal"
-	pb "github.com/wyfcoding/financialTrading/go-api/account/v1"
-	"github.com/wyfcoding/financialTrading/internal/account/application"
+	pb "github.com/wyfcoding/financialtrading/goapi/account/v1"
+	"github.com/wyfcoding/financialtrading/internal/account/application"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/wyfcoding/financialTrading/internal/quant/application"
+	"github.com/wyfcoding/financialtrading/internal/quant/application"
 	"github.com/wyfcoding/pkg/logging"
 )
 

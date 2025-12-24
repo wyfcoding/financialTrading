@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/shopspring/decimal"
-	"github.com/wyfcoding/financialTrading/internal/execution/domain"
+	"github.com/wyfcoding/financialtrading/internal/execution/domain"
 	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 )

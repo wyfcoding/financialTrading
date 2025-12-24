@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"github.com/wyfcoding/financialTrading/internal/clearing/domain"
+	"github.com/wyfcoding/financialtrading/internal/clearing/domain"
 	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/logging"
 )

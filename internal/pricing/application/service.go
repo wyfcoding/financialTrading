@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/wyfcoding/financialTrading/internal/pricing/domain"
+	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
 	"github.com/wyfcoding/pkg/logging"
 )
 

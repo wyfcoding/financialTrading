@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wyfcoding/financialTrading/internal/notification/domain"
+	"github.com/wyfcoding/financialtrading/internal/notification/domain"
 	"github.com/wyfcoding/pkg/logging"
 )
 

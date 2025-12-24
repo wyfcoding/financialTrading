@@ -1,0 +1,42 @@
+version = "1.0.0"
+
+[server]
+name = "financial-service"
+environment = "dev"
+
+[server]
+name = "monitoringanalytics-service"
+grpc_port = 50057
+http_port = 8086
+mode = "debug"
+
+[log]
+level = "info"
+format = "json"
+output = "stdout"
+
+[data.database]
+driver = "mysql"
+dsn = "root:password@tcp(localhost:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 10
+max_open_conns = 100
+conn_max_lifetime = "1h"
+
+[data.redis]
+addr = "localhost:6379"
+password = ""
+db = 0
+
+[etcd]
+endpoints = ["localhost:2379"]
+
+[jaeger]
+agent_addr = "localhost"
+agent_port = 6831
+sampler_type = "const"
+sampler_param = 1.0
+
+[metrics]
+enabled = true
+port = "9090"
+path = "/metrics"

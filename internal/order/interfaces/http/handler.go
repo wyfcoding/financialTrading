@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/wyfcoding/financialTrading/internal/order/application"
+	"github.com/wyfcoding/financialtrading/internal/order/application"
 	"github.com/wyfcoding/pkg/logging"
 )
 

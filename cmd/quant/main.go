@@ -1,16 +1,16 @@
-package main
+package quant
 
 import (
 	"log/slog"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	pb "github.com/wyfcoding/financialTrading/go-api/quant/v1"
-	"github.com/wyfcoding/financialTrading/internal/quant/application"
-	"github.com/wyfcoding/financialTrading/internal/quant/infrastructure/client"
-	"github.com/wyfcoding/financialTrading/internal/quant/infrastructure/repository"
-	grpchandler "github.com/wyfcoding/financialTrading/internal/quant/interfaces/grpc"
-	httphandler "github.com/wyfcoding/financialTrading/internal/quant/interfaces/http"
+	pb "github.com/wyfcoding/financialtrading/goapi/quant/v1"
+	"github.com/wyfcoding/financialtrading/internal/quant/application"
+	"github.com/wyfcoding/financialtrading/internal/quant/infrastructure/client"
+	"github.com/wyfcoding/financialtrading/internal/quant/infrastructure/repository"
+	grpchandler "github.com/wyfcoding/financialtrading/internal/quant/interfaces/grpc"
+	httphandler "github.com/wyfcoding/financialtrading/internal/quant/interfaces/http"
 	"github.com/wyfcoding/pkg/app"
 	"github.com/wyfcoding/pkg/cache"
 	configpkg "github.com/wyfcoding/pkg/config"

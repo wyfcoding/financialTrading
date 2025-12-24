@@ -2,12 +2,12 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "market-data-service.fullname" . }}
+  name: {{ include "marketdata-service.fullname" . }}
   labels:
-    {{- include "market-data-service.labels" . | nindent 4 }}
+    {{- include "marketdata-service.labels" . | nindent 4 }}
 spec:
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
   selector:
     matchLabels:
-      {{- include "market-data-service.selectorLabels" . | nindent 6 }}
+      {{- include "marketdata-service.selectorLabels" . | nindent 6 }}
 {{- end }}

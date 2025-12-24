@@ -1,4 +1,4 @@
-package main
+package risk
 
 import (
 	"log/slog"
@@ -7,11 +7,11 @@ import (
 	"github.com/wyfcoding/pkg/grpcclient"
 
 	"github.com/gin-gonic/gin"
-	pb "github.com/wyfcoding/financialTrading/go-api/risk/v1"
-	"github.com/wyfcoding/financialTrading/internal/risk/application"
-	"github.com/wyfcoding/financialTrading/internal/risk/infrastructure/repository"
-	grpchandler "github.com/wyfcoding/financialTrading/internal/risk/interfaces/grpc"
-	httphandler "github.com/wyfcoding/financialTrading/internal/risk/interfaces/http"
+	pb "github.com/wyfcoding/financialtrading/goapi/risk/v1"
+	"github.com/wyfcoding/financialtrading/internal/risk/application"
+	"github.com/wyfcoding/financialtrading/internal/risk/infrastructure/repository"
+	grpchandler "github.com/wyfcoding/financialtrading/internal/risk/interfaces/grpc"
+	httphandler "github.com/wyfcoding/financialtrading/internal/risk/interfaces/http"
 	"github.com/wyfcoding/pkg/app"
 	"github.com/wyfcoding/pkg/cache"
 	configpkg "github.com/wyfcoding/pkg/config"

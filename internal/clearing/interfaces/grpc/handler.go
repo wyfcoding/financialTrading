@@ -7,8 +7,8 @@ import (
 	"context"
 	"time"
 
-	pb "github.com/wyfcoding/financialTrading/go-api/clearing/v1"
-	"github.com/wyfcoding/financialTrading/internal/clearing/application"
+	pb "github.com/wyfcoding/financialtrading/goapi/clearing/v1"
+	"github.com/wyfcoding/financialtrading/internal/clearing/application"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

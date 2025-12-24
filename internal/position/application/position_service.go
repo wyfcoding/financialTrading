@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/shopspring/decimal"
-	"github.com/wyfcoding/financialTrading/internal/position/domain"
+	"github.com/wyfcoding/financialtrading/internal/position/domain"
 	"github.com/wyfcoding/pkg/logging"
 )
 
