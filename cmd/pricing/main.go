@@ -82,7 +82,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 
 	// Downstream Clients
 	clients := &ServiceClients{}
-	clientCleanup, err := grpcclient.InitServiceClients(c.Services, clients)
+	clientCleanup, err := grpcclient.InitClients(c.Services, clients)
 	if err != nil {
 		redisCache.Close()
 		return nil, nil, err
