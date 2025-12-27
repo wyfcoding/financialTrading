@@ -7,9 +7,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/domain"
+	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/logging"
 )
 
@@ -34,7 +34,7 @@ func NewMarketSimulationService(repo domain.SimulationScenarioRepository, publis
 func (s *MarketSimulationService) StartSimulation(ctx context.Context, name string, symbol string, simulationType string, parameters string) (string, error) {
 	// 1. 创建场景
 	scenario := &domain.SimulationScenario{
-		ScenarioID: uuid.New().String(),
+		ScenarioID: fmt.Sprintf("%d", idgen.GenID()),
 		Name:       name,
 		Symbol:     symbol,
 		Type:       domain.SimulationType(simulationType),

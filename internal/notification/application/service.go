@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/wyfcoding/financialtrading/internal/notification/domain"
+	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/logging"
 )
 
@@ -35,7 +35,7 @@ func NewNotificationService(repo domain.NotificationRepository, emailSender doma
 func (s *NotificationService) SendNotification(ctx context.Context, userID string, notificationType string, subject string, content string, target string) (string, error) {
 	// 1. 创建通知实体
 	notification := &domain.Notification{
-		NotificationID: uuid.New().String(),
+		NotificationID: fmt.Sprintf("%d", idgen.GenID()),
 		UserID:         userID,
 		Type:           domain.NotificationType(notificationType),
 		Subject:        subject,

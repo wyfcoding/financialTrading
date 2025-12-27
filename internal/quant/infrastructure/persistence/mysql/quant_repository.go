@@ -65,7 +65,7 @@ func (r *strategyRepositoryImpl) Save(ctx context.Context, s *domain.Strategy) e
 
 func (r *strategyRepositoryImpl) GetByID(ctx context.Context, id string) (*domain.Strategy, error) {
 	var m StrategyModel
-	if err := r.db.WithContext(ctx).First(&m, "id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&m).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -112,7 +112,7 @@ func (r *backtestResultRepositoryImpl) Save(ctx context.Context, res *domain.Bac
 
 func (r *backtestResultRepositoryImpl) GetByID(ctx context.Context, id string) (*domain.BacktestResult, error) {
 	var m BacktestResultModel
-	if err := r.db.WithContext(ctx).First(&m, "id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&m).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}

@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/quant/domain"
+	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/logging"
 )
 
@@ -32,7 +32,7 @@ func NewQuantService(strategyRepo domain.StrategyRepository, backtestRepo domain
 // CreateStrategy 创建策略
 func (s *QuantService) CreateStrategy(ctx context.Context, name string, description string, script string) (string, error) {
 	strategy := &domain.Strategy{
-		ID:          uuid.New().String(),
+		ID:          fmt.Sprintf("%d", idgen.GenID()),
 		Name:        name,
 		Description: description,
 		Script:      script,
@@ -110,7 +110,7 @@ func (s *QuantService) RunBacktest(ctx context.Context, strategyID string, symbo
 
 	// 4. 保存回测结果
 	result := &domain.BacktestResult{
-		ID:          uuid.New().String(),
+		ID:          fmt.Sprintf("%d", idgen.GenID()),
 		StrategyID:  strategyID,
 		Symbol:      symbol,
 		StartTime:   startMilli,
