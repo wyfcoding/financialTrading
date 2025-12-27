@@ -3,8 +3,8 @@ package client
 import (
 	"context"
 	"fmt"
-	"time"
 
+	"github.com/shopspring/decimal"
 	market_data "github.com/wyfcoding/financialtrading/goapi/marketdata/v1"
 	"github.com/wyfcoding/financialtrading/internal/quant/domain"
 	"github.com/wyfcoding/pkg/grpcclient"
@@ -36,32 +36,34 @@ func NewMarketDataClientFromConn(conn *grpc.ClientConn) domain.MarketDataClient 
 	}
 }
 
-// GetHistoricalData 获取历史数据
-func (c *MarketDataClientImpl) GetHistoricalData(ctx context.Context, symbol string, start, end time.Time) ([]float64, error) {
+// GetHistoricalData 获取历史价格数据
+func (c *MarketDataClientImpl) GetHistoricalData(ctx context.Context, symbol string, start, end int64) ([]decimal.Decimal, error) {
+	// 注意：当前 proto 不支持 StartTime/EndTime 过滤，仅支持 limit
 	req := &market_data.GetKlinesRequest{
 		Symbol:   symbol,
 		Interval: "1d", // 默认日线
-		Limit:    100,  // 默认获取最近 100 条
+		Limit:    500,  // 获取较多数据
 	}
 
 	resp, err := c.client.GetKlines(ctx, req)
 	if err != nil {
-		logging.Error(ctx, "Failed to get historical data",
+		logging.Error(ctx, "Failed to get klines",
 			"symbol", symbol,
 			"error", err,
 		)
 		return nil, err
 	}
 
-	// 转换数据
-	prices := make([]float64, len(resp.Klines))
-	for i, kline := range resp.Klines {
-		// 简单取收盘价
-		// 这里需要解析 decimal 字符串
-		// 暂时 mock 返回
-		_ = kline
-		prices[i] = 100.0 + float64(i)
+	prices := make([]decimal.Decimal, len(resp.Klines))
+	for i, k := range resp.Klines {
+		// 使用 proto 定义的 close 字段
+		prices[i] = decimal.NewFromFloat(k.Close)
 	}
+
+	logging.Info(ctx, "Retrieved historical data",
+		"symbol", symbol,
+		"count", len(prices),
+	)
 
 	return prices, nil
 }

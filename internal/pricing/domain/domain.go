@@ -3,7 +3,9 @@ package domain
 
 import (
 	"context"
-	"time"
+
+	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 )
 
 // OptionType 期权类型
@@ -17,22 +19,44 @@ const (
 // OptionContract 期权合约
 // 定义期权的基本属性
 type OptionContract struct {
-	Symbol      string     // 标的资产代码
-	Type        OptionType // 期权类型 (CALL/PUT)
-	StrikePrice float64    // 行权价
-	ExpiryDate  time.Time  // 到期日
+	gorm.Model
+	Symbol      string          `gorm:"column:symbol;type:varchar(32);index;not null"`
+	Type        OptionType      `gorm:"column:type;type:varchar(10);not null"`
+	StrikePrice decimal.Decimal `gorm:"column:strike_price;type:decimal(32,18);not null"`
+	ExpiryDate  int64           `gorm:"column:expiry_date;type:bigint;not null"`
 }
 
 // Greeks 希腊字母
 type Greeks struct {
-	Delta float64
-	Gamma float64
-	Theta float64
-	Vega  float64
-	Rho   float64
+	Delta decimal.Decimal
+	Gamma decimal.Decimal
+	Theta decimal.Decimal
+	Vega  decimal.Decimal
+	Rho   decimal.Decimal
+}
+
+// PricingResult 定价结果实体
+type PricingResult struct {
+	gorm.Model
+	Symbol          string          `gorm:"column:symbol;type:varchar(32);index;not null"`
+	OptionPrice     decimal.Decimal `gorm:"column:option_price;type:decimal(32,18);not null"`
+	UnderlyingPrice decimal.Decimal `gorm:"column:underlying_price;type:decimal(32,18);not null"`
+	Delta           decimal.Decimal `gorm:"column:delta;type:decimal(32,18)"`
+	Gamma           decimal.Decimal `gorm:"column:gamma;type:decimal(32,18)"`
+	Theta           decimal.Decimal `gorm:"column:theta;type:decimal(32,18)"`
+	Vega            decimal.Decimal `gorm:"column:vega;type:decimal(32,18)"`
+	Rho             decimal.Decimal `gorm:"column:rho;type:decimal(32,18)"`
+	CalculatedAt    int64           `gorm:"column:calculated_at;type:bigint;not null"`
 }
 
 // MarketDataClient 市场数据客户端接口
 type MarketDataClient interface {
-	GetPrice(ctx context.Context, symbol string) (float64, error)
+	GetPrice(ctx context.Context, symbol string) (decimal.Decimal, error)
+}
+
+// PricingRepository 定价历史仓储接口
+type PricingRepository interface {
+	Save(ctx context.Context, result *PricingResult) error
+	GetLatest(ctx context.Context, symbol string) (*PricingResult, error)
+	GetHistory(ctx context.Context, symbol string, limit int) ([]*PricingResult, error)
 }

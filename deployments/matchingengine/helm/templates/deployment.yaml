@@ -1,124 +1,66 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "marketdata-service.fullname" . }}
+  name: { include "matchingengine.fullname" . }
   labels:
-    {{- include "marketdata-service.labels" . | nindent 4 }}
+    {- include "matchingengine.labels" . | nindent 4 }
 spec:
-  {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
-  {{- end }}
+  {- if not .Values.autoscaling.enabled }
+  replicas: { .Values.replicaCount }
+  {- end }
   selector:
     matchLabels:
-      {{- include "marketdata-service.selectorLabels" . | nindent 6 }}
+      {- include "matchingengine.selectorLabels" . | nindent 6 }
   template:
     metadata:
+      {- with .Values.podAnnotations }
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-        {{- with .Values.podAnnotations }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
+        {- toYaml . | nindent 8 }
+      {- end }
       labels:
-        {{- include "marketdata-service.selectorLabels" . | nindent 8 }}
+        {- include "matchingengine.selectorLabels" . | nindent 8 }
     spec:
-      {{- with .Values.imagePullSecrets }}
+      {- with .Values.imagePullSecrets }
       imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      serviceAccountName: {{ include "marketdata-service.serviceAccountName" . }}
+        {- toYaml . | nindent 8 }
+      {- end }
+      serviceAccountName: { include "matchingengine.serviceAccountName" . }
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      
-      # 初始化容器：等待依赖服务就绪
-      initContainers:
-        - name: wait-for-db
-          image: busybox:1.35
-          command: ['sh', '-c', 'until nc -z mysql-service 3306; do echo waiting for mysql; sleep 2; done']
-        - name: wait-for-redis
-          image: busybox:1.35
-          command: ['sh', '-c', 'until nc -z redis-service 6379; do echo waiting for redis; sleep 2; done']
-        - name: wait-for-kafka
-          image: busybox:1.35
-          command: ['sh', '-c', 'until nc -z kafka-0.kafka-headless 9092; do echo waiting for kafka; sleep 2; done']
-
+        {- toYaml .Values.podSecurityContext | nindent 8 }
       containers:
-        - name: {{ .Chart.Name }}
+        - name: { .Chart.Name }
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          
+            {- toYaml .Values.securityContext | nindent 12 }
+          image: "{ .Values.image.repository }:{ .Values.image.tag | default .Chart.AppVersion }"
+          imagePullPolicy: { .Values.image.pullPolicy }
           ports:
             - name: http
-              containerPort: {{ .Values.service.http.targetPort }}
+              containerPort: { .Values.service.httpPort }
               protocol: TCP
             - name: grpc
-              containerPort: {{ .Values.service.grpc.targetPort }}
+              containerPort: { .Values.service.grpcPort }
               protocol: TCP
-            - name: metrics
-              containerPort: 9090
-              protocol: TCP
-          
-          # 环境变量
           env:
-            {{- toYaml .Values.env | nindent 12 }}
-            - name: APP_DATABASE_DSN
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "marketdata-service.fullname" . }}-db
-                  key: dsn
-            - name: APP_REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "marketdata-service.fullname" . }}-redis
-                  key: password
-                  optional: true
-          
-          # 存活探针
+            {- toYaml .Values.env | nindent 12 }
           livenessProbe:
-            {{- toYaml .Values.livenessProbe | nindent 12 }}
-          
-          # 就绪探针
+            httpGet:
+              path: /health
+              port: http
           readinessProbe:
-            {{- toYaml .Values.readinessProbe | nindent 12 }}
-          
-          # 启动探针
-          startupProbe:
-            {{- toYaml .Values.startupProbe | nindent 12 }}
-          
-          # 资源限制
+            httpGet:
+              path: /health
+              port: http
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-          
-          # 卷挂载
-          volumeMounts:
-            - name: config
-              mountPath: /etc/marketdata-service
-              readOnly: true
-            - name: tmp
-              mountPath: /tmp
-            - name: logs
-              mountPath: /var/log/marketdata-service
-      
-      # 卷定义
-      volumes:
-        - name: config
-          configMap:
-            name: {{ include "marketdata-service.fullname" . }}-config
-        - name: tmp
-          emptyDir: {}
-        - name: logs
-          emptyDir: {}
-      
-      {{- with .Values.nodeSelector }}
+            {- toYaml .Values.resources | nindent 12 }
+      {- with .Values.nodeSelector }
       nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
+        {- toYaml . | nindent 8 }
+      {- end }
+      {- with .Values.affinity }
       affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
+        {- toYaml . | nindent 8 }
+      {- end }
+      {- with .Values.tolerations }
       tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {- toYaml . | nindent 8 }
+      {- end }

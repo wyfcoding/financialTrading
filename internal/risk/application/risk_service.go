@@ -4,7 +4,6 @@ package application
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
@@ -105,7 +104,7 @@ func (ras *RiskApplicationService) AssessRisk(ctx context.Context, req *AssessRi
 
 	// 创建评估对象
 	assessment := &domain.RiskAssessment{
-		AssessmentID:      assessmentID,
+		ID:                assessmentID,
 		UserID:            req.UserID,
 		Symbol:            req.Symbol,
 		Side:              req.Side,
@@ -116,7 +115,6 @@ func (ras *RiskApplicationService) AssessRisk(ctx context.Context, req *AssessRi
 		MarginRequirement: marginRequirement,
 		IsAllowed:         isAllowed,
 		Reason:            reason,
-		CreatedAt:         time.Now(),
 	}
 
 	// 保存评估结果
@@ -131,12 +129,11 @@ func (ras *RiskApplicationService) AssessRisk(ctx context.Context, req *AssessRi
 	// 如果风险过高，生成告警
 	if riskLevel == domain.RiskLevelHigh || riskLevel == domain.RiskLevelCritical {
 		alert := &domain.RiskAlert{
-			AlertID:   fmt.Sprintf("ALERT-%d", idgen.GenID()),
+			ID:        fmt.Sprintf("ALERT-%d", idgen.GenID()),
 			UserID:    req.UserID,
 			AlertType: "HIGH_RISK",
 			Severity:  string(riskLevel),
 			Message:   fmt.Sprintf("High risk detected for %s: %s", req.Symbol, reason),
-			CreatedAt: time.Now(),
 		}
 		if err := ras.alertRepo.Save(ctx, alert); err != nil {
 			logging.Error(ctx, "Failed to save risk alert", "user_id", req.UserID, "error", err)
@@ -151,7 +148,7 @@ func (ras *RiskApplicationService) AssessRisk(ctx context.Context, req *AssessRi
 
 	// 转换为 DTO
 	return &RiskAssessmentDTO{
-		AssessmentID:      assessment.AssessmentID,
+		AssessmentID:      assessment.ID,
 		UserID:            assessment.UserID,
 		Symbol:            assessment.Symbol,
 		Side:              assessment.Side,

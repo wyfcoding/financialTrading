@@ -3,7 +3,9 @@ package grpc
 
 import (
 	"context"
+	"time"
 
+	"github.com/shopspring/decimal"
 	pb "github.com/wyfcoding/financialtrading/goapi/monitoringanalytics/v1"
 	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/application"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -23,10 +25,10 @@ func NewGRPCHandler(app *application.MonitoringAnalyticsService) *GRPCHandler {
 }
 
 // RecordMetric 记录指标
-// 处理 gRPC RecordMetric 请求
 func (h *GRPCHandler) RecordMetric(ctx context.Context, req *pb.RecordMetricRequest) (*pb.RecordMetricResponse, error) {
-	// 调用应用服务记录指标
-	err := h.app.RecordMetric(ctx, req.Metric.Name, req.Metric.Value, req.Metric.Tags, req.Metric.Timestamp.AsTime())
+	val := decimal.NewFromFloat(req.Metric.Value)
+	ts := req.Metric.Timestamp.AsTime().UnixMilli()
+	err := h.app.RecordMetric(ctx, req.Metric.Name, val, req.Metric.Tags, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -38,18 +40,21 @@ func (h *GRPCHandler) RecordMetric(ctx context.Context, req *pb.RecordMetricRequ
 
 // GetMetrics 获取指标
 func (h *GRPCHandler) GetMetrics(ctx context.Context, req *pb.GetMetricsRequest) (*pb.GetMetricsResponse, error) {
-	metrics, err := h.app.GetMetrics(ctx, req.Name, req.StartTime.AsTime(), req.EndTime.AsTime())
+	start := req.StartTime.AsTime().UnixMilli()
+	end := req.EndTime.AsTime().UnixMilli()
+	metrics, err := h.app.GetMetrics(ctx, req.Name, start, end)
 	if err != nil {
 		return nil, err
 	}
 
 	protoMetrics := make([]*pb.Metric, len(metrics))
 	for i, m := range metrics {
+		val, _ := m.Value.Float64()
 		protoMetrics[i] = &pb.Metric{
 			Name:      m.Name,
-			Value:     m.Value,
+			Value:     val,
 			Tags:      m.Tags,
-			Timestamp: timestamppb.New(m.Timestamp),
+			Timestamp: timestamppb.New(time.UnixMilli(m.Timestamp)),
 		}
 	}
 
@@ -71,7 +76,7 @@ func (h *GRPCHandler) GetSystemHealth(ctx context.Context, req *pb.GetSystemHeal
 			ServiceName: h.ServiceName,
 			Status:      h.Status,
 			Message:     h.Message,
-			LastChecked: timestamppb.New(h.LastChecked),
+			LastChecked: timestamppb.New(time.UnixMilli(h.LastChecked)),
 		}
 	}
 

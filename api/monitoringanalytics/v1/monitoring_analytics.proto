@@ -4,7 +4,7 @@ package api.monitoring_analytics.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/wyfcoding/financialTrading/go-api/monitoring-analytics/v1;monitoringanalyticsv1";
+option go_package = "github.com/wyfcoding/financialTrading/goapi/monitoring-analytics/v1;monitoringanalyticsv1";
 
 // 运维监控与质量分析。
 service MonitoringAnalyticsService {

@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	pb "github.com/wyfcoding/financialtrading/goapi/referencedata/v1"
 	"github.com/wyfcoding/financialtrading/internal/referencedata/application"
-	"github.com/wyfcoding/financialtrading/internal/referencedata/infrastructure/repository"
+	"github.com/wyfcoding/financialtrading/internal/referencedata/infrastructure/persistence/mysql"
 	grpchandler "github.com/wyfcoding/financialtrading/internal/referencedata/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialtrading/internal/referencedata/interfaces/http"
 	"github.com/wyfcoding/pkg/app"
@@ -33,7 +33,7 @@ type AppContext struct {
 
 // ServiceClients 包含所有下游服务的 gRPC 客户端连接。
 type ServiceClients struct {
-	// No downstream dependencies (foundational service)
+	// No dependencies detected
 }
 
 // BootstrapName 服务名称常量。
@@ -81,7 +81,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := db.AutoMigrate(&repository.SymbolModel{}, &repository.ExchangeModel{}); err != nil {
+	if err := db.AutoMigrate(&mysql.SymbolModel{}, &mysql.ExchangeModel{}); err != nil {
 		return nil, nil, err
 	}
 	redisCache, err := cache.NewRedisCache(c.Data.Redis)
@@ -89,8 +89,8 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		return nil, nil, err
 	}
 	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
-	symbolRepo := repository.NewSymbolRepository(db)
-	exchangeRepo := repository.NewExchangeRepository(db)
+	symbolRepo := mysql.NewSymbolRepository(db)
+	exchangeRepo := mysql.NewExchangeRepository(db)
 	appService := application.NewReferenceDataService(symbolRepo, exchangeRepo)
 
 	// Downstream Clients

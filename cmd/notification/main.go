@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	pb "github.com/wyfcoding/financialtrading/goapi/notification/v1"
 	"github.com/wyfcoding/financialtrading/internal/notification/application"
-	"github.com/wyfcoding/financialtrading/internal/notification/infrastructure/repository"
+	"github.com/wyfcoding/financialtrading/internal/notification/infrastructure/persistence/mysql"
 	"github.com/wyfcoding/financialtrading/internal/notification/infrastructure/sender"
 	grpchandler "github.com/wyfcoding/financialtrading/internal/notification/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialtrading/internal/notification/interfaces/http"
@@ -34,7 +34,7 @@ type AppContext struct {
 
 // ServiceClients 包含所有下游服务的 gRPC 客户端连接。
 type ServiceClients struct {
-	// No downstream dependencies (uses external senders)
+	// No dependencies detected
 }
 
 // BootstrapName 服务名称常量。
@@ -82,9 +82,6 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := db.AutoMigrate(&repository.NotificationModel{}); err != nil {
-		return nil, nil, err
-	}
 	redisCache, err := cache.NewRedisCache(c.Data.Redis)
 	if err != nil {
 		return nil, nil, err
@@ -92,7 +89,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
 	emailSender := sender.NewMockEmailSender()
 	smsSender := sender.NewMockSMSSender()
-	repo := repository.NewNotificationRepository(db)
+	repo := mysql.NewNotificationRepository(db)
 	appService := application.NewNotificationService(repo, emailSender, smsSender)
 
 	// Downstream Clients

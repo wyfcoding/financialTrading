@@ -1,13 +1,11 @@
-{{- if .Values.podDisruptionBudget.enabled }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "marketdata-service.fullname" . }}
+  name: { include "matchingengine.fullname" . }
   labels:
-    {{- include "marketdata-service.labels" . | nindent 4 }}
+    {- include "matchingengine.labels" . | nindent 4 }
 spec:
-  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  minAvailable: 1
   selector:
     matchLabels:
-      {{- include "marketdata-service.selectorLabels" . | nindent 6 }}
-{{- end }}
+      {- include "matchingengine.selectorLabels" . | nindent 6 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/application"
 	"github.com/wyfcoding/pkg/logging"
 )
@@ -52,7 +53,9 @@ func (h *MonitoringAnalyticsHandler) RecordMetric(c *gin.Context) {
 		req.Timestamp = time.Now()
 	}
 
-	err := h.app.RecordMetric(c.Request.Context(), req.Name, req.Value, req.Tags, req.Timestamp)
+	val := decimal.NewFromFloat(req.Value)
+	ts := req.Timestamp.UnixMilli()
+	err := h.app.RecordMetric(c.Request.Context(), req.Name, val, req.Tags, ts)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to record metric", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -96,7 +99,7 @@ func (h *MonitoringAnalyticsHandler) GetMetrics(c *gin.Context) {
 		endTime = time.Now()
 	}
 
-	metrics, err := h.app.GetMetrics(c.Request.Context(), name, startTime, endTime)
+	metrics, err := h.app.GetMetrics(c.Request.Context(), name, startTime.UnixMilli(), endTime.UnixMilli())
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get metrics", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

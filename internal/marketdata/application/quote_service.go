@@ -99,7 +99,17 @@ func (qas *QuoteApplicationService) SaveQuote(ctx context.Context, symbol string
 	}
 
 	// 创建领域对象
-	quote := domain.NewQuote(symbol, bidPrice, askPrice, bidSize, askSize, lastPrice, lastSize, timestamp, source)
+	quote := &domain.Quote{
+		Symbol:    symbol,
+		BidPrice:  bidPrice,
+		AskPrice:  askPrice,
+		BidSize:   bidSize,
+		AskSize:   askSize,
+		LastPrice: lastPrice,
+		LastSize:  lastSize,
+		Timestamp: timestamp,
+		Source:    source,
+	}
 
 	// 保存到仓储
 	if err := qas.quoteRepo.Save(ctx, quote); err != nil {

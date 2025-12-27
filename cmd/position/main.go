@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	pb "github.com/wyfcoding/financialtrading/goapi/position/v1"
 	"github.com/wyfcoding/financialtrading/internal/position/application"
-	"github.com/wyfcoding/financialtrading/internal/position/infrastructure/repository"
+	"github.com/wyfcoding/financialtrading/internal/position/infrastructure/persistence/mysql"
 	grpchandler "github.com/wyfcoding/financialtrading/internal/position/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialtrading/internal/position/interfaces/http"
 	"github.com/wyfcoding/pkg/app"
@@ -33,9 +33,7 @@ type AppContext struct {
 
 // ServiceClients 包含所有下游服务的 gRPC 客户端连接。
 type ServiceClients struct {
-	Order      *grpc.ClientConn
-	MarketData *grpc.ClientConn
-	Risk       *grpc.ClientConn
+	// No dependencies detected
 }
 
 // BootstrapName 服务名称常量。
@@ -88,7 +86,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		return nil, nil, err
 	}
 	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
-	positionRepo := repository.NewPositionRepository(db)
+	positionRepo := mysql.NewPositionRepository(db)
 	appService := application.NewPositionApplicationService(positionRepo)
 
 	// Downstream Clients

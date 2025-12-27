@@ -98,7 +98,7 @@ func (h *GRPCHandler) GetRiskAlerts(ctx context.Context, req *pb.GetRiskAlertsRe
 	pbAlerts := make([]*pb.RiskAlert, 0, len(alerts))
 	for _, alert := range alerts {
 		pbAlerts = append(pbAlerts, &pb.RiskAlert{
-			AlertId:   alert.AlertID,
+			AlertId:   alert.ID,
 			AlertType: alert.AlertType,
 			Severity:  alert.Severity,
 			Message:   alert.Message,

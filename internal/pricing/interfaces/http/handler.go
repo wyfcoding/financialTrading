@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/pricing/application"
 	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
 	"github.com/wyfcoding/pkg/logging"
@@ -59,11 +60,11 @@ func (h *PricingHandler) GetOptionPrice(c *gin.Context) {
 	contract := domain.OptionContract{
 		Symbol:      req.Contract.Symbol,
 		Type:        domain.OptionType(req.Contract.Type),
-		StrikePrice: req.Contract.StrikePrice,
-		ExpiryDate:  req.Contract.ExpiryDate,
+		StrikePrice: decimal.NewFromFloat(req.Contract.StrikePrice),
+		ExpiryDate:  req.Contract.ExpiryDate.UnixMilli(),
 	}
 
-	price, err := h.app.GetOptionPrice(c.Request.Context(), contract, req.UnderlyingPrice, req.Volatility, req.RiskFreeRate)
+	price, err := h.app.GetOptionPrice(c.Request.Context(), contract, decimal.NewFromFloat(req.UnderlyingPrice), req.Volatility, req.RiskFreeRate)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to calculate option price", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -87,11 +88,11 @@ func (h *PricingHandler) GetGreeks(c *gin.Context) {
 	contract := domain.OptionContract{
 		Symbol:      req.Contract.Symbol,
 		Type:        domain.OptionType(req.Contract.Type),
-		StrikePrice: req.Contract.StrikePrice,
-		ExpiryDate:  req.Contract.ExpiryDate,
+		StrikePrice: decimal.NewFromFloat(req.Contract.StrikePrice),
+		ExpiryDate:  req.Contract.ExpiryDate.UnixMilli(),
 	}
 
-	greeks, err := h.app.GetGreeks(c.Request.Context(), contract, req.UnderlyingPrice, req.Volatility, req.RiskFreeRate)
+	greeks, err := h.app.GetGreeks(c.Request.Context(), contract, decimal.NewFromFloat(req.UnderlyingPrice), req.Volatility, req.RiskFreeRate)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to calculate Greeks", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

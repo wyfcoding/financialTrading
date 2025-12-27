@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/quant/domain"
 	"github.com/wyfcoding/pkg/logging"
 )
@@ -20,9 +21,6 @@ type QuantService struct {
 }
 
 // NewQuantService 创建量化应用服务实例
-// strategyRepo: 注入的策略仓储实现
-// backtestRepo: 注入的回测结果仓储实现
-// marketDataClient: 注入的市场数据客户端
 func NewQuantService(strategyRepo domain.StrategyRepository, backtestRepo domain.BacktestResultRepository, marketDataClient domain.MarketDataClient) *QuantService {
 	return &QuantService{
 		strategyRepo:     strategyRepo,
@@ -39,8 +37,6 @@ func (s *QuantService) CreateStrategy(ctx context.Context, name string, descript
 		Description: description,
 		Script:      script,
 		Status:      domain.StrategyStatusActive,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
 	}
 
 	if err := s.strategyRepo.Save(ctx, strategy); err != nil {
@@ -87,8 +83,11 @@ func (s *QuantService) RunBacktest(ctx context.Context, strategyID string, symbo
 		return "", fmt.Errorf("strategy not found: %s", strategyID)
 	}
 
+	startMilli := startTime.UnixMilli()
+	endMilli := endTime.UnixMilli()
+
 	// 2. 获取历史数据
-	prices, err := s.marketDataClient.GetHistoricalData(ctx, symbol, startTime, endTime)
+	prices, err := s.marketDataClient.GetHistoricalData(ctx, symbol, startMilli, endMilli)
 	if err != nil {
 		logging.Error(ctx, "Failed to get historical data",
 			"symbol", symbol,
@@ -100,13 +99,13 @@ func (s *QuantService) RunBacktest(ctx context.Context, strategyID string, symbo
 	}
 
 	// 3. 执行回测逻辑（简化版）
-	// 假设策略是：如果价格上涨就买入，下跌就卖出
-	// 这是一个非常简单的模拟
-	totalReturn := 0.0
+	totalReturn := decimal.Zero
 	if len(prices) > 1 {
 		startPrice := prices[0]
 		endPrice := prices[len(prices)-1]
-		totalReturn = (endPrice - startPrice) / startPrice * initialCapital
+		if !startPrice.IsZero() {
+			totalReturn = endPrice.Sub(startPrice).Div(startPrice).Mul(decimal.NewFromFloat(initialCapital))
+		}
 	}
 
 	// 4. 保存回测结果
@@ -114,14 +113,13 @@ func (s *QuantService) RunBacktest(ctx context.Context, strategyID string, symbo
 		ID:          uuid.New().String(),
 		StrategyID:  strategyID,
 		Symbol:      symbol,
-		StartTime:   startTime,
-		EndTime:     endTime,
+		StartTime:   startMilli,
+		EndTime:     endMilli,
 		TotalReturn: totalReturn,
-		MaxDrawdown: 0.1, // 模拟值
-		SharpeRatio: 1.5, // 模拟值
-		TotalTrades: 10,  // 模拟值
+		MaxDrawdown: decimal.NewFromFloat(0.1), // 模拟值
+		SharpeRatio: decimal.NewFromFloat(1.5), // 模拟值
+		TotalTrades: 10,                        // 模拟值
 		Status:      domain.BacktestStatusCompleted,
-		CreatedAt:   time.Now(),
 	}
 
 	if err := s.backtestRepo.Save(ctx, result); err != nil {
@@ -137,7 +135,7 @@ func (s *QuantService) RunBacktest(ctx context.Context, strategyID string, symbo
 		"backtest_id", result.ID,
 		"strategy_id", strategyID,
 		"symbol", symbol,
-		"total_return", totalReturn,
+		"total_return", totalReturn.String(),
 	)
 
 	return result.ID, nil

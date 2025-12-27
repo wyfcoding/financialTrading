@@ -4,6 +4,7 @@ package grpc
 import (
 	"context"
 
+	"github.com/shopspring/decimal"
 	pb "github.com/wyfcoding/financialtrading/goapi/marketmaking/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/application"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
@@ -27,7 +28,12 @@ func NewGRPCHandler(app *application.MarketMakingService) *GRPCHandler {
 // 处理 gRPC SetStrategy 请求
 func (h *GRPCHandler) SetStrategy(ctx context.Context, req *pb.SetStrategyRequest) (*pb.SetStrategyResponse, error) {
 	// 调用应用服务设置策略
-	id, err := h.app.SetStrategy(ctx, req.Symbol, req.Spread, req.MinOrderSize, req.MaxOrderSize, req.MaxPosition, req.Status)
+	id, err := h.app.SetStrategy(ctx, req.Symbol,
+		decimal.NewFromFloat(req.Spread),
+		decimal.NewFromFloat(req.MinOrderSize),
+		decimal.NewFromFloat(req.MaxOrderSize),
+		decimal.NewFromFloat(req.MaxPosition),
+		req.Status)
 	if err != nil {
 		return nil, err
 	}
@@ -69,12 +75,12 @@ func (h *GRPCHandler) GetPerformance(ctx context.Context, req *pb.GetPerformance
 
 func toProtoStrategy(s *domain.QuoteStrategy) *pb.QuoteStrategy {
 	return &pb.QuoteStrategy{
-		Id:           s.ID,
+		Id:           s.Symbol,
 		Symbol:       s.Symbol,
-		Spread:       s.Spread,
-		MinOrderSize: s.MinOrderSize,
-		MaxOrderSize: s.MaxOrderSize,
-		MaxPosition:  s.MaxPosition,
+		Spread:       s.Spread.InexactFloat64(),
+		MinOrderSize: s.MinOrderSize.InexactFloat64(),
+		MaxOrderSize: s.MaxOrderSize.InexactFloat64(),
+		MaxPosition:  s.MaxPosition.InexactFloat64(),
 		Status:       string(s.Status),
 		CreatedAt:    timestamppb.New(s.CreatedAt),
 		UpdatedAt:    timestamppb.New(s.UpdatedAt),
@@ -84,10 +90,10 @@ func toProtoStrategy(s *domain.QuoteStrategy) *pb.QuoteStrategy {
 func toProtoPerformance(p *domain.MarketMakingPerformance) *pb.MarketMakingPerformance {
 	return &pb.MarketMakingPerformance{
 		Symbol:      p.Symbol,
-		TotalPnl:    p.TotalPnL,
-		TotalVolume: p.TotalVolume,
+		TotalPnl:    p.TotalPnL.InexactFloat64(),
+		TotalVolume: p.TotalVolume.InexactFloat64(),
 		TotalTrades: int32(p.TotalTrades),
-		SharpeRatio: p.SharpeRatio,
+		SharpeRatio: p.SharpeRatio.InexactFloat64(),
 		StartTime:   timestamppb.New(p.StartTime),
 		EndTime:     timestamppb.New(p.EndTime),
 	}

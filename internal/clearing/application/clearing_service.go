@@ -76,9 +76,6 @@ func (cas *ClearingApplicationService) SettleTrade(ctx context.Context, req *Set
 	settlementID := fmt.Sprintf("SETTLE-%d", idgen.GenID())
 
 	// 4. 创建领域对象
-	// 这是业务逻辑的核心部分，在这里可以添加更复杂的领域规则，
-	// 例如检查账户余额、更新头寸、计算手续费等。
-	// 当前实现为简化版，直接创建清算完成的记录。
 	settlement := &domain.Settlement{
 		SettlementID:   settlementID,
 		TradeID:        req.TradeID,
@@ -87,9 +84,8 @@ func (cas *ClearingApplicationService) SettleTrade(ctx context.Context, req *Set
 		Symbol:         req.Symbol,
 		Quantity:       quantity,
 		Price:          price,
-		Status:         domain.SettlementStatusCompleted, // 假设立即完成
+		Status:         domain.SettlementStatusCompleted,
 		SettlementTime: time.Now(),
-		CreatedAt:      time.Now(),
 	}
 
 	// 5. 持久化领域对象

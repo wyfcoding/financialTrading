@@ -4,7 +4,7 @@ package api.reference_data.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/wyfcoding/financialTrading/go-api/reference-data/v1;referencedatav1";
+option go_package = "github.com/wyfcoding/financialTrading/goapi/reference-data/v1;referencedatav1";
 
 // 静态基础档案服务。
 service ReferenceDataService {

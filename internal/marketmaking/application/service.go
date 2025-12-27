@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
 	"github.com/wyfcoding/pkg/logging"
 )
@@ -40,20 +40,17 @@ func NewMarketMakingService(
 }
 
 // SetStrategy 设置做市策略
-func (s *MarketMakingService) SetStrategy(ctx context.Context, symbol string, spread, minOrderSize, maxOrderSize, maxPosition float64, status string) (string, error) {
+func (s *MarketMakingService) SetStrategy(ctx context.Context, symbol string, spread, minOrderSize, maxOrderSize, maxPosition decimal.Decimal, status string) (string, error) {
 	strategy := &domain.QuoteStrategy{
-		ID:           uuid.New().String(),
 		Symbol:       symbol,
 		Spread:       spread,
 		MinOrderSize: minOrderSize,
 		MaxOrderSize: maxOrderSize,
 		MaxPosition:  maxPosition,
 		Status:       domain.StrategyStatus(status),
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
 	}
 
-	if err := s.strategyRepo.Save(ctx, strategy); err != nil {
+	if err := s.strategyRepo.SaveStrategy(ctx, strategy); err != nil {
 		logging.Error(ctx, "Failed to save strategy",
 			"symbol", symbol,
 			"error", err,
@@ -71,12 +68,12 @@ func (s *MarketMakingService) SetStrategy(ctx context.Context, symbol string, sp
 		go s.runMarketMaking(symbol)
 	}
 
-	return strategy.ID, nil
+	return strategy.Symbol, nil
 }
 
 // GetStrategy 获取做市策略
 func (s *MarketMakingService) GetStrategy(ctx context.Context, symbol string) (*domain.QuoteStrategy, error) {
-	strategy, err := s.strategyRepo.GetBySymbol(ctx, symbol)
+	strategy, err := s.strategyRepo.GetStrategyBySymbol(ctx, symbol)
 	if err != nil {
 		logging.Error(ctx, "Failed to get strategy",
 			"symbol", symbol,
@@ -89,7 +86,7 @@ func (s *MarketMakingService) GetStrategy(ctx context.Context, symbol string) (*
 
 // GetPerformance 获取做市绩效
 func (s *MarketMakingService) GetPerformance(ctx context.Context, symbol string) (*domain.MarketMakingPerformance, error) {
-	performance, err := s.performanceRepo.GetBySymbol(ctx, symbol)
+	performance, err := s.performanceRepo.GetPerformanceBySymbol(ctx, symbol)
 	if err != nil {
 		logging.Error(ctx, "Failed to get performance",
 			"symbol", symbol,
@@ -109,14 +106,15 @@ func (s *MarketMakingService) runMarketMaking(symbol string) {
 	price, _ := s.marketDataClient.GetPrice(ctx, symbol)
 
 	// 2. 获取策略
-	strategy, _ := s.strategyRepo.GetBySymbol(ctx, symbol)
+	strategy, _ := s.strategyRepo.GetStrategyBySymbol(ctx, symbol)
 	if strategy == nil || strategy.Status != domain.StrategyStatusActive {
 		return
 	}
 
 	// 3. 计算买卖单价格
-	bidPrice := price * (1 - strategy.Spread/2)
-	askPrice := price * (1 + strategy.Spread/2)
+	halfSpread := strategy.Spread.Div(decimal.NewFromInt(2))
+	bidPrice := price.Mul(decimal.NewFromInt(1).Sub(halfSpread))
+	askPrice := price.Mul(decimal.NewFromInt(1).Add(halfSpread))
 	quantity := strategy.MinOrderSize
 
 	// 4. 下单
@@ -140,14 +138,14 @@ func (s *MarketMakingService) runMarketMaking(symbol string) {
 	// 5. 更新绩效（模拟）
 	perf := &domain.MarketMakingPerformance{
 		Symbol:      symbol,
-		TotalPnL:    100.0, // 模拟盈利
-		TotalVolume: quantity * 2,
+		TotalPnL:    decimal.NewFromFloat(100.0), // 模拟盈利
+		TotalVolume: quantity.Mul(decimal.NewFromInt(2)),
 		TotalTrades: 2,
-		SharpeRatio: 2.0,
+		SharpeRatio: decimal.NewFromFloat(2.0),
 		StartTime:   time.Now(),
 		EndTime:     time.Now(),
 	}
-	if err := s.performanceRepo.Save(ctx, perf); err != nil {
+	if err := s.performanceRepo.SavePerformance(ctx, perf); err != nil {
 		logging.Error(ctx, "Failed to save performance",
 			"symbol", symbol,
 			"error", err,

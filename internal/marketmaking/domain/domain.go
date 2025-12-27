@@ -1,10 +1,11 @@
-// 包 做市服务的领域模型
+// Package domain 做市服务的领域模型
 package domain
 
 import (
 	"context"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -17,50 +18,63 @@ const (
 )
 
 // QuoteStrategy 报价策略实体
-// 定义了针对特定交易对的做市参数
 type QuoteStrategy struct {
 	gorm.Model
-	ID           string         `gorm:"column:id;type:varchar(36);primaryKey" json:"id"`
-	Symbol       string         `gorm:"column:symbol;type:varchar(20);uniqueIndex;not null" json:"symbol"`
-	Spread       float64        `gorm:"column:spread;type:decimal(10,4);not null" json:"spread"`
-	MinOrderSize float64        `gorm:"column:min_order_size;type:decimal(20,8);not null" json:"min_order_size"`
-	MaxOrderSize float64        `gorm:"column:max_order_size;type:decimal(20,8);not null" json:"max_order_size"`
-	MaxPosition  float64        `gorm:"column:max_position;type:decimal(20,8);not null" json:"max_position"`
-	Status       StrategyStatus `gorm:"column:status;type:varchar(20);default:'ACTIVE'" json:"status"`
-	CreatedAt    time.Time      `gorm:"column:created_at;type:datetime;not null" json:"created_at"`
-	UpdatedAt    time.Time      `gorm:"column:updated_at;type:datetime" json:"updated_at"`
+	// Symbol 交易对符号
+	Symbol string `gorm:"column:symbol;type:varchar(20);uniqueIndex;not null" json:"symbol"`
+	// Spread 买卖价差
+	Spread decimal.Decimal `gorm:"column:spread;type:decimal(32,18);not null" json:"spread"`
+	// MinOrderSize 最小下单量
+	MinOrderSize decimal.Decimal `gorm:"column:min_order_size;type:decimal(32,18);not null" json:"min_order_size"`
+	// MaxOrderSize 最大下单量
+	MaxOrderSize decimal.Decimal `gorm:"column:max_order_size;type:decimal(32,18);not null" json:"max_order_size"`
+	// MaxPosition 最大持仓量
+	MaxPosition decimal.Decimal `gorm:"column:max_position;type:decimal(32,18);not null" json:"max_position"`
+	// Status 策略状态
+	Status StrategyStatus `gorm:"column:status;type:varchar(20);default:'ACTIVE'" json:"status"`
 }
 
 // MarketMakingPerformance 做市绩效实体
 type MarketMakingPerformance struct {
 	gorm.Model
-	Symbol      string    `gorm:"column:symbol;type:varchar(20);uniqueIndex;not null" json:"symbol"`
-	TotalPnL    float64   `gorm:"column:total_pnl;type:decimal(20,8);default:0" json:"total_pnl"`
-	TotalVolume float64   `gorm:"column:total_volume;type:decimal(20,8);default:0" json:"total_volume"`
-	TotalTrades int       `gorm:"column:total_trades;type:int;default:0" json:"total_trades"`
-	SharpeRatio float64   `gorm:"column:sharpe_ratio;type:decimal(10,4);default:0" json:"sharpe_ratio"`
-	StartTime   time.Time `gorm:"column:start_time;type:datetime" json:"start_time"`
-	EndTime     time.Time `gorm:"column:end_time;type:datetime" json:"end_time"`
+	// Symbol 交易对符号
+	Symbol string `gorm:"column:symbol;type:varchar(20);uniqueIndex;not null" json:"symbol"`
+	// TotalPnL 总盈亏
+	TotalPnL decimal.Decimal `gorm:"column:total_pnl;type:decimal(32,18);default:0" json:"total_pnl"`
+	// TotalVolume 总成交量
+	TotalVolume decimal.Decimal `gorm:"column:total_volume;type:decimal(32,18);default:0" json:"total_volume"`
+	// TotalTrades 总成交笔数
+	TotalTrades int64 `gorm:"column:total_trades;type:bigint;default:0" json:"total_trades"`
+	// SharpeRatio 夏普比率
+	SharpeRatio decimal.Decimal `gorm:"column:sharpe_ratio;type:decimal(32,18);default:0" json:"sharpe_ratio"`
+	// StartTime 开始时间
+	StartTime time.Time `gorm:"column:start_time;type:datetime" json:"start_time"`
+	// EndTime 结束时间
+	EndTime time.Time `gorm:"column:end_time;type:datetime" json:"end_time"`
 }
 
 // QuoteStrategyRepository 策略仓储接口
 type QuoteStrategyRepository interface {
-	Save(ctx context.Context, strategy *QuoteStrategy) error
-	GetBySymbol(ctx context.Context, symbol string) (*QuoteStrategy, error)
+	// SaveStrategy 保存或更新策略
+	SaveStrategy(ctx context.Context, strategy *QuoteStrategy) error
+	// GetStrategyBySymbol 根据交易对获取策略
+	GetStrategyBySymbol(ctx context.Context, symbol string) (*QuoteStrategy, error)
 }
 
 // PerformanceRepository 绩效仓储接口
 type PerformanceRepository interface {
-	Save(ctx context.Context, performance *MarketMakingPerformance) error
-	GetBySymbol(ctx context.Context, symbol string) (*MarketMakingPerformance, error)
+	// SavePerformance 保存或更新绩效数据
+	SavePerformance(ctx context.Context, performance *MarketMakingPerformance) error
+	// GetPerformanceBySymbol 根据交易对获取绩效数据
+	GetPerformanceBySymbol(ctx context.Context, symbol string) (*MarketMakingPerformance, error)
 }
 
 // OrderClient 订单服务客户端接口
 type OrderClient interface {
-	PlaceOrder(ctx context.Context, symbol string, side string, price, quantity float64) (string, error)
+	PlaceOrder(ctx context.Context, symbol string, side string, price, quantity decimal.Decimal) (string, error)
 }
 
 // MarketDataClient 市场数据客户端接口
 type MarketDataClient interface {
-	GetPrice(ctx context.Context, symbol string) (float64, error)
+	GetPrice(ctx context.Context, symbol string) (decimal.Decimal, error)
 }

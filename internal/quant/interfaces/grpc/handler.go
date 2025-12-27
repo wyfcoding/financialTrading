@@ -3,6 +3,7 @@ package grpc
 
 import (
 	"context"
+	"time"
 
 	pb "github.com/wyfcoding/financialtrading/goapi/quant/v1"
 	"github.com/wyfcoding/financialtrading/internal/quant/application"
@@ -92,15 +93,19 @@ func toProtoStrategy(s *domain.Strategy) *pb.Strategy {
 }
 
 func toProtoBacktestResult(r *domain.BacktestResult) *pb.BacktestResult {
+	tr, _ := r.TotalReturn.Float64()
+	md, _ := r.MaxDrawdown.Float64()
+	sr, _ := r.SharpeRatio.Float64()
+
 	return &pb.BacktestResult{
 		Id:          r.ID,
 		StrategyId:  r.StrategyID,
 		Symbol:      r.Symbol,
-		StartTime:   timestamppb.New(r.StartTime),
-		EndTime:     timestamppb.New(r.EndTime),
-		TotalReturn: r.TotalReturn,
-		MaxDrawdown: r.MaxDrawdown,
-		SharpeRatio: r.SharpeRatio,
+		StartTime:   timestamppb.New(time.UnixMilli(r.StartTime)),
+		EndTime:     timestamppb.New(time.UnixMilli(r.EndTime)),
+		TotalReturn: tr,
+		MaxDrawdown: md,
+		SharpeRatio: sr,
 		TotalTrades: int32(r.TotalTrades),
 		Status:      string(r.Status),
 		CreatedAt:   timestamppb.New(r.CreatedAt),

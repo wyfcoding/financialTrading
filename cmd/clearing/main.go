@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	pb "github.com/wyfcoding/financialtrading/goapi/clearing/v1"
 	"github.com/wyfcoding/financialtrading/internal/clearing/application"
-	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/repository"
+	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/persistence/mysql"
 	grpchandler "github.com/wyfcoding/financialtrading/internal/clearing/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialtrading/internal/clearing/interfaces/http"
 	"github.com/wyfcoding/pkg/app"
@@ -33,10 +33,7 @@ type AppContext struct {
 
 // ServiceClients 包含所有下游服务的 gRPC 客户端连接。
 type ServiceClients struct {
-	Account  *grpc.ClientConn
-	Order    *grpc.ClientConn
-	Position *grpc.ClientConn
-	Risk     *grpc.ClientConn
+	// No dependencies detected
 }
 
 // BootstrapName 服务名称常量。
@@ -89,8 +86,8 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		return nil, nil, err
 	}
 	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
-	settlementRepo := repository.NewSettlementRepository(db)
-	eodRepo := repository.NewEODClearingRepository(db)
+	settlementRepo := mysql.NewSettlementRepository(db)
+	eodRepo := mysql.NewEODClearingRepository(db)
 	appService := application.NewClearingApplicationService(settlementRepo, eodRepo)
 
 	// Downstream Clients

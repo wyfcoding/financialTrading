@@ -9,8 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	pb "github.com/wyfcoding/financialtrading/goapi/marketsimulation/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/application"
+	"github.com/wyfcoding/financialtrading/internal/marketsimulation/infrastructure/persistence/mysql"
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/infrastructure/publisher"
-	"github.com/wyfcoding/financialtrading/internal/marketsimulation/infrastructure/repository"
 	grpchandler "github.com/wyfcoding/financialtrading/internal/marketsimulation/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialtrading/internal/marketsimulation/interfaces/http"
 	"github.com/wyfcoding/pkg/app"
@@ -34,8 +34,7 @@ type AppContext struct {
 
 // ServiceClients 包含所有下游服务的 gRPC 客户端连接。
 type ServiceClients struct {
-	Order      *grpc.ClientConn
-	MarketData *grpc.ClientConn
+	// No dependencies detected
 }
 
 // BootstrapName 服务名称常量。
@@ -83,16 +82,13 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := db.AutoMigrate(&repository.SimulationScenarioModel{}); err != nil {
-		return nil, nil, err
-	}
 	redisCache, err := cache.NewRedisCache(c.Data.Redis)
 	if err != nil {
 		return nil, nil, err
 	}
 	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
 	marketDataPublisher := publisher.NewMockMarketDataPublisher()
-	repo := repository.NewSimulationScenarioRepository(db)
+	repo := mysql.NewSimulationScenarioRepository(db)
 	appService := application.NewMarketSimulationService(repo, marketDataPublisher)
 
 	// Downstream Clients

@@ -4,7 +4,7 @@ package api.quant.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/wyfcoding/financialTrading/go-api/quant/v1;quantv1";
+option go_package = "github.com/wyfcoding/financialTrading/goapi/quant/v1;quantv1";
 
 // 量化研发与策略管理。
 service QuantService {

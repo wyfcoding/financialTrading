@@ -1,57 +1,34 @@
-// 包 市场数据服务的领域模型、实体、聚合、值对象、领域服务、仓储接口
+// Package domain 市场数据服务的领域模型、实体、聚合、值对象、领域服务、仓储接口
 package domain
 
 import (
 	"context"
 
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 )
 
 // Quote 行情数据实体
-// 代表某个交易对在某个时刻的最新行情信息
 type Quote struct {
-	// 交易对符号（如 BTC/USDT）
-	Symbol string
-	// 买价
-	BidPrice decimal.Decimal
-	// 卖价
-	AskPrice decimal.Decimal
-	// 买量
-	BidSize decimal.Decimal
-	// 卖量
-	AskSize decimal.Decimal
-	// 最后成交价
-	LastPrice decimal.Decimal
-	// 最后成交量
-	LastSize decimal.Decimal
-	// 时间戳（毫秒）
-	Timestamp int64
-	// 数据来源（如 exchange_name）
-	Source string
-}
-
-// NewQuote 创建行情数据
-// symbol: 交易对符号
-// bidPrice: 买价
-// askPrice: 卖价
-// bidSize: 买量
-// askSize: 卖量
-// lastPrice: 最后成交价
-// lastSize: 最后成交量
-// timestamp: 时间戳
-// source: 数据来源
-func NewQuote(symbol string, bidPrice, askPrice, bidSize, askSize, lastPrice, lastSize decimal.Decimal, timestamp int64, source string) *Quote {
-	return &Quote{
-		Symbol:    symbol,
-		BidPrice:  bidPrice,
-		AskPrice:  askPrice,
-		BidSize:   bidSize,
-		AskSize:   askSize,
-		LastPrice: lastPrice,
-		LastSize:  lastSize,
-		Timestamp: timestamp,
-		Source:    source,
-	}
+	gorm.Model
+	// Symbol 交易对符号（如 BTC/USDT）
+	Symbol string `gorm:"column:symbol;type:varchar(20);index;not null"`
+	// BidPrice 买价
+	BidPrice decimal.Decimal `gorm:"column:bid_price;type:decimal(32,18);not null"`
+	// AskPrice 卖价
+	AskPrice decimal.Decimal `gorm:"column:ask_price;type:decimal(32,18);not null"`
+	// BidSize 买量
+	BidSize decimal.Decimal `gorm:"column:bid_size;type:decimal(32,18);not null"`
+	// AskSize 卖量
+	AskSize decimal.Decimal `gorm:"column:ask_size;type:decimal(32,18);not null"`
+	// LastPrice 最后成交价
+	LastPrice decimal.Decimal `gorm:"column:last_price;type:decimal(32,18);not null"`
+	// LastSize 最后成交量
+	LastSize decimal.Decimal `gorm:"column:last_size;type:decimal(32,18);not null"`
+	// Timestamp 时间戳（毫秒）
+	Timestamp int64 `gorm:"column:timestamp;type:bigint;not null"`
+	// Source 数据来源
+	Source string `gorm:"column:source;type:varchar(50)"`
 }
 
 // GetSpread 获取买卖价差
@@ -65,49 +42,34 @@ func (q *Quote) GetMidPrice() decimal.Decimal {
 }
 
 // Kline K 线数据实体
-// 代表某个交易对在某个时间周期内的 OHLCV 数据
 type Kline struct {
-	// 交易对符号
-	Symbol string
-	// 时间周期（1m, 5m, 15m, 1h, 4h, 1d）
-	Interval string
-	// 开盘时间（毫秒）
-	OpenTime int64
-	// 开盘价
-	Open decimal.Decimal
-	// 最高价
-	High decimal.Decimal
-	// 最低价
-	Low decimal.Decimal
-	// 收盘价
-	Close decimal.Decimal
-	// 成交量
-	Volume decimal.Decimal
-	// 收盘时间（毫秒）
-	CloseTime int64
-	// 成交额
-	QuoteAssetVolume decimal.Decimal
-	// 成交笔数
-	TradeCount int64
-	// 主动买入成交量
-	TakerBuyBaseAssetVolume decimal.Decimal
-	// 主动买入成交额
-	TakerBuyQuoteAssetVolume decimal.Decimal
-}
-
-// NewKline 创建 K 线数据
-func NewKline(symbol, interval string, openTime int64, open, high, low, close, volume decimal.Decimal, closeTime int64) *Kline {
-	return &Kline{
-		Symbol:    symbol,
-		Interval:  interval,
-		OpenTime:  openTime,
-		Open:      open,
-		High:      high,
-		Low:       low,
-		Close:     close,
-		Volume:    volume,
-		CloseTime: closeTime,
-	}
+	gorm.Model
+	// Symbol 交易对符号
+	Symbol string `gorm:"column:symbol;type:varchar(20);index;not null"`
+	// Interval 时间周期
+	Interval string `gorm:"column:interval;type:varchar(10);not null"`
+	// OpenTime 开盘时间
+	OpenTime int64 `gorm:"column:open_time;type:bigint;not null"`
+	// Open 开盘价
+	Open decimal.Decimal `gorm:"column:open_price;type:decimal(32,18);not null"`
+	// High 最高价
+	High decimal.Decimal `gorm:"column:high_price;type:decimal(32,18);not null"`
+	// Low 最低价
+	Low decimal.Decimal `gorm:"column:low_price;type:decimal(32,18);not null"`
+	// Close 收盘价
+	Close decimal.Decimal `gorm:"column:close_price;type:decimal(32,18);not null"`
+	// Volume 成交量
+	Volume decimal.Decimal `gorm:"column:volume;type:decimal(32,18);not null"`
+	// CloseTime 收盘时间
+	CloseTime int64 `gorm:"column:close_time;type:bigint;not null"`
+	// QuoteAssetVolume 成交额
+	QuoteAssetVolume decimal.Decimal `gorm:"column:quote_asset_volume;type:decimal(32,18);not null"`
+	// TradeCount 成交笔数
+	TradeCount int64 `gorm:"column:trade_count;type:bigint;not null"`
+	// TakerBuyBaseAssetVolume 主动买入成交量
+	TakerBuyBaseAssetVolume decimal.Decimal `gorm:"column:taker_buy_base_volume;type:decimal(32,18);not null"`
+	// TakerBuyQuoteAssetVolume 主动买入成交额
+	TakerBuyQuoteAssetVolume decimal.Decimal `gorm:"column:taker_buy_quote_volume;type:decimal(32,18);not null"`
 }
 
 // GetChange 获取涨跌幅（百分比）
@@ -118,102 +80,23 @@ func (k *Kline) GetChange() decimal.Decimal {
 	return k.Close.Sub(k.Open).Div(k.Open).Mul(decimal.NewFromInt(100))
 }
 
-// OrderBook 订单簿实体
-// 代表某个交易对的当前订单簿快照
-type OrderBook struct {
-	// 交易对符号
-	Symbol string
-	// 买单列表（按价格从高到低）
-	Bids []*OrderBookLevel
-	// 卖单列表（按价格从低到高）
-	Asks []*OrderBookLevel
-	// 时间戳（毫秒）
-	Timestamp int64
-	// 数据来源
-	Source string
-}
-
-// OrderBookLevel 订单簿层级
-type OrderBookLevel struct {
-	// 价格
-	Price decimal.Decimal
-	// 数量
-	Quantity decimal.Decimal
-}
-
-// NewOrderBook 创建订单簿
-func NewOrderBook(symbol string, timestamp int64, source string) *OrderBook {
-	return &OrderBook{
-		Symbol:    symbol,
-		Bids:      make([]*OrderBookLevel, 0),
-		Asks:      make([]*OrderBookLevel, 0),
-		Timestamp: timestamp,
-		Source:    source,
-	}
-}
-
-// AddBid 添加买单层级
-func (ob *OrderBook) AddBid(price, quantity decimal.Decimal) {
-	ob.Bids = append(ob.Bids, &OrderBookLevel{
-		Price:    price,
-		Quantity: quantity,
-	})
-}
-
-// AddAsk 添加卖单层级
-func (ob *OrderBook) AddAsk(price, quantity decimal.Decimal) {
-	ob.Asks = append(ob.Asks, &OrderBookLevel{
-		Price:    price,
-		Quantity: quantity,
-	})
-}
-
-// GetBestBid 获取最优买价
-func (ob *OrderBook) GetBestBid() *OrderBookLevel {
-	if len(ob.Bids) == 0 {
-		return nil
-	}
-	return ob.Bids[0]
-}
-
-// GetBestAsk 获取最优卖价
-func (ob *OrderBook) GetBestAsk() *OrderBookLevel {
-	if len(ob.Asks) == 0 {
-		return nil
-	}
-	return ob.Asks[0]
-}
-
 // Trade 交易记录实体
-// 代表某个交易对的一笔成交记录
 type Trade struct {
-	// 交易 ID
-	TradeID string
-	// 交易对符号
-	Symbol string
-	// 成交价格
-	Price decimal.Decimal
-	// 成交数量
-	Quantity decimal.Decimal
-	// 买卖方向（BUY 或 SELL）
-	Side string
-	// 时间戳（毫秒）
-	Timestamp int64
-	// 数据来源
-	Source string
-}
-
-// NewTrade 创建交易记录
-func NewTrade(tradeID, symbol string, price, quantity decimal.Decimal, side string, timestamp int64, source string) *Trade {
-	return &Trade{
-		TradeID:   tradeID,
-		Symbol:    symbol,
-		Price:     price,
-		Quantity:  quantity,
-		Side:      side,
-		Timestamp: timestamp,
-		Source:    source,
-	}
+	gorm.Model
+	// TradeID 交易 ID (外部)
+	TradeID string `gorm:"column:trade_id;type:varchar(32);uniqueIndex;not null"`
+	// Symbol 交易对符号
+	Symbol string `gorm:"column:symbol;type:varchar(20);index;not null"`
+	// Price 成交价格
+	Price decimal.Decimal `gorm:"column:price;type:decimal(32,18);not null"`
+	// Quantity 成交数量
+	Quantity decimal.Decimal `gorm:"column:quantity;type:decimal(32,18);not null"`
+	// Side 买卖方向
+	Side string `gorm:"column:side;type:varchar(10);not null"`
+	// Timestamp 时间戳
+	Timestamp int64 `gorm:"column:timestamp;type:bigint;not null"`
+	// Source 数据来源
+	Source string `gorm:"column:source;type:varchar(50)"`
 }
 
 // GetTradeValue 获取交易额
@@ -221,61 +104,47 @@ func (t *Trade) GetTradeValue() decimal.Decimal {
 	return t.Price.Mul(t.Quantity)
 }
 
+// OrderBookLevel 订单簿层级 (值对象)
+type OrderBookLevel struct {
+	Price    decimal.Decimal
+	Quantity decimal.Decimal
+}
+
+// OrderBook 订单簿实体
+type OrderBook struct {
+	Symbol    string
+	Bids      []*OrderBookLevel
+	Asks      []*OrderBookLevel
+	Timestamp int64
+	Source    string
+}
+
 // QuoteRepository 行情数据仓储接口
 type QuoteRepository interface {
-	// 保存行情数据
 	Save(ctx context.Context, quote *Quote) error
-	// 获取最新行情
 	GetLatest(ctx context.Context, symbol string) (*Quote, error)
-	// 获取历史行情
 	GetHistory(ctx context.Context, symbol string, startTime, endTime int64) ([]*Quote, error)
-	// 删除过期行情
 	DeleteExpired(ctx context.Context, beforeTime int64) error
 }
 
 // KlineRepository K 线数据仓储接口
 type KlineRepository interface {
-	// 保存 K 线数据
 	Save(ctx context.Context, kline *Kline) error
-	// 获取 K 线数据
 	Get(ctx context.Context, symbol, interval string, startTime, endTime int64) ([]*Kline, error)
-	// 获取最新 K 线
 	GetLatest(ctx context.Context, symbol, interval string, limit int) ([]*Kline, error)
-	// 删除过期 K 线
-	DeleteExpired(ctx context.Context, beforeTime int64) error
-}
-
-// OrderBookRepository 订单簿仓储接口
-type OrderBookRepository interface {
-	// 保存订单簿快照
-	Save(ctx context.Context, orderBook *OrderBook) error
-	// 获取最新订单簿
-	GetLatest(ctx context.Context, symbol string) (*OrderBook, error)
-	// 获取历史订单簿
-	GetHistory(ctx context.Context, symbol string, startTime, endTime int64) ([]*OrderBook, error)
-	// 删除过期订单簿
 	DeleteExpired(ctx context.Context, beforeTime int64) error
 }
 
 // TradeRepository 交易记录仓储接口
 type TradeRepository interface {
-	// 保存交易记录
 	Save(ctx context.Context, trade *Trade) error
-	// 获取交易历史
 	GetHistory(ctx context.Context, symbol string, startTime, endTime int64, limit int) ([]*Trade, error)
-	// 获取最新交易
 	GetLatest(ctx context.Context, symbol string, limit int) ([]*Trade, error)
-	// 删除过期交易记录
 	DeleteExpired(ctx context.Context, beforeTime int64) error
 }
 
-// MarketDataService 市场数据领域服务
-// 提供市场数据相关的业务逻辑
-type MarketDataService interface {
-	// 计算技术指标（如 MA、RSI 等）
-	CalculateTechnicalIndicators(klines []*Kline) map[string]any
-	// 检测异常行情
-	DetectAnomalies(quote *Quote, historicalQuotes []*Quote) bool
-	// 计算波动率
-	CalculateVolatility(klines []*Kline) decimal.Decimal
+// OrderBookRepository 订单簿仓储接口 (内存或缓存实现)
+type OrderBookRepository interface {
+	Save(ctx context.Context, orderBook *OrderBook) error
+	GetLatest(ctx context.Context, symbol string) (*OrderBook, error)
 }

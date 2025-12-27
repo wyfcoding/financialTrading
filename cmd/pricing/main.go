@@ -8,13 +8,16 @@ import (
 	pb "github.com/wyfcoding/financialtrading/goapi/pricing/v1"
 	"github.com/wyfcoding/financialtrading/internal/pricing/application"
 	"github.com/wyfcoding/financialtrading/internal/pricing/infrastructure/client"
+	"github.com/wyfcoding/financialtrading/internal/pricing/infrastructure/persistence/mysql"
 	grpchandler "github.com/wyfcoding/financialtrading/internal/pricing/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialtrading/internal/pricing/interfaces/http"
 	"github.com/wyfcoding/pkg/app"
 	"github.com/wyfcoding/pkg/cache"
 	configpkg "github.com/wyfcoding/pkg/config"
+	"github.com/wyfcoding/pkg/databases"
 	"github.com/wyfcoding/pkg/grpcclient"
 	"github.com/wyfcoding/pkg/limiter"
+	"github.com/wyfcoding/pkg/logging"
 	"github.com/wyfcoding/pkg/metrics"
 	"github.com/wyfcoding/pkg/middleware"
 	"google.golang.org/grpc"
@@ -30,7 +33,7 @@ type AppContext struct {
 
 // ServiceClients 包含所有下游服务的 gRPC 客户端连接。
 type ServiceClients struct {
-	MarketData *grpc.ClientConn
+	MarketData *grpc.ClientConn `service:"marketdata"`
 }
 
 // BootstrapName 服务名称常量。
@@ -74,6 +77,17 @@ func registerGin(e *gin.Engine, srv any) {
 func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	c := cfg.(*configpkg.Config)
 	slog.Info("initializing service dependencies...")
+
+	db, err := databases.NewDB(c.Data.Database, logging.Default())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Auto migrate standardized entities
+	if err := db.AutoMigrate(&mysql.PricingResultModel{}); err != nil {
+		return nil, nil, err
+	}
+
 	redisCache, err := cache.NewRedisCache(c.Data.Redis)
 	if err != nil {
 		return nil, nil, err
@@ -84,15 +98,23 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	clients := &ServiceClients{}
 	clientCleanup, err := grpcclient.InitClients(c.Services, clients)
 	if err != nil {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
 		redisCache.Close()
 		return nil, nil, err
 	}
 
 	marketDataClient := client.NewMarketDataClientFromConn(clients.MarketData)
-	appService := application.NewPricingService(marketDataClient)
+	pricingRepo := mysql.NewPricingRepository(db)
+	appService := application.NewPricingService(marketDataClient, pricingRepo)
+
 	cleanup := func() {
 		slog.Info("cleaning up resources...")
 		clientCleanup()
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
 		redisCache.Close()
 	}
 	return &AppContext{

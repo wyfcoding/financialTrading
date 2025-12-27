@@ -35,14 +35,13 @@ func NewNotificationService(repo domain.NotificationRepository, emailSender doma
 func (s *NotificationService) SendNotification(ctx context.Context, userID string, notificationType string, subject string, content string, target string) (string, error) {
 	// 1. 创建通知实体
 	notification := &domain.Notification{
-		ID:        uuid.New().String(),
-		UserID:    userID,
-		Type:      domain.NotificationType(notificationType),
-		Subject:   subject,
-		Content:   content,
-		Target:    target,
-		Status:    domain.NotificationStatusPending,
-		CreatedAt: time.Now(),
+		NotificationID: uuid.New().String(),
+		UserID:         userID,
+		Type:           domain.NotificationType(notificationType),
+		Subject:        subject,
+		Content:        content,
+		Target:         target,
+		Status:         domain.NotificationStatusPending,
 	}
 
 	// 2. 保存到数据库
@@ -75,33 +74,26 @@ func (s *NotificationService) SendNotification(ctx context.Context, userID strin
 		)
 	} else {
 		notification.Status = domain.NotificationStatusSent
-		notification.SentAt = time.Now()
+		now := time.Now()
+		notification.SentAt = &now
 		logging.Info(ctx, "Notification sent successfully",
-			"notification_id", notification.ID,
+			"notification_id", notification.NotificationID,
 			"type", notificationType,
 		)
 	}
 
-	// 再次保存更新状态
-	if err := s.repo.Save(ctx, notification); err != nil {
-		logging.Error(ctx, "Failed to update notification status",
-			"notification_id", notification.ID,
-			"error", err,
-		)
-	}
-
-	return notification.ID, nil
+	return notification.NotificationID, nil
 }
 
 // GetNotificationHistory 获取通知历史
-func (s *NotificationService) GetNotificationHistory(ctx context.Context, userID string, limit int, offset int) ([]*domain.Notification, error) {
-	notifications, err := s.repo.ListByUserID(ctx, userID, limit, offset)
+func (s *NotificationService) GetNotificationHistory(ctx context.Context, userID string, limit int, offset int) ([]*domain.Notification, int64, error) {
+	notifications, total, err := s.repo.ListByUserID(ctx, userID, limit, offset)
 	if err != nil {
 		logging.Error(ctx, "Failed to get notification history",
 			"user_id", userID,
 			"error", err,
 		)
-		return nil, fmt.Errorf("failed to get notification history: %w", err)
+		return nil, 0, fmt.Errorf("failed to get notification history: %w", err)
 	}
-	return notifications, nil
+	return notifications, total, nil
 }

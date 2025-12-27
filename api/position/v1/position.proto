@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package api.position.v1;
 
-option go_package = "github.com/wyfcoding/financialTrading/go-api/position/v1;positionv1";
+option go_package = "github.com/wyfcoding/financialTrading/goapi/position/v1;positionv1";
 
 // 持仓风险管理。
 service PositionService {

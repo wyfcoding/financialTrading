@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/shopspring/decimal"
 	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
 	"github.com/wyfcoding/pkg/grpcclient"
@@ -36,12 +37,12 @@ func NewOrderClientFromConn(conn *grpc.ClientConn) domain.OrderClient {
 }
 
 // PlaceOrder 下单
-func (c *OrderClientImpl) PlaceOrder(ctx context.Context, symbol string, side string, price, quantity float64) (string, error) {
+func (c *OrderClientImpl) PlaceOrder(ctx context.Context, symbol string, side string, price, quantity decimal.Decimal) (string, error) {
 	req := &orderv1.CreateOrderRequest{
 		Symbol:    symbol,
 		Side:      side,
-		Price:     fmt.Sprintf("%f", price),
-		Quantity:  fmt.Sprintf("%f", quantity),
+		Price:     price.String(),
+		Quantity:  quantity.String(),
 		OrderType: "LIMIT", // 默认限价单
 		// TimeInForce: "GTC",
 	}

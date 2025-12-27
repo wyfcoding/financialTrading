@@ -1,193 +1,72 @@
-# PricingService Helm values
-# 用于配置 Kubernetes 部署参数
+replicaCount: 1
 
-# 副本数
-replicaCount: 3
-
-# 镜像配置
 image:
-  repository: financial-exchange/pricing-service
+  repository: pricing
   pullPolicy: IfNotPresent
-  tag: "1.0.0"
+  tag: "latest"
 
-# 镜像拉取密钥
 imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
 
-# 服务账户
 serviceAccount:
   create: true
   annotations: {}
   name: ""
 
-# Pod 注解
-podAnnotations:
-  prometheus.io/scrape: "true"
-  prometheus.io/port: "9090"
-  prometheus.io/path: "/metrics"
+podAnnotations: {}
 
-# Pod 安全上下文
-podSecurityContext:
-  runAsNonRoot: true
-  runAsUser: 1000
-  fsGroup: 1000
+podSecurityContext: {}
+  # fsGroup: 2000
 
-# 容器安全上下文
-securityContext:
-  allowPrivilegeEscalation: false
-  capabilities:
-    drop:
-      - ALL
-  readOnlyRootFilesystem: true
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
 
-# 服务配置
 service:
   type: ClusterIP
-  http:
-    port: 8080
-    targetPort: 8080
-  grpc:
-    port: 50051
-    targetPort: 50051
+  httpPort: 8080
+  grpcPort: 9090
 
-# Ingress 配置
 ingress:
-  enabled: true
-  className: "nginx"
-  annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  enabled: false
+  className: ""
+  annotations: {}
   hosts:
-    - host: pricing.trading-system.local
+    - host: pricing.local
       paths:
         - path: /
-          pathType: Prefix
-  tls:
-    - secretName: pricing-tls
-      hosts:
-        - pricing.trading-system.local
+          pathType: ImplementationSpecific
+  tls: []
 
-# 资源限制
-resources:
+resources: 
   limits:
-    cpu: 1000m
-    memory: 1Gi
-  requests:
     cpu: 500m
     memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
 
-# 自动扩展
 autoscaling:
-  enabled: true
-  minReplicas: 3
+  enabled: false
+  minReplicas: 1
   maxReplicas: 10
   targetCPUUtilizationPercentage: 80
-  targetMemoryUtilizationPercentage: 80
 
-# 节点选择器
 nodeSelector: {}
 
-# 容忍度
 tolerations: []
 
-# 亲和性
-affinity:
-  podAntiAffinity:
-    preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchExpressions:
-              - key: app
-                operator: In
-                values:
-                  - pricing-service
-          topologyKey: kubernetes.io/hostname
+affinity: {}
 
-# 存活探针
-livenessProbe:
-  httpGet:
-    path: /health
-    port: 8080
-  initialDelaySeconds: 30
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
-
-# 就绪探针
-readinessProbe:
-  httpGet:
-    path: /health
-    port: 8080
-  initialDelaySeconds: 10
-  periodSeconds: 5
-  timeoutSeconds: 3
-  failureThreshold: 3
-
-# 启动探针
-startupProbe:
-  httpGet:
-    path: /health
-    port: 8080
-  initialDelaySeconds: 0
-  periodSeconds: 10
-  timeoutSeconds: 3
-  failureThreshold: 30
-
-# 环境变量
 env:
+  - name: ECOMMERCE_SERVER_HTTP_PORT
+    value: "8080"
+  - name: ECOMMERCE_SERVER_GRPC_PORT
+    value: "9090"
   - name: APP_ENVIRONMENT
     value: "prod"
-  - name: APP_LOG_LEVEL
-    value: "info"
-
-# 配置文件
-config:
-  service_name: "pricing-service"
-  version: "1.0.0"
-  environment: "prod"
-  http:
-    host: "0.0.0.0"
-    port: 8080
-  grpc:
-    host: "0.0.0.0"
-    port: 50051
-  database:
-    driver: "mysql"
-    max_open_conns: 25
-    max_idle_conns: 5
-  redis:
-    host: "redis-service"
-    port: 6379
-  kafka:
-    brokers:
-      - "kafka-0.kafka-headless:9092"
-      - "kafka-1.kafka-headless:9092"
-      - "kafka-2.kafka-headless:9092"
-
-# Pod 中断预算
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 2
-
-# 网络策略
-networkPolicy:
-  enabled: true
-  ingress:
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              name: trading-system
-      ports:
-        - protocol: TCP
-          port: 8080
-        - protocol: TCP
-          port: 50051
-  egress:
-    - to:
-        - namespaceSelector: {}
-      ports:
-        - protocol: TCP
-          port: 3306  # MySQL
-        - protocol: TCP
-          port: 6379  # Redis
-        - protocol: TCP
-          port: 9092  # Kafka

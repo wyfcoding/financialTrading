@@ -3,6 +3,7 @@ package publisher
 import (
 	"context"
 
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/domain"
 	"github.com/wyfcoding/pkg/logging"
 )
@@ -16,11 +17,11 @@ func NewMockMarketDataPublisher() domain.MarketDataPublisher {
 }
 
 // Publish 发布市场数据（模拟实现）
-func (p *MockMarketDataPublisher) Publish(ctx context.Context, symbol string, price float64) error {
+func (p *MockMarketDataPublisher) Publish(ctx context.Context, symbol string, price decimal.Decimal) error {
 	logging.Info(ctx, "Publishing market data",
 		"publisher", "MockMarketDataPublisher",
 		"symbol", symbol,
-		"price", price,
+		"price", price.String(),
 	)
 	return nil
 }

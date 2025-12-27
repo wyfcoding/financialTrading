@@ -1,4 +1,4 @@
-// 包 通知服务的领域模型
+// Package domain 通知服务的领域模型
 package domain
 
 import (
@@ -29,23 +29,34 @@ const (
 // Notification 通知实体
 type Notification struct {
 	gorm.Model
-	ID           string             `gorm:"column:id;type:varchar(36);primaryKey" json:"id"`
-	UserID       string             `gorm:"column:user_id;type:varchar(36);index;not null" json:"user_id"`
-	Type         NotificationType   `gorm:"column:type;type:varchar(20);not null" json:"type"`
-	Subject      string             `gorm:"column:subject;type:varchar(255)" json:"subject"`
-	Content      string             `gorm:"column:content;type:text" json:"content"`
-	Target       string             `gorm:"column:target;type:varchar(255);not null" json:"target"`
-	Status       NotificationStatus `gorm:"column:status;type:varchar(20);default:'PENDING';index" json:"status"`
-	ErrorMessage string             `gorm:"column:error_message;type:text" json:"error_message"`
-	CreatedAt    time.Time          `gorm:"column:created_at;type:datetime;not null" json:"created_at"`
-	SentAt       time.Time          `gorm:"column:sent_at;type:datetime" json:"sent_at"`
+	// NotificationID 通知 ID
+	NotificationID string `gorm:"column:notification_id;type:varchar(32);uniqueIndex;not null" json:"notification_id"`
+	// UserID 用户 ID
+	UserID string `gorm:"column:user_id;type:varchar(32);index;not null" json:"user_id"`
+	// Type 通知类型
+	Type NotificationType `gorm:"column:type;type:varchar(20);not null" json:"type"`
+	// Subject 通知主题
+	Subject string `gorm:"column:subject;type:varchar(100)" json:"subject"`
+	// Content 通知内容
+	Content string `gorm:"column:content;type:text" json:"content"`
+	// Target 通知目标（如邮箱、手机号）
+	Target string `gorm:"column:target;type:varchar(100);not null" json:"target"`
+	// Status 通知状态
+	Status NotificationStatus `gorm:"column:status;type:varchar(20);index;not null;default:'PENDING'" json:"status"`
+	// ErrorMessage 错误信息
+	ErrorMessage string `gorm:"column:error_message;type:text" json:"error_message"`
+	// SentAt 发送时间
+	SentAt *time.Time `gorm:"column:sent_at;type:datetime" json:"sent_at"`
 }
 
 // NotificationRepository 通知仓储接口
 type NotificationRepository interface {
+	// Save 保存或更新通知记录
 	Save(ctx context.Context, notification *Notification) error
-	GetByID(ctx context.Context, id string) (*Notification, error)
-	ListByUserID(ctx context.Context, userID string, limit int, offset int) ([]*Notification, error)
+	// Get 根据通知 ID 获取通知记录
+	Get(ctx context.Context, notificationID string) (*Notification, error)
+	// ListByUserID 分页获取指定用户的通知列表
+	ListByUserID(ctx context.Context, userID string, limit, offset int) ([]*Notification, int64, error)
 }
 
 // Sender 通知发送接口

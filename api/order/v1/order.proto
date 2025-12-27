@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package api.order.v1;
 
-option go_package = "github.com/wyfcoding/financialTrading/go-api/order/v1;orderv1";
+option go_package = "github.com/wyfcoding/financialTrading/goapi/order/v1;orderv1";
 
 // 订单全生命周期交易服务。
 service OrderService {

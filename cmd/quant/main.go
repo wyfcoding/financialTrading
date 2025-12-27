@@ -8,7 +8,7 @@ import (
 	pb "github.com/wyfcoding/financialtrading/goapi/quant/v1"
 	"github.com/wyfcoding/financialtrading/internal/quant/application"
 	"github.com/wyfcoding/financialtrading/internal/quant/infrastructure/client"
-	"github.com/wyfcoding/financialtrading/internal/quant/infrastructure/repository"
+	"github.com/wyfcoding/financialtrading/internal/quant/infrastructure/persistence/mysql"
 	grpchandler "github.com/wyfcoding/financialtrading/internal/quant/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialtrading/internal/quant/interfaces/http"
 	"github.com/wyfcoding/pkg/app"
@@ -33,8 +33,7 @@ type AppContext struct {
 
 // ServiceClients 包含所有下游服务的 gRPC 客户端连接。
 type ServiceClients struct {
-	MarketData *grpc.ClientConn
-	Order      *grpc.ClientConn
+	MarketData *grpc.ClientConn `service:"marketdata"`
 }
 
 // BootstrapName 服务名称常量。
@@ -82,7 +81,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := db.AutoMigrate(&repository.StrategyModel{}, &repository.BacktestResultModel{}); err != nil {
+	if err := db.AutoMigrate(&mysql.StrategyModel{}, &mysql.BacktestResultModel{}); err != nil {
 		return nil, nil, err
 	}
 	redisCache, err := cache.NewRedisCache(c.Data.Redis)
@@ -104,8 +103,8 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 
 	marketDataClient := client.NewMarketDataClientFromConn(clients.MarketData)
 
-	strategyRepo := repository.NewStrategyRepository(db)
-	backtestRepo := repository.NewBacktestResultRepository(db)
+	strategyRepo := mysql.NewStrategyRepository(db)
+	backtestRepo := mysql.NewBacktestResultRepository(db)
 	appService := application.NewQuantService(strategyRepo, backtestRepo, marketDataClient)
 	cleanup := func() {
 		slog.Info("cleaning up resources...")

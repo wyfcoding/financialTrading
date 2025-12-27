@@ -80,12 +80,15 @@ func (h *NotificationHandler) GetNotificationHistory(c *gin.Context) {
 		return
 	}
 
-	notifications, err := h.app.GetNotificationHistory(c.Request.Context(), userID, limit, offset)
+	notifications, total, err := h.app.GetNotificationHistory(c.Request.Context(), userID, limit, offset)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get notification history", "user_id", userID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, notifications)
+	c.JSON(http.StatusOK, gin.H{
+		"notifications": notifications,
+		"total":         total,
+	})
 }

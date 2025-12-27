@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/domain"
 	"github.com/wyfcoding/pkg/logging"
 )
@@ -33,7 +34,7 @@ func NewMarketSimulationService(repo domain.SimulationScenarioRepository, publis
 func (s *MarketSimulationService) StartSimulation(ctx context.Context, name string, symbol string, simulationType string, parameters string) (string, error) {
 	// 1. 创建场景
 	scenario := &domain.SimulationScenario{
-		ID:         uuid.New().String(),
+		ScenarioID: uuid.New().String(),
 		Name:       name,
 		Symbol:     symbol,
 		Type:       domain.SimulationType(simulationType),
@@ -51,7 +52,7 @@ func (s *MarketSimulationService) StartSimulation(ctx context.Context, name stri
 	}
 
 	logging.Info(ctx, "Starting simulation",
-		"simulation_id", scenario.ID,
+		"scenario_id", scenario.ScenarioID,
 		"symbol", symbol,
 		"type", simulationType,
 	)
@@ -62,13 +63,13 @@ func (s *MarketSimulationService) StartSimulation(ctx context.Context, name stri
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
-		basePrice := 100.0
+		basePrice := decimal.NewFromFloat(100.0)
 		for range ticker.C {
 			// 简单的随机漫步
-			change := (rand.Float64() - 0.5) * 2
-			basePrice += change
-			if basePrice < 0 {
-				basePrice = 0.1
+			change := decimal.NewFromFloat((rand.Float64() - 0.5) * 2)
+			basePrice = basePrice.Add(change)
+			if basePrice.IsNegative() {
+				basePrice = decimal.NewFromFloat(0.1)
 			}
 
 			// 发送数据
@@ -85,44 +86,44 @@ func (s *MarketSimulationService) StartSimulation(ctx context.Context, name stri
 		}
 	}()
 
-	return scenario.ID, nil
+	return scenario.ScenarioID, nil
 }
 
 // StopSimulation 停止模拟
-func (s *MarketSimulationService) StopSimulation(ctx context.Context, simulationID string) (bool, error) {
+func (s *MarketSimulationService) StopSimulation(ctx context.Context, scenarioID string) (bool, error) {
 	// 简化实现，仅更新状态
-	scenario, err := s.repo.GetByID(ctx, simulationID)
+	scenario, err := s.repo.Get(ctx, scenarioID)
 	if err != nil {
 		logging.Error(ctx, "Failed to get simulation scenario",
-			"simulation_id", simulationID,
+			"scenario_id", scenarioID,
 			"error", err,
 		)
 		return false, fmt.Errorf("failed to get scenario: %w", err)
 	}
 	if scenario == nil {
-		return false, fmt.Errorf("scenario not found: %s", simulationID)
+		return false, fmt.Errorf("scenario not found: %s", scenarioID)
 	}
 
 	scenario.Status = domain.SimulationStatusStopped
 	scenario.EndTime = time.Now()
 	if err := s.repo.Save(ctx, scenario); err != nil { // 更新状态
 		logging.Error(ctx, "Failed to update simulation status",
-			"simulation_id", simulationID,
+			"scenario_id", scenarioID,
 			"error", err,
 		)
 		return false, fmt.Errorf("failed to update simulation status: %w", err)
 	}
 
-	logging.Info(ctx, "Simulation stopped", "simulation_id", simulationID)
+	logging.Info(ctx, "Simulation stopped", "scenario_id", scenarioID)
 	return true, nil
 }
 
 // GetSimulationStatus 获取模拟状态
-func (s *MarketSimulationService) GetSimulationStatus(ctx context.Context, simulationID string) (*domain.SimulationScenario, error) {
-	scenario, err := s.repo.GetByID(ctx, simulationID)
+func (s *MarketSimulationService) GetSimulationStatus(ctx context.Context, scenarioID string) (*domain.SimulationScenario, error) {
+	scenario, err := s.repo.Get(ctx, scenarioID)
 	if err != nil {
 		logging.Error(ctx, "Failed to get simulation scenario",
-			"simulation_id", simulationID,
+			"scenario_id", scenarioID,
 			"error", err,
 		)
 		return nil, fmt.Errorf("failed to get scenario: %w", err)

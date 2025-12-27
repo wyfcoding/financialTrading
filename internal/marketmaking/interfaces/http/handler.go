@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/application"
 	"github.com/wyfcoding/pkg/logging"
 )
@@ -49,7 +50,7 @@ func (h *MarketMakingHandler) SetStrategy(c *gin.Context) {
 		return
 	}
 
-	id, err := h.app.SetStrategy(c.Request.Context(), req.Symbol, req.Spread, req.MinOrderSize, req.MaxOrderSize, req.MaxPosition, req.Status)
+	id, err := h.app.SetStrategy(c.Request.Context(), req.Symbol, decimal.NewFromFloat(req.Spread), decimal.NewFromFloat(req.MinOrderSize), decimal.NewFromFloat(req.MaxOrderSize), decimal.NewFromFloat(req.MaxPosition), req.Status)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to set strategy", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

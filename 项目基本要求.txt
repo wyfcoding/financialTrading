@@ -22,13 +22,13 @@
       - application：用例逻辑、DTO、事务边界与补偿策略。
       - infrastructure：仓储实现、数据库、缓存、消息队列、第三方适配层。
       - interfaces：Gin HTTP handler / gRPC handler、入参出参转换、校验与中间件接入。
-      - 如果 go-api 已生成对应的 gRPC / Proto 类型，则 internal **不再重复定义**。
-      - internal可直接 import go-api 类型。
+      - 如果 goapi 已生成对应的 gRPC / Proto 类型，则 internal **不再重复定义**。
+      - internal可直接 import goapi 类型。
 
       ——【目录结构要求】——
       cmd/{service}/main.go（启动、依赖注入、优雅关停）
-      api/{service}/（proto、跨服务常量、错误码）
-      go-api/{service}/（pb.go / grpc.pb.go）
+      api/v1/{service}/（proto、跨服务常量、错误码）
+      goapi/v1/{service}/（pb.go / grpc.pb.go）
       configs/{service}/config.toml（TOML，含占位符与注释）
       deployments/{service}/：
         - Dockerfile：独立，每服务构建
@@ -63,8 +63,8 @@
       ——【微服务生成顺序】——
       1. **单微服务粒度**：每次以单个微服务完整生成，完成后再生成下一个。
       2. **严格顺序**：
-         1) **api/{service}/**：proto 文件、跨服务常量、错误码
-         2) **go-api/{service}/**：生成 pb.go / grpc.pb.go
+         1) **api/v1/{service}/**：proto 文件、跨服务常量、错误码
+         2) **goapi/v1/{service}/**：生成 pb.go / grpc.pb.go
          3) **cmd/{service}/main.go**：依赖注入、启动、优雅关停
          4) **internal/{service}/**：
             - domain：实体、聚合、值对象、领域服务、仓储接口

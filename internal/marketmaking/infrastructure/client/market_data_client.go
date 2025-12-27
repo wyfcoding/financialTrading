@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/shopspring/decimal"
 	market_data "github.com/wyfcoding/financialtrading/goapi/marketdata/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
 	"github.com/wyfcoding/pkg/grpcclient"
@@ -36,7 +37,7 @@ func NewMarketDataClientFromConn(conn *grpc.ClientConn) domain.MarketDataClient 
 }
 
 // GetPrice 获取最新价格
-func (c *MarketDataClientImpl) GetPrice(ctx context.Context, symbol string) (float64, error) {
+func (c *MarketDataClientImpl) GetPrice(ctx context.Context, symbol string) (decimal.Decimal, error) {
 	req := &market_data.GetLatestQuoteRequest{
 		Symbol: symbol,
 	}
@@ -47,18 +48,17 @@ func (c *MarketDataClientImpl) GetPrice(ctx context.Context, symbol string) (flo
 			"symbol", symbol,
 			"error", err,
 		)
-		return 0, err
+		return decimal.Zero, err
 	}
 
 	// 从响应中获取最新价格
-	// protobuf定义中价格字段为 float64
-	price := resp.GetLastPrice()
-	if price == 0 {
+	price := decimal.NewFromFloat(resp.GetLastPrice())
+	if price.IsZero() {
 		// 如果没有最新成交价，使用买卖中间价
-		bidPrice := resp.GetBidPrice()
-		askPrice := resp.GetAskPrice()
-		if bidPrice > 0 && askPrice > 0 {
-			price = (bidPrice + askPrice) / 2
+		bidPrice := decimal.NewFromFloat(resp.GetBidPrice())
+		askPrice := decimal.NewFromFloat(resp.GetAskPrice())
+		if bidPrice.IsPositive() && askPrice.IsPositive() {
+			price = bidPrice.Add(askPrice).Div(decimal.NewFromInt(2))
 		}
 	}
 

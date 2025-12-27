@@ -1,79 +1,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "marketdata-service.fullname" . }}-config
+  name: { include "risk.fullname" . }-config
   labels:
-    {{- include "marketdata-service.labels" . | nindent 4 }}
+    {- include "risk.labels" . | nindent 4 }
 data:
+  # Placeholder for config.toml content or other config
   config.toml: |
-    service_name = "{{ .Values.config.service_name }}"
-    version = "{{ .Values.config.version }}"
-    environment = "{{ .Values.config.environment }}"
-    
-    [http]
-    host = "{{ .Values.config.http.host }}"
-    port = {{ .Values.config.http.port }}
-    read_timeout = 30
-    write_timeout = 30
-    max_connections = 1000
-    
-    [grpc]
-    host = "{{ .Values.config.grpc.host }}"
-    port = {{ .Values.config.grpc.port }}
-    max_concurrent_streams = 1000
-    idle_timeout = 300
-    
-    [database]
-    driver = "{{ .Values.config.database.driver }}"
-    max_open_conns = {{ .Values.config.database.max_open_conns }}
-    max_idle_conns = {{ .Values.config.database.max_idle_conns }}
-    conn_max_lifetime = 300
-    log_enabled = false
-    slow_query_threshold = 1000
-    
-    [redis]
-    host = "{{ .Values.config.redis.host }}"
-    port = {{ .Values.config.redis.port }}
-    db = 0
-    max_pool_size = 10
-    conn_timeout = 5
-    read_timeout = 3
-    write_timeout = 3
-    
-    [kafka]
-    brokers = [{{ range .Values.config.kafka.brokers }}"{{ . }}",{{ end }}]
-    group_id = "marketdata-service"
-    partitions = 3
-    replication = 1
-    session_timeout = 10
-    
-    [logger]
-    level = "info"
-    format = "json"
-    output = "stdout"
-    file_path = "/var/log/marketdata-service/app.log"
-    max_size = 100
-    max_backups = 10
-    max_age = 30
-    compress = true
-    with_caller = true
-    with_stacktrace = false
-    
-    [tracing]
-    enabled = true
-    type = "jaeger"
-    jaeger_endpoint = "http://jaeger-collector:14268/api/traces"
-    sampling_rate = 0.1
-    
-    [metrics]
-    enabled = true
-    port = 9090
-    path = "/metrics"
-    
-    [market_data]
-    quote_retention_days = 30
-    kline_retention_days = 365
-    orderbook_retention_hours = 24
-    trade_retention_days = 90
-    quote_update_interval = 1000
-    enable_realtime_push = true
+    [server]
+    name = "{ .Values.image.repository }"
+    environment = "prod"

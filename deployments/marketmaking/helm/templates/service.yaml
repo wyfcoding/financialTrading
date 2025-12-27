@@ -1,19 +1,19 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "marketdata-service.fullname" . }}
+  name: { include "marketmaking.fullname" . }
   labels:
-    {{- include "marketdata-service.labels" . | nindent 4 }}
+    {- include "marketmaking.labels" . | nindent 4 }
 spec:
-  type: {{ .Values.service.type }}
+  type: { .Values.service.type }
   ports:
-    - port: {{ .Values.service.http.port }}
+    - port: { .Values.service.httpPort }
       targetPort: http
       protocol: TCP
       name: http
-    - port: {{ .Values.service.grpc.port }}
+    - port: { .Values.service.grpcPort }
       targetPort: grpc
       protocol: TCP
       name: grpc
   selector:
-    {{- include "marketdata-service.selectorLabels" . | nindent 4 }}
+    {- include "marketmaking.selectorLabels" . | nindent 4 }

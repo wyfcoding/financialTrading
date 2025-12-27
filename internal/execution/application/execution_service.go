@@ -5,7 +5,6 @@ package application
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/execution/domain"
@@ -129,8 +128,6 @@ func (eas *ExecutionApplicationService) ExecuteOrder(ctx context.Context, req *E
 		ExecutedPrice:    price,
 		ExecutedQuantity: quantity,
 		Status:           domain.ExecutionStatusCompleted, // 简化处理，假设订单立即完全成交
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
 	}
 
 	// 5. 持久化

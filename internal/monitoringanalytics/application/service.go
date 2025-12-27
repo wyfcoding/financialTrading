@@ -4,8 +4,8 @@ package application
 import (
 	"context"
 	"fmt"
-	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/domain"
 	"github.com/wyfcoding/pkg/logging"
 )
@@ -28,7 +28,7 @@ func NewMonitoringAnalyticsService(metricRepo domain.MetricRepository, healthRep
 }
 
 // RecordMetric 记录指标
-func (s *MonitoringAnalyticsService) RecordMetric(ctx context.Context, name string, value float64, tags map[string]string, timestamp time.Time) error {
+func (s *MonitoringAnalyticsService) RecordMetric(ctx context.Context, name string, value decimal.Decimal, tags map[string]string, timestamp int64) error {
 	metric := &domain.Metric{
 		Name:      name,
 		Value:     value,
@@ -43,17 +43,16 @@ func (s *MonitoringAnalyticsService) RecordMetric(ctx context.Context, name stri
 		return fmt.Errorf("failed to save metric: %w", err)
 	}
 
-	// 可选：在调试级别记录指标记录，以避免刷屏
 	logging.Debug(ctx, "Metric recorded",
 		"name", name,
-		"value", value,
+		"value", value.String(),
 	)
 
 	return nil
 }
 
-// GetMetrics 获取指标
-func (s *MonitoringAnalyticsService) GetMetrics(ctx context.Context, name string, startTime, endTime time.Time) ([]*domain.Metric, error) {
+// GetMetrics 获取指标历史数据
+func (s *MonitoringAnalyticsService) GetMetrics(ctx context.Context, name string, startTime, endTime int64) ([]*domain.Metric, error) {
 	metrics, err := s.metricRepo.GetMetrics(ctx, name, startTime, endTime)
 	if err != nil {
 		logging.Error(ctx, "Failed to get metrics",
@@ -65,9 +64,10 @@ func (s *MonitoringAnalyticsService) GetMetrics(ctx context.Context, name string
 	return metrics, nil
 }
 
-// GetSystemHealth 获取系统健康状态
+// GetSystemHealth 获取服务最新的健康检查记录
 func (s *MonitoringAnalyticsService) GetSystemHealth(ctx context.Context, serviceName string) ([]*domain.SystemHealth, error) {
-	healths, err := s.healthRepo.GetLatestHealth(ctx, serviceName)
+	// 默认获取最近 10 条记录
+	healths, err := s.healthRepo.GetLatestHealth(ctx, serviceName, 10)
 	if err != nil {
 		logging.Error(ctx, "Failed to get system health",
 			"service_name", serviceName,

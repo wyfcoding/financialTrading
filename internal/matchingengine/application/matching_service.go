@@ -199,7 +199,7 @@ func (mas *MatchingApplicationService) GetTrades(ctx context.Context, symbol str
 		limit = 100
 	}
 
-	trades, err := mas.tradeRepo.GetLatest(ctx, symbol, limit)
+	trades, err := mas.tradeRepo.GetLatestTrades(ctx, symbol, limit)
 	if err != nil {
 		logging.Error(ctx, "Failed to get trades",
 			"symbol", symbol,

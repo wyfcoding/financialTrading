@@ -8,7 +8,7 @@ import (
 	pb "github.com/wyfcoding/financialtrading/goapi/marketmaking/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/application"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/client"
-	"github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/repository"
+	"github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/persistence/mysql"
 	grpchandler "github.com/wyfcoding/financialtrading/internal/marketmaking/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialtrading/internal/marketmaking/interfaces/http"
 	"github.com/wyfcoding/pkg/app"
@@ -33,8 +33,8 @@ type AppContext struct {
 
 // ServiceClients 包含所有下游服务的 gRPC 客户端连接。
 type ServiceClients struct {
-	Order      *grpc.ClientConn
-	MarketData *grpc.ClientConn
+	MarketData *grpc.ClientConn `service:"marketdata"`
+	Order      *grpc.ClientConn `service:"order"`
 }
 
 // BootstrapName 服务名称常量。
@@ -82,16 +82,12 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := db.AutoMigrate(&repository.QuoteStrategyModel{}, &repository.PerformanceModel{}); err != nil {
-		return nil, nil, err
-	}
 	redisCache, err := cache.NewRedisCache(c.Data.Redis)
 	if err != nil {
 		return nil, nil, err
 	}
 	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
-	strategyRepo := repository.NewQuoteStrategyRepository(db)
-	performanceRepo := repository.NewPerformanceRepository(db)
+	strategyRepo, performanceRepo := mysql.NewMarketMakingRepository(db)
 
 	// Downstream Clients
 	clients := &ServiceClients{}

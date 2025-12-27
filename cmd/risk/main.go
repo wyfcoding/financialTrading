@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	pb "github.com/wyfcoding/financialtrading/goapi/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/risk/application"
-	"github.com/wyfcoding/financialtrading/internal/risk/infrastructure/repository"
+	"github.com/wyfcoding/financialtrading/internal/risk/infrastructure/persistence/mysql"
 	grpchandler "github.com/wyfcoding/financialtrading/internal/risk/interfaces/grpc"
 	httphandler "github.com/wyfcoding/financialtrading/internal/risk/interfaces/http"
 	"github.com/wyfcoding/pkg/app"
@@ -33,9 +33,7 @@ type AppContext struct {
 
 // ServiceClients 包含所有下游服务的 gRPC 客户端连接。
 type ServiceClients struct {
-	Account  *grpc.ClientConn
-	Position *grpc.ClientConn
-	Order    *grpc.ClientConn
+	// No dependencies detected
 }
 
 // BootstrapName 服务名称常量。
@@ -88,10 +86,10 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		return nil, nil, err
 	}
 	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
-	assessmentRepo := repository.NewRiskAssessmentRepository(db)
-	metricsRepo := repository.NewRiskMetricsRepository(db)
-	limitRepo := repository.NewRiskLimitRepository(db)
-	alertRepo := repository.NewRiskAlertRepository(db)
+	assessmentRepo := mysql.NewRiskAssessmentRepository(db)
+	metricsRepo := mysql.NewRiskMetricsRepository(db)
+	limitRepo := mysql.NewRiskLimitRepository(db)
+	alertRepo := mysql.NewRiskAlertRepository(db)
 	appService := application.NewRiskApplicationService(assessmentRepo, metricsRepo, limitRepo, alertRepo)
 
 	// Downstream Clients

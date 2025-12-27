@@ -4,6 +4,7 @@ package grpc
 import (
 	"context"
 
+	"github.com/shopspring/decimal"
 	pb "github.com/wyfcoding/financialtrading/goapi/pricing/v1"
 	"github.com/wyfcoding/financialtrading/internal/pricing/application"
 	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
@@ -24,22 +25,22 @@ func NewGRPCHandler(app *application.PricingService) *GRPCHandler {
 }
 
 // GetOptionPrice 获取期权价格
-// 处理 gRPC GetOptionPrice 请求
 func (h *GRPCHandler) GetOptionPrice(ctx context.Context, req *pb.GetOptionPriceRequest) (*pb.GetOptionPriceResponse, error) {
 	contract := domain.OptionContract{
 		Symbol:      req.Contract.Symbol,
 		Type:        domain.OptionType(req.Contract.Type),
-		StrikePrice: req.Contract.StrikePrice,
-		ExpiryDate:  req.Contract.ExpiryDate.AsTime(),
+		StrikePrice: decimal.NewFromFloat(req.Contract.StrikePrice),
+		ExpiryDate:  req.Contract.ExpiryDate.AsTime().UnixMilli(),
 	}
 
-	price, err := h.app.GetOptionPrice(ctx, contract, req.UnderlyingPrice, req.Volatility, req.RiskFreeRate)
+	price, err := h.app.GetOptionPrice(ctx, contract, decimal.NewFromFloat(req.UnderlyingPrice), req.Volatility, req.RiskFreeRate)
 	if err != nil {
 		return nil, err
 	}
 
+	p_val, _ := price.Float64()
 	return &pb.GetOptionPriceResponse{
-		Price:           price,
+		Price:           p_val,
 		CalculationTime: timestamppb.Now(),
 	}, nil
 }
@@ -49,22 +50,28 @@ func (h *GRPCHandler) GetGreeks(ctx context.Context, req *pb.GetGreeksRequest) (
 	contract := domain.OptionContract{
 		Symbol:      req.Contract.Symbol,
 		Type:        domain.OptionType(req.Contract.Type),
-		StrikePrice: req.Contract.StrikePrice,
-		ExpiryDate:  req.Contract.ExpiryDate.AsTime(),
+		StrikePrice: decimal.NewFromFloat(req.Contract.StrikePrice),
+		ExpiryDate:  req.Contract.ExpiryDate.AsTime().UnixMilli(),
 	}
 
-	greeks, err := h.app.GetGreeks(ctx, contract, req.UnderlyingPrice, req.Volatility, req.RiskFreeRate)
+	greeks, err := h.app.GetGreeks(ctx, contract, decimal.NewFromFloat(req.UnderlyingPrice), req.Volatility, req.RiskFreeRate)
 	if err != nil {
 		return nil, err
 	}
 
+	d_val, _ := greeks.Delta.Float64()
+	g_val, _ := greeks.Gamma.Float64()
+	t_val, _ := greeks.Theta.Float64()
+	v_val, _ := greeks.Vega.Float64()
+	r_val, _ := greeks.Rho.Float64()
+
 	return &pb.GetGreeksResponse{
 		Greeks: &pb.Greeks{
-			Delta: greeks.Delta,
-			Gamma: greeks.Gamma,
-			Theta: greeks.Theta,
-			Vega:  greeks.Vega,
-			Rho:   greeks.Rho,
+			Delta: d_val,
+			Gamma: g_val,
+			Theta: t_val,
+			Vega:  v_val,
+			Rho:   r_val,
 		},
 		CalculationTime: timestamppb.Now(),
 	}, nil

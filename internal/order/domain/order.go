@@ -1,4 +1,4 @@
-// 包 订单服务的领域模型
+// 包 domain 订单服务的领域模型
 package domain
 
 import (
@@ -62,11 +62,11 @@ type Order struct {
 	// 订单类型
 	Type OrderType `gorm:"column:type;type:varchar(20);not null" json:"type"`
 	// 价格
-	Price decimal.Decimal `gorm:"column:price;type:decimal(20,8);not null" json:"price"`
+	Price decimal.Decimal `gorm:"column:price;type:decimal(32,18);not null" json:"price"`
 	// 数量
-	Quantity decimal.Decimal `gorm:"column:quantity;type:decimal(20,8);not null" json:"quantity"`
+	Quantity decimal.Decimal `gorm:"column:quantity;type:decimal(32,18);not null" json:"quantity"`
 	// 已成交数量
-	FilledQuantity decimal.Decimal `gorm:"column:filled_quantity;type:decimal(20,8);not null;default:0" json:"filled_quantity"`
+	FilledQuantity decimal.Decimal `gorm:"column:filled_quantity;type:decimal(32,18);not null;default:0" json:"filled_quantity"`
 	// 订单状态
 	Status OrderStatus `gorm:"column:status;type:varchar(20);index;not null" json:"status"`
 	// 有效期
@@ -111,28 +111,28 @@ func (o *Order) CanBeCancelled() bool {
 
 // OrderRepository 订单仓储接口
 type OrderRepository interface {
-	// 保存订单
+	// Save 保存或更新订单
 	Save(ctx context.Context, order *Order) error
-	// 获取订单
+	// Get 根据订单 ID 获取订单
 	Get(ctx context.Context, orderID string) (*Order, error)
-	// 获取用户订单列表
+	// ListByUser 获取用户订单列表
 	ListByUser(ctx context.Context, userID string, status OrderStatus, limit, offset int) ([]*Order, int64, error)
-	// 获取交易对订单列表
+	// ListBySymbol 获取交易对订单列表
 	ListBySymbol(ctx context.Context, symbol string, status OrderStatus, limit, offset int) ([]*Order, int64, error)
-	// 更新订单状态
+	// UpdateStatus 更新订单状态
 	UpdateStatus(ctx context.Context, orderID string, status OrderStatus) error
-	// 更新已成交数量
+	// UpdateFilledQuantity 更新已成交数量
 	UpdateFilledQuantity(ctx context.Context, orderID string, filledQuantity decimal.Decimal) error
-	// 删除订单
+	// Delete 根据订单 ID 删除订单
 	Delete(ctx context.Context, orderID string) error
 }
 
 // OrderDomainService 订单领域服务
 type OrderDomainService interface {
-	// 验证订单
+	// ValidateOrder 验证订单合法性
 	ValidateOrder(order *Order) error
-	// 计算订单费用
+	// CalculateFee 计算订单预计费用
 	CalculateFee(order *Order) decimal.Decimal
-	// 检查用户余额
+	// CheckBalance 检查用户余额是否足以支持该订单
 	CheckBalance(userID string, amount decimal.Decimal) (bool, error)
 }

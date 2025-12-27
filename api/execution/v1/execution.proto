@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package api.execution.v1;
 
-option go_package = "github.com/wyfcoding/financialTrading/go-api/execution/v1;executionv1";
+option go_package = "github.com/wyfcoding/financialTrading/goapi/execution/v1;executionv1";
 
 // 交易执行服务。
 service ExecutionService {

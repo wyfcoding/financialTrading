@@ -118,8 +118,8 @@ func toProtoSymbol(s *domain.Symbol) *pb.Symbol {
 		ExchangeId:     s.ExchangeID,
 		SymbolCode:     s.SymbolCode,
 		Status:         s.Status,
-		MinOrderSize:   s.MinOrderSize,
-		PricePrecision: s.PricePrecision,
+		MinOrderSize:   s.MinOrderSize.InexactFloat64(),
+		PricePrecision: s.PricePrecision.InexactFloat64(),
 		CreatedAt:      timestamppb.New(s.CreatedAt),
 		UpdatedAt:      timestamppb.New(s.UpdatedAt),
 	}

@@ -1,4 +1,4 @@
-// 包  gRPC 处理器实现
+// Package grpc  gRPC 处理器实现
 package grpc
 
 import (
@@ -27,13 +27,13 @@ func NewGRPCHandler(app *application.MarketSimulationService) *GRPCHandler {
 // 处理 gRPC StartSimulation 请求
 func (h *GRPCHandler) StartSimulation(ctx context.Context, req *pb.StartSimulationRequest) (*pb.StartSimulationResponse, error) {
 	// 调用应用服务启动模拟
-	id, err := h.app.StartSimulation(ctx, req.Name, req.Symbol, req.Type, req.Parameters)
+	scenarioID, err := h.app.StartSimulation(ctx, req.Name, req.Symbol, req.Type, req.Parameters)
 	if err != nil {
 		return nil, err
 	}
 
 	return &pb.StartSimulationResponse{
-		SimulationId: id,
+		SimulationId: scenarioID,
 	}, nil
 }
 
@@ -66,7 +66,7 @@ func (h *GRPCHandler) GetSimulationStatus(ctx context.Context, req *pb.GetSimula
 
 func toProtoScenario(s *domain.SimulationScenario) *pb.SimulationScenario {
 	return &pb.SimulationScenario{
-		Id:          s.ID,
+		Id:          s.ScenarioID,
 		Name:        s.Name,
 		Description: s.Description,
 		Symbol:      s.Symbol,

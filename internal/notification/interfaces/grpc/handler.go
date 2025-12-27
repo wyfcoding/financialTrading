@@ -46,7 +46,7 @@ func (h *GRPCHandler) GetNotificationHistory(ctx context.Context, req *pb.GetNot
 	}
 	offset := 0 // 简单分页
 
-	notifications, err := h.app.GetNotificationHistory(ctx, req.UserId, limit, offset)
+	notifications, _, err := h.app.GetNotificationHistory(ctx, req.UserId, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -58,12 +58,13 @@ func (h *GRPCHandler) GetNotificationHistory(ctx context.Context, req *pb.GetNot
 
 	return &pb.GetNotificationHistoryResponse{
 		Notifications: protoNotifications,
+		// Total: total, // If Total field is not in proto yet, ignore or add if possible. Assuming it's not and fixing the lint.
 	}, nil
 }
 
 func toProtoNotification(n *domain.Notification) *pb.Notification {
-	return &pb.Notification{
-		Id:           n.ID,
+	proto := &pb.Notification{
+		Id:           n.NotificationID,
 		UserId:       n.UserID,
 		Type:         string(n.Type),
 		Subject:      n.Subject,
@@ -71,6 +72,9 @@ func toProtoNotification(n *domain.Notification) *pb.Notification {
 		Status:       string(n.Status),
 		ErrorMessage: n.ErrorMessage,
 		CreatedAt:    timestamppb.New(n.CreatedAt),
-		SentAt:       timestamppb.New(n.SentAt),
 	}
+	if n.SentAt != nil {
+		proto.SentAt = timestamppb.New(*n.SentAt)
+	}
+	return proto
 }
