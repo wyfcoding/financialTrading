@@ -63,7 +63,6 @@ func (r *notificationRepositoryImpl) Save(ctx context.Context, n *domain.Notific
 		Columns:   []clause.Column{{Name: "notification_id"}},
 		UpdateAll: true,
 	}).Create(m).Error
-
 	if err != nil {
 		logging.Error(ctx, "notification_repository.Save failed", "notification_id", n.NotificationID, "error", err)
 		return fmt.Errorf("failed to save notification: %w", err)

@@ -61,7 +61,6 @@ func (r *settlementRepositoryImpl) Save(ctx context.Context, s *domain.Settlemen
 		Columns:   []clause.Column{{Name: "settlement_id"}},
 		UpdateAll: true,
 	}).Create(model).Error
-
 	if err != nil {
 		logging.Error(ctx, "settlement_repository.Save failed", "settlement_id", s.SettlementID, "error", err)
 		return fmt.Errorf("failed to save settlement: %w", err)

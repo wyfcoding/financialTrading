@@ -69,7 +69,6 @@ func (r *orderRepositoryImpl) Save(ctx context.Context, order *domain.Order) err
 		Columns:   []clause.Column{{Name: "order_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"status", "filled_quantity", "remark"}),
 	}).Create(model).Error
-
 	if err != nil {
 		logging.Error(ctx, "order_repository.Save failed", "order_id", order.OrderID, "error", err)
 		return fmt.Errorf("failed to save order: %w", err)

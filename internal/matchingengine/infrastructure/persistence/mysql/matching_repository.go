@@ -72,7 +72,11 @@ func (r *matchingRepositoryImpl) GetTradeHistory(ctx context.Context, symbol str
 	}
 	res := make([]*algorithm.Trade, len(models))
 	for i, m := range models {
-		res[i] = r.tradeToAlgorithm(&m)
+		t, err := r.tradeToAlgorithm(&m)
+		if err != nil {
+			return nil, err
+		}
+		res[i] = t
 	}
 	return res, nil
 }
@@ -83,8 +87,14 @@ func (r *matchingRepositoryImpl) GetLatestTrades(ctx context.Context, symbol str
 
 // OrderBookRepository methods
 func (r *matchingRepositoryImpl) SaveSnapshot(ctx context.Context, s *domain.OrderBookSnapshot) error {
-	bids, _ := json.Marshal(s.Bids)
-	asks, _ := json.Marshal(s.Asks)
+	bids, err := json.Marshal(s.Bids)
+	if err != nil {
+		return err
+	}
+	asks, err := json.Marshal(s.Asks)
+	if err != nil {
+		return err
+	}
 	m := &OrderBookSnapshotModel{
 		Model:     s.Model,
 		Symbol:    s.Symbol,
@@ -92,7 +102,7 @@ func (r *matchingRepositoryImpl) SaveSnapshot(ctx context.Context, s *domain.Ord
 		Asks:      string(asks),
 		Timestamp: s.Timestamp,
 	}
-	err := r.db.WithContext(ctx).Create(m).Error
+	err = r.db.WithContext(ctx).Create(m).Error
 	if err == nil {
 		s.Model = m.Model
 	}
@@ -107,12 +117,18 @@ func (r *matchingRepositoryImpl) GetLatestOrderBook(ctx context.Context, symbol 
 		}
 		return nil, err
 	}
-	return r.snapshotToDomain(&m), nil
+	return r.snapshotToDomain(&m)
 }
 
-func (r *matchingRepositoryImpl) tradeToAlgorithm(m *TradeModel) *algorithm.Trade {
-	price, _ := decimal.NewFromString(m.Price)
-	qty, _ := decimal.NewFromString(m.Quantity)
+func (r *matchingRepositoryImpl) tradeToAlgorithm(m *TradeModel) (*algorithm.Trade, error) {
+	price, err := decimal.NewFromString(m.Price)
+	if err != nil {
+		return nil, err
+	}
+	qty, err := decimal.NewFromString(m.Quantity)
+	if err != nil {
+		return nil, err
+	}
 	return &algorithm.Trade{
 		TradeID:     m.TradeID,
 		Symbol:      m.Symbol,
@@ -121,18 +137,22 @@ func (r *matchingRepositoryImpl) tradeToAlgorithm(m *TradeModel) *algorithm.Trad
 		Price:       price,
 		Quantity:    qty,
 		Timestamp:   m.ExecutedAt,
-	}
+	}, nil
 }
 
-func (r *matchingRepositoryImpl) snapshotToDomain(m *OrderBookSnapshotModel) *domain.OrderBookSnapshot {
+func (r *matchingRepositoryImpl) snapshotToDomain(m *OrderBookSnapshotModel) (*domain.OrderBookSnapshot, error) {
 	var bids, asks []*domain.OrderBookLevel
-	json.Unmarshal([]byte(m.Bids), &bids)
-	json.Unmarshal([]byte(m.Asks), &asks)
+	if err := json.Unmarshal([]byte(m.Bids), &bids); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal([]byte(m.Asks), &asks); err != nil {
+		return nil, err
+	}
 	return &domain.OrderBookSnapshot{
 		Model:     m.Model,
 		Symbol:    m.Symbol,
 		Bids:      bids,
 		Asks:      asks,
 		Timestamp: m.Timestamp,
-	}
+	}, nil
 }

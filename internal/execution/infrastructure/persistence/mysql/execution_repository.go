@@ -59,7 +59,6 @@ func (r *executionRepositoryImpl) Save(ctx context.Context, execution *domain.Ex
 		Columns:   []clause.Column{{Name: "execution_id"}},
 		UpdateAll: true,
 	}).Create(model).Error
-
 	if err != nil {
 		logging.Error(ctx, "execution_repository.Save failed", "execution_id", execution.ExecutionID, "error", err)
 		return fmt.Errorf("failed to save execution: %w", err)

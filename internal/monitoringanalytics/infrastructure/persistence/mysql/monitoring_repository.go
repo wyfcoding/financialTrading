@@ -42,7 +42,10 @@ func NewMetricRepository(db *gorm.DB) domain.MetricRepository {
 }
 
 func (r *metricRepositoryImpl) Save(ctx context.Context, m *domain.Metric) error {
-	tags, _ := json.Marshal(m.Tags)
+	tags, err := json.Marshal(m.Tags)
+	if err != nil {
+		return err
+	}
 	model := &MetricModel{
 		Model:     m.Model,
 		Name:      m.Name,
@@ -50,7 +53,7 @@ func (r *metricRepositoryImpl) Save(ctx context.Context, m *domain.Metric) error
 		Tags:      string(tags),
 		Timestamp: m.Timestamp,
 	}
-	err := r.db.WithContext(ctx).Clauses(clause.OnConflict{
+	err = r.db.WithContext(ctx).Clauses(clause.OnConflict{
 		UpdateAll: true,
 	}).Create(model).Error
 	if err == nil {
@@ -66,15 +69,24 @@ func (r *metricRepositoryImpl) GetMetrics(ctx context.Context, name string, star
 	}
 	res := make([]*domain.Metric, len(models))
 	for i, m := range models {
-		res[i] = r.metricToDomain(&m)
+		dm, err := r.metricToDomain(&m)
+		if err != nil {
+			return nil, err
+		}
+		res[i] = dm
 	}
 	return res, nil
 }
 
-func (r *metricRepositoryImpl) metricToDomain(m *MetricModel) *domain.Metric {
-	val, _ := decimal.NewFromString(m.Value)
+func (r *metricRepositoryImpl) metricToDomain(m *MetricModel) (*domain.Metric, error) {
+	val, err := decimal.NewFromString(m.Value)
+	if err != nil {
+		return nil, err
+	}
 	var tags map[string]string
-	json.Unmarshal([]byte(m.Tags), &tags)
+	if err := json.Unmarshal([]byte(m.Tags), &tags); err != nil {
+		return nil, err
+	}
 	return &domain.Metric{
 		Model:     m.Model,
 		Name:      m.Name,
@@ -82,7 +94,7 @@ func (r *metricRepositoryImpl) metricToDomain(m *MetricModel) *domain.Metric {
 		Tags:      tags,
 		TagsJSON:  m.Tags,
 		Timestamp: m.Timestamp,
-	}
+	}, nil
 }
 
 type systemHealthRepositoryImpl struct {

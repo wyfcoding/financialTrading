@@ -55,7 +55,6 @@ func (r *positionRepositoryImpl) Save(ctx context.Context, position *domain.Posi
 		Columns:   []clause.Column{{Name: "position_id"}},
 		UpdateAll: true,
 	}).Create(model).Error
-
 	if err != nil {
 		logging.Error(ctx, "position_repository.Save failed", "position_id", position.PositionID, "error", err)
 		return fmt.Errorf("failed to save position: %w", err)
@@ -138,7 +137,6 @@ func (r *positionRepositoryImpl) Close(ctx context.Context, positionID string, c
 		"closed_at":     &now,
 		"current_price": closePrice.String(),
 	}).Error
-
 	if err != nil {
 		logging.Error(ctx, "position_repository.Close failed", "position_id", positionID, "error", err)
 		return fmt.Errorf("failed to close position: %w", err)

@@ -59,7 +59,6 @@ func (r *accountRepositoryImpl) Save(ctx context.Context, account *domain.Accoun
 		Columns:   []clause.Column{{Name: "account_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"user_id", "account_type", "currency", "balance", "available_balance", "frozen_balance"}),
 	}).Create(model).Error
-
 	if err != nil {
 		logging.Error(ctx, "account_repository.Save failed", "account_id", account.AccountID, "error", err)
 		return fmt.Errorf("failed to save account: %w", err)
@@ -105,7 +104,6 @@ func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, accountID str
 		"available_balance": available.String(),
 		"frozen_balance":    frozen.String(),
 	}).Error
-
 	if err != nil {
 		logging.Error(ctx, "account_repository.UpdateBalance failed", "account_id", accountID, "error", err)
 		return fmt.Errorf("failed to update balance: %w", err)
