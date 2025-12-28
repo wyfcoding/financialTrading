@@ -38,10 +38,37 @@ enabled = true
 port = "28008"
 path = "/metrics"
 
+[jwt]
+secret = "ecommerce-secret-key"
+issuer = "ecommerce"
+expire_duration = "24h"
+
 [snowflake]
+type = "snowflake"
 start_time = "2024-01-01"
 machine_id = 1
 
+[ratelimit]
+enabled = true
+rate = 100
+burst = 20
+
+[circuitbreaker]
+enabled = true
+max_requests = 100
+interval = "1s"
+timeout = "3s"
+
+[cache]
+prefix = "notification:"
+default_expiration = "1h"
+cleanup_interval = "10m"
+
+[lock]
+prefix = "notification:lock:"
+default_expiration = "10s"
+max_retries = 3
+retry_delay = "100ms"
 
 [data.database]
 driver = "mysql"
@@ -50,7 +77,6 @@ max_idle_conns = 10
 max_open_conns = 100
 conn_max_lifetime = "1h"
 slow_threshold = "200ms"
-
 
 [data.redis]
 addr = "127.0.0.1:6379"
