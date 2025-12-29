@@ -88,11 +88,6 @@ read_timeout = "0.2s"
 write_timeout = "0.2s"
 
 [services]
-
-[services.marketdata]
-grpc_addr = "localhost:19003"
-http_addr = "localhost:18003"
-
-[services.order]
-grpc_addr = "localhost:9027"
-http_addr = "localhost:8027"
+[services.account]
+grpc_addr = "127.0.0.1:19000"
+http_addr = "127.0.0.1:18000"

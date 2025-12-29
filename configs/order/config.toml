@@ -88,3 +88,6 @@ read_timeout = "0.2s"
 write_timeout = "0.2s"
 
 [services]
+[services.account]
+grpc_addr = "127.0.0.1:19000"
+http_addr = "127.0.0.1:18000"
