@@ -1,10 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc"
+
 	pb "github.com/wyfcoding/financialtrading/goapi/pricing/v1"
 	"github.com/wyfcoding/financialtrading/internal/pricing/application"
 	"github.com/wyfcoding/financialtrading/internal/pricing/infrastructure/client"
@@ -20,107 +24,145 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 	"github.com/wyfcoding/pkg/metrics"
 	"github.com/wyfcoding/pkg/middleware"
-	"google.golang.org/grpc"
 )
 
-// AppContext 应用上下文，包含配置、服务实例和客户端依赖。
-type AppContext struct {
-	AppService *application.PricingService
-	Limiter    limiter.Limiter
-	Config     *configpkg.Config
-	Clients    *ServiceClients
+// BootstrapName 服务标识。
+const BootstrapName = "pricing"
+
+// Config 扩展配置结构。
+type Config struct {
+	configpkg.Config `mapstructure:",squash"`
 }
 
-// ServiceClients 包含所有下游服务的 gRPC 客户端连接。
+// AppContext 应用资源上下文。
+type AppContext struct {
+	Config     *Config
+	AppService *application.PricingService
+	Clients    *ServiceClients
+	Metrics    *metrics.Metrics
+	Limiter    limiter.Limiter
+}
+
+// ServiceClients 下游微服务。
 type ServiceClients struct {
 	MarketData *grpc.ClientConn `service:"marketdata"`
 }
 
-// BootstrapName 服务名称常量。
-const BootstrapName = "pricing"
-
 func main() {
 	if err := app.NewBuilder(BootstrapName).
-		WithConfig(&configpkg.Config{}).
+		WithConfig(&Config{}).
 		WithService(initService).
 		WithGRPC(registerGRPC).
 		WithGin(registerGin).
-		WithGinMiddleware(middleware.CORS()).
+		WithGinMiddleware(
+			middleware.MetricsMiddleware(),
+			middleware.CORS(),
+		).
 		Build().
 		Run(); err != nil {
-		slog.Error("application run failed", "error", err)
+		slog.Error("service bootstrap failed", "error", err)
 	}
 }
 
 func registerGRPC(s *grpc.Server, srv any) {
 	ctx := srv.(*AppContext)
-	handler := grpchandler.NewGRPCHandler(ctx.AppService)
-	pb.RegisterPricingServiceServer(s, handler)
-	slog.Default().Info("gRPC server registered", "service", BootstrapName)
+	pb.RegisterPricingServiceServer(s, grpchandler.NewGRPCHandler(ctx.AppService))
 }
 
 func registerGin(e *gin.Engine, srv any) {
 	ctx := srv.(*AppContext)
+
+	if ctx.Config.Server.Environment == "prod" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	// 1. 系统路由组 (不限流)
+	sys := e.Group("/sys")
+	{
+		sys.GET("/health", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"status":    "UP",
+				"service":   BootstrapName,
+				"timestamp": time.Now().Unix(),
+			})
+		})
+		sys.GET("/ready", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"status": "READY"})
+		})
+	}
+
+	if ctx.Config.Metrics.Enabled {
+		e.GET(ctx.Config.Metrics.Path, gin.WrapH(ctx.Metrics.Handler()))
+	}
+
+	// 2. 治理：限流保护
 	e.Use(middleware.RateLimitWithLimiter(ctx.Limiter))
+
+	// 3. 业务路由
 	httpHandler := httphandler.NewPricingHandler(ctx.AppService)
 	httpHandler.RegisterRoutes(e)
-	e.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":    "healthy",
-			"service":   BootstrapName,
-			"timestamp": time.Now().Unix(),
-		})
-	})
-	slog.Default().Info("HTTP routes registered", "service", BootstrapName)
+
+	slog.Info("HTTP service configured successfully", "service", BootstrapName)
 }
 
 func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
-	c := cfg.(*configpkg.Config)
-	slog.Info("initializing service dependencies...")
+	c := cfg.(*Config)
+	bootLog := slog.With("module", "bootstrap")
+	logger := logging.Default()
 
-	db, err := databases.NewDB(c.Data.Database, logging.Default())
+	// 1. 基础设施
+	db, err := databases.NewDB(c.Data.Database, logger)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("database init failed: %w", err)
 	}
 
-	// Auto migrate standardized entities
+	// 自动迁移 (Pricing 特有)
 	if err := db.AutoMigrate(&mysql.PricingResultModel{}); err != nil {
-		return nil, nil, err
+		bootLog.Warn("auto-migrate failed", "error", err)
 	}
 
 	redisCache, err := cache.NewRedisCache(c.Data.Redis)
 	if err != nil {
-		return nil, nil, err
-	}
-	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
-
-	// Downstream Clients
-	clients := &ServiceClients{}
-	clientCleanup, err := grpcclient.InitClients(c.Services, clients)
-	if err != nil {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
 		}
-		redisCache.Close()
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("redis init failed: %w", err)
 	}
 
+	// 2. 治理能力
+	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
+
+	// 3. 下游微服务拨号
+	clients := &ServiceClients{}
+	clientCleanup, err := grpcclient.InitClients(c.Services, clients)
+	if err != nil {
+		redisCache.Close()
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
+		}
+		return nil, nil, fmt.Errorf("grpc clients init failed: %w", err)
+	}
+
+	// 4. DDD 分层装配
+	bootLog.Info("assembling pricing services...")
 	marketDataClient := client.NewMarketDataClientFromConn(clients.MarketData)
 	pricingRepo := mysql.NewPricingRepository(db)
 	appService := application.NewPricingService(marketDataClient, pricingRepo)
 
 	cleanup := func() {
-		slog.Info("cleaning up resources...")
+		bootLog.Info("performing graceful shutdown...")
 		clientCleanup()
+		redisCache.Close()
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
 		}
-		redisCache.Close()
 	}
+
 	return &AppContext{
-		AppService: appService,
-		Limiter:    rateLimiter,
 		Config:     c,
+		AppService: appService,
 		Clients:    clients,
+		Metrics:    m,
+		Limiter:    rateLimiter,
 	}, cleanup, nil
 }
