@@ -5,7 +5,7 @@ set -e
 
 # 配置路径
 API_ROOT="./api"
-OUT_ROOT="./goapi"
+OUT_ROOT="./go-api"
 
 # 检查必要的工具
 check_tool() {
