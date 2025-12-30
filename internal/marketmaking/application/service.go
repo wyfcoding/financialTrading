@@ -103,10 +103,18 @@ func (s *MarketMakingService) runMarketMaking(symbol string) {
 	ctx := context.Background()
 
 	// 1. 获取当前价格
-	price, _ := s.marketDataClient.GetPrice(ctx, symbol)
+	price, err := s.marketDataClient.GetPrice(ctx, symbol)
+	if err != nil {
+		logging.Error(ctx, "Failed to get market price for market making", "symbol", symbol, "error", err)
+		return
+	}
 
 	// 2. 获取策略
-	strategy, _ := s.strategyRepo.GetStrategyBySymbol(ctx, symbol)
+	strategy, err := s.strategyRepo.GetStrategyBySymbol(ctx, symbol)
+	if err != nil {
+		logging.Error(ctx, "Failed to get strategy for market making", "symbol", symbol, "error", err)
+		return
+	}
 	if strategy == nil || strategy.Status != domain.StrategyStatusActive {
 		return
 	}
