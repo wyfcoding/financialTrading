@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/shopspring/decimal v1.4.0
-	github.com/wyfcoding/pkg v0.0.0-20251228022545-6552fce97233
+	github.com/wyfcoding/pkg v0.0.0-20251230124159-eaaac6d9975d
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
 	gorm.io/gorm v1.31.1

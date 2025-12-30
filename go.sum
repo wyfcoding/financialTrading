@@ -196,8 +196,8 @@ github.com/twitchyliquid64/golang-asm v0.15.1 h1:SU5vSMR7hnwNxj24w34ZyCi/FmDZTkS
 github.com/twitchyliquid64/golang-asm v0.15.1/go.mod h1:a1lVb/DtPvCB8fslRZhAngC2+aY1QWCk3Cedj/Gdt08=
 github.com/ugorji/go/codec v1.3.1 h1:waO7eEiFDwidsBN6agj1vJQ4AG7lh2yqXyOXqhgQuyY=
 github.com/ugorji/go/codec v1.3.1/go.mod h1:pRBVtBSKl77K30Bv8R2P+cLSGaTtex6fsA2Wjqmfxj4=
-github.com/wyfcoding/pkg v0.0.0-20251228022545-6552fce97233 h1:Uy1KwH5j6irTgFY6d2PUQgC9f3z8iNRqpr3I0FtteJM=
-github.com/wyfcoding/pkg v0.0.0-20251228022545-6552fce97233/go.mod h1:VUcXrOL2JHFcAL7maDozNjmGMW2mYAA120ItqGM12+0=
+github.com/wyfcoding/pkg v0.0.0-20251230124159-eaaac6d9975d h1:iwh2J0xr/HQf2Jcyxmzmi7SpgKl1hjhF7EikrQ3//pk=
+github.com/wyfcoding/pkg v0.0.0-20251230124159-eaaac6d9975d/go.mod h1:GihgqJkmlBIxSFHtdqAQg6EMaZeB37M04uUPma5sb/E=
 github.com/xdg-go/pbkdf2 v1.0.0/go.mod h1:jrpuAogTd400dnrH08LKmI/xc1MbPOebTwRqcT5RDeI=
 github.com/xdg-go/scram v1.1.1/go.mod h1:RaEWvsqvNKKvBPvcKeFjrG2cJqOkHTiyTpzz23ni57g=
 github.com/xdg-go/stringprep v1.0.3/go.mod h1:W3f5j4i+9rC0kuIEJL0ky1VpHXQU3ocBgklLGvcBnW8=
