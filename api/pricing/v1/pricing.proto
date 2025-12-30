@@ -4,7 +4,7 @@ package api.pricing.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/wyfcoding/financialTrading/goapi/pricing/v1;pricingv1";
+option go_package = "github.com/wyfcoding/financialtrading/goapi/pricing/v1;pricingv1";
 
 // 金融定价服务。
 service PricingService {

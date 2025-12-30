@@ -1,9 +1,10 @@
 package http
 
 import (
-	"github.com/wyfcoding/pkg/response"
 	"net/http"
 	"time"
+
+	"github.com/wyfcoding/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialtrading/internal/quant/application"

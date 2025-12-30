@@ -4,7 +4,7 @@ package api.notification.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/wyfcoding/financialTrading/goapi/notification/v1;notificationv1";
+option go_package = "github.com/wyfcoding/financialtrading/goapi/notification/v1;notificationv1";
 
 // 业务通知管理。
 service NotificationService {

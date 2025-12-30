@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package api.market_simulation.v1;
+package api.marketsimulation.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/wyfcoding/financialTrading/goapi/market-simulation/v1;marketsimulationv1";
+option go_package = "github.com/wyfcoding/financialtrading/goapi/marketsimulation/v1;marketsimulationv1";
 
 // 市场模拟服务。
 service MarketSimulationService {

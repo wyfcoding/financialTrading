@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package api.risk.v1;
 
-option go_package = "github.com/wyfcoding/financialTrading/goapi/risk/v1;riskv1";
+option go_package = "github.com/wyfcoding/financialtrading/goapi/risk/v1;riskv1";
 
 // 全局实时风控。
 service RiskService {

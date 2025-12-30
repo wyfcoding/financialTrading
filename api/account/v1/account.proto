@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package api.account.v1;
 
-option go_package = "github.com/wyfcoding/financialTrading/goapi/account/v1;accountv1";
+option go_package = "github.com/wyfcoding/financialtrading/goapi/account/v1;accountv1";
 
 // 账户服务。
 service AccountService {
