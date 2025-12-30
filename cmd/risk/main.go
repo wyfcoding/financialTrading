@@ -116,7 +116,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		return nil, nil, fmt.Errorf("database init error: %w", err)
 	}
 
-	redisCache, err := cache.NewRedisCache(c.Data.Redis)
+	redisCache, err := cache.NewRedisCache(c.Data.Redis, logger)
 	if err != nil {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()

@@ -122,7 +122,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		bootLog.Warn("auto-migrate failed", "error", err)
 	}
 
-	redisCache, err := cache.NewRedisCache(c.Data.Redis)
+	redisCache, err := cache.NewRedisCache(c.Data.Redis, logger)
 	if err != nil {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
