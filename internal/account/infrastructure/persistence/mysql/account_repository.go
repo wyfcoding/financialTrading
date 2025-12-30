@@ -112,9 +112,18 @@ func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, accountID str
 }
 
 func (r *accountRepositoryImpl) toDomain(m *AccountModel) *domain.Account {
-	balance, _ := decimal.NewFromString(m.Balance)
-	available, _ := decimal.NewFromString(m.AvailableBalance)
-	frozen, _ := decimal.NewFromString(m.FrozenBalance)
+	balance, err := decimal.NewFromString(m.Balance)
+	if err != nil {
+		balance = decimal.Zero
+	}
+	available, err := decimal.NewFromString(m.AvailableBalance)
+	if err != nil {
+		available = decimal.Zero
+	}
+	frozen, err := decimal.NewFromString(m.FrozenBalance)
+	if err != nil {
+		frozen = decimal.Zero
+	}
 
 	return &domain.Account{
 		Model:            m.Model,
@@ -186,7 +195,10 @@ func (r *transactionRepositoryImpl) GetHistory(ctx context.Context, accountID st
 
 	txs := make([]*domain.Transaction, len(models))
 	for i, m := range models {
-		amount, _ := decimal.NewFromString(m.Amount)
+		amount, err := decimal.NewFromString(m.Amount)
+		if err != nil {
+			amount = decimal.Zero
+		}
 		txs[i] = &domain.Transaction{
 			Model:         m.Model,
 			TransactionID: m.TransactionID,

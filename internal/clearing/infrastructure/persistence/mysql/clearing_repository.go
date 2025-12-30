@@ -115,8 +115,14 @@ func (r *settlementRepositoryImpl) GetByTrade(ctx context.Context, tradeID strin
 }
 
 func (r *settlementRepositoryImpl) toDomain(m *SettlementModel) *domain.Settlement {
-	q, _ := decimal.NewFromString(m.Quantity)
-	p, _ := decimal.NewFromString(m.Price)
+	q, err := decimal.NewFromString(m.Quantity)
+	if err != nil {
+		q = decimal.Zero
+	}
+	p, err := decimal.NewFromString(m.Price)
+	if err != nil {
+		p = decimal.Zero
+	}
 	return &domain.Settlement{
 		Model:          m.Model,
 		SettlementID:   m.SettlementID,

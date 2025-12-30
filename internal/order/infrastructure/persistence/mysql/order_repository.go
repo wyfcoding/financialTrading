@@ -168,9 +168,18 @@ func (r *orderRepositoryImpl) Delete(ctx context.Context, orderID string) error 
 }
 
 func (r *orderRepositoryImpl) toDomain(m *OrderModel) *domain.Order {
-	price, _ := decimal.NewFromString(m.Price)
-	qty, _ := decimal.NewFromString(m.Quantity)
-	filled, _ := decimal.NewFromString(m.FilledQuantity)
+	price, err := decimal.NewFromString(m.Price)
+	if err != nil {
+		price = decimal.Zero
+	}
+	qty, err := decimal.NewFromString(m.Quantity)
+	if err != nil {
+		qty = decimal.Zero
+	}
+	filled, err := decimal.NewFromString(m.FilledQuantity)
+	if err != nil {
+		filled = decimal.Zero
+	}
 
 	return &domain.Order{
 		Model:          m.Model,

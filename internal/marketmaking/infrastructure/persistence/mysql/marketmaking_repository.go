@@ -115,9 +115,18 @@ func (r *marketMakingRepositoryImpl) GetPerformanceBySymbol(ctx context.Context,
 }
 
 func (r *marketMakingRepositoryImpl) performanceToDomain(m *PerformanceModel) *domain.MarketMakingPerformance {
-	pnl, _ := decimal.NewFromString(m.TotalPnL)
-	vol, _ := decimal.NewFromString(m.TotalVolume)
-	sharpe, _ := decimal.NewFromString(m.SharpeRatio)
+	pnl, err := decimal.NewFromString(m.TotalPnL)
+	if err != nil {
+		pnl = decimal.Zero
+	}
+	vol, err := decimal.NewFromString(m.TotalVolume)
+	if err != nil {
+		vol = decimal.Zero
+	}
+	sharpe, err := decimal.NewFromString(m.SharpeRatio)
+	if err != nil {
+		sharpe = decimal.Zero
+	}
 	return &domain.MarketMakingPerformance{
 		Model:       m.Model,
 		Symbol:      m.Symbol,
@@ -131,10 +140,22 @@ func (r *marketMakingRepositoryImpl) performanceToDomain(m *PerformanceModel) *d
 }
 
 func (r *marketMakingRepositoryImpl) strategyToDomain(m *QuoteStrategyModel) *domain.QuoteStrategy {
-	spread, _ := decimal.NewFromString(m.Spread)
-	min, _ := decimal.NewFromString(m.MinOrderSize)
-	max, _ := decimal.NewFromString(m.MaxOrderSize)
-	pos, _ := decimal.NewFromString(m.MaxPosition)
+	spread, err := decimal.NewFromString(m.Spread)
+	if err != nil {
+		spread = decimal.Zero
+	}
+	min, err := decimal.NewFromString(m.MinOrderSize)
+	if err != nil {
+		min = decimal.Zero
+	}
+	max, err := decimal.NewFromString(m.MaxOrderSize)
+	if err != nil {
+		max = decimal.Zero
+	}
+	pos, err := decimal.NewFromString(m.MaxPosition)
+	if err != nil {
+		pos = decimal.Zero
+	}
 	return &domain.QuoteStrategy{
 		Model:        m.Model,
 		Symbol:       m.Symbol,

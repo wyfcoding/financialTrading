@@ -87,12 +87,30 @@ func (r *quoteRepositoryImpl) DeleteExpired(ctx context.Context, beforeTime int6
 }
 
 func (r *quoteRepositoryImpl) toDomain(m *QuoteModel) *domain.Quote {
-	bp, _ := decimal.NewFromString(m.BidPrice)
-	ap, _ := decimal.NewFromString(m.AskPrice)
-	bs, _ := decimal.NewFromString(m.BidSize)
-	as, _ := decimal.NewFromString(m.AskSize)
-	lp, _ := decimal.NewFromString(m.LastPrice)
-	ls, _ := decimal.NewFromString(m.LastSize)
+	bp, err := decimal.NewFromString(m.BidPrice)
+	if err != nil {
+		bp = decimal.Zero
+	}
+	ap, err := decimal.NewFromString(m.AskPrice)
+	if err != nil {
+		ap = decimal.Zero
+	}
+	bs, err := decimal.NewFromString(m.BidSize)
+	if err != nil {
+		bs = decimal.Zero
+	}
+	as, err := decimal.NewFromString(m.AskSize)
+	if err != nil {
+		as = decimal.Zero
+	}
+	lp, err := decimal.NewFromString(m.LastPrice)
+	if err != nil {
+		lp = decimal.Zero
+	}
+	ls, err := decimal.NewFromString(m.LastSize)
+	if err != nil {
+		ls = decimal.Zero
+	}
 	return &domain.Quote{
 		Model:     m.Model,
 		Symbol:    m.Symbol,
@@ -192,14 +210,38 @@ func (r *klineRepositoryImpl) DeleteExpired(ctx context.Context, beforeTime int6
 }
 
 func (r *klineRepositoryImpl) toDomain(m *KlineModel) *domain.Kline {
-	o, _ := decimal.NewFromString(m.Open)
-	h, _ := decimal.NewFromString(m.High)
-	l, _ := decimal.NewFromString(m.Low)
-	c, _ := decimal.NewFromString(m.Close)
-	v, _ := decimal.NewFromString(m.Volume)
-	qav, _ := decimal.NewFromString(m.QuoteAssetVolume)
-	tbb, _ := decimal.NewFromString(m.TakerBuyBase)
-	tbq, _ := decimal.NewFromString(m.TakerBuyQuote)
+	o, err := decimal.NewFromString(m.Open)
+	if err != nil {
+		o = decimal.Zero
+	}
+	h, err := decimal.NewFromString(m.High)
+	if err != nil {
+		h = decimal.Zero
+	}
+	l, err := decimal.NewFromString(m.Low)
+	if err != nil {
+		l = decimal.Zero
+	}
+	c, err := decimal.NewFromString(m.Close)
+	if err != nil {
+		c = decimal.Zero
+	}
+	v, err := decimal.NewFromString(m.Volume)
+	if err != nil {
+		v = decimal.Zero
+	}
+	qav, err := decimal.NewFromString(m.QuoteAssetVolume)
+	if err != nil {
+		qav = decimal.Zero
+	}
+	tbb, err := decimal.NewFromString(m.TakerBuyBase)
+	if err != nil {
+		tbb = decimal.Zero
+	}
+	tbq, err := decimal.NewFromString(m.TakerBuyQuote)
+	if err != nil {
+		tbq = decimal.Zero
+	}
 	return &domain.Kline{
 		Model:                    m.Model,
 		Symbol:                   m.Symbol,
@@ -291,8 +333,14 @@ func (r *tradeRepositoryImpl) DeleteExpired(ctx context.Context, beforeTime int6
 }
 
 func (r *tradeRepositoryImpl) toDomain(m *TradeModel) *domain.Trade {
-	p, _ := decimal.NewFromString(m.Price)
-	q, _ := decimal.NewFromString(m.Quantity)
+	p, err := decimal.NewFromString(m.Price)
+	if err != nil {
+		p = decimal.Zero
+	}
+	q, err := decimal.NewFromString(m.Quantity)
+	if err != nil {
+		q = decimal.Zero
+	}
 	return &domain.Trade{
 		Model:     m.Model,
 		TradeID:   m.TradeID,

@@ -117,8 +117,14 @@ func (r *executionRepositoryImpl) GetByUser(ctx context.Context, userID string, 
 }
 
 func (r *executionRepositoryImpl) toDomain(m *ExecutionModel) *domain.Execution {
-	p, _ := decimal.NewFromString(m.ExecutedPrice)
-	q, _ := decimal.NewFromString(m.ExecutedQuantity)
+	p, err := decimal.NewFromString(m.ExecutedPrice)
+	if err != nil {
+		p = decimal.Zero
+	}
+	q, err := decimal.NewFromString(m.ExecutedQuantity)
+	if err != nil {
+		q = decimal.Zero
+	}
 	return &domain.Execution{
 		Model:            m.Model,
 		ExecutionID:      m.ExecutionID,

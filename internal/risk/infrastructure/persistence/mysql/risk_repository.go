@@ -29,10 +29,22 @@ func (RiskAssessmentModel) TableName() string {
 }
 
 func (m *RiskAssessmentModel) ToDomain() *domain.RiskAssessment {
-	q, _ := decimal.NewFromString(m.Quantity)
-	p, _ := decimal.NewFromString(m.Price)
-	rs, _ := decimal.NewFromString(m.RiskScore)
-	mr, _ := decimal.NewFromString(m.MarginRequirement)
+	q, err := decimal.NewFromString(m.Quantity)
+	if err != nil {
+		q = decimal.Zero
+	}
+	p, err := decimal.NewFromString(m.Price)
+	if err != nil {
+		p = decimal.Zero
+	}
+	rs, err := decimal.NewFromString(m.RiskScore)
+	if err != nil {
+		rs = decimal.Zero
+	}
+	mr, err := decimal.NewFromString(m.MarginRequirement)
+	if err != nil {
+		mr = decimal.Zero
+	}
 	return &domain.RiskAssessment{
 		Model:             m.Model,
 		ID:                m.ID,
@@ -82,11 +94,26 @@ func (RiskMetricsModel) TableName() string {
 }
 
 func (m *RiskMetricsModel) ToDomain() *domain.RiskMetrics {
-	v95, _ := decimal.NewFromString(m.VaR95)
-	v99, _ := decimal.NewFromString(m.VaR99)
-	md, _ := decimal.NewFromString(m.MaxDrawdown)
-	sr, _ := decimal.NewFromString(m.SharpeRatio)
-	corr, _ := decimal.NewFromString(m.Correlation)
+	v95, err := decimal.NewFromString(m.VaR95)
+	if err != nil {
+		v95 = decimal.Zero
+	}
+	v99, err := decimal.NewFromString(m.VaR99)
+	if err != nil {
+		v99 = decimal.Zero
+	}
+	md, err := decimal.NewFromString(m.MaxDrawdown)
+	if err != nil {
+		md = decimal.Zero
+	}
+	sr, err := decimal.NewFromString(m.SharpeRatio)
+	if err != nil {
+		sr = decimal.Zero
+	}
+	corr, err := decimal.NewFromString(m.Correlation)
+	if err != nil {
+		corr = decimal.Zero
+	}
 	return &domain.RiskMetrics{
 		Model:       m.Model,
 		UserID:      m.UserID,
@@ -126,8 +153,14 @@ func (RiskLimitModel) TableName() string {
 }
 
 func (m *RiskLimitModel) ToDomain() *domain.RiskLimit {
-	lv, _ := decimal.NewFromString(m.LimitValue)
-	cv, _ := decimal.NewFromString(m.CurrentValue)
+	lv, err := decimal.NewFromString(m.LimitValue)
+	if err != nil {
+		lv = decimal.Zero
+	}
+	cv, err := decimal.NewFromString(m.CurrentValue)
+	if err != nil {
+		cv = decimal.Zero
+	}
 	return &domain.RiskLimit{
 		Model:        m.Model,
 		ID:           m.ID,

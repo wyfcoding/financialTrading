@@ -78,13 +78,34 @@ func (r *pricingRepositoryImpl) GetHistory(ctx context.Context, symbol string, l
 }
 
 func (r *pricingRepositoryImpl) toDomain(m *PricingResultModel) *domain.PricingResult {
-	opPrice, _ := decimal.NewFromString(m.OptionPrice)
-	ulPrice, _ := decimal.NewFromString(m.UnderlyingPrice)
-	delta, _ := decimal.NewFromString(m.Delta)
-	gamma, _ := decimal.NewFromString(m.Gamma)
-	theta, _ := decimal.NewFromString(m.Theta)
-	vega, _ := decimal.NewFromString(m.Vega)
-	rho, _ := decimal.NewFromString(m.Rho)
+	opPrice, err := decimal.NewFromString(m.OptionPrice)
+	if err != nil {
+		opPrice = decimal.Zero
+	}
+	ulPrice, err := decimal.NewFromString(m.UnderlyingPrice)
+	if err != nil {
+		ulPrice = decimal.Zero
+	}
+	delta, err := decimal.NewFromString(m.Delta)
+	if err != nil {
+		delta = decimal.Zero
+	}
+	gamma, err := decimal.NewFromString(m.Gamma)
+	if err != nil {
+		gamma = decimal.Zero
+	}
+	theta, err := decimal.NewFromString(m.Theta)
+	if err != nil {
+		theta = decimal.Zero
+	}
+	vega, err := decimal.NewFromString(m.Vega)
+	if err != nil {
+		vega = decimal.Zero
+	}
+	rho, err := decimal.NewFromString(m.Rho)
+	if err != nil {
+		rho = decimal.Zero
+	}
 
 	return &domain.PricingResult{
 		Model:           m.Model,

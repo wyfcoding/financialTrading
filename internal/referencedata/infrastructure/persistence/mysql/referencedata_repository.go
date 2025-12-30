@@ -26,8 +26,14 @@ func (SymbolModel) TableName() string {
 }
 
 func (m *SymbolModel) ToDomain() *domain.Symbol {
-	minSize, _ := decimal.NewFromString(m.MinOrderSize)
-	pricePrec, _ := decimal.NewFromString(m.PricePrecision)
+	minSize, err := decimal.NewFromString(m.MinOrderSize)
+	if err != nil {
+		minSize = decimal.Zero
+	}
+	pricePrec, err := decimal.NewFromString(m.PricePrecision)
+	if err != nil {
+		pricePrec = decimal.Zero
+	}
 	return &domain.Symbol{
 		Model:          m.Model,
 		ID:             m.ID,

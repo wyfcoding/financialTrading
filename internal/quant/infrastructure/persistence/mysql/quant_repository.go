@@ -4,6 +4,7 @@ package mysql
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/quant/domain"
@@ -118,9 +119,18 @@ func (r *backtestResultRepositoryImpl) GetByID(ctx context.Context, id string) (
 		}
 		return nil, err
 	}
-	totalReturn, _ := decimal.NewFromString(m.TotalReturn)
-	maxDrawdown, _ := decimal.NewFromString(m.MaxDrawdown)
-	sharpeRatio, _ := decimal.NewFromString(m.SharpeRatio)
+	totalReturn, err := decimal.NewFromString(m.TotalReturn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse total return: %w", err)
+	}
+	maxDrawdown, err := decimal.NewFromString(m.MaxDrawdown)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse max drawdown: %w", err)
+	}
+	sharpeRatio, err := decimal.NewFromString(m.SharpeRatio)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse sharpe ratio: %w", err)
+	}
 
 	return &domain.BacktestResult{
 		Model:       m.Model,

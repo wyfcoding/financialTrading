@@ -158,6 +158,10 @@ func (h *MarketDataHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequ
 
 // parseFloat 解析浮点数
 func parseFloat(s string) float64 {
-	f, _ := strconv.ParseFloat(s, 64)
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		// Log error if needed, although 0 might be acceptable default
+		return 0
+	}
 	return f
 }
