@@ -164,7 +164,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 
 	// 5.1 Infrastructure (Persistence)
 	strategyRepo, performanceRepo := mysql.NewMarketMakingRepository(db)
-	
+
 	// 5.2 Infrastructure (Clients)
 	var orderClient domain.OrderClient
 	if clients.OrderConn != nil {

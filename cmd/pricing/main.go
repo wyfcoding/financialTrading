@@ -162,7 +162,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 
 	// 5.1 Infrastructure (Persistence)
 	pricingRepo := mysql.NewPricingRepository(db)
-	
+
 	// 5.2 MarketDataClient (Infrastructure Client)
 	marketDataAddr := "127.0.0.1:9092" // 默认值
 	if md, ok := c.Services["marketdata"]; ok {

@@ -163,7 +163,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	// 5.1 Infrastructure (Persistence & Client)
 	strategyRepo := mysql.NewStrategyRepository(db)
 	backtestRepo := mysql.NewBacktestResultRepository(db)
-	
+
 	marketDataAddr := "127.0.0.1:9092"
 	if md, ok := c.Services["marketdata"]; ok {
 		marketDataAddr = md.GRPCAddr
