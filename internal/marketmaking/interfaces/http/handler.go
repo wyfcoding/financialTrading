@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/wyfcoding/pkg/response"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -46,62 +47,62 @@ type SetStrategyRequest struct {
 func (h *MarketMakingHandler) SetStrategy(c *gin.Context) {
 	var req SetStrategyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
 	id, err := h.app.SetStrategy(c.Request.Context(), req.Symbol, decimal.NewFromFloat(req.Spread), decimal.NewFromFloat(req.MinOrderSize), decimal.NewFromFloat(req.MaxOrderSize), decimal.NewFromFloat(req.MaxPosition), req.Status)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to set strategy", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"strategy_id": id})
+	response.Success(c, gin.H{"strategy_id": id})
 }
 
 // GetStrategy 获取做市策略
 func (h *MarketMakingHandler) GetStrategy(c *gin.Context) {
 	symbol := c.Query("symbol")
 	if symbol == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "symbol is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "symbol is required", "")
 		return
 	}
 
 	strategy, err := h.app.GetStrategy(c.Request.Context(), symbol)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get strategy", "symbol", symbol, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
 	if strategy == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "strategy not found"})
+		response.ErrorWithStatus(c, http.StatusNotFound, "strategy not found", "")
 		return
 	}
 
-	c.JSON(http.StatusOK, strategy)
+	response.Success(c, strategy)
 }
 
 // GetPerformance 获取做市绩效
 func (h *MarketMakingHandler) GetPerformance(c *gin.Context) {
 	symbol := c.Query("symbol")
 	if symbol == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "symbol is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "symbol is required", "")
 		return
 	}
 
 	performance, err := h.app.GetPerformance(c.Request.Context(), symbol)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get performance", "symbol", symbol, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
 	if performance == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "performance not found"})
+		response.ErrorWithStatus(c, http.StatusNotFound, "performance not found", "")
 		return
 	}
 
-	c.JSON(http.StatusOK, performance)
+	response.Success(c, performance)
 }

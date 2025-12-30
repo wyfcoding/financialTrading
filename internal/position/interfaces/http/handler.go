@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/wyfcoding/pkg/response"
 	"net/http"
 	"strconv"
 
@@ -38,28 +39,28 @@ func (h *PositionHandler) RegisterRoutes(router *gin.Engine) {
 func (h *PositionHandler) GetPositions(c *gin.Context) {
 	userID := c.Query("user_id")
 	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "user_id is required", "")
 		return
 	}
 
 	limitStr := c.DefaultQuery("limit", "20")
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid limit", "")
 		return
 	}
 
 	offsetStr := c.DefaultQuery("offset", "0")
 	offset, err := strconv.Atoi(offsetStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid offset", "")
 		return
 	}
 
 	dtos, total, err := h.positionService.GetPositions(c.Request.Context(), userID, limit, offset)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get positions", "user_id", userID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
@@ -73,18 +74,18 @@ func (h *PositionHandler) GetPositions(c *gin.Context) {
 func (h *PositionHandler) GetPosition(c *gin.Context) {
 	positionID := c.Param("id")
 	if positionID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "position_id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "position_id is required", "")
 		return
 	}
 
 	dto, err := h.positionService.GetPosition(c.Request.Context(), positionID)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get position", "position_id", positionID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, dto)
+	response.Success(c, dto)
 }
 
 // ClosePositionRequest 平仓请求
@@ -96,34 +97,34 @@ type ClosePositionRequest struct {
 func (h *PositionHandler) ClosePosition(c *gin.Context) {
 	positionID := c.Param("id")
 	if positionID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "position_id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "position_id is required", "")
 		return
 	}
 
 	var req ClosePositionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
 	closePrice, err := decimal.NewFromString(req.ClosePrice)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid close price"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid close price", "")
 		return
 	}
 
 	if err := h.positionService.ClosePosition(c.Request.Context(), positionID, closePrice); err != nil {
 		logging.Error(c.Request.Context(), "Failed to close position", "position_id", positionID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
 	// 返回更新后的持仓信息
 	dto, err := h.positionService.GetPosition(c.Request.Context(), positionID)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"status": "closed", "message": "Position closed but failed to fetch updated details"})
+		response.Success(c, gin.H{"status": "closed", "message": "Position closed but failed to fetch updated details"})
 		return
 	}
 
-	c.JSON(http.StatusOK, dto)
+	response.Success(c, dto)
 }

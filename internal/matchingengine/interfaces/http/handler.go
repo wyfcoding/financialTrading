@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/wyfcoding/pkg/response"
 	"net/http"
 	"strconv"
 
@@ -37,66 +38,66 @@ func (h *MatchingHandler) RegisterRoutes(router *gin.Engine) {
 func (h *MatchingHandler) SubmitOrder(c *gin.Context) {
 	var req application.SubmitOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
 	result, err := h.matchingService.SubmitOrder(c.Request.Context(), &req)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to submit order", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	response.Success(c, result)
 }
 
 // GetOrderBook 获取订单簿
 func (h *MatchingHandler) GetOrderBook(c *gin.Context) {
 	symbol := c.Query("symbol")
 	if symbol == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "symbol is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "symbol is required", "")
 		return
 	}
 
 	depthStr := c.DefaultQuery("depth", "20")
 	depth, err := strconv.Atoi(depthStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid depth"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid depth", "")
 		return
 	}
 
 	snapshot, err := h.matchingService.GetOrderBook(c.Request.Context(), symbol, depth)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get order book", "symbol", symbol, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, snapshot)
+	response.Success(c, snapshot)
 }
 
 // GetTrades 获取成交历史
 func (h *MatchingHandler) GetTrades(c *gin.Context) {
 	symbol := c.Query("symbol")
 	if symbol == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "symbol is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "symbol is required", "")
 		return
 	}
 
 	limitStr := c.DefaultQuery("limit", "100")
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid limit", "")
 		return
 	}
 
 	trades, err := h.matchingService.GetTrades(c.Request.Context(), symbol, limit)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get trades", "symbol", symbol, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": trades})
+	response.Success(c, gin.H{"data": trades})
 }

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/wyfcoding/pkg/response"
 	"net/http"
 	"strconv"
 
@@ -38,83 +39,83 @@ func (h *RiskHandler) RegisterRoutes(router *gin.Engine) {
 func (h *RiskHandler) AssessRisk(c *gin.Context) {
 	var req application.AssessRiskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
 	dto, err := h.riskService.AssessRisk(c.Request.Context(), &req)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to assess risk", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, dto)
+	response.Success(c, dto)
 }
 
 // GetRiskMetrics 获取风险指标
 func (h *RiskHandler) GetRiskMetrics(c *gin.Context) {
 	userID := c.Query("user_id")
 	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "user_id is required", "")
 		return
 	}
 
 	metrics, err := h.riskService.GetRiskMetrics(c.Request.Context(), userID)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get risk metrics", "user_id", userID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, metrics)
+	response.Success(c, metrics)
 }
 
 // CheckRiskLimit 检查风险限额
 func (h *RiskHandler) CheckRiskLimit(c *gin.Context) {
 	userID := c.Query("user_id")
 	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "user_id is required", "")
 		return
 	}
 
 	limitType := c.Query("limit_type")
 	if limitType == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "limit_type is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "limit_type is required", "")
 		return
 	}
 
 	limit, err := h.riskService.CheckRiskLimit(c.Request.Context(), userID, limitType)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to check risk limit", "user_id", userID, "limit_type", limitType, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, limit)
+	response.Success(c, limit)
 }
 
 // GetRiskAlerts 获取风险告警
 func (h *RiskHandler) GetRiskAlerts(c *gin.Context) {
 	userID := c.Query("user_id")
 	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "user_id is required", "")
 		return
 	}
 
 	limitStr := c.DefaultQuery("limit", "100")
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid limit", "")
 		return
 	}
 
 	alerts, err := h.riskService.GetRiskAlerts(c.Request.Context(), userID, limit)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get risk alerts", "user_id", userID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, alerts)
+	response.Success(c, alerts)
 }

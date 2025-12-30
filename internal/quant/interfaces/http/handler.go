@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/wyfcoding/pkg/response"
 	"net/http"
 	"time"
 
@@ -44,41 +45,41 @@ type CreateStrategyRequest struct {
 func (h *QuantHandler) CreateStrategy(c *gin.Context) {
 	var req CreateStrategyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
 	id, err := h.app.CreateStrategy(c.Request.Context(), req.Name, req.Description, req.Script)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to create strategy", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"strategy_id": id})
+	response.Success(c, gin.H{"strategy_id": id})
 }
 
 // GetStrategy 获取策略
 func (h *QuantHandler) GetStrategy(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "id is required", "")
 		return
 	}
 
 	strategy, err := h.app.GetStrategy(c.Request.Context(), id)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get strategy", "id", id, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
 	if strategy == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "strategy not found"})
+		response.ErrorWithStatus(c, http.StatusNotFound, "strategy not found", "")
 		return
 	}
 
-	c.JSON(http.StatusOK, strategy)
+	response.Success(c, strategy)
 }
 
 // RunBacktestRequest 运行回测请求
@@ -94,39 +95,39 @@ type RunBacktestRequest struct {
 func (h *QuantHandler) RunBacktest(c *gin.Context) {
 	var req RunBacktestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
 	id, err := h.app.RunBacktest(c.Request.Context(), req.StrategyID, req.Symbol, req.StartTime, req.EndTime, req.InitialCapital)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to run backtest", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"backtest_id": id})
+	response.Success(c, gin.H{"backtest_id": id})
 }
 
 // GetBacktestResult 获取回测结果
 func (h *QuantHandler) GetBacktestResult(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "id is required", "")
 		return
 	}
 
 	result, err := h.app.GetBacktestResult(c.Request.Context(), id)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get backtest result", "id", id, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
 	if result == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "result not found"})
+		response.ErrorWithStatus(c, http.StatusNotFound, "result not found", "")
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	response.Success(c, result)
 }

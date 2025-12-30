@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/wyfcoding/pkg/response"
 	"net/http"
 	"strconv"
 
@@ -37,46 +38,46 @@ func (h *ExecutionHandler) RegisterRoutes(router *gin.Engine) {
 func (h *ExecutionHandler) ExecuteOrder(c *gin.Context) {
 	var req application.ExecuteOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
 	dto, err := h.executionService.ExecuteOrder(c.Request.Context(), &req)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to execute order", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, dto)
+	response.Success(c, dto)
 }
 
 // GetExecutionHistory 获取执行历史
 func (h *ExecutionHandler) GetExecutionHistory(c *gin.Context) {
 	userID := c.Query("user_id")
 	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "user_id is required", "")
 		return
 	}
 
 	limitStr := c.DefaultQuery("limit", "20")
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid limit", "")
 		return
 	}
 
 	offsetStr := c.DefaultQuery("offset", "0")
 	offset, err := strconv.Atoi(offsetStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid offset", "")
 		return
 	}
 
 	dtos, total, err := h.executionService.GetExecutionHistory(c.Request.Context(), userID, limit, offset)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get execution history", "user_id", userID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 

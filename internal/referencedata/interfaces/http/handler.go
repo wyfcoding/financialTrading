@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/wyfcoding/pkg/response"
 	"net/http"
 	"strconv"
 
@@ -37,23 +38,23 @@ func (h *ReferenceDataHandler) RegisterRoutes(router *gin.Engine) {
 func (h *ReferenceDataHandler) GetSymbol(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "id is required", "")
 		return
 	}
 
 	symbol, err := h.app.GetSymbol(c.Request.Context(), id)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get symbol", "id", id, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
 	if symbol == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "symbol not found"})
+		response.ErrorWithStatus(c, http.StatusNotFound, "symbol not found", "")
 		return
 	}
 
-	c.JSON(http.StatusOK, symbol)
+	response.Success(c, symbol)
 }
 
 // ListSymbols 列出交易对
@@ -64,48 +65,48 @@ func (h *ReferenceDataHandler) ListSymbols(c *gin.Context) {
 	limitStr := c.DefaultQuery("limit", "10")
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid limit", "")
 		return
 	}
 
 	offsetStr := c.DefaultQuery("offset", "0")
 	offset, err := strconv.Atoi(offsetStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid offset", "")
 		return
 	}
 
 	symbols, err := h.app.ListSymbols(c.Request.Context(), exchangeID, status, limit, offset)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to list symbols", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, symbols)
+	response.Success(c, symbols)
 }
 
 // GetExchange 获取交易所
 func (h *ReferenceDataHandler) GetExchange(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "id is required", "")
 		return
 	}
 
 	exchange, err := h.app.GetExchange(c.Request.Context(), id)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get exchange", "id", id, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
 	if exchange == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "exchange not found"})
+		response.ErrorWithStatus(c, http.StatusNotFound, "exchange not found", "")
 		return
 	}
 
-	c.JSON(http.StatusOK, exchange)
+	response.Success(c, exchange)
 }
 
 // ListExchanges 列出交易所
@@ -113,23 +114,23 @@ func (h *ReferenceDataHandler) ListExchanges(c *gin.Context) {
 	limitStr := c.DefaultQuery("limit", "10")
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid limit", "")
 		return
 	}
 
 	offsetStr := c.DefaultQuery("offset", "0")
 	offset, err := strconv.Atoi(offsetStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid offset", "")
 		return
 	}
 
 	exchanges, err := h.app.ListExchanges(c.Request.Context(), limit, offset)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to list exchanges", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, exchanges)
+	response.Success(c, exchanges)
 }

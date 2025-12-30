@@ -4,6 +4,7 @@
 package http
 
 import (
+	"github.com/wyfcoding/pkg/response"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -51,7 +52,7 @@ func (h *ClearingHandler) SettleTrade(c *gin.Context) {
 	// 1. 将请求的 JSON body 绑定到 `req` 结构体上。
 	//    `ShouldBindJSON` 会自动进行数据类型和格式的初步校验。
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "Invalid request body: " + err.Error(), "")
 		return
 	}
 
@@ -60,7 +61,7 @@ func (h *ClearingHandler) SettleTrade(c *gin.Context) {
 	settlementID, err := h.clearingService.SettleTrade(c.Request.Context(), &req)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to settle trade", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to settle trade: " + err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, "Failed to settle trade: " + err.Error(), "")
 		return
 	}
 
@@ -92,14 +93,14 @@ type ExecuteEODClearingRequest struct {
 func (h *ClearingHandler) ExecuteEODClearing(c *gin.Context) {
 	var req ExecuteEODClearingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "Invalid request body: " + err.Error(), "")
 		return
 	}
 
 	clearingID, err := h.clearingService.ExecuteEODClearing(c.Request.Context(), req.ClearingDate)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to execute EOD clearing", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to execute EOD clearing: " + err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, "Failed to execute EOD clearing: " + err.Error(), "")
 		return
 	}
 
@@ -125,7 +126,7 @@ func (h *ClearingHandler) GetClearingStatus(c *gin.Context) {
 	// 1. 从 URL 路径参数中获取 `id`。
 	clearingID := c.Param("id")
 	if clearingID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "clearing_id is required in path"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "clearing_id is required in path", "")
 		return
 	}
 
@@ -133,16 +134,16 @@ func (h *ClearingHandler) GetClearingStatus(c *gin.Context) {
 	clearing, err := h.clearingService.GetClearingStatus(c.Request.Context(), clearingID)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get clearing status", "clearing_id", clearingID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get clearing status: " + err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, "Failed to get clearing status: " + err.Error(), "")
 		return
 	}
 
 	// 3. 如果未找到记录，返回 404 Not Found。
 	if clearing == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Clearing task not found"})
+		response.ErrorWithStatus(c, http.StatusNotFound, "Clearing task not found", "")
 		return
 	}
 
 	// 4. 返回查询到的清算任务详情。
-	c.JSON(http.StatusOK, clearing)
+	response.Success(c, clearing)
 }

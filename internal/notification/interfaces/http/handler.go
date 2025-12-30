@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/wyfcoding/pkg/response"
 	"net/http"
 	"strconv"
 
@@ -44,46 +45,46 @@ type SendNotificationRequest struct {
 func (h *NotificationHandler) SendNotification(c *gin.Context) {
 	var req SendNotificationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
 	id, err := h.app.SendNotification(c.Request.Context(), req.UserID, req.Type, req.Subject, req.Content, req.Target)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to send notification", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"notification_id": id})
+	response.Success(c, gin.H{"notification_id": id})
 }
 
 // GetNotificationHistory 获取通知历史
 func (h *NotificationHandler) GetNotificationHistory(c *gin.Context) {
 	userID := c.Query("user_id")
 	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "user_id is required", "")
 		return
 	}
 
 	limitStr := c.DefaultQuery("limit", "10")
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid limit", "")
 		return
 	}
 
 	offsetStr := c.DefaultQuery("offset", "0")
 	offset, err := strconv.Atoi(offsetStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid offset", "")
 		return
 	}
 
 	notifications, total, err := h.app.GetNotificationHistory(c.Request.Context(), userID, limit, offset)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get notification history", "user_id", userID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 

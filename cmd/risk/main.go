@@ -1,9 +1,9 @@
 package main
 
 import (
+	"github.com/wyfcoding/pkg/response"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -79,14 +79,14 @@ func registerGin(e *gin.Engine, srv any) {
 	sys := e.Group("/sys")
 	{
 		sys.GET("/health", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{
+			response.SuccessWithRawData(c, gin.H{
 				"status":    "UP",
 				"service":   BootstrapName,
 				"timestamp": time.Now().Unix(),
 			})
 		})
 		sys.GET("/ready", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"status": "READY"})
+			response.SuccessWithRawData(c, gin.H{"status": "READY"})
 		})
 	}
 

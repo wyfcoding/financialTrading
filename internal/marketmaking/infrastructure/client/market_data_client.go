@@ -18,8 +18,8 @@ type MarketDataClientImpl struct {
 }
 
 // NewMarketDataClient 创建市场数据服务客户端
-func NewMarketDataClient(cfg grpcclient.ClientConfig) (domain.MarketDataClient, error) {
-	conn, err := grpcclient.NewClient(cfg)
+func NewMarketDataClient(target string) (domain.MarketDataClient, error) {
+	conn, err := grpcclient.NewClientFactory(logging.Default()).NewClient(target)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create market data service client: %w", err)
 	}

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/wyfcoding/pkg/response"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -43,18 +44,18 @@ type StartSimulationRequest struct {
 func (h *MarketSimulationHandler) StartSimulation(c *gin.Context) {
 	var req StartSimulationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
 	id, err := h.app.StartSimulation(c.Request.Context(), req.Name, req.Symbol, req.Type, req.Parameters)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to start simulation", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"simulation_id": id})
+	response.Success(c, gin.H{"simulation_id": id})
 }
 
 // StopSimulationRequest 停止模拟请求
@@ -66,39 +67,39 @@ type StopSimulationRequest struct {
 func (h *MarketSimulationHandler) StopSimulation(c *gin.Context) {
 	var req StopSimulationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
 	success, err := h.app.StopSimulation(c.Request.Context(), req.SimulationID)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to stop simulation", "simulation_id", req.SimulationID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": success})
+	response.Success(c, gin.H{"success": success})
 }
 
 // GetSimulationStatus 获取模拟状态
 func (h *MarketSimulationHandler) GetSimulationStatus(c *gin.Context) {
 	simulationID := c.Query("simulation_id")
 	if simulationID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "simulation_id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "simulation_id is required", "")
 		return
 	}
 
 	scenario, err := h.app.GetSimulationStatus(c.Request.Context(), simulationID)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get simulation status", "simulation_id", simulationID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
 	if scenario == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "scenario not found"})
+		response.ErrorWithStatus(c, http.StatusNotFound, "scenario not found", "")
 		return
 	}
 
-	c.JSON(http.StatusOK, scenario)
+	response.Success(c, scenario)
 }

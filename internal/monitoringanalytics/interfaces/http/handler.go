@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/wyfcoding/pkg/response"
 	"net/http"
 	"time"
 
@@ -45,7 +46,7 @@ type RecordMetricRequest struct {
 func (h *MonitoringAnalyticsHandler) RecordMetric(c *gin.Context) {
 	var req RecordMetricRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
@@ -58,18 +59,18 @@ func (h *MonitoringAnalyticsHandler) RecordMetric(c *gin.Context) {
 	err := h.app.RecordMetric(c.Request.Context(), req.Name, val, req.Tags, ts)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to record metric", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "success"})
+	response.Success(c, gin.H{"status": "success"})
 }
 
 // GetMetrics 获取指标
 func (h *MonitoringAnalyticsHandler) GetMetrics(c *gin.Context) {
 	name := c.Query("name")
 	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "name is required", "")
 		return
 	}
 
@@ -82,7 +83,7 @@ func (h *MonitoringAnalyticsHandler) GetMetrics(c *gin.Context) {
 	if startTimeStr != "" {
 		startTime, err = time.Parse(time.RFC3339, startTimeStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid start_time format"})
+			response.ErrorWithStatus(c, http.StatusBadRequest, "invalid start_time format", "")
 			return
 		}
 	} else {
@@ -92,7 +93,7 @@ func (h *MonitoringAnalyticsHandler) GetMetrics(c *gin.Context) {
 	if endTimeStr != "" {
 		endTime, err = time.Parse(time.RFC3339, endTimeStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid end_time format"})
+			response.ErrorWithStatus(c, http.StatusBadRequest, "invalid end_time format", "")
 			return
 		}
 	} else {
@@ -102,27 +103,27 @@ func (h *MonitoringAnalyticsHandler) GetMetrics(c *gin.Context) {
 	metrics, err := h.app.GetMetrics(c.Request.Context(), name, startTime.UnixMilli(), endTime.UnixMilli())
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get metrics", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, metrics)
+	response.Success(c, metrics)
 }
 
 // GetSystemHealth 获取系统健康状态
 func (h *MonitoringAnalyticsHandler) GetSystemHealth(c *gin.Context) {
 	serviceName := c.Param("service_name")
 	if serviceName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "service_name is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "service_name is required", "")
 		return
 	}
 
 	healths, err := h.app.GetSystemHealth(c.Request.Context(), serviceName)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get system health", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, healths)
+	response.Success(c, healths)
 }

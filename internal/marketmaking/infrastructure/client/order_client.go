@@ -18,8 +18,8 @@ type OrderClientImpl struct {
 }
 
 // NewOrderClient 创建订单服务客户端
-func NewOrderClient(cfg grpcclient.ClientConfig) (domain.OrderClient, error) {
-	conn, err := grpcclient.NewClient(cfg)
+func NewOrderClient(target string) (domain.OrderClient, error) {
+	conn, err := grpcclient.NewClientFactory(logging.Default()).NewClient(target)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create order service client: %w", err)
 	}

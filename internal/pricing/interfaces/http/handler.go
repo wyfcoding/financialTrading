@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/wyfcoding/pkg/response"
 	"net/http"
 	"time"
 
@@ -53,7 +54,7 @@ type PricingRequest struct {
 func (h *PricingHandler) GetOptionPrice(c *gin.Context) {
 	var req PricingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
@@ -67,7 +68,7 @@ func (h *PricingHandler) GetOptionPrice(c *gin.Context) {
 	price, err := h.app.GetOptionPrice(c.Request.Context(), contract, decimal.NewFromFloat(req.UnderlyingPrice), req.Volatility, req.RiskFreeRate)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to calculate option price", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
@@ -81,7 +82,7 @@ func (h *PricingHandler) GetOptionPrice(c *gin.Context) {
 func (h *PricingHandler) GetGreeks(c *gin.Context) {
 	var req PricingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
@@ -95,7 +96,7 @@ func (h *PricingHandler) GetGreeks(c *gin.Context) {
 	greeks, err := h.app.GetGreeks(c.Request.Context(), contract, decimal.NewFromFloat(req.UnderlyingPrice), req.Volatility, req.RiskFreeRate)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to calculate Greeks", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 

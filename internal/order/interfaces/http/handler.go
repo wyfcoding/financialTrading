@@ -1,6 +1,7 @@
 package http
 
 import (
+	"github.com/wyfcoding/pkg/response"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -37,25 +38,25 @@ func (h *OrderHandler) RegisterRoutes(router *gin.Engine) {
 func (h *OrderHandler) CreateOrder(c *gin.Context) {
 	var req application.CreateOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
 	dto, err := h.orderService.CreateOrder(c.Request.Context(), &req)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to create order", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, dto)
+	response.Success(c, dto)
 }
 
 // CancelOrder 取消订单
 func (h *OrderHandler) CancelOrder(c *gin.Context) {
 	orderID := c.Param("id")
 	if orderID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "order_id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "order_id is required", "")
 		return
 	}
 
@@ -63,40 +64,40 @@ func (h *OrderHandler) CancelOrder(c *gin.Context) {
 	// 如果上下文中没有，为简单起见，我们目前尝试从查询参数中获取
 	userID := c.Query("user_id")
 	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "user_id is required", "")
 		return
 	}
 
 	dto, err := h.orderService.CancelOrder(c.Request.Context(), orderID, userID)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to cancel order", "order_id", orderID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, dto)
+	response.Success(c, dto)
 }
 
 // GetOrder 获取订单
 func (h *OrderHandler) GetOrder(c *gin.Context) {
 	orderID := c.Param("id")
 	if orderID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "order_id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "order_id is required", "")
 		return
 	}
 
 	userID := c.Query("user_id")
 	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id is required"})
+		response.ErrorWithStatus(c, http.StatusBadRequest, "user_id is required", "")
 		return
 	}
 
 	dto, err := h.orderService.GetOrder(c.Request.Context(), orderID, userID)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get order", "order_id", orderID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	c.JSON(http.StatusOK, dto)
+	response.Success(c, dto)
 }
