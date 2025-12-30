@@ -25,7 +25,7 @@ func NewReferenceDataHandler(app *application.ReferenceDataService) *ReferenceDa
 
 // 注册路由
 // 将处理器方法绑定到 Gin 路由引擎
-func (h *ReferenceDataHandler) RegisterRoutes(router *gin.Engine) {
+func (h *ReferenceDataHandler) RegisterRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api/v1/referencedata")
 	{
 		api.GET("/symbols", h.ListSymbols)

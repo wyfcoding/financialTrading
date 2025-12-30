@@ -24,9 +24,9 @@ func NewAccountHandler(accountService *application.AccountApplicationService) *A
 }
 
 // 注册路由
-func (h *AccountHandler) RegisterRoutes(router *gin.Engine) {
-	api := router.Group("/api/v1")
+func (h *AccountHandler) RegisterRoutes(router *gin.RouterGroup) {
 	{
+		api := router
 		api.POST("/accounts", h.CreateAccount)
 		api.GET("/accounts/:id", h.GetAccount)
 		api.POST("/accounts/:id/deposit", h.Deposit)

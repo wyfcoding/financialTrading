@@ -26,7 +26,7 @@ func NewMonitoringAnalyticsHandler(app *application.MonitoringAnalyticsService) 
 
 // 注册路由
 // 将处理器方法绑定到 Gin 路由引擎
-func (h *MonitoringAnalyticsHandler) RegisterRoutes(router *gin.Engine) {
+func (h *MonitoringAnalyticsHandler) RegisterRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api/v1/monitoring")
 	{
 		api.POST("/metrics", h.RecordMetric)

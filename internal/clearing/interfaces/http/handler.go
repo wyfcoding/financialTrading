@@ -27,7 +27,7 @@ func NewClearingHandler(clearingService *application.ClearingApplicationService)
 }
 
 // RegisterRoutes 在 Gin 路由引擎上注册所有与清算相关的 HTTP 路由。
-func (h *ClearingHandler) RegisterRoutes(router *gin.Engine) {
+func (h *ClearingHandler) RegisterRoutes(router *gin.RouterGroup) {
 	// 创建一个路由组，为所有相关路由添加统一的前缀 `/api/v1/clearing`。
 	api := router.Group("/api/v1/clearing")
 	{

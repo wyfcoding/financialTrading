@@ -27,7 +27,7 @@ func NewPricingHandler(app *application.PricingService) *PricingHandler {
 
 // 注册路由
 // 将处理器方法绑定到 Gin 路由引擎
-func (h *PricingHandler) RegisterRoutes(router *gin.Engine) {
+func (h *PricingHandler) RegisterRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api/v1/pricing")
 	{
 		api.POST("/option/price", h.GetOptionPrice)

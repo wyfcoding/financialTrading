@@ -27,7 +27,7 @@ func NewExecutionHandler(executionService *application.ExecutionApplicationServi
 
 // 注册路由
 // 将处理器方法绑定到 Gin 路由引擎
-func (h *ExecutionHandler) RegisterRoutes(router *gin.Engine) {
+func (h *ExecutionHandler) RegisterRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api/v1/execution")
 	{
 		api.POST("/orders", h.ExecuteOrder)        // 执行订单

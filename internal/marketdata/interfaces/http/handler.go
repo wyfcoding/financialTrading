@@ -172,7 +172,7 @@ type HistoricalQuotesResponse struct {
 }
 
 // 注册路由
-func (h *Handler) RegisterRoutes(router *gin.Engine) {
+func (h *Handler) RegisterRoutes(router *gin.RouterGroup) {
 	v1 := router.Group("/api/v1/marketdata")
 	{
 		v1.GET("/quote", h.GetLatestQuote)

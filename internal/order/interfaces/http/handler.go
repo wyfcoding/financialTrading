@@ -26,7 +26,7 @@ func NewOrderHandler(orderService *application.OrderApplicationService) *OrderHa
 
 // 注册路由
 // 将处理器方法绑定到 Gin 路由引擎
-func (h *OrderHandler) RegisterRoutes(router *gin.Engine) {
+func (h *OrderHandler) RegisterRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api/v1/orders")
 	{
 		api.POST("", h.CreateOrder)       // 创建订单

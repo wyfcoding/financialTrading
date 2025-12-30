@@ -27,7 +27,7 @@ func NewPositionHandler(positionService *application.PositionApplicationService)
 }
 
 // 注册路由
-func (h *PositionHandler) RegisterRoutes(router *gin.Engine) {
+func (h *PositionHandler) RegisterRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api/v1/positions")
 	{
 		api.GET("", h.GetPositions)

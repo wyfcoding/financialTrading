@@ -12,53 +12,62 @@ import (
 
 	pb "github.com/wyfcoding/financialtrading/goapi/marketmaking/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/application"
+	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/client"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/persistence/mysql"
-	grpchandler "github.com/wyfcoding/financialtrading/internal/marketmaking/interfaces/grpc"
-	httphandler "github.com/wyfcoding/financialtrading/internal/marketmaking/interfaces/http"
+	marketmakinggrpc "github.com/wyfcoding/financialtrading/internal/marketmaking/interfaces/grpc"
+	marketmakinghttp "github.com/wyfcoding/financialtrading/internal/marketmaking/interfaces/http"
 	"github.com/wyfcoding/pkg/app"
 	"github.com/wyfcoding/pkg/cache"
 	configpkg "github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/databases"
 	"github.com/wyfcoding/pkg/grpcclient"
+	"github.com/wyfcoding/pkg/idempotency"
 	"github.com/wyfcoding/pkg/limiter"
 	"github.com/wyfcoding/pkg/logging"
 	"github.com/wyfcoding/pkg/metrics"
 	"github.com/wyfcoding/pkg/middleware"
 )
 
-// BootstrapName 服务标识。
+// BootstrapName 服务唯一标识
 const BootstrapName = "marketmaking"
 
-// Config 扩展配置结构。
+// IdempotencyPrefix 幂等性 Redis 键前缀
+const IdempotencyPrefix = "marketmaking:idem"
+
+// Config 服务扩展配置
 type Config struct {
 	configpkg.Config `mapstructure:",squash"`
 }
 
-// AppContext 应用资源上下文。
+// AppContext 应用上下文 (包含对外服务实例与依赖)
 type AppContext struct {
-	Config     *Config
-	AppService *application.MarketMakingService
-	Clients    *ServiceClients
-	Metrics    *metrics.Metrics
-	Limiter    limiter.Limiter
+	Config       *Config
+	MarketMaking *application.MarketMakingService
+	Clients      *ServiceClients
+	Handler      *marketmakinghttp.MarketMakingHandler
+	Metrics      *metrics.Metrics
+	Limiter      limiter.Limiter
+	Idempotency  idempotency.Manager
 }
 
-// ServiceClients 下游微服务。
+// ServiceClients 下游微服务客户端集合
 type ServiceClients struct {
-	MarketData *grpc.ClientConn `service:"marketdata"`
-	Order      *grpc.ClientConn `service:"order"`
+	OrderConn      *grpc.ClientConn `service:"order"`
+	MarketDataConn *grpc.ClientConn `service:"marketdata"`
 }
 
 func main() {
+	// 构建并运行服务
 	if err := app.NewBuilder(BootstrapName).
 		WithConfig(&Config{}).
 		WithService(initService).
 		WithGRPC(registerGRPC).
 		WithGin(registerGin).
 		WithGinMiddleware(
-			middleware.MetricsMiddleware(),
-			middleware.CORS(),
+			middleware.MetricsMiddleware(),               // 指标采集
+			middleware.CORS(),                            // 跨域处理
+			middleware.TimeoutMiddleware(30*time.Second), // 全局超时
 		).
 		Build().
 		Run(); err != nil {
@@ -66,19 +75,22 @@ func main() {
 	}
 }
 
-func registerGRPC(s *grpc.Server, srv any) {
-	ctx := srv.(*AppContext)
-	pb.RegisterMarketMakingServiceServer(s, grpchandler.NewGRPCHandler(ctx.AppService))
+// registerGRPC 注册 gRPC 服务
+func registerGRPC(s *grpc.Server, svc any) {
+	ctx := svc.(*AppContext)
+	pb.RegisterMarketMakingServiceServer(s, marketmakinggrpc.NewGRPCHandler(ctx.MarketMaking))
 }
 
-func registerGin(e *gin.Engine, srv any) {
-	ctx := srv.(*AppContext)
+// registerGin 注册 HTTP 路由
+func registerGin(e *gin.Engine, svc any) {
+	ctx := svc.(*AppContext)
 
+	// 根据环境设置 Gin 模式
 	if ctx.Config.Server.Environment == "prod" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// 1. 系统路由组 (不限流)
+	// 系统检查接口
 	sys := e.Group("/sys")
 	{
 		sys.GET("/health", func(c *gin.Context) {
@@ -93,43 +105,50 @@ func registerGin(e *gin.Engine, srv any) {
 		})
 	}
 
+	// 指标暴露
 	if ctx.Config.Metrics.Enabled {
 		e.GET(ctx.Config.Metrics.Path, gin.WrapH(ctx.Metrics.Handler()))
 	}
 
-	// 2. 治理：限流保护
+	// 全局限流中间件
 	e.Use(middleware.RateLimitWithLimiter(ctx.Limiter))
 
-	// 3. 业务路由
-	httpHandler := httphandler.NewMarketMakingHandler(ctx.AppService)
-	httpHandler.RegisterRoutes(e)
-
-	slog.Info("HTTP service configured successfully", "service", BootstrapName)
+	// 业务 API 路由 v1 (与 ecommerce 对齐)
+	api := e.Group("/api/v1")
+	{
+		ctx.Handler.RegisterRoutes(api)
+	}
 }
 
+// initService 初始化服务依赖 (数据库、缓存、客户端、领域层)
 func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	c := cfg.(*Config)
 	bootLog := slog.With("module", "bootstrap")
-	logger := logging.Default()
+	logger := logging.Default() // 获取全局 Logger
 
-	// 1. 基础设施
+	// 打印脱敏配置
+	configpkg.PrintWithMask(c)
+
+	// 1. 初始化数据库 (MySQL)
 	db, err := databases.NewDB(c.Data.Database, logger)
 	if err != nil {
-		return nil, nil, fmt.Errorf("database init failed: %w", err)
+		return nil, nil, fmt.Errorf("database init error: %w", err)
 	}
 
+	// 2. 初始化缓存 (Redis)
 	redisCache, err := cache.NewRedisCache(c.Data.Redis, logger)
 	if err != nil {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
 		}
-		return nil, nil, fmt.Errorf("redis init failed: %w", err)
+		return nil, nil, fmt.Errorf("redis init error: %w", err)
 	}
 
-	// 2. 治理能力
+	// 3. 初始化治理组件 (限流器、幂等管理器)
 	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
+	idemManager := idempotency.NewRedisManager(redisCache.GetClient(), IdempotencyPrefix)
 
-	// 3. 下游微服务拨号
+	// 4. 初始化下游微服务客户端
 	clients := &ServiceClients{}
 	clientCleanup, err := grpcclient.InitClients(c.Services, clients)
 	if err != nil {
@@ -137,30 +156,55 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
 		}
-		return nil, nil, fmt.Errorf("grpc clients init failed: %w", err)
+		return nil, nil, fmt.Errorf("grpc clients init error: %w", err)
 	}
 
-	// 4. DDD 分层装配
-	bootLog.Info("assembling market making services...")
-	strategyRepo, performanceRepo := mysql.NewMarketMakingRepository(db)
-	orderClient := client.NewOrderClientFromConn(clients.Order)
-	marketDataClient := client.NewMarketDataClientFromConn(clients.MarketData)
-	appService := application.NewMarketMakingService(strategyRepo, performanceRepo, orderClient, marketDataClient)
+	// 5. DDD 分层装配
+	bootLog.Info("assembling services with full dependency injection...")
 
+	// 5.1 Infrastructure (Persistence)
+	strategyRepo, performanceRepo := mysql.NewMarketMakingRepository(db)
+	
+	// 5.2 Infrastructure (Clients)
+	var orderClient domain.OrderClient
+	if clients.OrderConn != nil {
+		orderClient = client.NewOrderClientFromConn(clients.OrderConn)
+	}
+	var marketDataClient domain.MarketDataClient
+	if clients.MarketDataConn != nil {
+		marketDataClient = client.NewMarketDataClientFromConn(clients.MarketDataConn)
+	}
+
+	// 5.3 Application (Service)
+	marketMakingService := application.NewMarketMakingService(strategyRepo, performanceRepo, orderClient, marketDataClient)
+
+	// 5.4 Interface (HTTP Handlers)
+	handler := marketmakinghttp.NewMarketMakingHandler(marketMakingService)
+
+	// 定义资源清理函数
 	cleanup := func() {
-		bootLog.Info("performing graceful shutdown...")
+		bootLog.Info("shutting down, releasing resources...")
 		clientCleanup()
-		redisCache.Close()
-		if sqlDB, err := db.DB(); err == nil {
-			sqlDB.Close()
+		if redisCache != nil {
+			if err := redisCache.Close(); err != nil {
+				bootLog.Error("failed to close redis cache", "error", err)
+			}
+		}
+		if sqlDB, err := db.DB(); err == nil && sqlDB != nil {
+			if err := sqlDB.Close(); err != nil {
+				bootLog.Error("failed to close sql database", "error", err)
+			}
 		}
 	}
 
+	// 返回应用上下文与清理函数
 	return &AppContext{
-		Config:     c,
-		AppService: appService,
-		Clients:    clients,
-		Metrics:    m,
-		Limiter:    rateLimiter,
+		Config:       c,
+		MarketMaking: marketMakingService,
+		Clients:      clients,
+		Handler:      handler,
+		Metrics:      m,
+		Limiter:      rateLimiter,
+		Idempotency:  idemManager,
 	}, cleanup, nil
 }

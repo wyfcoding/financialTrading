@@ -6,7 +6,7 @@ environment = "dev"
 
 [server.http]
 addr = "0.0.0.0"
-port = 18005
+port = 18014
 timeout = "3s"
 read_timeout = "3s"
 write_timeout = "3s"
@@ -14,19 +14,21 @@ idle_timeout = "60s"
 
 [server.grpc]
 addr = "0.0.0.0"
-port = 19005
+port = 19014
 timeout = "3s"
-max_recv_msg_size = 10485760 # 10MB
-max_send_msg_size = 10485760 # 10MB
+max_recv_msg_size = 10485760
+max_send_msg_size = 10485760
+max_concurrent_streams = 100
 
 [log]
 level = "info"
 format = "json"
 output = "stdout"
-# file = "logs/marketsimulation.log"
+file = "logs/marketsimulation.log"
 max_size = 100
 max_backups = 3
 max_age = 28
+compress = true
 
 [tracing]
 enabled = true
@@ -35,29 +37,29 @@ otlp_endpoint = "localhost:4317"
 
 [metrics]
 enabled = true
-port = "28005"
+port = "28014"
 path = "/metrics"
 
 [jwt]
-secret = "ecommerce-secret-key"
-issuer = "ecommerce"
+secret = "financial-secret-key"
+issuer = "financialtrading"
 expire_duration = "24h"
 
 [snowflake]
 type = "snowflake"
 start_time = "2024-01-01"
-machine_id = 1
+machine_id = 113
 
 [ratelimit]
 enabled = true
-rate = 100
-burst = 20
+rate = 500
+burst = 100
 
 [circuitbreaker]
 enabled = true
-max_requests = 100
-interval = "1s"
-timeout = "3s"
+timeout = "1s"
+max_requests = 1
+interval = "5s"
 
 [cache]
 prefix = "marketsimulation:"
@@ -72,22 +74,38 @@ retry_delay = "100ms"
 
 [data.database]
 driver = "mysql"
-dsn = "root:root@tcp(127.0.0.1:3306)/trading_marketsimulation?charset=utf8mb4&parseTime=True&loc=Local"
-max_idle_conns = 10
-max_open_conns = 100
+dsn = "root:root@tcp(127.0.0.1:3306)/financial_marketsimulation?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 20
+max_open_conns = 200
 conn_max_lifetime = "1h"
 slow_threshold = "200ms"
+log_level = 4
 
 [data.redis]
 addr = "127.0.0.1:6379"
 password = "redis_password"
-db = 0
-pool_size = 10
-min_idle_conns = 5
-read_timeout = "0.2s"
-write_timeout = "0.2s"
+db = 1
+pool_size = 50
+min_idle_conns = 10
+read_timeout = "0.1s"
+write_timeout = "0.1s"
+
+[messagequeue.kafka]
+brokers = ["localhost:9092"]
+topic = "marketsimulation-events"
+group_id = "marketsimulation-group"
+dial_timeout = "10s"
+read_timeout = "10s"
+write_timeout = "10s"
+min_bytes = 1024
+max_bytes = 10485760
+async = true
+
+[minio]
+endpoint = "127.0.0.1:9000"
+access_key_id = "minioadmin"
+secret_access_key = "minioadmin"
+use_ssl = false
+bucket_name = "financial-assets"
 
 [services]
-[services.account]
-grpc_addr = "127.0.0.1:19000"
-http_addr = "127.0.0.1:18000"

@@ -25,7 +25,7 @@ func NewMarketMakingHandler(app *application.MarketMakingService) *MarketMakingH
 
 // 注册路由
 // 将处理器方法绑定到 Gin 路由引擎
-func (h *MarketMakingHandler) RegisterRoutes(router *gin.Engine) {
+func (h *MarketMakingHandler) RegisterRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api/v1/marketmaking")
 	{
 		api.POST("/strategy", h.SetStrategy)

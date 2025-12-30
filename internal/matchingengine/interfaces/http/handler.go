@@ -26,7 +26,7 @@ func NewMatchingHandler(matchingService *application.MatchingApplicationService)
 }
 
 // 注册路由
-func (h *MatchingHandler) RegisterRoutes(router *gin.Engine) {
+func (h *MatchingHandler) RegisterRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api/v1/matching")
 	{
 		api.POST("/orders", h.SubmitOrder)

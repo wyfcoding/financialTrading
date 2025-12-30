@@ -26,7 +26,7 @@ func NewRiskHandler(riskService *application.RiskApplicationService) *RiskHandle
 }
 
 // 注册路由
-func (h *RiskHandler) RegisterRoutes(router *gin.Engine) {
+func (h *RiskHandler) RegisterRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api/v1/risk")
 	{
 		api.POST("/assess", h.AssessRisk)

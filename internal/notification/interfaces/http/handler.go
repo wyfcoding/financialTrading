@@ -25,7 +25,7 @@ func NewNotificationHandler(app *application.NotificationService) *NotificationH
 
 // 注册路由
 // 将处理器方法绑定到 Gin 路由引擎
-func (h *NotificationHandler) RegisterRoutes(router *gin.Engine) {
+func (h *NotificationHandler) RegisterRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api/v1/notifications")
 	{
 		api.POST("/send", h.SendNotification)

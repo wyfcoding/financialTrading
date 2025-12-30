@@ -25,7 +25,7 @@ func NewQuantHandler(app *application.QuantService) *QuantHandler {
 
 // 注册路由
 // 将处理器方法绑定到 Gin 路由引擎
-func (h *QuantHandler) RegisterRoutes(router *gin.Engine) {
+func (h *QuantHandler) RegisterRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api/v1/quant")
 	{
 		api.POST("/strategies", h.CreateStrategy)

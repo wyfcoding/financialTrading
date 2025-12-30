@@ -24,7 +24,7 @@ func NewMarketSimulationHandler(app *application.MarketSimulationService) *Marke
 
 // 注册路由
 // 将处理器方法绑定到 Gin 路由引擎
-func (h *MarketSimulationHandler) RegisterRoutes(router *gin.Engine) {
+func (h *MarketSimulationHandler) RegisterRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api/v1/marketsimulation")
 	{
 		api.POST("/start", h.StartSimulation)
