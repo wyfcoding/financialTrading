@@ -4,6 +4,9 @@ package application
 import (
 	"context"
 	"fmt"
+	"runtime"
+	"sync"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
@@ -23,27 +26,76 @@ type SubmitOrderRequest struct {
 // MatchingApplicationService 撮合应用服务
 // 负责协调撮合引擎、订单簿和成交记录的持久化
 type MatchingApplicationService struct {
-	engine        *algorithm.MatchingEngine  // 撮合引擎核心
-	tradeRepo     domain.TradeRepository     // 成交记录仓储接口
-	orderBookRepo domain.OrderBookRepository // 订单簿仓储接口
+	engine        *algorithm.MatchingEngine              // 撮合引擎核心
+	tradeRepo     domain.TradeRepository                 // 成交记录仓储接口
+	orderBookRepo domain.OrderBookRepository             // 订单簿仓储接口
+	queue         *algorithm.LockFreeQueue               // 高性能无锁请求队列
+	resultChans   map[string]chan *domain.MatchingResult // 简单实现的结果通知机制
+	mu            sync.RWMutex
 }
 
-// NewMatchingApplicationService 创建撮合应用服务
+// NewMatchingApplicationService 创建撮合应用服务并启动后台 Sequencer
 func NewMatchingApplicationService(tradeRepo domain.TradeRepository, orderBookRepo domain.OrderBookRepository) *MatchingApplicationService {
-	return &MatchingApplicationService{
+	mas := &MatchingApplicationService{
 		engine:        algorithm.NewMatchingEngine(),
 		tradeRepo:     tradeRepo,
 		orderBookRepo: orderBookRepo,
+		queue:         algorithm.NewLockFreeQueue(1048576), // 100万容量的无锁队列
+		resultChans:   make(map[string]chan *domain.MatchingResult),
+	}
+
+	// 启动核心 Sequencer (单线程处理器)
+	go mas.startSequencer()
+
+	return mas
+}
+
+// startSequencer 是整个撮合系统的核心。
+// 它单线程地、顺序地处理所有撮合请求，彻底消除了撮合逻辑内部的锁竞争。
+func (mas *MatchingApplicationService) startSequencer() {
+	ctx := context.Background()
+	for {
+		item, ok := mas.queue.Pop()
+		if !ok {
+			// 队列为空时让出 CPU 或进行自旋优化
+			runtime.Gosched()
+			continue
+		}
+
+		order, ok := item.(*algorithm.Order)
+		if !ok {
+			continue
+		}
+
+		// 执行纯内存撮合（此时不需要担心 engine 内部的锁竞争，因为只有这一个线程在访问）
+		trades := mas.engine.Match(order)
+
+		// 异步持久化成交记录
+		go func(ts []*algorithm.Trade, oID string) {
+			for _, t := range ts {
+				if err := mas.tradeRepo.Save(ctx, t); err != nil {
+					logging.Error(ctx, "Failed to persist trade", "trade_id", t.TradeID, "error", err)
+				}
+			}
+		}(trades, order.OrderID)
+
+		// 通知结果
+		mas.mu.RLock()
+		ch, exists := mas.resultChans[order.OrderID]
+		mas.mu.RUnlock()
+
+		if exists {
+			ch <- &domain.MatchingResult{
+				OrderID:           order.OrderID,
+				Trades:            trades,
+				RemainingQuantity: order.Quantity,
+				Status:            "MATCHED",
+			}
+		}
 	}
 }
 
-// SubmitOrder 提交订单进行撮合
-// 用例流程：
-// 1. 验证订单参数
-// 2. 创建订单对象
-// 3. 执行撮合算法
-// 4. 保存成交记录
-// 5. 返回撮合结果
+// SubmitOrder 提交订单进行撮合 (现在的 SubmitOrder 变成了生产者)
 func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *SubmitOrderRequest) (*domain.MatchingResult, error) {
 	// 记录性能监控
 	defer logging.LogDuration(ctx, "Order matching completed",
@@ -51,95 +103,59 @@ func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *Sub
 		"symbol", req.Symbol,
 	)()
 
-	logging.Info(ctx, "Order received for matching",
-		"order_id", req.OrderID,
-		"symbol", req.Symbol,
-		"side", req.Side,
-		"price", req.Price,
-		"quantity", req.Quantity,
-	)
-
 	// 验证输入
 	if req.OrderID == "" || req.Symbol == "" || req.Side == "" {
-		logging.Warn(ctx, "Invalid order parameters",
-			"order_id", req.OrderID,
-			"symbol", req.Symbol,
-			"side", req.Side,
-		)
 		return nil, fmt.Errorf("invalid request parameters")
 	}
 
 	// 解析价格和数量
 	price, err := decimal.NewFromString(req.Price)
 	if err != nil {
-		logging.Error(ctx, "Failed to parse price",
-			"order_id", req.OrderID,
-			"price", req.Price,
-			"error", err,
-		)
 		return nil, fmt.Errorf("invalid price: %w", err)
 	}
 
 	quantity, err := decimal.NewFromString(req.Quantity)
 	if err != nil {
-		logging.Error(ctx, "Failed to parse quantity",
-			"order_id", req.OrderID,
-			"quantity", req.Quantity,
-			"error", err,
-		)
 		return nil, fmt.Errorf("invalid quantity: %w", err)
 	}
 
-	// 创建订单对象
-	order := &algorithm.Order{
-		OrderID:   req.OrderID,
-		Symbol:    req.Symbol,
-		Side:      req.Side,
-		Price:     price,
-		Quantity:  quantity,
-		Timestamp: 0, // 实际应用中应使用当前时间戳
+	// 1. 使用对象池获取订单对象，显著降低 GC 压力
+	order := algorithm.AcquireOrder()
+	order.OrderID = req.OrderID
+	order.Symbol = req.Symbol
+	order.Side = req.Side
+	order.Price = price
+	order.Quantity = quantity
+	order.Timestamp = time.Now().UnixNano()
+
+	// 2. 注册结果通道
+	resultChan := make(chan *domain.MatchingResult, 1)
+	mas.mu.Lock()
+	mas.resultChans[req.OrderID] = resultChan
+	mas.mu.Unlock()
+
+	defer func() {
+		mas.mu.Lock()
+		delete(mas.resultChans, req.OrderID)
+		mas.mu.Unlock()
+		close(resultChan)
+	}()
+
+	// 3. 推入无锁队列 (非阻塞操作)
+	if !mas.queue.Push(order) {
+		algorithm.ReleaseOrder(order)
+		return nil, fmt.Errorf("matching engine queue is full")
 	}
 
-	logging.Debug(ctx, "Starting order matching",
-		"order_id", req.OrderID,
-		"symbol", req.Symbol,
-	)
-
-	// 执行撮合
-	trades := mas.engine.Match(order)
-
-	logging.Info(ctx, "Order matched",
-		"order_id", req.OrderID,
-		"trades_count", len(trades),
-		"remaining_quantity", order.Quantity.String(),
-	)
-
-	// 保存成交记录
-	for _, trade := range trades {
-		if err := mas.tradeRepo.Save(ctx, trade); err != nil {
-			logging.Error(ctx, "Failed to save trade",
-				"trade_id", trade.TradeID,
-				"order_id", req.OrderID,
-				"error", err,
-			)
-		} else {
-			logging.Debug(ctx, "Trade saved successfully",
-				"trade_id", trade.TradeID,
-				"price", trade.Price.String(),
-				"quantity", trade.Quantity.String(),
-			)
-		}
+	// 4. 等待撮合结果 (设置超时)
+	select {
+	case result := <-resultChan:
+		return result, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-time.After(2 * time.Second):
+		return nil, fmt.Errorf("matching timeout")
 	}
-
-	// 构建撮合结果
-	result := &domain.MatchingResult{
-		OrderID:           req.OrderID,
-		Trades:            trades,
-		RemainingQuantity: order.Quantity,
-		Status:            "MATCHED",
-	}
-
-	return result, nil
 }
 
 // GetOrderBook 获取订单簿快照
@@ -161,7 +177,7 @@ func (mas *MatchingApplicationService) GetOrderBook(ctx context.Context, symbol 
 		Symbol:    symbol,
 		Bids:      make([]*domain.OrderBookLevel, 0, len(bids)),
 		Asks:      make([]*domain.OrderBookLevel, 0, len(asks)),
-		Timestamp: 0, // 实际应用中应使用当前时间戳
+		Timestamp: 0,
 	}
 
 	for _, bid := range bids {
