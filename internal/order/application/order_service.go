@@ -9,6 +9,7 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
 	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/security/risk"
 )
 
 // CreateOrderRequest 创建订单请求 DTO
@@ -42,23 +43,26 @@ type OrderDTO struct {
 
 // OrderApplicationService 订单应用服务
 type OrderApplicationService struct {
-	orderRepo domain.OrderRepository
+	orderRepo     domain.OrderRepository
+	riskEvaluator risk.Evaluator
 }
 
 // NewOrderApplicationService 创建订单应用服务
-func NewOrderApplicationService(orderRepo domain.OrderRepository) *OrderApplicationService {
+func NewOrderApplicationService(orderRepo domain.OrderRepository, riskEvaluator risk.Evaluator) *OrderApplicationService {
 	return &OrderApplicationService{
-		orderRepo: orderRepo,
+		orderRepo:     orderRepo,
+		riskEvaluator: riskEvaluator,
 	}
 }
 
 // CreateOrder 创建订单
 // 用例流程：
 // 1. 验证输入参数
-// 2. 生成订单 ID
-// 3. 创建订单领域对象
-// 4. 保存到仓储
-// 5. 发布订单创建事件（待实现）
+// 2. 内联风控评估 (Fail-Close)
+// 3. 生成订单 ID
+// 4. 创建订单领域对象
+// 5. 保存到仓储
+// 6. 发布订单创建事件（待实现）
 func (oas *OrderApplicationService) CreateOrder(ctx context.Context, req *CreateOrderRequest) (*OrderDTO, error) {
 	// 记录性能监控
 	defer logging.LogDuration(ctx, "Order creation completed",
@@ -103,6 +107,37 @@ func (oas *OrderApplicationService) CreateOrder(ctx context.Context, req *Create
 		)
 		return nil, fmt.Errorf("invalid quantity: %w", err)
 	}
+
+	// --- 架构增强：金融级内联风控 (Inline Risk Control - Fail-Close) ---
+	// 评估风险数据
+	riskAssessment, err := oas.riskEvaluator.Assess(ctx, "trade.order_create", map[string]any{
+		"user_id":  req.UserID,
+		"symbol":   req.Symbol,
+		"side":     req.Side,
+		"amount":   price.Mul(quantity).InexactFloat64(),
+		"quantity": quantity.InexactFloat64(),
+	})
+
+	if err != nil {
+		// 金融级架构决策：风控系统异常时，为了资金安全，选择拦截交易 (Fail-Close)
+		logging.Error(ctx, "Risk assessment service unavailable, rejecting transaction", "error", err)
+		return nil, fmt.Errorf("security system offline, please try later")
+	}
+
+	if riskAssessment.Level == risk.Reject {
+		logging.Warn(ctx, "Transaction rejected by risk engine",
+			"user_id", req.UserID,
+			"code", riskAssessment.Code,
+			"reason", riskAssessment.Reason,
+		)
+		return nil, fmt.Errorf("transaction blocked: %s", riskAssessment.Reason)
+	}
+
+	if riskAssessment.Level == risk.Review {
+		logging.Info(ctx, "Transaction flagged for manual review", "user_id", req.UserID)
+		// 可以在此处标记订单为 PendingReview
+	}
+	// --- 内联风控结束 ---
 
 	// 生成订单 ID
 	orderID := fmt.Sprintf("ORD-%d", idgen.GenID())

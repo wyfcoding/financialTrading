@@ -25,6 +25,7 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 	"github.com/wyfcoding/pkg/metrics"
 	"github.com/wyfcoding/pkg/middleware"
+	"github.com/wyfcoding/pkg/security/risk"
 )
 
 // BootstrapName 服务唯一标识
@@ -62,7 +63,7 @@ func main() {
 		WithGRPC(registerGRPC).
 		WithGin(registerGin).
 		WithGinMiddleware(
-			middleware.CORS(),                            // 跨域处理
+			middleware.CORS(), // 跨域处理
 			middleware.TimeoutMiddleware(30*time.Second), // 全局超时
 		).
 		Build().
@@ -140,9 +141,10 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		return nil, nil, fmt.Errorf("redis init error: %w", err)
 	}
 
-	// 3. 初始化治理组件 (限流器、幂等管理器)
+	// 3. 初始化治理组件 (限流器、幂等管理器、风控引擎)
 	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
 	idemManager := idempotency.NewRedisManager(redisCache.GetClient(), IdempotencyPrefix)
+	riskEvaluator := risk.NewSimpleRuleEngine(logger.Logger)
 
 	// 4. 初始化下游微服务客户端
 	clients := &ServiceClients{}
@@ -162,7 +164,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	orderRepo := mysql.NewOrderRepository(db.RawDB())
 
 	// 5.2 Application (Service)
-	orderService := application.NewOrderApplicationService(orderRepo)
+	orderService := application.NewOrderApplicationService(orderRepo, riskEvaluator)
 
 	// 5.3 Interface (HTTP Handlers)
 	handler := orderhttp.NewOrderHandler(orderService)
