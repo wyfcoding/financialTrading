@@ -2,10 +2,12 @@ package domain
 
 import (
 	"github.com/shopspring/decimal"
+	"github.com/wyfcoding/pkg/algorithm"
 )
 
 // GridStrategy 网格交易策略
-// 包含网格策略的配置参数和运行时状态
+// 包含网格策略配置参数和运行时状态。
+// 这里引入了 SkipList（跳表）来优化网格价格的检索效率。
 type GridStrategy struct {
 	StrategyID      string          // 策略 ID
 	Symbol          string          // 交易对符号
@@ -14,6 +16,7 @@ type GridStrategy struct {
 	GridNumber      int             // 网格数量
 	QuantityPerGrid decimal.Decimal // 每个网格的交易数量
 	Grids           []Grid          // 网格列表
+	PriceIndex      *algorithm.SkipList // 价格索引，用于快速定位受价格波动影响的网格
 }
 
 // Grid 单个网格
@@ -42,6 +45,7 @@ func NewGridStrategy(id, symbol string, upper, lower decimal.Decimal, number int
 		GridNumber:      number,
 		QuantityPerGrid: qty,
 		Grids:           make([]Grid, 0, number),
+		PriceIndex:      algorithm.NewSkipList(),
 	}
 }
 
@@ -63,12 +67,16 @@ func (s *GridStrategy) InitializeGrids(currentPrice decimal.Decimal) {
 			side = "SELL"
 		}
 
-		s.Grids = append(s.Grids, Grid{
+		grid := Grid{
 			Price:    price,
 			Quantity: s.QuantityPerGrid,
 			Status:   GridStatusWaiting,
 			Side:     side,
-		})
+		}
+		s.Grids = append(s.Grids, grid)
+
+		// 将网格价格存入跳表索引，Key 为价格，Value 为网格在切片中的索引
+		s.PriceIndex.Insert(price.InexactFloat64(), i)
 	}
 }
 
@@ -76,29 +84,31 @@ func (s *GridStrategy) InitializeGrids(currentPrice decimal.Decimal) {
 // 返回需要执行的订单操作（买入或卖出）
 func (s *GridStrategy) OnPriceUpdate(newPrice decimal.Decimal) []GridOrderAction {
 	actions := make([]GridOrderAction, 0)
+	priceFloat := newPrice.InexactFloat64()
 
-	for i := range s.Grids {
-		grid := &s.Grids[i]
+	// 使用跳表迭代器快速遍历受影响的价格区间，而不是遍历整个切片。
+	// 对于高频交易，网格数量较多时，跳表的检索效率优势明显（O(log N)）。
+	it := s.PriceIndex.Iterator()
+	for {
+		p, val, ok := it.Next()
+		if !ok {
+			break
+		}
 
-		// 简单逻辑：如果价格穿过网格线，且网格处于等待状态，则触发交易
-		// 实际生产中需要更复杂的逻辑处理成交确认和网格重置
+		gridIdx := val.(int)
+		grid := &s.Grids[gridIdx]
 
-		// 假设这里只是简单的触发逻辑
 		if grid.Status == GridStatusWaiting {
-			if grid.Side == "BUY" && newPrice.LessThanOrEqual(grid.Price) {
-				// 触发买入
+			// 触发买入：价格下跌穿过网格价格
+			if grid.Side == "BUY" && priceFloat <= p {
 				actions = append(actions, GridOrderAction{
 					Side:     "BUY",
 					Price:    grid.Price,
 					Quantity: grid.Quantity,
 				})
 				grid.Status = GridStatusFilled
-				// 买入成交后，该网格变为等待卖出（通常是在更高一个网格位置，或者原地反向）
-				// 这里简化为：买入后，该位置变为等待卖出（如果策略允许同价位反复震荡）
-				// 或者更常见的：买入后，在上方网格挂卖单。
-				// 为简化，这里仅标记为 Filled
-			} else if grid.Side == "SELL" && newPrice.GreaterThanOrEqual(grid.Price) {
-				// 触发卖出
+			} else if grid.Side == "SELL" && priceFloat >= p {
+				// 触发卖出：价格上涨穿过网格价格
 				actions = append(actions, GridOrderAction{
 					Side:     "SELL",
 					Price:    grid.Price,
