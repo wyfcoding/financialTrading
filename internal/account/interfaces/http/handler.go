@@ -30,7 +30,49 @@ func (h *AccountHandler) RegisterRoutes(router *gin.RouterGroup) {
 		api.POST("/accounts", h.CreateAccount)
 		api.GET("/accounts/:id", h.GetAccount)
 		api.POST("/accounts/:id/deposit", h.Deposit)
+		api.POST("/accounts/:id/freeze", h.Freeze)
+		api.POST("/accounts/:id/unfreeze", h.Unfreeze)
 	}
+}
+
+// BalanceActionRequest 资金操作请求
+type BalanceActionRequest struct {
+	Amount string `json:"amount" binding:"required"`
+	Reason string `json:"reason"`
+}
+
+// Freeze 冻结余额
+func (h *AccountHandler) Freeze(c *gin.Context) {
+	accountID := c.Param("id")
+	var req BalanceActionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	amount, _ := decimal.NewFromString(req.Amount)
+	if err := h.accountService.FreezeBalance(c.Request.Context(), accountID, amount, req.Reason); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "frozen"})
+}
+
+// Unfreeze 解冻余额
+func (h *AccountHandler) Unfreeze(c *gin.Context) {
+	accountID := c.Param("id")
+	var req BalanceActionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	amount, _ := decimal.NewFromString(req.Amount)
+	if err := h.accountService.UnfreezeBalance(c.Request.Context(), accountID, amount); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "unfrozen"})
 }
 
 // CreateAccount 创建账户

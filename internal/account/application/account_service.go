@@ -227,3 +227,76 @@ func (aas *AccountApplicationService) Deposit(ctx context.Context, accountID str
 
 	return nil
 }
+
+// FreezeBalance 冻结余额 (用于分布式事务第一阶段)
+func (aas *AccountApplicationService) FreezeBalance(ctx context.Context, accountID string, amount decimal.Decimal, reason string) error {
+	logging.Info(ctx, "Freezing balance", "account_id", accountID, "amount", amount.String(), "reason", reason)
+
+	account, err := aas.accountRepo.Get(ctx, accountID)
+	if err != nil || account == nil {
+		return fmt.Errorf("account not found or error: %v", err)
+	}
+
+	if account.AvailableBalance.LessThan(amount) {
+		return fmt.Errorf("insufficient available balance")
+	}
+
+	newAvailable := account.AvailableBalance.Sub(amount)
+	newFrozen := account.FrozenBalance.Add(amount)
+
+	if err := aas.accountRepo.UpdateBalance(ctx, accountID, account.Balance, newAvailable, newFrozen); err != nil {
+		return fmt.Errorf("failed to update frozen balance: %w", err)
+	}
+
+	return nil
+}
+
+// UnfreezeBalance 解冻余额 (用于分布式事务回滚)
+func (aas *AccountApplicationService) UnfreezeBalance(ctx context.Context, accountID string, amount decimal.Decimal) error {
+	logging.Info(ctx, "Unfreezing balance", "account_id", accountID, "amount", amount.String())
+
+	account, err := aas.accountRepo.Get(ctx, accountID)
+	if err != nil || account == nil {
+		return fmt.Errorf("account not found")
+	}
+
+	if account.FrozenBalance.LessThan(amount) {
+		return fmt.Errorf("frozen balance insufficient to unfreeze")
+	}
+
+	newAvailable := account.AvailableBalance.Add(amount)
+	newFrozen := account.FrozenBalance.Sub(amount)
+
+	return aas.accountRepo.UpdateBalance(ctx, accountID, account.Balance, newAvailable, newFrozen)
+}
+
+// DeductFrozenBalance 扣除已冻结的余额 (用于分布式事务确认)
+func (aas *AccountApplicationService) DeductFrozenBalance(ctx context.Context, accountID string, amount decimal.Decimal) error {
+	logging.Info(ctx, "Deducting frozen balance", "account_id", accountID, "amount", amount.String())
+
+	account, err := aas.accountRepo.Get(ctx, accountID)
+	if err != nil || account == nil {
+		return fmt.Errorf("account not found")
+	}
+
+	if account.FrozenBalance.LessThan(amount) {
+		return fmt.Errorf("frozen balance insufficient to deduct")
+	}
+
+	newBalance := account.Balance.Sub(amount)
+	newFrozen := account.FrozenBalance.Sub(amount)
+
+	if err := aas.accountRepo.UpdateBalance(ctx, accountID, newBalance, account.AvailableBalance, newFrozen); err != nil {
+		return err
+	}
+
+	// 记录真实扣款流水
+	transaction := &domain.Transaction{
+		TransactionID: fmt.Sprintf("DED-%d", idgen.GenID()),
+		AccountID:     accountID,
+		Type:          "DEDUCT",
+		Amount:        amount,
+		Status:        "COMPLETED",
+	}
+	return aas.transactionRepo.Save(ctx, transaction)
+}
