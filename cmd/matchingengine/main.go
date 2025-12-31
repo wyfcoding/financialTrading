@@ -162,7 +162,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	tradeRepo, orderBookRepo := mysql.NewMatchingRepository(db.RawDB())
 
 	// 5.2 Application (Service)
-	matchingService := application.NewMatchingApplicationService(tradeRepo, orderBookRepo)
+	matchingService := application.NewMatchingApplicationService(tradeRepo, orderBookRepo, logger.Logger)
 
 	// 5.3 Interface (HTTP Handlers)
 	handler := matchinghttp.NewMatchingHandler(matchingService)
@@ -170,6 +170,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	// 定义资源清理函数
 	cleanup := func() {
 		bootLog.Info("shutting down, releasing resources...")
+		matchingService.Close() // 停止撮合引擎 Sequencer
 		clientCleanup()
 		if redisCache != nil {
 			if err := redisCache.Close(); err != nil {

@@ -4,8 +4,8 @@ package application
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"runtime"
-	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -26,76 +26,95 @@ type SubmitOrderRequest struct {
 // MatchingApplicationService 撮合应用服务
 // 负责协调撮合引擎、订单簿和成交记录的持久化
 type MatchingApplicationService struct {
-	engine        *algorithm.MatchingEngine              // 撮合引擎核心
-	tradeRepo     domain.TradeRepository                 // 成交记录仓储接口
-	orderBookRepo domain.OrderBookRepository             // 订单簿仓储接口
-	queue         *algorithm.LockFreeQueue               // 高性能无锁请求队列
-	resultChans   map[string]chan *domain.MatchingResult // 简单实现的结果通知机制
-	mu            sync.RWMutex
+	engine        *algorithm.MatchingEngine                  // 撮合引擎核心
+	tradeRepo     domain.TradeRepository                     // 成交记录仓储接口
+	orderBookRepo domain.OrderBookRepository                 // 订单簿仓储接口
+	ringBuffer    *algorithm.MpscRingBuffer[algorithm.Order] // 顶级高性能 MPSC 环形缓冲区
+	logger        *slog.Logger
+	stopChan      chan struct{} // 优雅退出信号
 }
 
 // NewMatchingApplicationService 创建撮合应用服务并启动后台 Sequencer
-func NewMatchingApplicationService(tradeRepo domain.TradeRepository, orderBookRepo domain.OrderBookRepository) *MatchingApplicationService {
+func NewMatchingApplicationService(tradeRepo domain.TradeRepository, orderBookRepo domain.OrderBookRepository, logger *slog.Logger) *MatchingApplicationService {
+	rb, _ := algorithm.NewMpscRingBuffer[algorithm.Order](1048576) // 100万容量
+
 	mas := &MatchingApplicationService{
 		engine:        algorithm.NewMatchingEngine(),
 		tradeRepo:     tradeRepo,
 		orderBookRepo: orderBookRepo,
-		queue:         algorithm.NewLockFreeQueue(1048576), // 100万容量的无锁队列
-		resultChans:   make(map[string]chan *domain.MatchingResult),
+		ringBuffer:    rb,
+		logger:        logger.With("module", "matching_engine"),
+		stopChan:      make(chan struct{}),
 	}
 
 	// 启动核心 Sequencer (单线程处理器)
-	go mas.startSequencer()
+	// 将该协程锁定到特定的操作系统线程上，以获得更稳定的性能（Mechanical Sympathy）
+	go func() {
+		runtime.LockOSThread()
+		mas.startSequencer()
+	}()
 
 	return mas
 }
 
-// startSequencer 是整个撮合系统的核心。
-// 它单线程地、顺序地处理所有撮合请求，彻底消除了撮合逻辑内部的锁竞争。
+// Close 优雅关闭服务
+func (mas *MatchingApplicationService) Close() {
+	close(mas.stopChan)
+}
+
+// startSequencer 是整个撮合系统的核心逻辑循环
 func (mas *MatchingApplicationService) startSequencer() {
-	ctx := context.Background()
 	for {
-		item, ok := mas.queue.Pop()
-		if !ok {
-			// 队列为空时让出 CPU 或进行自旋优化
-			runtime.Gosched()
-			continue
-		}
-
-		order, ok := item.(*algorithm.Order)
-		if !ok {
-			continue
-		}
-
-		// 执行纯内存撮合（此时不需要担心 engine 内部的锁竞争，因为只有这一个线程在访问）
-		trades := mas.engine.Match(order)
-
-		// 异步持久化成交记录
-		go func(ts []*algorithm.Trade, oID string) {
-			for _, t := range ts {
-				if err := mas.tradeRepo.Save(ctx, t); err != nil {
-					logging.Error(ctx, "Failed to persist trade", "trade_id", t.TradeID, "error", err)
-				}
+		select {
+		case <-mas.stopChan:
+			mas.logger.Info("sequencer stopping...")
+			return
+		default:
+			// 从 RingBuffer 轮询订单 (无锁且缓存友好)
+			order := mas.ringBuffer.Poll()
+			if order == nil {
+				runtime.Gosched() // 队列为空，让出时间片
+				continue
 			}
-		}(trades, order.OrderID)
 
-		// 通知结果
-		mas.mu.RLock()
-		ch, exists := mas.resultChans[order.OrderID]
-		mas.mu.RUnlock()
+			// 执行撮合逻辑
+			// 由于是单线程访问 engine，内部完全不需要互斥锁
+			trades := mas.engine.Match(order)
 
-		if exists {
-			ch <- &domain.MatchingResult{
-				OrderID:           order.OrderID,
-				Trades:            trades,
-				RemainingQuantity: order.Quantity,
-				Status:            "MATCHED",
+			// 持久化成交记录 (顶级架构：这里可以改为批量异步写入以提高 IOPS)
+			if len(trades) > 0 {
+				mas.asyncPersistTrades(trades)
+			}
+
+			// 直接通过订单携带的通道返回结果 (零全局锁)
+			if order.ResultChan != nil {
+				order.ResultChan <- &domain.MatchingResult{
+					OrderID:           order.OrderID,
+					Trades:            trades,
+					RemainingQuantity: order.Quantity,
+					Status:            "PROCESSED",
+				}
 			}
 		}
 	}
 }
 
-// SubmitOrder 提交订单进行撮合 (现在的 SubmitOrder 变成了生产者)
+// asyncPersistTrades 异步持久化成交记录
+func (mas *MatchingApplicationService) asyncPersistTrades(trades []*algorithm.Trade) {
+	// 在生产环境中，这里通常会发送到另一个专用的持久化环形队列
+	// 或者批量存入缓存/数据库
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		for _, t := range trades {
+			if err := mas.tradeRepo.Save(ctx, t); err != nil {
+				mas.logger.Error("failed to persist trade", "trade_id", t.TradeID, "error", err)
+			}
+		}
+	}()
+}
+
+// SubmitOrder 提交订单进行撮合
 func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *SubmitOrderRequest) (*domain.MatchingResult, error) {
 	// 记录性能监控
 	defer logging.LogDuration(ctx, "Order matching completed",
@@ -119,7 +138,7 @@ func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *Sub
 		return nil, fmt.Errorf("invalid quantity: %w", err)
 	}
 
-	// 1. 使用对象池获取订单对象，显著降低 GC 压力
+	// 1. 获取并初始化订单对象
 	order := algorithm.AcquireOrder()
 	order.OrderID = req.OrderID
 	order.Symbol = req.Symbol
@@ -128,33 +147,23 @@ func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *Sub
 	order.Quantity = quantity
 	order.Timestamp = time.Now().UnixNano()
 
-	// 2. 注册结果通道
-	resultChan := make(chan *domain.MatchingResult, 1)
-	mas.mu.Lock()
-	mas.resultChans[req.OrderID] = resultChan
-	mas.mu.Unlock()
+	// 2. 准备本地结果通道 (避免全局锁)
+	resultChan := make(chan any, 1)
+	order.ResultChan = resultChan
 
-	defer func() {
-		mas.mu.Lock()
-		delete(mas.resultChans, req.OrderID)
-		mas.mu.Unlock()
-		close(resultChan)
-	}()
-
-	// 3. 推入无锁队列 (非阻塞操作)
-	if !mas.queue.Push(order) {
+	// 3. 压入 RingBuffer
+	if !mas.ringBuffer.Offer(order) {
 		algorithm.ReleaseOrder(order)
-		return nil, fmt.Errorf("matching engine queue is full")
+		return nil, fmt.Errorf("matching engine is overloaded")
 	}
 
-	// 4. 等待撮合结果 (设置超时)
+	// 4. 等待同步结果 (或支持完全异步下单)
 	select {
-	case result := <-resultChan:
-		return result, nil
+	case res := <-resultChan:
+		algorithm.ReleaseOrder(order) // 回收对象
+		return res.(*domain.MatchingResult), nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-time.After(2 * time.Second):
-		return nil, fmt.Errorf("matching timeout")
 	}
 }
 
