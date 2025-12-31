@@ -132,7 +132,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	}
 
 	// 2. 初始化缓存 (Redis)
-	redisCache, err := cache.NewRedisCache(c.Data.Redis, logger)
+	redisCache, err := cache.NewRedisCache(c.Data.Redis, c.CircuitBreaker, logger, m)
 	if err != nil {
 		if sqlDB, err := db.DB(); err == nil {
 			sqlDB.Close()
