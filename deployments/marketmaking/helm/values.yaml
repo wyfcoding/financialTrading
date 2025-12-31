@@ -80,3 +80,11 @@ env:
     value: "9090"
   - name: APP_ENVIRONMENT
     value: "prod"
+
+
+# 顶级架构实践：机密信息管理
+# 在生产环境中，这些值应为空，并由 CI/CD 或 Secret Store (如 Vault) 在部署时注入
+secrets:
+  dbPassword: ""
+  redisPassword: ""
+  jwtSecret: ""

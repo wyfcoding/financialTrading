@@ -155,6 +155,20 @@ spec:
     - "default/inventory.default.svc.cluster.local"
 ---
 apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: {{ include "account.fullname" . }}-jwt
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "account.name" . }}
+  jwtRules:
+  - issuer: "ecommerce-auth-service"
+    jwksUri: "http://auth-service.default.svc.cluster.local/v1/jwks" # 内部鉴权服务提供的 JWKS 终结点
+    forwardOriginalToken: true # 转发原始 Token 供业务审计使用
+---
+apiVersion: security.istio.io/v1beta1
 kind: AuthorizationPolicy
 metadata:
   name: {{ include "account.fullname" . }}-auth
@@ -165,12 +179,19 @@ spec:
       app.kubernetes.io/name: {{ include "account.name" . }}
   action: ALLOW
   rules:
+  # 规则 1: 业务接口必须持有合法 JWT
   - from:
     - source:
-        # 恢复 principals 校验：确保只有特定身份的服务能调用
-        principals: ["cluster.local/ns/{{ .Release.Namespace }}/sa/{{ include "account.serviceAccountName" . }}"]
+        requestPrincipals: ["ecommerce-auth-service/*"]
+    to:
+    - operation:
+        methods: ["POST", "PUT", "DELETE"]
+        paths: ["/api/v1/accounts*"]
+  # 规则 2: 服务间调用 (mTLS)
+  - from:
     - source:
-        namespaces: ["istio-system"]
+        principals: ["cluster.local/ns/{{ .Release.Namespace }}/sa/{{ include "account.serviceAccountName" . }}"]
+  # 规则 3: 放行健康检查与指标采集
   - to:
     - operation:
         methods: ["GET"]

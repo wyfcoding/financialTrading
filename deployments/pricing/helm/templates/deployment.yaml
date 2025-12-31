@@ -58,6 +58,9 @@ spec:
               protocol: TCP
           env:
             {{- toYaml $.Values.env | nindent 12 }}
+          envFrom:
+            - secretRef:
+                name: {{ include "pricing.fullname" . }}-secrets
           livenessProbe:
             httpGet:
               path: /sys/health
