@@ -7,8 +7,10 @@ import (
 	"github.com/shopspring/decimal"
 	market_data "github.com/wyfcoding/financialtrading/goapi/marketdata/v1"
 	"github.com/wyfcoding/financialtrading/internal/quant/domain"
+	"github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/grpcclient"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/metrics"
 	"google.golang.org/grpc"
 )
 
@@ -18,8 +20,8 @@ type MarketDataClientImpl struct {
 }
 
 // NewMarketDataClient 创建市场数据服务客户端
-func NewMarketDataClient(target string) (domain.MarketDataClient, error) {
-	conn, err := grpcclient.NewClientFactory(logging.Default()).NewClient(target)
+func NewMarketDataClient(target string, m *metrics.Metrics, cbCfg config.CircuitBreakerConfig) (domain.MarketDataClient, error) {
+	conn, err := grpcclient.NewClientFactory(logging.Default(), m, cbCfg).NewClient(target)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create market data service client: %w", err)
 	}
@@ -38,11 +40,10 @@ func NewMarketDataClientFromConn(conn *grpc.ClientConn) domain.MarketDataClient 
 
 // GetHistoricalData 获取历史价格数据
 func (c *MarketDataClientImpl) GetHistoricalData(ctx context.Context, symbol string, start, end int64) ([]decimal.Decimal, error) {
-	// 注意：当前 proto 不支持 StartTime/EndTime 过滤，仅支持 limit
 	req := &market_data.GetKlinesRequest{
 		Symbol:   symbol,
-		Interval: "1d", // 默认日线
-		Limit:    500,  // 获取较多数据
+		Interval: "1d",
+		Limit:    500,
 	}
 
 	resp, err := c.client.GetKlines(ctx, req)
@@ -56,7 +57,6 @@ func (c *MarketDataClientImpl) GetHistoricalData(ctx context.Context, symbol str
 
 	prices := make([]decimal.Decimal, len(resp.Klines))
 	for i, k := range resp.Klines {
-		// 使用 proto 定义的 close 字段
 		prices[i] = decimal.NewFromFloat(k.Close)
 	}
 

@@ -63,7 +63,6 @@ func main() {
 		WithGRPC(registerGRPC).
 		WithGin(registerGin).
 		WithGinMiddleware(
-			middleware.MetricsMiddleware(),               // 指标采集
 			middleware.CORS(),                            // 跨域处理
 			middleware.TimeoutMiddleware(30*time.Second), // 全局超时
 		).
@@ -148,7 +147,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 
 	// 4. 初始化下游微服务客户端
 	clients := &ServiceClients{}
-	clientCleanup, err := grpcclient.InitClients(c.Services, clients)
+	clientCleanup, err := grpcclient.InitClients(c.Services, m, c.CircuitBreaker, clients)
 	if err != nil {
 		redisCache.Close()
 		if sqlDB, err := db.DB(); err == nil {
@@ -168,7 +167,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	if md, ok := c.Services["marketdata"]; ok {
 		marketDataAddr = md.GRPCAddr
 	}
-	marketDataClient, err := client.NewMarketDataClient(marketDataAddr)
+	marketDataClient, err := client.NewMarketDataClient(marketDataAddr, m, c.CircuitBreaker)
 	if err != nil {
 		bootLog.Warn("failed to init market data client", "error", err)
 	}

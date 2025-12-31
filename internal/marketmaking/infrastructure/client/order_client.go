@@ -7,8 +7,10 @@ import (
 	"github.com/shopspring/decimal"
 	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
+	"github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/grpcclient"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/metrics"
 	"google.golang.org/grpc"
 )
 
@@ -18,8 +20,8 @@ type OrderClientImpl struct {
 }
 
 // NewOrderClient 创建订单服务客户端
-func NewOrderClient(target string) (domain.OrderClient, error) {
-	conn, err := grpcclient.NewClientFactory(logging.Default()).NewClient(target)
+func NewOrderClient(target string, m *metrics.Metrics, cbCfg config.CircuitBreakerConfig) (domain.OrderClient, error) {
+	conn, err := grpcclient.NewClientFactory(logging.Default(), m, cbCfg).NewClient(target)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create order service client: %w", err)
 	}
@@ -43,8 +45,7 @@ func (c *OrderClientImpl) PlaceOrder(ctx context.Context, symbol string, side st
 		Side:      side,
 		Price:     price.String(),
 		Quantity:  quantity.String(),
-		OrderType: "LIMIT", // 默认限价单
-		// TimeInForce: "GTC",
+		OrderType: "LIMIT",
 	}
 
 	resp, err := c.client.CreateOrder(ctx, req)
