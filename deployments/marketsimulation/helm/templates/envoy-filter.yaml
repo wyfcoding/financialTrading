@@ -1,0 +1,32 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: {{ include "marketsimulation.fullname" . }}-request-id
+  namespace: {{ .Release.Namespace }}
+spec:
+  workloadSelector:
+    labels:
+      app.kubernetes.io/name: {{ include "marketsimulation.name" . }}
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: SIDECAR_INBOUND
+      listener:
+        filterChain:
+          filter:
+            name: "envoy.filters.network.http_connection_manager"
+            subFilter:
+              name: "envoy.filters.http.router"
+    patch:
+      operation: INSERT_BEFORE
+      value: # 注入一个简单的 Lua 脚本示例，用于在入口处强制校验 X-Request-Id
+        name: envoy.lua
+        typed_config:
+          "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+          inlineCode: |
+            function envoy_on_request(request_handle)
+              local request_id = request_handle:headers():get("x-request-id")
+              if not request_id then
+                request_handle:headers():add("x-request-id", "generated-" .. os.time())
+              end
+            end

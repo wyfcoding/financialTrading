@@ -1,24 +1,26 @@
-{- if .Values.autoscaling.enabled }
+{{- if .Values.autoscaling.enabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: { include "clearing.fullname" . }
+  name: {{ include "clearing.fullname" . }}
   labels:
-    {- include "clearing.labels" . | nindent 4 }
+    {{- include "clearing.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: { include "clearing.fullname" . }
-  minReplicas: { .Values.autoscaling.minReplicas }
-  maxReplicas: { .Values.autoscaling.maxReplicas }
+    # 注意：我们的 deployment 现在带后缀 -stable 和 -canary
+    # HPA 通常针对稳定版进行扩展
+    name: {{ include "clearing.fullname" . }}-stable
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:
-    {- if .Values.autoscaling.targetCPUUtilizationPercentage }
+    {{- if .Values.autoscaling.targetCPUUtilizationPercentage }}
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: { .Values.autoscaling.targetCPUUtilizationPercentage }
-    {- end }
-{- end }
+          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+{{- end }}

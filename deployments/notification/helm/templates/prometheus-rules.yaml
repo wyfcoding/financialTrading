@@ -1,0 +1,59 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "notification.fullname" . }}-alerts
+  namespace: {{ .Release.Namespace }}
+  labels:
+    role: alert-rules
+    {{- include "notification.labels" . | nindent 4 }}
+spec:
+  groups:
+  - name: notification.rules
+    rules:
+    # 1. 黄金指标：错误率告警
+    - alert: NotificationServiceHighHttpErrorRate
+      expr: |
+        sum(rate(http_request_duration_seconds_count{service="{{ include "notification.fullname" . }}", status=~"5.."}[5m])) 
+        / 
+        sum(rate(http_request_duration_seconds_count{service="{{ include "notification.fullname" . }}"}[5m])) > 0.05
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Notification Service high HTTP error rate"
+        description: "HTTP 5xx error rate is over 5% for more than 2 minutes (current value: {{ $value | printf "%.2f" }})"
+
+    # 2. 黄金指标：延迟告警 (P99 > 1s)
+    - alert: NotificationServiceHighLatency
+      expr: |
+        histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service="{{ include "notification.fullname" . }}"}[5m]))) > 1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Notification Service P99 latency high"
+        description: "P99 latency is over 1s for 5 minutes (current value: {{ $value }}s)"
+
+    # 3. 业务指标：分布式事务 Saga 失败告警
+    - alert: NotificationSagaTransactionFailure
+      expr: |
+        sum(rate(dtm_saga_status_total{service="{{ include "notification.fullname" . }}", status="failed"}[5m])) > 0
+      for: 0m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Notification Distributed Transaction (Saga) failed"
+        description: "Detected failed Saga transactions in notification service. Immediate manual intervention may be required."
+
+    # 4. 资源指标：HPA 满载告警
+    - alert: NotificationServiceHPAMaxedOut
+      expr: |
+        kube_horizontalpodautoscaler_status_current_replicas{horizontalpodautoscaler="{{ include "notification.fullname" . }}"} 
+        == 
+        kube_horizontalpodautoscaler_spec_max_replicas{horizontalpodautoscaler="{{ include "notification.fullname" . }}"}
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Notification Service HPA at maximum capacity"
+        description: "The HPA has reached its maximum replica count. Service might be under-provisioned."

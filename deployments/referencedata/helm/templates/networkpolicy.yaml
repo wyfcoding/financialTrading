@@ -1,19 +1,19 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: { include "referencedata.fullname" . }
+  name: {{ include "referencedata.fullname" . }}
   labels:
-    {- include "referencedata.labels" . | nindent 4 }
+    {{- include "referencedata.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:
-      {- include "referencedata.selectorLabels" . | nindent 6 }
+      {{- include "referencedata.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
   ingress:
     - from:
-        - podSelector: {}
+        - podSelector: {} # 默认允许集群内所有 pod 访问该服务的 Ingress (可根据安全需求进一步收紧)
   egress:
     - to:
         - ipBlock:

@@ -1,11 +1,11 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: { include "monitoringanalytics.fullname" . }
+  name: {{ include "monitoringanalytics.fullname" . }}
   labels:
-    {- include "monitoringanalytics.labels" . | nindent 4 }
+    {{- include "monitoringanalytics.labels" . | nindent 4 }}
 spec:
   minAvailable: 1
   selector:
     matchLabels:
-      {- include "monitoringanalytics.selectorLabels" . | nindent 6 }
+      {{- include "monitoringanalytics.selectorLabels" . | nindent 6 }}

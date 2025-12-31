@@ -1,19 +1,19 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: { include "marketsimulation.fullname" . }
+  name: {{ include "marketsimulation.fullname" . }}
   labels:
-    {- include "marketsimulation.labels" . | nindent 4 }
+    {{- include "marketsimulation.labels" . | nindent 4 }}
 spec:
-  type: { .Values.service.type }
+  type: {{ .Values.service.type }}
   ports:
-    - port: { .Values.service.httpPort }
+    - port: {{ .Values.service.httpPort }}
       targetPort: http
       protocol: TCP
       name: http
-    - port: { .Values.service.grpcPort }
+    - port: {{ .Values.service.grpcPort }}
       targetPort: grpc
       protocol: TCP
       name: grpc
   selector:
-    {- include "marketsimulation.selectorLabels" . | nindent 4 }
+    {{- include "marketsimulation.selectorLabels" . | nindent 4 }}

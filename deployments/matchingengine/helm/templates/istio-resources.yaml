@@ -1,0 +1,177 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: {{ include "matchingengine.fullname" . }}-gateway
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "api.trading.com"
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: TERMINATE
+      credentialName: ecommerce-credential
+    hosts:
+    - "api.trading.com"
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "matchingengine.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  hosts:
+  - api.trading.com
+  - {{ include "matchingengine.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+  gateways:
+  - {{ include "matchingengine.fullname" . }}-gateway
+  - mesh
+  http:
+  {{- if .Values.canary.enabled }}
+  # 1. 基于 Header 的精准金丝雀路由
+  - match:
+    - headers:
+        {{ .Values.canary.headerMatch.key }}:
+          exact: {{ .Values.canary.headerMatch.value | quote }}
+      uri:
+        prefix: /api/v1/matchingengines
+    route:
+    - destination:
+        host: {{ include "matchingengine.fullname" . }}
+        subset: {{ .Values.canary.version }}
+        port:
+          number: {{ .Values.service.httpPort }}
+
+  # 2. 流量百分比分发与镜像 (Shadow Traffic)
+  - match:
+    - uri:
+        prefix: /api/v1/matchingengines
+    mirror:
+      host: {{ include "matchingengine.fullname" . }}
+      subset: {{ .Values.canary.version }}
+    mirrorPercentage:
+      value: 10.0
+    route:
+    - destination:
+        host: {{ include "matchingengine.fullname" . }}
+        subset: v1
+        port:
+          number: {{ .Values.service.httpPort }}
+      weight: {{ sub 100 .Values.canary.trafficWeight }}
+    - destination:
+        host: {{ include "matchingengine.fullname" . }}
+        subset: {{ .Values.canary.version }}
+        port:
+          number: {{ .Values.service.httpPort }}
+      weight: {{ .Values.canary.trafficWeight }}
+  {{- else }}
+  # 默认稳定版本路由
+  - match:
+    - uri:
+        prefix: /api/v1/matchingengines
+    route:
+    - destination:
+        host: {{ include "matchingengine.fullname" . }}
+        subset: v1
+        port:
+          number: {{ .Values.service.httpPort }}
+      weight: 100
+  {{- end }}
+    retries:
+      attempts: 3
+      perTryTimeout: 2s
+      retryOn: "gateway-error,connect-failure,refused-stream"
+    timeout: 10s
+    corsPolicy:
+      {{- toYaml .Values.corsPolicy | nindent 6 | default "" }}
+      {{- if not .Values.corsPolicy }}
+      allowOrigins:
+      - exact: "https://ecommerce.com"
+      allowMethods: ["POST", "GET", "OPTIONS", "PUT", "DELETE"]
+      allowHeaders: ["authorization", "content-type", "x-request-id"]
+      maxAge: "24h"
+      {{- end }}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: {{ include "matchingengine.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: {{ include "matchingengine.fullname" . }}
+  trafficPolicy:
+    loadBalancer:
+      simple: ROUND_ROBIN
+      localityLbSetting:
+        enabled: true
+    tls:
+      mode: ISTIO_MUTUAL
+    connectionPool:
+      tcp:
+        maxConnections: 1024
+        connectTimeout: 50ms
+      http:
+        http2MaxRequests: 2048
+        maxRequestsPerConnection: 100
+        idleTimeout: 60s
+    outlierDetection:
+      consecutive5xxErrors: 3
+      interval: 5s
+      baseEjectionTime: 60s
+      maxEjectionPercent: 100
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  {{- if .Values.canary.enabled }}
+  - name: {{ .Values.canary.version }}
+    labels:
+      version: {{ .Values.canary.version }}
+  {{- end }}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Sidecar
+metadata:
+  name: {{ include "matchingengine.fullname" . }}-sidecar
+  namespace: {{ .Release.Namespace }}
+spec:
+  workloadSelector:
+    labels:
+      app.kubernetes.io/name: {{ include "matchingengine.name" . }}
+  egress:
+  - hosts:
+    - "istio-system/*"
+    - "./*"
+    - "default/payment.default.svc.cluster.local"
+    - "default/inventory.default.svc.cluster.local"
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ include "matchingengine.fullname" . }}-auth
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "matchingengine.name" . }}
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        # 恢复 principals 校验：确保只有特定身份的服务能调用
+        principals: ["cluster.local/ns/{{ .Release.Namespace }}/sa/{{ include "matchingengine.serviceAccountName" . }}"]
+    - source:
+        namespaces: ["istio-system"]
+  - to:
+    - operation:
+        methods: ["GET"]
+        paths: ["/sys/health", "/sys/ready", "/metrics"]

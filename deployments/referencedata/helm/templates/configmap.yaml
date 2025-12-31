@@ -1,12 +1,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: { include "referencedata.fullname" . }-config
+  name: {{ include "referencedata.fullname" . }}-config
   labels:
-    {- include "referencedata.labels" . | nindent 4 }
+    {{- include "referencedata.labels" . | nindent 4 }}
 data:
-  # Placeholder for config.toml content or other config
   config.toml: |
     [server]
-    name = "{ .Values.image.repository }"
+    name = "{{ .Values.image.repository }}"
     environment = "prod"

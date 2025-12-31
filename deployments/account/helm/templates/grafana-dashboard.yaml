@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "account.fullname" . }}-dashboard
+  namespace: {{ .Release.Namespace }}
+  labels:
+    grafana_dashboard: "1" # Grafana Sidecar 会自动扫描此标签并导入
+spec:
+  account-dashboard.json: |-
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "panels": [
+        {
+          "title": "Account Service RED Metrics",
+          "type": "row",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+        },
+        {
+          "title": "Request Rate (QPS)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 },
+          "targets": [
+            { "expr": "sum(rate(http_request_duration_seconds_count{service=\"{{ include \"account.fullname\" . }}\"}[5m]))", "legendFormat": "Total QPS" }
+          ]
+        },
+        {
+          "title": "Error Rate (5xx)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 1 },
+          "targets": [
+            { "expr": "sum(rate(http_request_duration_seconds_count{service=\"{{ include \"account.fullname\" . }}\", status=~\"5..\"}[5m]))", "legendFormat": "5xx" }
+          ]
+        },
+        {
+          "title": "P99 Latency (Seconds)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 1 },
+          "targets": [
+            { "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service=\"{{ include \"account.fullname\" . }}\"}[5m])))", "legendFormat": "P99" }
+          ]
+        },
+        {
+          "title": "Business: Account Creation Status",
+          "type": "row",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 }
+        },
+        {
+          "title": "Accounts Created by Status",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+          "targets": [
+            { "expr": "sum by (status) (rate(account_created_total{service=\"{{ include \"account.fullname\" . }}\"}[5m]))", "legendFormat": "{{status}}" }
+          ]
+        },
+        {
+          "title": "Distributed Transaction (Saga) Success vs Failure",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+          "targets": [
+            { "expr": "sum by (status) (rate(dtm_saga_status_total{service=\"{{ include \"account.fullname\" . }}\"}[5m]))", "legendFormat": "{{status}}" }
+          ]
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 36,
+      "style": "dark",
+      "tags": ["ecommerce", "account"],
+      "timezone": "",
+      "title": "Account Service Dashboard",
+      "uid": "account-service-std"
+    }

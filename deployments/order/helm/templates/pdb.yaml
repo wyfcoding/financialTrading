@@ -1,11 +1,11 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: { include "order.fullname" . }
+  name: {{ include "order.fullname" . }}
   labels:
-    {- include "order.labels" . | nindent 4 }
+    {{- include "order.labels" . | nindent 4 }}
 spec:
   minAvailable: 1
   selector:
     matchLabels:
-      {- include "order.selectorLabels" . | nindent 6 }
+      {{- include "order.selectorLabels" . | nindent 6 }}

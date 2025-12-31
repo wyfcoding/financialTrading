@@ -1,11 +1,11 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: { include "marketsimulation.fullname" . }
+  name: {{ include "marketsimulation.fullname" . }}
   labels:
-    {- include "marketsimulation.labels" . | nindent 4 }
+    {{- include "marketsimulation.labels" . | nindent 4 }}
 spec:
   minAvailable: 1
   selector:
     matchLabels:
-      {- include "marketsimulation.selectorLabels" . | nindent 6 }
+      {{- include "marketsimulation.selectorLabels" . | nindent 6 }}
