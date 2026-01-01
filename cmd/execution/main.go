@@ -167,10 +167,11 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	// 5.2 Application (Service)
 	executionService := application.NewExecutionService(executionRepo)
 
-	if clients.OrderConn != nil {
+	if clients.OrderConn != nil && clients.MarketDataConn != nil {
 		algoMgr := application.NewAlgoManager(
 			executionRepo,
 			orderv1.NewOrderServiceClient(clients.OrderConn),
+			marketdatav1.NewMarketDataServiceClient(clients.MarketDataConn),
 		)
 		executionService.SetAlgoManager(algoMgr)
 	}

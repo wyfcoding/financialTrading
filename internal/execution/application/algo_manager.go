@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	marketdatav1 "github.com/wyfcoding/financialtrading/goapi/marketdata/v1"
 	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/execution/domain"
 	"github.com/wyfcoding/pkg/logging"
@@ -12,15 +13,17 @@ import (
 
 // AlgoManager 负责算法交易的策略调度和执行。
 type AlgoManager struct {
-	repo     domain.ExecutionRepository
-	orderCli orderv1.OrderServiceClient
+	repo          domain.ExecutionRepository
+	orderCli      orderv1.OrderServiceClient
+	marketDataCli marketdatav1.MarketDataServiceClient
 }
 
 // NewAlgoManager 构造函数。
-func NewAlgoManager(repo domain.ExecutionRepository, orderCli orderv1.OrderServiceClient) *AlgoManager {
+func NewAlgoManager(repo domain.ExecutionRepository, orderCli orderv1.OrderServiceClient, marketDataCli marketdatav1.MarketDataServiceClient) *AlgoManager {
 	return &AlgoManager{
-		repo:     repo,
-		orderCli: orderCli,
+		repo:          repo,
+		orderCli:      orderCli,
+		marketDataCli: marketDataCli,
 	}
 }
 
@@ -92,15 +95,13 @@ func (m *AlgoManager) runTWAP(algo *domain.AlgoOrder) {
 	logging.Info(ctx, "TWAP completed", "algo_id", algo.AlgoID)
 }
 
-// runVWAP 执行成交量加权平均价格算法（简化版）。
+// runVWAP 执行成交量加权平均价格算法。
 func (m *AlgoManager) runVWAP(algo *domain.AlgoOrder) {
-	// VWAP 通常需要订阅市场实时音量并根据参与率（Participation Rate）动态下单。
-	// 这里仅实现核心逻辑框架。
+	// VWAP 需要根据市场实时成交量和预设的参与率（Participation Rate）动态下单。
 	ctx := context.Background()
-	logging.Info(ctx, "VWAP started (Simulated)", "algo_id", algo.AlgoID, "rate", algo.ParticipationRate.String())
+	logging.Info(ctx, "VWAP started", "algo_id", algo.AlgoID, "rate", algo.ParticipationRate.String())
 
-	// 实际应用中会订阅 marketdata 实时流，并在成交量波动时按比例下单。
-	// 此处模拟为定时检测。
+	// 定时检测市场成交量并按比例跟随
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
@@ -115,9 +116,21 @@ func (m *AlgoManager) runVWAP(algo *domain.AlgoOrder) {
 				return
 			}
 
-			// 模拟计算：根据参与率计算本次应下单量
-			// 假设全市场成交量为常数 1000
-			marketVol := decimal.NewFromInt(1000)
+			// 获取最新市场成交量
+			quote, err := m.marketDataCli.GetLatestQuote(ctx, &marketdatav1.GetLatestQuoteRequest{
+				Symbol: algo.Symbol,
+			})
+			if err != nil {
+				logging.Error(ctx, "VWAP: failed to get latest quote", "symbol", algo.Symbol, "error", err)
+				continue
+			}
+
+			// 根据参与率计算本次应下单量：本次下单量 = 市场最近成交量 * 参与率
+			marketVol := decimal.NewFromFloat(quote.LastSize)
+			if marketVol.IsZero() {
+				continue
+			}
+
 			sliceQty := marketVol.Mul(algo.ParticipationRate)
 
 			// 确保不超过总剩余量
@@ -126,7 +139,11 @@ func (m *AlgoManager) runVWAP(algo *domain.AlgoOrder) {
 				sliceQty = remaining
 			}
 
-			_, err := m.orderCli.CreateOrder(ctx, &orderv1.CreateOrderRequest{
+			if sliceQty.IsZero() {
+				continue
+			}
+
+			_, err = m.orderCli.CreateOrder(ctx, &orderv1.CreateOrderRequest{
 				UserId:    algo.UserID,
 				Symbol:    algo.Symbol,
 				Side:      string(algo.Side),
