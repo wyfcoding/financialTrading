@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -16,6 +17,8 @@ type AlgoManager struct {
 	repo          domain.ExecutionRepository
 	orderCli      orderv1.OrderServiceClient
 	marketDataCli marketdatav1.MarketDataServiceClient
+	activeAlgos   map[string]context.CancelFunc
+	mu            sync.RWMutex
 }
 
 // NewAlgoManager 构造函数。
@@ -24,26 +27,57 @@ func NewAlgoManager(repo domain.ExecutionRepository, orderCli orderv1.OrderServi
 		repo:          repo,
 		orderCli:      orderCli,
 		marketDataCli: marketDataCli,
+		activeAlgos:   make(map[string]context.CancelFunc),
 	}
 }
 
 // Start 处理并开始一个算法订单。
 func (m *AlgoManager) Start(ctx context.Context, algo *domain.AlgoOrder) {
+	m.mu.Lock()
+	if _, exists := m.activeAlgos[algo.AlgoID]; exists {
+		m.mu.Unlock()
+		logging.Warn(ctx, "AlgoManager: algorithm already running", "algo_id", algo.AlgoID)
+		return
+	}
+
+	algoCtx, cancel := context.WithCancel(context.Background())
+	m.activeAlgos[algo.AlgoID] = cancel
+	m.mu.Unlock()
+
 	logging.Info(ctx, "AlgoManager: starting algorithm", "algo_id", algo.AlgoID, "type", algo.AlgoType)
 
 	switch algo.AlgoType {
 	case domain.AlgoTypeTWAP:
-		go m.runTWAP(algo)
+		go m.runTWAP(algoCtx, algo)
 	case domain.AlgoTypeVWAP:
-		go m.runVWAP(algo)
+		go m.runVWAP(algoCtx, algo)
 	default:
+		m.removeAlgo(algo.AlgoID)
 		logging.Error(ctx, "AlgoManager: unknown algorithm type", "type", algo.AlgoType)
 	}
 }
 
+// Stop 停止一个正在运行的算法。
+func (m *AlgoManager) Stop(ctx context.Context, algoID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if cancel, ok := m.activeAlgos[algoID]; ok {
+		cancel()
+		delete(m.activeAlgos, algoID)
+		logging.Info(ctx, "AlgoManager: algorithm stopped", "algo_id", algoID)
+	}
+}
+
+func (m *AlgoManager) removeAlgo(algoID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.activeAlgos, algoID)
+}
+
 // runTWAP 执行时间加权平均价格算法。
-func (m *AlgoManager) runTWAP(algo *domain.AlgoOrder) {
-	ctx := context.Background()
+func (m *AlgoManager) runTWAP(ctx context.Context, algo *domain.AlgoOrder) {
+	defer m.removeAlgo(algo.AlgoID)
+
 	duration := algo.EndTime.Sub(algo.StartTime)
 	if duration <= 0 {
 		m.failAlgo(ctx, algo, "invalid time window")
@@ -64,28 +98,33 @@ func (m *AlgoManager) runTWAP(algo *domain.AlgoOrder) {
 	logging.Info(ctx, "TWAP started", "algo_id", algo.AlgoID, "slices", slices, "slice_qty", sliceQty.String())
 
 	for i := 0; i < slices; i++ {
-		<-ticker.C
-		// 下达子订单
-		resp, err := m.orderCli.CreateOrder(ctx, &orderv1.CreateOrderRequest{
-			UserId:    algo.UserID,
-			Symbol:    algo.Symbol,
-			Side:      string(algo.Side),
-			OrderType: "LIMIT", // 修正字段名为 OrderType
-			Quantity:  sliceQty.String(),
-			Price:     "0",
-		})
-		if err != nil {
-			logging.Error(ctx, "TWAP: failed to place child order", "algo_id", algo.AlgoID, "error", err)
-			continue
-		}
+		select {
+		case <-ticker.C:
+			// 下达子订单
+			resp, err := m.orderCli.CreateOrder(ctx, &orderv1.CreateOrderRequest{
+				UserId:    algo.UserID,
+				Symbol:    algo.Symbol,
+				Side:      string(algo.Side),
+				OrderType: "LIMIT",
+				Quantity:  sliceQty.String(),
+				Price:     "0",
+			})
+			if err != nil {
+				logging.Error(ctx, "TWAP: failed to place child order", "algo_id", algo.AlgoID, "error", err)
+				continue
+			}
 
-		// 更新执行进度
-		algo.ExecutedQuantity = algo.ExecutedQuantity.Add(sliceQty)
-		if err := m.repo.SaveAlgoOrder(ctx, algo); err != nil {
-			logging.Error(ctx, "AlgoManager: failed to save algo order", "algo_id", algo.AlgoID, "error", err)
-		}
+			// 更新执行进度
+			algo.ExecutedQuantity = algo.ExecutedQuantity.Add(sliceQty)
+			if err := m.repo.SaveAlgoOrder(ctx, algo); err != nil {
+				logging.Error(ctx, "AlgoManager: failed to save algo order", "algo_id", algo.AlgoID, "error", err)
+			}
 
-		logging.Info(ctx, "TWAP slice executed", "algo_id", algo.AlgoID, "order_id", resp.Order.OrderId, "executed_qty", algo.ExecutedQuantity.String())
+			logging.Info(ctx, "TWAP slice executed", "algo_id", algo.AlgoID, "order_id", resp.Order.OrderId, "executed_qty", algo.ExecutedQuantity.String())
+		case <-ctx.Done():
+			logging.Info(ctx, "TWAP cancelled", "algo_id", algo.AlgoID)
+			return
+		}
 	}
 
 	algo.Status = domain.ExecutionStatusCompleted
@@ -96,9 +135,9 @@ func (m *AlgoManager) runTWAP(algo *domain.AlgoOrder) {
 }
 
 // runVWAP 执行成交量加权平均价格算法。
-func (m *AlgoManager) runVWAP(algo *domain.AlgoOrder) {
+func (m *AlgoManager) runVWAP(ctx context.Context, algo *domain.AlgoOrder) {
+	defer m.removeAlgo(algo.AlgoID)
 	// VWAP 需要根据市场实时成交量和预设的参与率（Participation Rate）动态下单。
-	ctx := context.Background()
 	logging.Info(ctx, "VWAP started", "algo_id", algo.AlgoID, "rate", algo.ParticipationRate.String())
 
 	// 定时检测市场成交量并按比例跟随
@@ -160,6 +199,9 @@ func (m *AlgoManager) runVWAP(algo *domain.AlgoOrder) {
 			}
 		case <-time.After(time.Until(algo.EndTime)):
 			m.failAlgo(ctx, algo, "time window expired")
+			return
+		case <-ctx.Done():
+			logging.Info(ctx, "VWAP cancelled", "algo_id", algo.AlgoID)
 			return
 		}
 	}
