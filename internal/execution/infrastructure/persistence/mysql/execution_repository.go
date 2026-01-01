@@ -180,7 +180,6 @@ func (r *executionRepositoryImpl) SaveAlgoOrder(ctx context.Context, algoOrder *
 		Columns:   []clause.Column{{Name: "algo_id"}},
 		UpdateAll: true,
 	}).Create(model).Error
-
 	if err != nil {
 		logging.Error(ctx, "execution_repository.SaveAlgoOrder failed", "algo_id", algoOrder.AlgoID, "error", err)
 		return fmt.Errorf("failed to save algo order: %w", err)

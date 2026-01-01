@@ -109,7 +109,6 @@ func (m *SORManager) handleBestPrice(ctx context.Context, sorID, userID, symbol,
 		OrderType: "MARKET",
 		Quantity:  qty.String(),
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to place order on best venue %s: %w", bestVenue, err)
 	}

@@ -72,7 +72,6 @@ func (m *AlgoManager) runTWAP(algo *domain.AlgoOrder) {
 				Quantity:  sliceQty.String(),
 				Price:     "0",
 			})
-
 			if err != nil {
 				logging.Error(ctx, "TWAP: failed to place child order", "algo_id", algo.AlgoID, "error", err)
 				continue
