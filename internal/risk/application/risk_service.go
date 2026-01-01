@@ -89,7 +89,7 @@ func (s *RiskApplicationService) PerformGlobalRiskScan(ctx context.Context) erro
 			Severity:  "CRITICAL",
 			Message:   fmt.Sprintf("Margin rate %f below threshold %f", marginRate, threshold),
 		}
-		
+
 		// 持久化告警并联动 Notification 服务
 		if err := s.alertRepo.Save(ctx, alert); err != nil {
 			return fmt.Errorf("failed to save risk alert: %w", err)
@@ -106,8 +106,8 @@ func (s *RiskApplicationService) EvaluateFraudRisk(ctx context.Context, userID s
 
 	// 1. 模拟聚合多维数据 (IP、DeviceID、近期频率)
 	// 2. 模拟 AI 算法推演：假设分值超过 90 判定为高危盗刷
-	riskScore := (amount / 1000.0) + 20.0 
-	
+	riskScore := (amount / 1000.0) + 20.0
+
 	isFraud := false
 	if riskScore > 90.0 {
 		isFraud = true

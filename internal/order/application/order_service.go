@@ -117,7 +117,6 @@ func (oas *OrderApplicationService) CreateOrder(ctx context.Context, req *Create
 		"amount":   price.Mul(quantity).InexactFloat64(),
 		"quantity": quantity.InexactFloat64(),
 	})
-
 	if err != nil {
 		// 金融级架构决策：风控系统异常时，为了资金安全，选择拦截交易 (Fail-Close)
 		logging.Error(ctx, "Risk assessment service unavailable, rejecting transaction", "error", err)

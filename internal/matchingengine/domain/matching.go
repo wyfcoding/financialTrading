@@ -170,13 +170,13 @@ func (e *DisruptionEngine) matchOrder(order *algorithm.Order, opponentBook *algo
 			oppOrder := el.Value.(*algorithm.Order)
 
 			matchQty := decimal.Min(result.RemainingQuantity, oppOrder.Quantity)
-			
+
 			trade := &algorithm.Trade{
-				TradeID:      generateTradeID(),
-				Symbol:       e.symbol,
-				Price:        realOppPrice,
-				Quantity:     matchQty,
-				Timestamp:    time.Now().UnixNano(),
+				TradeID:   generateTradeID(),
+				Symbol:    e.symbol,
+				Price:     realOppPrice,
+				Quantity:  matchQty,
+				Timestamp: time.Now().UnixNano(),
 			}
 
 			if order.Side == "BUY" {
@@ -240,12 +240,12 @@ func (e *DisruptionEngine) collectLevels(book *algorithm.SkipList[float64, *Orde
 		if !ok {
 			break
 		}
-		
+
 		var totalQty decimal.Decimal
 		for el := level.Orders.Front(); el != nil; el = el.Next() {
 			totalQty = totalQty.Add(el.Value.(*algorithm.Order).Quantity)
 		}
-		
+
 		levels = append(levels, &OrderBookLevel{
 			Price:    level.Price,
 			Quantity: totalQty,

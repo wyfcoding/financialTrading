@@ -9,13 +9,13 @@ import (
 // 包含网格策略配置参数和运行时状态。
 // 这里引入了 SkipList（跳表）来优化网格价格的检索效率。
 type GridStrategy struct {
-	StrategyID      string             // 策略 ID
-	Symbol          string             // 交易对符号
-	UpperPrice      decimal.Decimal    // 网格上限价格
-	LowerPrice      decimal.Decimal    // 网格下限价格
-	GridNumber      int                // 网格数量
-	QuantityPerGrid decimal.Decimal    // 每个网格的交易数量
-	Grids           []Grid             // 网格列表
+	StrategyID      string                            // 策略 ID
+	Symbol          string                            // 交易对符号
+	UpperPrice      decimal.Decimal                   // 网格上限价格
+	LowerPrice      decimal.Decimal                   // 网格下限价格
+	GridNumber      int                               // 网格数量
+	QuantityPerGrid decimal.Decimal                   // 每个网格的交易数量
+	Grids           []Grid                            // 网格列表
 	PriceIndex      *algorithm.SkipList[float64, int] // 价格索引 (Price -> GridIndex)
 }
 
