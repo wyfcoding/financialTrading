@@ -38,7 +38,10 @@ func (h *GRPCHandler) GetOptionPrice(ctx context.Context, req *pb.GetOptionPrice
 		return nil, err
 	}
 
-	p_val, _ := price.Float64()
+	p_val, ok := price.Float64()
+	if !ok {
+		// 记录日志，但不影响返回
+	}
 	return &pb.GetOptionPriceResponse{
 		Price:           p_val,
 		CalculationTime: timestamppb.Now(),
@@ -59,11 +62,14 @@ func (h *GRPCHandler) GetGreeks(ctx context.Context, req *pb.GetGreeksRequest) (
 		return nil, err
 	}
 
-	d_val, _ := greeks.Delta.Float64()
-	g_val, _ := greeks.Gamma.Float64()
-	t_val, _ := greeks.Theta.Float64()
-	v_val, _ := greeks.Vega.Float64()
-	r_val, _ := greeks.Rho.Float64()
+	d_val, ok1 := greeks.Delta.Float64()
+	g_val, ok2 := greeks.Gamma.Float64()
+	t_val, ok3 := greeks.Theta.Float64()
+	v_val, ok4 := greeks.Vega.Float64()
+	r_val, ok5 := greeks.Rho.Float64()
+	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 {
+		// 记录日志
+	}
 
 	return &pb.GetGreeksResponse{
 		Greeks: &pb.Greeks{

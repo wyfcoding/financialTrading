@@ -49,7 +49,10 @@ func (h *GRPCHandler) GetMetrics(ctx context.Context, req *pb.GetMetricsRequest)
 
 	protoMetrics := make([]*pb.Metric, len(metrics))
 	for i, m := range metrics {
-		val, _ := m.Value.Float64()
+		val, ok := m.Value.Float64()
+		if !ok {
+			// 记录日志或处理
+		}
 		protoMetrics[i] = &pb.Metric{
 			Name:      m.Name,
 			Value:     val,

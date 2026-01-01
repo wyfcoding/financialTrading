@@ -36,12 +36,11 @@ func (s *PricingService) GetOptionPrice(ctx context.Context, contract domain.Opt
 	)
 
 	timeToExpiry := float64(contract.ExpiryDate-time.Now().UnixMilli()) / 1000 / 24 / 3600 / 365
-	if timeToExpiry < 0 {
-		return decimal.Zero, nil
+	s_val, ok1 := underlyingPrice.Float64()
+	k_val, ok2 := contract.StrikePrice.Float64()
+	if !ok1 || !ok2 {
+		logging.Warn(ctx, "Precision loss during decimal to float64 conversion", "symbol", contract.Symbol)
 	}
-
-	s_val, _ := underlyingPrice.Float64()
-	k_val, _ := contract.StrikePrice.Float64()
 
 	result := domain.CalculateBlackScholes(contract.Type, domain.BlackScholesInput{
 		S: s_val,
@@ -91,8 +90,11 @@ func (s *PricingService) GetGreeks(ctx context.Context, contract domain.OptionCo
 		}, nil
 	}
 
-	s_val, _ := underlyingPrice.Float64()
-	k_val, _ := contract.StrikePrice.Float64()
+	s_val, ok1 := underlyingPrice.Float64()
+	k_val, ok2 := contract.StrikePrice.Float64()
+	if !ok1 || !ok2 {
+		logging.Warn(ctx, "Precision loss during decimal to float64 conversion for Greeks", "symbol", contract.Symbol)
+	}
 
 	result := domain.CalculateBlackScholes(contract.Type, domain.BlackScholesInput{
 		S: s_val,

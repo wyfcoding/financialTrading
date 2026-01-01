@@ -50,7 +50,11 @@ func (h *AccountHandler) Freeze(c *gin.Context) {
 		return
 	}
 
-	amount, _ := decimal.NewFromString(req.Amount)
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid amount format"})
+		return
+	}
 	if err := h.accountService.FreezeBalance(c.Request.Context(), accountID, amount, req.Reason); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -67,7 +71,11 @@ func (h *AccountHandler) Unfreeze(c *gin.Context) {
 		return
 	}
 
-	amount, _ := decimal.NewFromString(req.Amount)
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid amount format"})
+		return
+	}
 	if err := h.accountService.UnfreezeBalance(c.Request.Context(), accountID, amount); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

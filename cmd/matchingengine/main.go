@@ -164,7 +164,16 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	// 5.2 Application (Service)
 	// 顶级架构：撮合引擎通常是单实例单交易对，此处可以从配置加载，例如 "BTC/USDT"
 	defaultSymbol := "BTC/USDT"
-	matchingService := application.NewMatchingApplicationService(defaultSymbol, tradeRepo, orderBookRepo, logger.Logger)
+	matchingService, err := application.NewMatchingApplicationService(defaultSymbol, tradeRepo, orderBookRepo, logger.Logger)
+	if err != nil {
+		redisCache.Close()
+		if sqlDB, err := db.RawDB().DB(); err == nil {
+			if cerr := sqlDB.Close(); cerr != nil {
+				bootLog.Error("failed to close sql database", "error", cerr)
+			}
+		}
+		return nil, nil, fmt.Errorf("matching service init error: %w", err)
+	}
 
 	// 5.3 Interface (HTTP Handlers)
 	handler := matchinghttp.NewMatchingHandler(matchingService)

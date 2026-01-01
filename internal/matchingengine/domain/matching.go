@@ -62,8 +62,11 @@ type DisruptionEngine struct {
 	stopChan  chan struct{}
 }
 
-func NewDisruptionEngine(symbol string, capacity uint64) *DisruptionEngine {
-	ring, _ := algorithm.NewMpscRingBuffer[MatchTask](capacity)
+func NewDisruptionEngine(symbol string, capacity uint64) (*DisruptionEngine, error) {
+	ring, err := algorithm.NewMpscRingBuffer[MatchTask](capacity)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ring buffer: %w", err)
+	}
 	e := &DisruptionEngine{
 		symbol:    symbol,
 		orderBook: NewOrderBook(symbol),
@@ -72,7 +75,7 @@ func NewDisruptionEngine(symbol string, capacity uint64) *DisruptionEngine {
 	}
 	// 启动核心撮合 Worker (单线程)
 	go e.run()
-	return e
+	return e, nil
 }
 
 func (e *DisruptionEngine) run() {

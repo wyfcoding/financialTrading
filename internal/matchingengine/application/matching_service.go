@@ -31,16 +31,19 @@ type MatchingApplicationService struct {
 }
 
 // NewMatchingApplicationService 创建撮合应用服务
-func NewMatchingApplicationService(symbol string, tradeRepo domain.TradeRepository, orderBookRepo domain.OrderBookRepository, logger *slog.Logger) *MatchingApplicationService {
+func NewMatchingApplicationService(symbol string, tradeRepo domain.TradeRepository, orderBookRepo domain.OrderBookRepository, logger *slog.Logger) (*MatchingApplicationService, error) {
 	// 初始化 Disruptor 模式引擎，容量设置为 1024*1024
-	engine := domain.NewDisruptionEngine(symbol, 1048576)
+	engine, err := domain.NewDisruptionEngine(symbol, 1048576)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init matching engine: %w", err)
+	}
 
 	return &MatchingApplicationService{
 		engine:        engine,
 		tradeRepo:     tradeRepo,
 		orderBookRepo: orderBookRepo,
 		logger:        logger.With("module", "matching_engine", "symbol", symbol),
-	}
+	}, nil
 }
 
 // SubmitOrder 提交订单进行撮合

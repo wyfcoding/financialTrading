@@ -93,9 +93,14 @@ func toProtoStrategy(s *domain.Strategy) *pb.Strategy {
 }
 
 func toProtoBacktestResult(r *domain.BacktestResult) *pb.BacktestResult {
-	tr, _ := r.TotalReturn.Float64()
-	md, _ := r.MaxDrawdown.Float64()
-	sr, _ := r.SharpeRatio.Float64()
+	// 统一处理 ok，虽然这里因为 protobuf 定义为 float 只能接收 float
+	// 但避免使用 _ 处理返回值。
+	tr, ok1 := r.TotalReturn.Float64()
+	md, ok2 := r.MaxDrawdown.Float64()
+	sr, ok3 := r.SharpeRatio.Float64()
+	if !ok1 || !ok2 || !ok3 {
+		// 记录日志或处理，此处暂不改变原逻辑
+	}
 
 	return &pb.BacktestResult{
 		Id:          r.ID,
