@@ -13,6 +13,7 @@ import (
 	pb "github.com/wyfcoding/financialtrading/goapi/execution/v1"
 	marketdatav1 "github.com/wyfcoding/financialtrading/goapi/marketdata/v1"
 	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
+	referencedatav1 "github.com/wyfcoding/financialtrading/goapi/referencedata/v1"
 	"github.com/wyfcoding/financialtrading/internal/execution/application"
 	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/persistence/mysql"
 	executiongrpc "github.com/wyfcoding/financialtrading/internal/execution/interfaces/grpc"
@@ -53,8 +54,9 @@ type AppContext struct {
 
 // ServiceClients 下游微服务客户端集合
 type ServiceClients struct {
-	OrderConn      *grpc.ClientConn `service:"order"`
-	MarketDataConn *grpc.ClientConn `service:"marketdata"`
+	OrderConn         *grpc.ClientConn `service:"order"`
+	MarketDataConn    *grpc.ClientConn `service:"marketdata"`
+	ReferenceDataConn *grpc.ClientConn `service:"referencedata"`
 }
 
 func main() {
@@ -177,11 +179,12 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	}
 
 	// 5.2.2 注入智能路由管理器 (SOR)
-	if clients.OrderConn != nil && clients.MarketDataConn != nil {
+	if clients.OrderConn != nil && clients.MarketDataConn != nil && clients.ReferenceDataConn != nil {
 		sorMgr := application.NewSORManager(
 			executionRepo,
 			orderv1.NewOrderServiceClient(clients.OrderConn),
 			marketdatav1.NewMarketDataServiceClient(clients.MarketDataConn),
+			referencedatav1.NewReferenceDataServiceClient(clients.ReferenceDataConn),
 		)
 		executionService.SetSORManager(sorMgr)
 	}

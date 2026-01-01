@@ -9,6 +9,7 @@ import (
 	executionv1 "github.com/wyfcoding/financialtrading/goapi/execution/v1"
 	marketdatav1 "github.com/wyfcoding/financialtrading/goapi/marketdata/v1"
 	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
+	referencedatav1 "github.com/wyfcoding/financialtrading/goapi/referencedata/v1"
 	"github.com/wyfcoding/financialtrading/internal/execution/domain"
 	"github.com/wyfcoding/pkg/idgen"
 )
@@ -18,14 +19,16 @@ type SORManager struct {
 	repo      domain.ExecutionRepository
 	orderCli  orderv1.OrderServiceClient
 	marketCli marketdatav1.MarketDataServiceClient
+	refCli    referencedatav1.ReferenceDataServiceClient
 }
 
 // NewSORManager 构造函数。
-func NewSORManager(repo domain.ExecutionRepository, orderCli orderv1.OrderServiceClient, marketCli marketdatav1.MarketDataServiceClient) *SORManager {
+func NewSORManager(repo domain.ExecutionRepository, orderCli orderv1.OrderServiceClient, marketCli marketdatav1.MarketDataServiceClient, refCli referencedatav1.ReferenceDataServiceClient) *SORManager {
 	return &SORManager{
 		repo:      repo,
 		orderCli:  orderCli,
 		marketCli: marketCli,
+		refCli:    refCli,
 	}
 }
 
@@ -33,8 +36,22 @@ func NewSORManager(repo domain.ExecutionRepository, orderCli orderv1.OrderServic
 func (m *SORManager) ExecuteSOR(ctx context.Context, req *executionv1.SubmitSOROrderRequest) (*executionv1.SubmitSOROrderResponse, error) {
 	slog.Info("SOR execution started", "strategy", req.Strategy, "symbol", req.Symbol, "user_id", req.UserId)
 
-	// 定义模拟的 Venue (场内聚合场所)
-	venues := []string{"VENUE_ALPHA", "VENUE_BETA"}
+	// 动态发现可用场所 (Venues)
+	exchangesResp, err := m.refCli.ListExchanges(ctx, &referencedatav1.ListExchangesRequest{PageSize: 10})
+	if err != nil {
+		return nil, fmt.Errorf("failed to discover venues: %w", err)
+	}
+
+	var venues []string
+	for _, ex := range exchangesResp.Exchanges {
+		if ex.Status == "OPEN" || ex.Status == "ACTIVE" {
+			venues = append(venues, ex.Id)
+		}
+	}
+
+	if len(venues) == 0 {
+		return nil, fmt.Errorf("no active venues discovered")
+	}
 
 	totalQty, err := decimal.NewFromString(req.TotalQuantity)
 	if err != nil {
