@@ -41,7 +41,7 @@ type Config struct {
 // AppContext 应用上下文 (包含对外服务实例与依赖)
 type AppContext struct {
 	Config      *Config
-	Execution   *application.ExecutionApplicationService
+	Execution   *application.ExecutionService
 	Clients     *ServiceClients
 	Handler     *executionhttp.ExecutionHandler
 	Metrics     *metrics.Metrics
@@ -162,7 +162,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	executionRepo := mysql.NewExecutionRepository(db.RawDB())
 
 	// 5.2 Application (Service)
-	executionService := application.NewExecutionApplicationService(executionRepo)
+	executionService := application.NewExecutionService(executionRepo)
 
 	// 5.3 Interface (HTTP Handlers)
 	handler := executionhttp.NewExecutionHandler(executionService)

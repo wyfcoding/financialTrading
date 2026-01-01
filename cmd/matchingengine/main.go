@@ -41,7 +41,7 @@ type Config struct {
 // AppContext 应用上下文 (包含对外服务实例与依赖)
 type AppContext struct {
 	Config      *Config
-	Matching    *application.MatchingApplicationService
+	Matching    *application.MatchingEngineService
 	Clients     *ServiceClients
 	Handler     *matchinghttp.MatchingHandler
 	Metrics     *metrics.Metrics
@@ -164,7 +164,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	// 5.2 Application (Service)
 	// 顶级架构：撮合引擎通常是单实例单交易对，此处可以从配置加载，例如 "BTC/USDT"
 	defaultSymbol := "BTC/USDT"
-	matchingService, err := application.NewMatchingApplicationService(defaultSymbol, tradeRepo, orderBookRepo, logger.Logger)
+	matchingService, err := application.NewMatchingEngineService(defaultSymbol, tradeRepo, orderBookRepo, logger.Logger)
 	if err != nil {
 		redisCache.Close()
 		if sqlDB, err := db.RawDB().DB(); err == nil {

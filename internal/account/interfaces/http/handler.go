@@ -12,12 +12,12 @@ import (
 // HTTP 处理器
 // 负责处理与账户相关的 HTTP 请求
 type AccountHandler struct {
-	accountService *application.AccountApplicationService // 账户应用服务
+	accountService *application.AccountService // 账户应用服务
 }
 
 // 创建 HTTP 处理器实例
 // accountService: 注入的账户应用服务
-func NewAccountHandler(accountService *application.AccountApplicationService) *AccountHandler {
+func NewAccountHandler(accountService *application.AccountService) *AccountHandler {
 	return &AccountHandler{
 		accountService: accountService,
 	}

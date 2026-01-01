@@ -41,7 +41,7 @@ type Config struct {
 // AppContext 应用上下文 (包含对外服务实例与依赖)
 type AppContext struct {
 	Config      *Config
-	Account     *application.AccountApplicationService
+	Account     *application.AccountService
 	Clients     *ServiceClients
 	Handler     *accounthttp.AccountHandler
 	Metrics     *metrics.Metrics
@@ -163,7 +163,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	transactionRepo := mysql.NewTransactionRepository(db.RawDB())
 
 	// 5.2 Application (Service)
-	accountService := application.NewAccountApplicationService(accountRepo, transactionRepo)
+	accountService := application.NewAccountService(accountRepo, transactionRepo)
 
 	// 5.3 Interface (HTTP Handlers)
 	handler := accounthttp.NewAccountHandler(accountService)

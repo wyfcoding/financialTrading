@@ -41,7 +41,7 @@ type Config struct {
 // AppContext 应用上下文 (包含对外服务实例与依赖)
 type AppContext struct {
 	Config      *Config
-	Clearing    *application.ClearingApplicationService
+	Clearing    *application.ClearingService
 	Clients     *ServiceClients
 	Handler     *clearinghttp.ClearingHandler
 	Metrics     *metrics.Metrics
@@ -163,7 +163,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	eodRepo := mysql.NewEODClearingRepository(db.RawDB())
 
 	// 5.2 Application (Service)
-	clearingService := application.NewClearingApplicationService(settlementRepo, eodRepo)
+	clearingService := application.NewClearingService(settlementRepo, eodRepo)
 
 	// 5.3 Interface (HTTP Handlers)
 	handler := clearinghttp.NewClearingHandler(clearingService)

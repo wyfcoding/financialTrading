@@ -16,11 +16,11 @@ import (
 // ClearingHandler 是清算服务的 HTTP 处理器。
 // 它封装了所有与清算相关的 HTTP 接口逻辑。
 type ClearingHandler struct {
-	clearingService *application.ClearingApplicationService // 依赖注入的应用服务实例
+	clearingService *application.ClearingService // 依赖注入的应用服务实例
 }
 
 // NewClearingHandler 是 ClearingHandler 的构造函数。
-func NewClearingHandler(clearingService *application.ClearingApplicationService) *ClearingHandler {
+func NewClearingHandler(clearingService *application.ClearingService) *ClearingHandler {
 	return &ClearingHandler{
 		clearingService: clearingService,
 	}

@@ -17,14 +17,14 @@ import (
 // 负责处理与持仓管理相关的 gRPC 请求
 type GRPCHandler struct {
 	pb.UnimplementedPositionServiceServer
-	appService *application.PositionApplicationService // 持仓应用服务
+	service *application.PositionService // 持仓应用服务
 }
 
 // NewGRPCHandler 创建 gRPC 处理器实例
-// appService: 注入的持仓应用服务
-func NewGRPCHandler(appService *application.PositionApplicationService) *GRPCHandler {
+// service: 注入的持仓应用服务
+func NewGRPCHandler(service *application.PositionService) *GRPCHandler {
 	return &GRPCHandler{
-		appService: appService,
+		service: service,
 	}
 }
 
@@ -41,7 +41,7 @@ func (h *GRPCHandler) GetPositions(ctx context.Context, req *pb.GetPositionsRequ
 	}
 	offset := max(int((req.Page-1)*req.PageSize), 0)
 
-	dtos, total, err := h.appService.GetPositions(ctx, req.UserId, limit, offset)
+	dtos, total, err := h.service.GetPositions(ctx, req.UserId, limit, offset)
 	if err != nil {
 		slog.Error("gRPC GetPositions failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get positions: %v", err)
@@ -65,7 +65,7 @@ func (h *GRPCHandler) GetPosition(ctx context.Context, req *pb.GetPositionReques
 	start := time.Now()
 	slog.Debug("gRPC GetPosition received", "position_id", req.PositionId)
 
-	dto, err := h.appService.GetPosition(ctx, req.PositionId)
+	dto, err := h.service.GetPosition(ctx, req.PositionId)
 	if err != nil {
 		slog.Error("gRPC GetPosition failed", "position_id", req.PositionId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get position: %v", err)
@@ -89,14 +89,14 @@ func (h *GRPCHandler) ClosePosition(ctx context.Context, req *pb.ClosePositionRe
 		return nil, status.Errorf(codes.InvalidArgument, "invalid close price: %v", err)
 	}
 
-	err = h.appService.ClosePosition(ctx, req.PositionId, closePrice)
+	err = h.service.ClosePosition(ctx, req.PositionId, closePrice)
 	if err != nil {
 		slog.Error("gRPC ClosePosition failed", "position_id", req.PositionId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to close position: %v", err)
 	}
 
 	// 获取更新后的头寸以返回
-	dto, err := h.appService.GetPosition(ctx, req.PositionId)
+	dto, err := h.service.GetPosition(ctx, req.PositionId)
 	if err != nil {
 		slog.Error("gRPC GetPosition after close failed", "position_id", req.PositionId, "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to get updated position: %v", err)

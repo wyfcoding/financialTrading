@@ -41,7 +41,7 @@ type Config struct {
 // AppContext 应用上下文 (包含对外服务实例与依赖)
 type AppContext struct {
 	Config      *Config
-	Risk        *application.RiskApplicationService
+	Risk        *application.RiskService
 	Clients     *ServiceClients
 	Handler     *riskhttp.RiskHandler
 	Metrics     *metrics.Metrics
@@ -165,7 +165,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	alertRepo := mysql.NewRiskAlertRepository(db.RawDB())
 
 	// 5.2 Application (Service)
-	riskService := application.NewRiskApplicationService(assessmentRepo, metricsRepo, limitRepo, alertRepo)
+	riskService := application.NewRiskService(assessmentRepo, metricsRepo, limitRepo, alertRepo)
 
 	// 5.3 Interface (HTTP Handlers)
 	handler := riskhttp.NewRiskHandler(riskService)

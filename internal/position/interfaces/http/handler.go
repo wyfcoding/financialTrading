@@ -15,12 +15,12 @@ import (
 // HTTP 处理器
 // 负责处理与持仓管理相关的 HTTP 请求
 type PositionHandler struct {
-	positionService *application.PositionApplicationService // 持仓应用服务
+	positionService *application.PositionService // 持仓应用服务
 }
 
 // 创建 HTTP 处理器
 // positionService: 注入的持仓应用服务
-func NewPositionHandler(positionService *application.PositionApplicationService) *PositionHandler {
+func NewPositionHandler(positionService *application.PositionService) *PositionHandler {
 	return &PositionHandler{
 		positionService: positionService,
 	}

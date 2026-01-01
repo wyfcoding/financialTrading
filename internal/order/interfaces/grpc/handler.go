@@ -18,14 +18,14 @@ type GRPCHandler struct {
 	// 嵌入 UnimplementedOrderServiceServer 以实现向前兼容
 	pb.UnimplementedOrderServiceServer
 	// 订单应用服务，处理业务逻辑
-	appService *application.OrderApplicationService
+	service *application.OrderService
 }
 
 // NewGRPCHandler 创建 gRPC 处理器实例
-// appService: 注入的订单应用服务
-func NewGRPCHandler(appService *application.OrderApplicationService) *GRPCHandler {
+// service: 注入的订单应用服务
+func NewGRPCHandler(service *application.OrderService) *GRPCHandler {
 	return &GRPCHandler{
-		appService: appService,
+		service: service,
 	}
 }
 
@@ -36,7 +36,7 @@ func (h *GRPCHandler) CreateOrder(ctx context.Context, req *pb.CreateOrderReques
 	slog.Info("gRPC CreateOrder received", "user_id", req.UserId, "symbol", req.Symbol, "side", req.Side, "price", req.Price, "quantity", req.Quantity)
 
 	// 调用应用服务创建订单
-	dto, err := h.appService.CreateOrder(ctx, &application.CreateOrderRequest{
+	dto, err := h.service.CreateOrder(ctx, &application.CreateOrderRequest{
 		UserID:        req.UserId,
 		Symbol:        req.Symbol,
 		Side:          req.Side,
@@ -65,7 +65,7 @@ func (h *GRPCHandler) CancelOrder(ctx context.Context, req *pb.CancelOrderReques
 	slog.Info("gRPC CancelOrder received", "order_id", req.OrderId, "user_id", req.UserId)
 
 	// 调用应用服务取消订单
-	dto, err := h.appService.CancelOrder(ctx, req.OrderId, req.UserId)
+	dto, err := h.service.CancelOrder(ctx, req.OrderId, req.UserId)
 	if err != nil {
 		slog.Error("gRPC CancelOrder failed", "order_id", req.OrderId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to cancel order: %v", err)
@@ -80,7 +80,7 @@ func (h *GRPCHandler) CancelOrder(ctx context.Context, req *pb.CancelOrderReques
 // GetOrder 获取订单详情
 // 处理 gRPC GetOrder 请求
 func (h *GRPCHandler) GetOrder(ctx context.Context, req *pb.GetOrderRequest) (*pb.GetOrderResponse, error) {
-	dto, err := h.appService.GetOrder(ctx, req.OrderId, req.UserId)
+	dto, err := h.service.GetOrder(ctx, req.OrderId, req.UserId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get order: %v", err)
 	}

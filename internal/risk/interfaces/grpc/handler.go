@@ -16,14 +16,14 @@ import (
 // 负责处理与风险管理相关的 gRPC 请求
 type GRPCHandler struct {
 	pb.UnimplementedRiskServiceServer
-	appService *application.RiskApplicationService // 风险应用服务
+	service *application.RiskService // 风险应用服务
 }
 
 // NewGRPCHandler 创建 gRPC 处理器实例
-// appService: 注入的风险应用服务
-func NewGRPCHandler(appService *application.RiskApplicationService) *GRPCHandler {
+// service: 注入的风险应用服务
+func NewGRPCHandler(service *application.RiskService) *GRPCHandler {
 	return &GRPCHandler{
-		appService: appService,
+		service: service,
 	}
 }
 
@@ -34,7 +34,7 @@ func (h *GRPCHandler) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest)
 	slog.Info("gRPC AssessRisk received", "user_id", req.UserId, "symbol", req.Symbol, "side", req.Side)
 
 	// 调用应用服务评估风险
-	dto, err := h.appService.AssessRisk(ctx, &application.AssessRiskRequest{
+	dto, err := h.service.AssessRisk(ctx, &application.AssessRiskRequest{
 		UserID:   req.UserId,
 		Symbol:   req.Symbol,
 		Side:     req.Side,
@@ -62,7 +62,7 @@ func (h *GRPCHandler) GetRiskMetrics(ctx context.Context, req *pb.GetRiskMetrics
 	start := time.Now()
 	slog.Debug("gRPC GetRiskMetrics received", "user_id", req.UserId)
 
-	metrics, err := h.appService.GetRiskMetrics(ctx, req.UserId)
+	metrics, err := h.service.GetRiskMetrics(ctx, req.UserId)
 	if err != nil {
 		slog.Error("gRPC GetRiskMetrics failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get risk metrics: %v", err)
@@ -86,7 +86,7 @@ func (h *GRPCHandler) CheckRiskLimit(ctx context.Context, req *pb.CheckRiskLimit
 	start := time.Now()
 	slog.Debug("gRPC CheckRiskLimit received", "user_id", req.UserId, "limit_type", req.LimitType)
 
-	limit, err := h.appService.CheckRiskLimit(ctx, req.UserId, req.LimitType)
+	limit, err := h.service.CheckRiskLimit(ctx, req.UserId, req.LimitType)
 	if err != nil {
 		slog.Error("gRPC CheckRiskLimit failed", "user_id", req.UserId, "limit_type", req.LimitType, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to check risk limit: %v", err)
@@ -110,7 +110,7 @@ func (h *GRPCHandler) GetRiskAlerts(ctx context.Context, req *pb.GetRiskAlertsRe
 	start := time.Now()
 	slog.Debug("gRPC GetRiskAlerts received", "user_id", req.UserId)
 
-	alerts, err := h.appService.GetRiskAlerts(ctx, req.UserId, 100) // Default limit
+	alerts, err := h.service.GetRiskAlerts(ctx, req.UserId, 100) // Default limit
 	if err != nil {
 		slog.Error("gRPC GetRiskAlerts failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get risk alerts: %v", err)

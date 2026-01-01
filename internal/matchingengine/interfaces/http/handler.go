@@ -13,10 +13,10 @@ import (
 
 // MatchingHandler 负责处理与撮合引擎相关的 HTTP 请求
 type MatchingHandler struct {
-	matchingService *application.MatchingApplicationService
+	matchingService *application.MatchingEngineService
 }
 
-func NewMatchingHandler(matchingService *application.MatchingApplicationService) *MatchingHandler {
+func NewMatchingHandler(matchingService *application.MatchingEngineService) *MatchingHandler {
 	return &MatchingHandler{
 		matchingService: matchingService,
 	}

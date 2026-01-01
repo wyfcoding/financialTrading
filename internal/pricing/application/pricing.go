@@ -1,0 +1,38 @@
+package application
+
+import (
+	"context"
+
+	"github.com/shopspring/decimal"
+	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
+)
+
+// PricingService 定价门面服务，整合 Manager 和 Query。
+type PricingService struct {
+	manager *PricingManager
+	query   *PricingQuery
+}
+
+// NewPricingService 构造函数。
+func NewPricingService(marketDataClient domain.MarketDataClient, pricingRepo domain.PricingRepository) *PricingService {
+	return &PricingService{
+		manager: NewPricingManager(marketDataClient, pricingRepo),
+		query:   NewPricingQuery(marketDataClient, pricingRepo),
+	}
+}
+
+// --- Manager (Writes) ---
+
+func (s *PricingService) GetOptionPrice(ctx context.Context, contract domain.OptionContract, underlyingPrice decimal.Decimal, volatility, riskFreeRate float64) (decimal.Decimal, error) {
+	return s.manager.GetOptionPrice(ctx, contract, underlyingPrice, volatility, riskFreeRate)
+}
+
+// --- Query (Reads) ---
+
+func (s *PricingService) GetGreeks(ctx context.Context, contract domain.OptionContract, underlyingPrice decimal.Decimal, volatility, riskFreeRate float64) (*domain.Greeks, error) {
+	return s.query.GetGreeks(ctx, contract, underlyingPrice, volatility, riskFreeRate)
+}
+
+func (s *PricingService) GetLatestResult(ctx context.Context, symbol string) (*domain.PricingResult, error) {
+	return s.query.GetLatestResult(ctx, symbol)
+}

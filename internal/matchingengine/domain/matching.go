@@ -3,7 +3,6 @@ package domain
 
 import (
 	"container/list"
-	"context"
 	"fmt"
 	"log/slog"
 	"runtime"
@@ -300,13 +299,4 @@ type OrderBookSnapshot struct {
 	Timestamp int64             `gorm:"column:timestamp;type:bigint"`
 }
 
-// TradeRepository 成交记录仓储接口
-type TradeRepository interface {
-	Save(ctx context.Context, trade *algorithm.Trade) error
-	GetLatestTrades(ctx context.Context, symbol string, limit int) ([]*algorithm.Trade, error)
-}
-
-// OrderBookRepository 订单簿仓储接口
-type OrderBookRepository interface {
-	SaveSnapshot(ctx context.Context, snapshot *OrderBookSnapshot) error
-}
+// End of domain file

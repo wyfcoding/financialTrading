@@ -41,7 +41,7 @@ type Config struct {
 // AppContext 应用上下文 (包含对外服务实例与依赖)
 type AppContext struct {
 	Config      *Config
-	Quote       *application.QuoteApplicationService
+	MarketData  *application.MarketDataService
 	Clients     *ServiceClients
 	Handler     *marketdatahttp.Handler
 	Metrics     *metrics.Metrics
@@ -74,7 +74,7 @@ func main() {
 // registerGRPC 注册 gRPC 服务
 func registerGRPC(s *grpc.Server, svc any) {
 	ctx := svc.(*AppContext)
-	pb.RegisterMarketDataServiceServer(s, marketdatagrpc.NewMarketDataHandler(ctx.Quote))
+	pb.RegisterMarketDataServiceServer(s, marketdatagrpc.NewMarketDataHandler(ctx.MarketData))
 }
 
 // registerGin 注册 HTTP 路由
@@ -162,10 +162,14 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	quoteRepo := mysql.NewQuoteRepository(db.RawDB())
 
 	// 5.2 Application (Service)
-	quoteService := application.NewQuoteApplicationService(quoteRepo)
+	// 需要 mock 缺少的 repo 或者从 db 获取
+	klineRepo := mysql.NewKlineRepository(db.RawDB())
+	tradeRepo := mysql.NewTradeRepository(db.RawDB())
+	orderBookRepo := mysql.NewOrderBookRepository(db.RawDB())
+	marketDataService := application.NewMarketDataService(quoteRepo, klineRepo, tradeRepo, orderBookRepo)
 
 	// 5.3 Interface (HTTP Handlers)
-	handler := marketdatahttp.NewHandler(quoteService)
+	handler := marketdatahttp.NewHandler(marketDataService)
 
 	// 定义资源清理函数
 	cleanup := func() {
@@ -186,7 +190,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	// 返回应用上下文与清理函数
 	return &AppContext{
 		Config:      c,
-		Quote:       quoteService,
+		MarketData:  marketDataService,
 		Clients:     clients,
 		Handler:     handler,
 		Metrics:     m,

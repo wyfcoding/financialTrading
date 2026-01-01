@@ -14,12 +14,12 @@ import (
 // HTTP 处理器
 // 负责处理与订单执行相关的 HTTP 请求
 type ExecutionHandler struct {
-	executionService *application.ExecutionApplicationService // 执行应用服务
+	executionService *application.ExecutionService // 执行应用服务
 }
 
 // 创建 HTTP 处理器实例
 // executionService: 注入的执行应用服务
-func NewExecutionHandler(executionService *application.ExecutionApplicationService) *ExecutionHandler {
+func NewExecutionHandler(executionService *application.ExecutionService) *ExecutionHandler {
 	return &ExecutionHandler{
 		executionService: executionService,
 	}

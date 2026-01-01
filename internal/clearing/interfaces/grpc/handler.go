@@ -18,17 +18,17 @@ import (
 // 它实现了由 apoch 生成的 `ClearingServiceServer` 接口。
 // 其核心职责是作为 gRPC 协议与内部应用逻辑之间的桥梁。
 type GRPCHandler struct {
-	pb.UnimplementedClearingServiceServer                                         // 嵌入未实现的 apoch 服务，确保向前兼容
-	appService                            *application.ClearingApplicationService // 依赖注入的应用服务实例
+	pb.UnimplementedClearingServiceServer                              // 嵌入未实现的 apoch 服务，确保向前兼容
+	service                               *application.ClearingService // 依赖注入的应用服务实例
 }
 
 // 创建 gRPC 处理器实例。
 //
-// @param appService 注入的清算应用服务实例。
+// @param service 注入的清算应用服务实例。
 // @return *GRPCHandler 返回一个新的 gRPC 处理器实例。
-func NewGRPCHandler(appService *application.ClearingApplicationService) *GRPCHandler {
+func NewGRPCHandler(service *application.ClearingService) *GRPCHandler {
 	return &GRPCHandler{
-		appService: appService,
+		service: service,
 	}
 }
 
@@ -49,7 +49,7 @@ func (h *GRPCHandler) SettleTrade(ctx context.Context, req *pb.SettleTradeReques
 	}
 
 	// 2. 调用应用服务来执行核心业务逻辑,接收返回的 settlementID。
-	settlementID, err := h.appService.SettleTrade(ctx, appReq)
+	settlementID, err := h.service.SettleTrade(ctx, appReq)
 	if err != nil {
 		slog.Error("gRPC SettleTrade failed", "trade_id", req.TradeId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to settle trade: %v", err)
@@ -71,7 +71,7 @@ func (h *GRPCHandler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEOD
 	slog.Info("gRPC ExecuteEODClearing received", "clearing_date", req.ClearingDate)
 
 	// 调用应用服务启动日终清算流程,接收返回的 clearingID。
-	clearingID, err := h.appService.ExecuteEODClearing(ctx, req.ClearingDate)
+	clearingID, err := h.service.ExecuteEODClearing(ctx, req.ClearingDate)
 	if err != nil {
 		slog.Error("gRPC ExecuteEODClearing failed", "clearing_date", req.ClearingDate, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to execute EOD clearing: %v", err)
@@ -86,12 +86,11 @@ func (h *GRPCHandler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEOD
 	}, nil
 }
 
-// GetClearingStatus 实现了 gRPC 的 GetClearingStatus 方法。
 func (h *GRPCHandler) GetClearingStatus(ctx context.Context, req *pb.GetClearingStatusRequest) (*pb.GetClearingStatusResponse, error) {
 	slog.Debug("gRPC GetClearingStatus received", "clearing_id", req.ClearingId)
 
 	// 调用应用服务获取清算任务状态。
-	clearing, err := h.appService.GetClearingStatus(ctx, req.ClearingId)
+	clearing, err := h.service.GetClearingStatus(ctx, req.ClearingId)
 	if err != nil {
 		slog.Error("gRPC GetClearingStatus failed", "clearing_id", req.ClearingId, "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to get clearing status: %v", err)

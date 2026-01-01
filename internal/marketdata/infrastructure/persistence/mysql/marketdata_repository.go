@@ -352,3 +352,48 @@ func (r *tradeRepositoryImpl) toDomain(m *TradeModel) *domain.Trade {
 		Source:    m.Source,
 	}
 }
+
+// --- OrderBook ---
+
+type OrderBookModel struct {
+	gorm.Model
+	Symbol    string `gorm:"column:symbol;type:varchar(20);uniqueIndex;not null"`
+	Data      string `gorm:"column:data;type:longtext;not null"` // JSON serialized bids/asks
+	Timestamp int64  `gorm:"column:timestamp;type:bigint;not null"`
+}
+
+func (OrderBookModel) TableName() string { return "order_books" }
+
+type orderBookRepositoryImpl struct {
+	db *gorm.DB
+}
+
+func NewOrderBookRepository(db *gorm.DB) domain.OrderBookRepository {
+	return &orderBookRepositoryImpl{db: db}
+}
+
+func (r *orderBookRepositoryImpl) Save(ctx context.Context, ob *domain.OrderBook) error {
+	// Simple implementation using DB for now
+	m := &OrderBookModel{
+		Symbol:    ob.Symbol,
+		Timestamp: ob.Timestamp,
+	}
+	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "symbol"}},
+		UpdateAll: true,
+	}).Create(m).Error
+}
+
+func (r *orderBookRepositoryImpl) GetLatest(ctx context.Context, symbol string) (*domain.OrderBook, error) {
+	var m OrderBookModel
+	if err := r.db.WithContext(ctx).Where("symbol = ?", symbol).First(&m).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &domain.OrderBook{
+		Symbol:    m.Symbol,
+		Timestamp: m.Timestamp,
+	}, nil
+}

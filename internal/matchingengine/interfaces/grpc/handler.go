@@ -16,12 +16,12 @@ import (
 // GRPCHandler gRPC 处理器
 type GRPCHandler struct {
 	pb.UnimplementedMatchingEngineServiceServer
-	appService *application.MatchingApplicationService
+	service *application.MatchingEngineService
 }
 
-func NewGRPCHandler(appService *application.MatchingApplicationService) *GRPCHandler {
+func NewGRPCHandler(service *application.MatchingEngineService) *GRPCHandler {
 	return &GRPCHandler{
-		appService: appService,
+		service: service,
 	}
 }
 
@@ -29,7 +29,7 @@ func (h *GRPCHandler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderReques
 	start := time.Now()
 	slog.Info("gRPC SubmitOrder received", "order_id", req.OrderId, "symbol", req.Symbol, "side", req.Side, "price", req.Price, "quantity", req.Quantity)
 
-	result, err := h.appService.SubmitOrder(ctx, &application.SubmitOrderRequest{
+	result, err := h.service.SubmitOrder(ctx, &application.SubmitOrderRequest{
 		OrderID:  req.OrderId,
 		Symbol:   req.Symbol,
 		Side:     req.Side,
@@ -58,7 +58,7 @@ func (h *GRPCHandler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderReques
 func (h *GRPCHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequest) (*pb.GetOrderBookResponse, error) {
 	start := time.Now()
 	// 修正：application.GetOrderBook 不再需要 symbol 参数
-	snapshot, err := h.appService.GetOrderBook(ctx, int(req.Depth))
+	snapshot, err := h.service.GetOrderBook(ctx, int(req.Depth))
 	if err != nil {
 		slog.Error("gRPC GetOrderBook failed", "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get order book: %v", err)
@@ -91,7 +91,7 @@ func (h *GRPCHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequ
 
 func (h *GRPCHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (*pb.GetTradesResponse, error) {
 	start := time.Now()
-	trades, err := h.appService.GetTrades(ctx, req.Symbol, int(req.Limit))
+	trades, err := h.service.GetTrades(ctx, req.Symbol, int(req.Limit))
 	if err != nil {
 		slog.Error("gRPC GetTrades failed", "symbol", req.Symbol, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get trades: %v", err)

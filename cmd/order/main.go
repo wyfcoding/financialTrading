@@ -42,7 +42,7 @@ type Config struct {
 // AppContext 应用上下文 (包含对外服务实例与依赖)
 type AppContext struct {
 	Config      *Config
-	Order       *application.OrderApplicationService
+	Order       *application.OrderService
 	Clients     *ServiceClients
 	Handler     *orderhttp.OrderHandler
 	Metrics     *metrics.Metrics
@@ -164,7 +164,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	orderRepo := mysql.NewOrderRepository(db.RawDB())
 
 	// 5.2 Application (Service)
-	orderService := application.NewOrderApplicationService(orderRepo, riskEvaluator)
+	orderService := application.NewOrderService(orderRepo, riskEvaluator)
 
 	// 5.3 Interface (HTTP Handlers)
 	handler := orderhttp.NewOrderHandler(orderService)

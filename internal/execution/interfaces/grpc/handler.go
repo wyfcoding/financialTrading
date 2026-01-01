@@ -16,14 +16,14 @@ import (
 // 负责处理与订单执行相关的 gRPC 请求
 type GRPCHandler struct {
 	pb.UnimplementedExecutionServiceServer
-	appService *application.ExecutionApplicationService // 执行应用服务
+	service *application.ExecutionService // 执行应用服务
 }
 
 // NewGRPCHandler 创建 gRPC 处理器实例
-// appService: 注入的执行应用服务
-func NewGRPCHandler(appService *application.ExecutionApplicationService) *GRPCHandler {
+// service: 注入的执行应用服务
+func NewGRPCHandler(service *application.ExecutionService) *GRPCHandler {
 	return &GRPCHandler{
-		appService: appService,
+		service: service,
 	}
 }
 
@@ -35,7 +35,7 @@ func (h *GRPCHandler) ExecuteOrder(ctx context.Context, req *pb.ExecuteOrderRequ
 	slog.Info("gRPC ExecuteOrder received", "order_id", req.OrderId, "user_id", req.UserId, "symbol", req.Symbol, "side", req.Side)
 
 	// 调用应用服务执行订单
-	dto, err := h.appService.ExecuteOrder(ctx, &application.ExecuteOrderRequest{
+	dto, err := h.service.ExecuteOrder(ctx, &application.ExecuteOrderRequest{
 		OrderID:  req.OrderId,
 		UserID:   req.UserId,
 		Symbol:   req.Symbol,
@@ -72,7 +72,7 @@ func (h *GRPCHandler) GetExecutionHistory(ctx context.Context, req *pb.GetExecut
 		limit = 20
 	}
 
-	dtos, _, err := h.appService.GetExecutionHistory(ctx, req.UserId, limit, 0)
+	dtos, _, err := h.service.GetExecutionHistory(ctx, req.UserId, limit, 0)
 	if err != nil {
 		slog.Error("gRPC GetExecutionHistory failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get execution history: %v", err)

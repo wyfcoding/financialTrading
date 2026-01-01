@@ -41,7 +41,7 @@ type Config struct {
 // AppContext 应用上下文 (包含对外服务实例与依赖)
 type AppContext struct {
 	Config      *Config
-	Position    *application.PositionApplicationService
+	Position    *application.PositionService
 	Clients     *ServiceClients
 	Handler     *positionhttp.PositionHandler
 	Metrics     *metrics.Metrics
@@ -162,7 +162,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	positionRepo := mysql.NewPositionRepository(db.RawDB())
 
 	// 5.2 Application (Service)
-	positionService := application.NewPositionApplicationService(positionRepo)
+	positionService := application.NewPositionService(positionRepo)
 
 	// 5.3 Interface (HTTP Handlers)
 	handler := positionhttp.NewPositionHandler(positionService)

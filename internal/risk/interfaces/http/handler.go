@@ -14,14 +14,14 @@ import (
 // HTTP 处理器
 // 负责处理与风险管理相关的 HTTP 请求
 type RiskHandler struct {
-	riskService *application.RiskApplicationService // 风险应用服务
+	service *application.RiskService // 风险应用服务
 }
 
 // 创建 HTTP 处理器
-// riskService: 注入的风险应用服务
-func NewRiskHandler(riskService *application.RiskApplicationService) *RiskHandler {
+// service: 注入的风险应用服务
+func NewRiskHandler(service *application.RiskService) *RiskHandler {
 	return &RiskHandler{
-		riskService: riskService,
+		service: service,
 	}
 }
 
@@ -44,7 +44,7 @@ func (h *RiskHandler) AssessRisk(c *gin.Context) {
 		return
 	}
 
-	dto, err := h.riskService.AssessRisk(c.Request.Context(), &req)
+	dto, err := h.service.AssessRisk(c.Request.Context(), &req)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to assess risk", "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -62,7 +62,7 @@ func (h *RiskHandler) GetRiskMetrics(c *gin.Context) {
 		return
 	}
 
-	metrics, err := h.riskService.GetRiskMetrics(c.Request.Context(), userID)
+	metrics, err := h.service.GetRiskMetrics(c.Request.Context(), userID)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get risk metrics", "user_id", userID, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -86,7 +86,7 @@ func (h *RiskHandler) CheckRiskLimit(c *gin.Context) {
 		return
 	}
 
-	limit, err := h.riskService.CheckRiskLimit(c.Request.Context(), userID, limitType)
+	limit, err := h.service.CheckRiskLimit(c.Request.Context(), userID, limitType)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to check risk limit", "user_id", userID, "limit_type", limitType, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -111,7 +111,7 @@ func (h *RiskHandler) GetRiskAlerts(c *gin.Context) {
 		return
 	}
 
-	alerts, err := h.riskService.GetRiskAlerts(c.Request.Context(), userID, limit)
+	alerts, err := h.service.GetRiskAlerts(c.Request.Context(), userID, limit)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get risk alerts", "user_id", userID, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")

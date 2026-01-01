@@ -17,14 +17,14 @@ import (
 // 负责处理与账户相关的 gRPC 请求
 type GRPCHandler struct {
 	pb.UnimplementedAccountServiceServer
-	appService *application.AccountApplicationService // 账户应用服务
+	service *application.AccountService // 账户应用服务
 }
 
 // NewGRPCHandler 创建 gRPC 处理器实例
-// appService: 注入的账户应用服务
-func NewGRPCHandler(appService *application.AccountApplicationService) *GRPCHandler {
+// service: 注入的账户应用服务
+func NewGRPCHandler(service *application.AccountService) *GRPCHandler {
 	return &GRPCHandler{
-		appService: appService,
+		service: service,
 	}
 }
 
@@ -35,7 +35,7 @@ func (h *GRPCHandler) CreateAccount(ctx context.Context, req *pb.CreateAccountRe
 	slog.Info("gRPC CreateAccount received", "user_id", req.UserId, "account_type", req.AccountType, "currency", req.Currency)
 
 	// 调用应用服务创建账户
-	dto, err := h.appService.CreateAccount(ctx, &application.CreateAccountRequest{
+	dto, err := h.service.CreateAccount(ctx, &application.CreateAccountRequest{
 		UserID:      req.UserId,
 		AccountType: req.AccountType,
 		Currency:    req.Currency,
@@ -66,7 +66,7 @@ func (h *GRPCHandler) GetAccount(ctx context.Context, req *pb.GetAccountRequest)
 	start := time.Now()
 	slog.Debug("gRPC GetAccount received", "account_id", req.AccountId)
 
-	dto, err := h.appService.GetAccount(ctx, req.AccountId)
+	dto, err := h.service.GetAccount(ctx, req.AccountId)
 	if err != nil {
 		slog.Error("gRPC GetAccount failed", "account_id", req.AccountId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get account: %v", err)
@@ -99,7 +99,7 @@ func (h *GRPCHandler) Deposit(ctx context.Context, req *pb.DepositRequest) (*pb.
 		return nil, status.Errorf(codes.InvalidArgument, "invalid amount: %v", err)
 	}
 
-	err = h.appService.Deposit(ctx, req.AccountId, amount)
+	err = h.service.Deposit(ctx, req.AccountId, amount)
 	if err != nil {
 		slog.Error("gRPC Deposit failed", "account_id", req.AccountId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to deposit: %v", err)
@@ -120,7 +120,7 @@ func (h *GRPCHandler) GetBalance(ctx context.Context, req *pb.GetBalanceRequest)
 	start := time.Now()
 	slog.Debug("gRPC GetBalance received", "account_id", req.AccountId)
 
-	dto, err := h.appService.GetAccount(ctx, req.AccountId)
+	dto, err := h.service.GetAccount(ctx, req.AccountId)
 	if err != nil {
 		slog.Error("gRPC GetBalance failed", "account_id", req.AccountId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get account: %v", err)

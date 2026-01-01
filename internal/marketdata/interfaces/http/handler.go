@@ -12,14 +12,14 @@ import (
 // HTTP 处理器
 // 负责处理与市场数据相关的 HTTP 请求
 type Handler struct {
-	quoteService *application.QuoteApplicationService // 行情应用服务
+	service *application.MarketDataService // 市场数据应用服务
 }
 
 // 创建 HTTP 处理器实例
-// quoteService: 注入的行情应用服务
-func NewHandler(quoteService *application.QuoteApplicationService) *Handler {
+// service: 注入的市场数据应用服务
+func NewHandler(service *application.MarketDataService) *Handler {
 	return &Handler{
-		quoteService: quoteService,
+		service: service,
 	}
 }
 
@@ -49,7 +49,7 @@ func (h *Handler) GetLatestQuote(c *gin.Context) {
 		Symbol: symbol,
 	}
 
-	quoteDTO, err := h.quoteService.GetLatestQuote(ctx, req)
+	quoteDTO, err := h.service.GetLatestQuote(ctx, req)
 	if err != nil {
 		logging.Error(ctx, "Failed to get latest quote",
 			"symbol", symbol,
@@ -130,7 +130,7 @@ func (h *Handler) GetHistoricalQuotes(c *gin.Context) {
 	}
 
 	// 调用应用服务
-	quotes, err := h.quoteService.GetHistoricalQuotes(ctx, symbol, startTimeInt, endTimeInt)
+	quotes, err := h.service.GetHistoricalQuotes(ctx, symbol, startTimeInt, endTimeInt)
 	if err != nil {
 		logging.Error(ctx, "Failed to get historical quotes",
 			"symbol", symbol,

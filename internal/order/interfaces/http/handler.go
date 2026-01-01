@@ -13,12 +13,12 @@ import (
 // HTTP 处理器
 // 负责处理与订单相关的 HTTP 请求
 type OrderHandler struct {
-	orderService *application.OrderApplicationService // 订单应用服务
+	orderService *application.OrderService // 订单应用服务
 }
 
 // 创建 HTTP 处理器实例
 // orderService: 注入的订单应用服务
-func NewOrderHandler(orderService *application.OrderApplicationService) *OrderHandler {
+func NewOrderHandler(orderService *application.OrderService) *OrderHandler {
 	return &OrderHandler{
 		orderService: orderService,
 	}
