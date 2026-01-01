@@ -26,20 +26,21 @@ type SubmitOrderRequest struct {
 // MatchingApplicationService 撮合应用服务
 // 负责协调撮合引擎、订单簿和成交记录的持久化
 type MatchingApplicationService struct {
-	engine        *algorithm.MatchingEngine                  // 撮合引擎核心
-	tradeRepo     domain.TradeRepository                     // 成交记录仓储接口
-	orderBookRepo domain.OrderBookRepository                 // 订单簿仓储接口
-	ringBuffer    *algorithm.MpscRingBuffer[algorithm.Order] // 顶级高性能 MPSC 环形缓冲区
+	orderBook     *domain.OrderBook                       // 升级为 domain 层基于 SkipList 的高性能订单簿
+	tradeRepo     domain.TradeRepository                  // 成交记录仓储接口
+	orderBookRepo domain.OrderBookRepository              // 订单簿仓储接口
+	ringBuffer    *algorithm.RingBuffer[*algorithm.Order] // 使用我们升级后的带 Padding 的 RingBuffer
 	logger        *slog.Logger
 	stopChan      chan struct{} // 优雅退出信号
 }
 
 // NewMatchingApplicationService 创建撮合应用服务并启动后台 Sequencer
-func NewMatchingApplicationService(tradeRepo domain.TradeRepository, orderBookRepo domain.OrderBookRepository, logger *slog.Logger) *MatchingApplicationService {
-	rb, _ := algorithm.NewMpscRingBuffer[algorithm.Order](1048576) // 100万容量
+func NewMatchingApplicationService(symbol string, tradeRepo domain.TradeRepository, orderBookRepo domain.OrderBookRepository, logger *slog.Logger) *MatchingApplicationService {
+	// 初始化带缓存行填充优化的环形缓冲区，防止伪共享
+	rb, _ := algorithm.NewRingBuffer[*algorithm.Order](1048576) // 100万容量
 
 	mas := &MatchingApplicationService{
-		engine:        algorithm.NewMatchingEngine(),
+		orderBook:     domain.NewOrderBook(symbol),
 		tradeRepo:     tradeRepo,
 		orderBookRepo: orderBookRepo,
 		ringBuffer:    rb,
@@ -47,53 +48,49 @@ func NewMatchingApplicationService(tradeRepo domain.TradeRepository, orderBookRe
 		stopChan:      make(chan struct{}),
 	}
 
-	// 启动核心 Sequencer (单线程处理器)
-	// 将该协程锁定到特定的操作系统线程上，以获得更稳定的性能（Mechanical Sympathy）
-	go func() {
-		runtime.LockOSThread()
-		mas.startSequencer()
-	}()
+	// 启动核心 Sequencer
+	go mas.startSequencer()
 
 	return mas
 }
 
-// Close 优雅关闭服务
+// Close 优雅关闭服务，停止后台 Sequencer
 func (mas *MatchingApplicationService) Close() {
+	mas.logger.Info("shutting down matching engine sequencer...")
 	close(mas.stopChan)
 }
 
 // startSequencer 是整个撮合系统的核心逻辑循环
 func (mas *MatchingApplicationService) startSequencer() {
+	// 锁定操作系统线程，减少上下文切换，提升 L1/L2 缓存命中率
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	for {
 		select {
 		case <-mas.stopChan:
-			mas.logger.Info("sequencer stopping...")
 			return
 		default:
-			// 从 RingBuffer 轮询订单 (无锁且缓存友好)
-			order := mas.ringBuffer.Poll()
-			if order == nil {
-				runtime.Gosched() // 队列为空，让出时间片
+			// 1. 从定序器获取订单 (MPMC -> Single Consumer 模式)
+			order, err := mas.ringBuffer.Poll()
+			if err != nil {
+				// 队列为空时采用指数退避或简单的让出，保持 CPU 活跃度
+				runtime.Gosched()
 				continue
 			}
 
-			// 执行撮合逻辑
-			// 由于是单线程访问 engine，内部完全不需要互斥锁
-			trades := mas.engine.Match(order)
+			// 2. 调用我们在 domain 中实现的 SkipList 撮合算法
+			// 由于是单线程定序执行，此处完全无锁，性能达到极致
+			result := mas.orderBook.ApplyOrder(order)
 
-			// 持久化成交记录 (顶级架构：这里可以改为批量异步写入以提高 IOPS)
-			if len(trades) > 0 {
-				mas.asyncPersistTrades(trades)
+			// 3. 异步持久化成交记录
+			if len(result.Trades) > 0 {
+				mas.asyncPersistTrades(result.Trades)
 			}
 
-			// 直接通过订单携带的通道返回结果 (零全局锁)
+			// 4. 通过 ResultChan 返回结果
 			if order.ResultChan != nil {
-				order.ResultChan <- &domain.MatchingResult{
-					OrderID:           order.OrderID,
-					Trades:            trades,
-					RemainingQuantity: order.Quantity,
-					Status:            "PROCESSED",
-				}
+				order.ResultChan <- result
 			}
 		}
 	}
@@ -151,16 +148,16 @@ func (mas *MatchingApplicationService) SubmitOrder(ctx context.Context, req *Sub
 	resultChan := make(chan any, 1)
 	order.ResultChan = resultChan
 
-	// 3. 压入 RingBuffer
-	if !mas.ringBuffer.Offer(order) {
+	// 3. 压入 RingBuffer (带 Padding 的高性能版本)
+	if err := mas.ringBuffer.Offer(order); err != nil {
 		algorithm.ReleaseOrder(order)
-		return nil, fmt.Errorf("matching engine is overloaded")
+		return nil, fmt.Errorf("matching engine is overloaded: %w", err)
 	}
 
-	// 4. 等待同步结果 (或支持完全异步下单)
+	// 4. 等待同步结果
 	select {
 	case res := <-resultChan:
-		algorithm.ReleaseOrder(order) // 回收对象
+		algorithm.ReleaseOrder(order)
 		return res.(*domain.MatchingResult), nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -177,30 +174,15 @@ func (mas *MatchingApplicationService) GetOrderBook(ctx context.Context, symbol 
 		depth = 20
 	}
 
-	// 从引擎获取订单簿
-	bids := mas.engine.GetBids(depth)
-	asks := mas.engine.GetAsks(depth)
+	// 从我们高性能的 domain.OrderBook 中提取深度数据
+	bids, asks := mas.orderBook.GetDepth(depth)
 
 	// 转换为快照
 	snapshot := &domain.OrderBookSnapshot{
 		Symbol:    symbol,
-		Bids:      make([]*domain.OrderBookLevel, 0, len(bids)),
-		Asks:      make([]*domain.OrderBookLevel, 0, len(asks)),
-		Timestamp: 0,
-	}
-
-	for _, bid := range bids {
-		snapshot.Bids = append(snapshot.Bids, &domain.OrderBookLevel{
-			Price:    bid.Price,
-			Quantity: bid.Quantity,
-		})
-	}
-
-	for _, ask := range asks {
-		snapshot.Asks = append(snapshot.Asks, &domain.OrderBookLevel{
-			Price:    ask.Price,
-			Quantity: ask.Quantity,
-		})
+		Bids:      bids,
+		Asks:      asks,
+		Timestamp: time.Now().Unix(),
 	}
 
 	// 保存快照

@@ -62,7 +62,7 @@ func main() {
 		WithGRPC(registerGRPC).
 		WithGin(registerGin).
 		WithGinMiddleware(
-			middleware.CORS(),                            // 跨域处理
+			middleware.CORS(), // 跨域处理
 			middleware.TimeoutMiddleware(30*time.Second), // 全局超时
 		).
 		Build().
@@ -162,7 +162,9 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	tradeRepo, orderBookRepo := mysql.NewMatchingRepository(db.RawDB())
 
 	// 5.2 Application (Service)
-	matchingService := application.NewMatchingApplicationService(tradeRepo, orderBookRepo, logger.Logger)
+	// 顶级架构：撮合引擎通常是单实例单交易对，此处可以从配置加载，例如 "BTC/USDT"
+	defaultSymbol := "BTC/USDT"
+	matchingService := application.NewMatchingApplicationService(defaultSymbol, tradeRepo, orderBookRepo, logger.Logger)
 
 	// 5.3 Interface (HTTP Handlers)
 	handler := matchinghttp.NewMatchingHandler(matchingService)

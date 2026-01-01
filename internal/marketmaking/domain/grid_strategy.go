@@ -9,14 +9,14 @@ import (
 // 包含网格策略配置参数和运行时状态。
 // 这里引入了 SkipList（跳表）来优化网格价格的检索效率。
 type GridStrategy struct {
-	StrategyID      string          // 策略 ID
-	Symbol          string          // 交易对符号
-	UpperPrice      decimal.Decimal // 网格上限价格
-	LowerPrice      decimal.Decimal // 网格下限价格
-	GridNumber      int             // 网格数量
-	QuantityPerGrid decimal.Decimal // 每个网格的交易数量
-	Grids           []Grid          // 网格列表
-	PriceIndex      *algorithm.SkipList // 价格索引，用于快速定位受价格波动影响的网格
+	StrategyID      string             // 策略 ID
+	Symbol          string             // 交易对符号
+	UpperPrice      decimal.Decimal    // 网格上限价格
+	LowerPrice      decimal.Decimal    // 网格下限价格
+	GridNumber      int                // 网格数量
+	QuantityPerGrid decimal.Decimal    // 每个网格的交易数量
+	Grids           []Grid             // 网格列表
+	PriceIndex      *algorithm.SkipList[float64, int] // 价格索引 (Price -> GridIndex)
 }
 
 // Grid 单个网格
@@ -45,7 +45,7 @@ func NewGridStrategy(id, symbol string, upper, lower decimal.Decimal, number int
 		GridNumber:      number,
 		QuantityPerGrid: qty,
 		Grids:           make([]Grid, 0, number),
-		PriceIndex:      algorithm.NewSkipList(),
+		PriceIndex:      algorithm.NewSkipList[float64, int](),
 	}
 }
 
@@ -86,16 +86,14 @@ func (s *GridStrategy) OnPriceUpdate(newPrice decimal.Decimal) []GridOrderAction
 	actions := make([]GridOrderAction, 0)
 	priceFloat := newPrice.InexactFloat64()
 
-	// 使用跳表迭代器快速遍历受影响的价格区间，而不是遍历整个切片。
-	// 对于高频交易，网格数量较多时，跳表的检索效率优势明显（O(log N)）。
+	// 使用跳表迭代器快速遍历受影响的价格区间，不再需要类型断言。
 	it := s.PriceIndex.Iterator()
 	for {
-		p, val, ok := it.Next()
+		p, gridIdx, ok := it.Next()
 		if !ok {
 			break
 		}
 
-		gridIdx := val.(int)
 		grid := &s.Grids[gridIdx]
 
 		if grid.Status == GridStatusWaiting {
