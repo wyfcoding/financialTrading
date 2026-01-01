@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 
+	clearingv1 "github.com/wyfcoding/financialtrading/goapi/clearing/v1"
 	pb "github.com/wyfcoding/financialtrading/goapi/matchingengine/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/application"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/persistence/mysql"
@@ -51,7 +52,10 @@ type AppContext struct {
 
 // ServiceClients 下游微服务客户端集合
 type ServiceClients struct {
-	// 根据需要添加下游依赖
+	ClearingConn *grpc.ClientConn `service:"clearing"`
+
+	// 具体的客户端接口
+	Clearing clearingv1.ClearingServiceClient
 }
 
 func main() {
@@ -154,6 +158,10 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		}
 		return nil, nil, fmt.Errorf("grpc clients init error: %w", err)
 	}
+	// 显式转换 gRPC 客户端
+	if clients.ClearingConn != nil {
+		clients.Clearing = clearingv1.NewClearingServiceClient(clients.ClearingConn)
+	}
 
 	// 5. DDD 分层装配
 	bootLog.Info("assembling services with full dependency injection...")
@@ -173,6 +181,9 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 			}
 		}
 		return nil, nil, fmt.Errorf("matching service init error: %w", err)
+	}
+	if clients.Clearing != nil {
+		matchingService.SetClearingClient(clients.Clearing)
 	}
 
 	// 5.3 Interface (HTTP Handlers)

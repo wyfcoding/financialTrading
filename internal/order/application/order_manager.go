@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/shopspring/decimal"
+	riskv1 "github.com/wyfcoding/financialtrading/goapi/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
 	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/logging"
@@ -15,6 +16,7 @@ import (
 type OrderManager struct {
 	repo          domain.OrderRepository
 	riskEvaluator risk.Evaluator
+	riskCli       riskv1.RiskServiceClient
 }
 
 // NewOrderManager 构造函数。
@@ -23,6 +25,10 @@ func NewOrderManager(repo domain.OrderRepository, riskEvaluator risk.Evaluator) 
 		repo:          repo,
 		riskEvaluator: riskEvaluator,
 	}
+}
+
+func (m *OrderManager) SetRiskClient(cli riskv1.RiskServiceClient) {
+	m.riskCli = cli
 }
 
 // CreateOrder 创建订单
@@ -56,7 +62,7 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 		return nil, fmt.Errorf("invalid quantity: %w", err)
 	}
 
-	// 风控评估
+	// 1. 本地风控评估 (快速检查)
 	riskAssessment, err := m.riskEvaluator.Assess(ctx, "trade.order_create", map[string]any{
 		"user_id":  req.UserID,
 		"symbol":   req.Symbol,
@@ -65,12 +71,32 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 		"quantity": quantity.InexactFloat64(),
 	})
 	if err != nil {
-		logging.Error(ctx, "Risk assessment service unavailable, rejecting transaction", "error", err)
-		return nil, fmt.Errorf("security system offline, please try later")
+		logging.Error(ctx, "Local risk assessment failed", "error", err)
+		return nil, fmt.Errorf("security system offline")
 	}
 
 	if riskAssessment.Level == risk.Reject {
-		return nil, fmt.Errorf("transaction blocked: %s", riskAssessment.Reason)
+		return nil, fmt.Errorf("transaction blocked by local risk: %s", riskAssessment.Reason)
+	}
+
+	// 2. 远程风控评估 (gRPC 同步调用 - Internal Interaction)
+	if m.riskCli != nil {
+		remoteResp, err := m.riskCli.AssessRisk(ctx, &riskv1.AssessRiskRequest{
+			UserId:   req.UserID,
+			Symbol:   req.Symbol,
+			Side:     req.Side,
+			Quantity: quantity.String(),
+			Price:    price.String(),
+		})
+		if err != nil {
+			logging.Error(ctx, "Remote risk assessment failed", "error", err)
+			// 为了系统可用性，这里可以决定是否降级。由于是金融交易，优先报错。
+			return nil, fmt.Errorf("remote risk check failed: %w", err)
+		}
+		if !remoteResp.IsAllowed {
+			return nil, fmt.Errorf("transaction blocked by remote risk: %s (level: %s)", remoteResp.Reason, remoteResp.RiskLevel)
+		}
+		logging.Info(ctx, "Remote risk check passed", "risk_level", remoteResp.RiskLevel, "score", remoteResp.RiskScore)
 	}
 
 	// 生成订单 ID

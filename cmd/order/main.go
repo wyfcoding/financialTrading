@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 
 	pb "github.com/wyfcoding/financialtrading/goapi/order/v1"
+	riskv1 "github.com/wyfcoding/financialtrading/goapi/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/application"
 	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/persistence/mysql"
 	ordergrpc "github.com/wyfcoding/financialtrading/internal/order/interfaces/grpc"
@@ -52,7 +53,10 @@ type AppContext struct {
 
 // ServiceClients 下游微服务客户端集合
 type ServiceClients struct {
-	// 根据需要添加下游依赖
+	RiskConn *grpc.ClientConn `service:"risk"`
+
+	// 具体的客户端接口
+	Risk riskv1.RiskServiceClient
 }
 
 func main() {
@@ -156,6 +160,10 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		}
 		return nil, nil, fmt.Errorf("grpc clients init error: %w", err)
 	}
+	// 显式转换 gRPC 客户端
+	if clients.RiskConn != nil {
+		clients.Risk = riskv1.NewRiskServiceClient(clients.RiskConn)
+	}
 
 	// 5. DDD 分层装配
 	bootLog.Info("assembling services with full dependency injection...")
@@ -165,6 +173,9 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 
 	// 5.2 Application (Service)
 	orderService := application.NewOrderService(orderRepo, riskEvaluator)
+	if clients.Risk != nil {
+		orderService.SetRiskClient(clients.Risk)
+	}
 
 	// 5.3 Interface (HTTP Handlers)
 	handler := orderhttp.NewOrderHandler(orderService)

@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 
+	riskv1 "github.com/wyfcoding/financialtrading/goapi/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
 	"github.com/wyfcoding/pkg/security/risk"
 )
@@ -19,6 +20,10 @@ func NewOrderService(repo domain.OrderRepository, riskEvaluator risk.Evaluator) 
 		manager: NewOrderManager(repo, riskEvaluator),
 		query:   NewOrderQuery(repo),
 	}
+}
+
+func (s *OrderService) SetRiskClient(cli riskv1.RiskServiceClient) {
+	s.manager.SetRiskClient(cli)
 }
 
 // --- Manager (Writes) ---
