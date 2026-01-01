@@ -172,7 +172,6 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	// 定义资源清理函数
 	cleanup := func() {
 		bootLog.Info("shutting down, releasing resources...")
-		matchingService.Close() // 停止撮合引擎 Sequencer
 		clientCleanup()
 		if redisCache != nil {
 			if err := redisCache.Close(); err != nil {

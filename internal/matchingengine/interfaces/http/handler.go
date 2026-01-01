@@ -11,21 +11,17 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 )
 
-// HTTP 处理器
-// 负责处理与撮合引擎相关的 HTTP 请求
+// MatchingHandler 负责处理与撮合引擎相关的 HTTP 请求
 type MatchingHandler struct {
-	matchingService *application.MatchingApplicationService // 撮合应用服务
+	matchingService *application.MatchingApplicationService
 }
 
-// 创建 HTTP 处理器
-// matchingService: 注入的撮合应用服务
 func NewMatchingHandler(matchingService *application.MatchingApplicationService) *MatchingHandler {
 	return &MatchingHandler{
 		matchingService: matchingService,
 	}
 }
 
-// 注册路由
 func (h *MatchingHandler) RegisterRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api/v1/matching")
 	{
@@ -35,7 +31,6 @@ func (h *MatchingHandler) RegisterRoutes(router *gin.RouterGroup) {
 	}
 }
 
-// SubmitOrder 提交订单
 func (h *MatchingHandler) SubmitOrder(c *gin.Context) {
 	var req application.SubmitOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -53,14 +48,7 @@ func (h *MatchingHandler) SubmitOrder(c *gin.Context) {
 	response.Success(c, result)
 }
 
-// GetOrderBook 获取订单簿
 func (h *MatchingHandler) GetOrderBook(c *gin.Context) {
-	symbol := c.Query("symbol")
-	if symbol == "" {
-		response.ErrorWithStatus(c, http.StatusBadRequest, "symbol is required", "")
-		return
-	}
-
 	depthStr := c.DefaultQuery("depth", "20")
 	depth, err := strconv.Atoi(depthStr)
 	if err != nil {
@@ -68,9 +56,10 @@ func (h *MatchingHandler) GetOrderBook(c *gin.Context) {
 		return
 	}
 
-	snapshot, err := h.matchingService.GetOrderBook(c.Request.Context(), symbol, depth)
+	// 修正：GetOrderBook 不再需要 symbol
+	snapshot, err := h.matchingService.GetOrderBook(c.Request.Context(), depth)
 	if err != nil {
-		logging.Error(c.Request.Context(), "Failed to get order book", "symbol", symbol, "error", err)
+		logging.Error(c.Request.Context(), "Failed to get order book", "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
@@ -78,7 +67,6 @@ func (h *MatchingHandler) GetOrderBook(c *gin.Context) {
 	response.Success(c, snapshot)
 }
 
-// GetTrades 获取成交历史
 func (h *MatchingHandler) GetTrades(c *gin.Context) {
 	symbol := c.Query("symbol")
 	if symbol == "" {
