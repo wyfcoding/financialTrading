@@ -65,4 +65,23 @@ type EODClearing struct {
 	TotalTrades int64 `gorm:"column:total_trades;type:bigint;not null" json:"total_trades"`
 }
 
+// MarginRequirement 是保证金要求的领域实体
+type MarginRequirement struct {
+	gorm.Model
+	// Symbol 是交易对代码
+	Symbol string `gorm:"column:symbol;type:varchar(20);uniqueIndex;not null" json:"symbol"`
+	// BaseMarginRate 是基础保证金率 (例如 0.10 表示 10%)
+	BaseMarginRate decimal.Decimal `gorm:"column:base_margin_rate;type:decimal(10,4);not null" json:"base_margin_rate"`
+	// VolatilityFactor 是波动率调整因子 (例如 0.05 表示在基准上增加 5%)
+	VolatilityFactor decimal.Decimal `gorm:"column:volatility_factor;type:decimal(10,4);not null" json:"volatility_factor"`
+	// UpdatedBy 是最后一次更新的操作人或系统
+	UpdatedBy string `gorm:"column:updated_by;type:varchar(32)" json:"updated_by"`
+}
+
+// CurrentMarginRate 计算当前生效的保证金率
+func (m *MarginRequirement) CurrentMarginRate() decimal.Decimal {
+	// 公式：Base * (1 + VolatilityFactor)
+	return m.BaseMarginRate.Mul(decimal.NewFromFloat(1).Add(m.VolatilityFactor))
+}
+
 // End of domain file

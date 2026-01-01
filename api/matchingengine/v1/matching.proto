@@ -55,6 +55,14 @@ message SubmitOrderRequest {
   string price = 4;
   // 委托量。
   string quantity = 5;
+  // 是否为冰山单。
+  bool is_iceberg = 6;
+  // 冰山单显性规模。
+  string iceberg_display_quantity = 7;
+  // 是否为只做 Maker 报单（Post-Only）。
+  bool post_only = 8;
+  // 所有人 ID。
+  string user_id = 9;
 }
 
 // 撮合回执详情。

@@ -2,6 +2,8 @@
 package domain
 
 import (
+	"time"
+
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -62,6 +64,16 @@ type RiskAlert struct {
 	AlertType string `gorm:"column:alert_type;type:varchar(50);not null" json:"alert_type"`
 	Severity  string `gorm:"column:severity;type:varchar(20);not null" json:"severity"`
 	Message   string `gorm:"column:message;type:text;not null" json:"message"`
+}
+
+// CircuitBreaker 风险熔断实体
+type CircuitBreaker struct {
+	gorm.Model
+	UserID        string     `gorm:"column:user_id;type:varchar(36);uniqueIndex;not null" json:"user_id"`
+	IsFired       bool       `gorm:"column:is_fired;type:boolean;not null" json:"is_fired"`
+	TriggerReason string     `gorm:"column:trigger_reason;type:text" json:"trigger_reason"`
+	FiredAt       *time.Time `gorm:"column:fired_at;type:datetime" json:"fired_at"`
+	AutoResetAt   *time.Time `gorm:"column:auto_reset_at;type:datetime" json:"auto_reset_at"`
 }
 
 // End of domain file

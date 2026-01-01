@@ -17,6 +17,9 @@ service ClearingService {
 
   // 查询清算状态。
   rpc GetClearingStatus(GetClearingStatusRequest) returns (GetClearingStatusResponse);
+
+  // 获取指定品种的实时保证金要求。
+  rpc GetMarginRequirement(GetMarginRequirementRequest) returns (GetMarginRequirementResponse);
 }
 
 // 清算记录。
@@ -113,4 +116,20 @@ message GetClearingStatusResponse {
   int64 trades_processed = 4;
   // 总笔数。
   int64 trades_total = 5;
+}
+
+// 保证金要求请求。
+message GetMarginRequirementRequest {
+  string symbol = 1;
+}
+
+// 保证金要求响应。
+message GetMarginRequirementResponse {
+  string symbol = 1;
+  // 基础保证金率。
+  string base_margin_rate = 2;
+  // 波动率乘数（基于实时市场风险）。
+  string volatility_multiplier = 3;
+  // 最终计算得出的当前保证金率。
+  string current_margin_rate = 4;
 }

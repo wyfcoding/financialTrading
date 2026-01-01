@@ -2,6 +2,8 @@
 package domain
 
 import (
+	"time"
+
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -44,6 +46,30 @@ type Execution struct {
 	ExecutedQuantity decimal.Decimal `gorm:"column:executed_quantity;type:decimal(32,18);not null" json:"executed_quantity"`
 	// Status 是本次执行的状态
 	Status ExecutionStatus `gorm:"column:status;type:varchar(20);index;not null" json:"status"`
+}
+
+// AlgoType 定义算法类型
+type AlgoType string
+
+const (
+	AlgoTypeVWAP AlgoType = "VWAP"
+	AlgoTypeTWAP AlgoType = "TWAP"
+)
+
+// AlgoOrder 代表一个算法订单执行任务
+type AlgoOrder struct {
+	gorm.Model
+	AlgoID            string          `gorm:"column:algo_id;type:varchar(36);uniqueIndex;not null" json:"algo_id"`
+	UserID            string          `gorm:"column:user_id;type:varchar(32);index;not null" json:"user_id"`
+	Symbol            string          `gorm:"column:symbol;type:varchar(20);not null" json:"symbol"`
+	Side              OrderSide       `gorm:"column:side;type:varchar(10);not null" json:"side"`
+	TotalQuantity     decimal.Decimal `gorm:"column:total_quantity;type:decimal(32,18);not null" json:"total_quantity"`
+	ExecutedQuantity  decimal.Decimal `gorm:"column:executed_quantity;type:decimal(32,18);not null" json:"executed_quantity"`
+	AlgoType          AlgoType        `gorm:"column:algo_type;type:varchar(20);not null" json:"algo_type"`
+	StartTime         time.Time       `gorm:"column:start_time" json:"start_time"`
+	EndTime           time.Time       `gorm:"column:end_time" json:"end_time"`
+	ParticipationRate decimal.Decimal `gorm:"column:participation_rate;type:decimal(10,4)" json:"participation_rate"` // 0.0-1.0
+	Status            ExecutionStatus `gorm:"column:status;type:varchar(20);index;not null" json:"status"`
 }
 
 // End of domain file

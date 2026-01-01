@@ -161,9 +161,10 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	// 5.1 Infrastructure (Persistence)
 	settlementRepo := mysql.NewSettlementRepository(db.RawDB())
 	eodRepo := mysql.NewEODClearingRepository(db.RawDB())
+	marginRepo := mysql.NewMarginRequirementRepository(db.RawDB())
 
 	// 5.2 Application (Service)
-	clearingService := application.NewClearingService(settlementRepo, eodRepo)
+	clearingService := application.NewClearingService(settlementRepo, eodRepo, marginRepo)
 
 	// 5.3 Interface (HTTP Handlers)
 	handler := clearinghttp.NewClearingHandler(clearingService)

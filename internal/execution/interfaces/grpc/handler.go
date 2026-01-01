@@ -95,3 +95,33 @@ func (h *GRPCHandler) GetExecutionHistory(ctx context.Context, req *pb.GetExecut
 		Executions: records,
 	}, nil
 }
+
+// SubmitAlgoOrder 提交算法订单。
+func (h *GRPCHandler) SubmitAlgoOrder(ctx context.Context, req *pb.SubmitAlgoOrderRequest) (*pb.SubmitAlgoOrderResponse, error) {
+	if req.UserId == "" || req.Symbol == "" || req.TotalQuantity == "" {
+		return nil, status.Error(codes.InvalidArgument, "missing required fields")
+	}
+
+	resp, err := h.service.SubmitAlgoOrder(ctx, req)
+	if err != nil {
+		slog.Error("gRPC SubmitAlgoOrder failed", "user_id", req.UserId, "symbol", req.Symbol, "error", err)
+		return nil, status.Errorf(codes.Internal, "failed to submit algo order: %v", err)
+	}
+
+	return resp, nil
+}
+
+// SubmitSOROrder 提交智能路由订单。
+func (h *GRPCHandler) SubmitSOROrder(ctx context.Context, req *pb.SubmitSOROrderRequest) (*pb.SubmitSOROrderResponse, error) {
+	if req.UserId == "" || req.Symbol == "" || req.TotalQuantity == "" {
+		return nil, status.Error(codes.InvalidArgument, "missing required fields")
+	}
+
+	resp, err := h.service.SubmitSOROrder(ctx, req)
+	if err != nil {
+		slog.Error("gRPC SubmitSOROrder failed", "user_id", req.UserId, "symbol", req.Symbol, "error", err)
+		return nil, status.Errorf(codes.Internal, "failed to submit SOR order: %v", err)
+	}
+
+	return resp, nil
+}

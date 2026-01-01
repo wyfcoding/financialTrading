@@ -12,4 +12,9 @@ type ExecutionRepository interface {
 	GetByOrder(ctx context.Context, orderID string) ([]*Execution, error)
 	// GetByUser 分页获取指定用户的执行历史记录
 	GetByUser(ctx context.Context, userID string, limit, offset int) ([]*Execution, int64, error)
+
+	// --- AlgoOrder methods ---
+	SaveAlgoOrder(ctx context.Context, algoOrder *AlgoOrder) error
+	GetAlgoOrder(ctx context.Context, algoID string) (*AlgoOrder, error)
+	ListAlgoOrders(ctx context.Context, userID string, status ExecutionStatus) ([]*AlgoOrder, error)
 }

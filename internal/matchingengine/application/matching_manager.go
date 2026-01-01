@@ -54,14 +54,23 @@ func (m *MatchingEngineManager) SubmitOrder(ctx context.Context, req *SubmitOrde
 		return nil, fmt.Errorf("invalid quantity: %w", err)
 	}
 
+	displayQty := decimal.Zero
+	if req.IsIceberg && req.IcebergDisplayQuantity != "" {
+		displayQty, _ = decimal.NewFromString(req.IcebergDisplayQuantity)
+	}
+
 	// 封装为算法层订单对象
 	order := &algorithm.Order{
-		OrderID:   req.OrderID,
-		Symbol:    req.Symbol,
-		Side:      req.Side,
-		Price:     price,
-		Quantity:  quantity,
-		Timestamp: time.Now().UnixNano(),
+		OrderID:    req.OrderID,
+		Symbol:     req.Symbol,
+		Side:       req.Side,
+		Price:      price,
+		Quantity:   quantity,
+		UserID:     req.UserID,
+		IsIceberg:  req.IsIceberg,
+		DisplayQty: displayQty,
+		PostOnly:   req.PostOnly,
+		Timestamp:  time.Now().UnixNano(),
 	}
 
 	// 提交至 Disruptor 引擎

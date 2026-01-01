@@ -14,13 +14,15 @@ import (
 type ClearingManager struct {
 	settlementRepo domain.SettlementRepository
 	eodRepo        domain.EODClearingRepository
+	marginRepo     domain.MarginRequirementRepository
 }
 
 // NewClearingManager 构造函数。
-func NewClearingManager(settlementRepo domain.SettlementRepository, eodRepo domain.EODClearingRepository) *ClearingManager {
+func NewClearingManager(settlementRepo domain.SettlementRepository, eodRepo domain.EODClearingRepository, marginRepo domain.MarginRequirementRepository) *ClearingManager {
 	return &ClearingManager{
 		settlementRepo: settlementRepo,
 		eodRepo:        eodRepo,
+		marginRepo:     marginRepo,
 	}
 }
 
@@ -79,4 +81,21 @@ func (m *ClearingManager) ExecuteEODClearing(ctx context.Context, clearingDate s
 	}
 
 	return clearingID, nil
+}
+
+// GetMarginRequirement 获取指定品种的实时保证金要求
+func (m *ClearingManager) GetMarginRequirement(ctx context.Context, symbol string) (*domain.MarginRequirement, error) {
+	margin, err := m.marginRepo.GetBySymbol(ctx, symbol)
+	if err != nil {
+		return nil, err
+	}
+	if margin == nil {
+		// 默认兜底：10% 基础保证金率，0% 波动率加成
+		return &domain.MarginRequirement{
+			Symbol:           symbol,
+			BaseMarginRate:   decimal.NewFromFloat(0.1),
+			VolatilityFactor: decimal.Zero,
+		}, nil
+	}
+	return margin, nil
 }

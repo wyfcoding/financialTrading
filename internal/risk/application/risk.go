@@ -43,9 +43,10 @@ func NewRiskService(
 	metricsRepo domain.RiskMetricsRepository,
 	limitRepo domain.RiskLimitRepository,
 	alertRepo domain.RiskAlertRepository,
+	breakerRepo domain.CircuitBreakerRepository,
 ) *RiskService {
 	return &RiskService{
-		manager: NewRiskManager(assessmentRepo, metricsRepo, limitRepo, alertRepo),
+		manager: NewRiskManager(assessmentRepo, metricsRepo, limitRepo, alertRepo, breakerRepo),
 		query:   NewRiskQuery(assessmentRepo, metricsRepo, limitRepo, alertRepo),
 	}
 }

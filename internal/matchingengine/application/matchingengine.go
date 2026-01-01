@@ -54,9 +54,13 @@ func (s *MatchingEngineService) GetTrades(ctx context.Context, symbol string, li
 
 // SubmitOrderRequest 提交订单请求 DTO
 type SubmitOrderRequest struct {
-	OrderID  string // 订单 ID
-	Symbol   string // 交易对
-	Side     string // 买卖方向
-	Price    string // 价格
-	Quantity string // 数量
+	OrderID                string // 订单 ID
+	Symbol                 string // 交易对
+	Side                   string // 买卖方向
+	Price                  string // 价格
+	Quantity               string // 数量
+	UserID                 string // 所有人 ID
+	IsIceberg              bool   // 是否为冰山单
+	IcebergDisplayQuantity string // 冰山单显性规模
+	PostOnly               bool   // 是否为只做 Maker
 }

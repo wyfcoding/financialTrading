@@ -163,9 +163,10 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	metricsRepo := mysql.NewRiskMetricsRepository(db.RawDB())
 	limitRepo := mysql.NewRiskLimitRepository(db.RawDB())
 	alertRepo := mysql.NewRiskAlertRepository(db.RawDB())
+	breakerRepo := mysql.NewCircuitBreakerRepository(db.RawDB())
 
 	// 5.2 Application (Service)
-	riskService := application.NewRiskService(assessmentRepo, metricsRepo, limitRepo, alertRepo)
+	riskService := application.NewRiskService(assessmentRepo, metricsRepo, limitRepo, alertRepo, breakerRepo)
 
 	// 5.3 Interface (HTTP Handlers)
 	handler := riskhttp.NewRiskHandler(riskService)

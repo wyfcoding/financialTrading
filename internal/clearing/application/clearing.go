@@ -13,9 +13,9 @@ type ClearingService struct {
 }
 
 // NewClearingService 构造函数。
-func NewClearingService(settlementRepo domain.SettlementRepository, eodRepo domain.EODClearingRepository) *ClearingService {
+func NewClearingService(settlementRepo domain.SettlementRepository, eodRepo domain.EODClearingRepository, marginRepo domain.MarginRequirementRepository) *ClearingService {
 	return &ClearingService{
-		manager: NewClearingManager(settlementRepo, eodRepo),
+		manager: NewClearingManager(settlementRepo, eodRepo, marginRepo),
 		query:   NewClearingQuery(settlementRepo, eodRepo),
 	}
 }
@@ -28,6 +28,10 @@ func (s *ClearingService) SettleTrade(ctx context.Context, req *SettleTradeReque
 
 func (s *ClearingService) ExecuteEODClearing(ctx context.Context, clearingDate string) (string, error) {
 	return s.manager.ExecuteEODClearing(ctx, clearingDate)
+}
+
+func (s *ClearingService) GetMarginRequirement(ctx context.Context, symbol string) (*domain.MarginRequirement, error) {
+	return s.manager.GetMarginRequirement(ctx, symbol)
 }
 
 // --- Query (Reads) ---

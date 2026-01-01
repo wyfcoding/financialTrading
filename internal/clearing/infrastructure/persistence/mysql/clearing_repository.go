@@ -241,3 +241,71 @@ func (r *eodClearingRepositoryImpl) toEODDomain(m *EODClearingModel) *domain.EOD
 		TotalTrades:   m.TotalTrades,
 	}
 }
+
+// MarginRequirementModel 是保证金要求的数据库模型。
+type MarginRequirementModel struct {
+	gorm.Model
+	Symbol           string `gorm:"column:symbol;type:varchar(20);uniqueIndex;not null"`
+	BaseMarginRate   string `gorm:"column:base_margin_rate;type:decimal(10,4);not null"`
+	VolatilityFactor string `gorm:"column:volatility_factor;type:decimal(10,4);not null"`
+	UpdatedBy        string `gorm:"column:updated_by;type:varchar(32)"`
+}
+
+// TableName 指定表名
+func (MarginRequirementModel) TableName() string {
+	return "margin_requirements"
+}
+
+// marginRequirementRepositoryImpl 是 domain.MarginRequirementRepository 接口的 GORM 实现。
+type marginRequirementRepositoryImpl struct {
+	db *gorm.DB
+}
+
+// NewMarginRequirementRepository 创建保证金要求仓储实例
+func NewMarginRequirementRepository(db *gorm.DB) domain.MarginRequirementRepository {
+	return &marginRequirementRepositoryImpl{db: db}
+}
+
+// Save 实现 domain.MarginRequirementRepository.Save
+func (r *marginRequirementRepositoryImpl) Save(ctx context.Context, m *domain.MarginRequirement) error {
+	model := &MarginRequirementModel{
+		Model:            m.Model,
+		Symbol:           m.Symbol,
+		BaseMarginRate:   m.BaseMarginRate.String(),
+		VolatilityFactor: m.VolatilityFactor.String(),
+		UpdatedBy:        m.UpdatedBy,
+	}
+	err := r.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "symbol"}},
+		UpdateAll: true,
+	}).Create(model).Error
+	if err != nil {
+		logging.Error(ctx, "margin_requirement_repository.Save failed", "symbol", m.Symbol, "error", err)
+		return fmt.Errorf("failed to save margin requirement: %w", err)
+	}
+	m.Model = model.Model
+	return nil
+}
+
+// GetBySymbol 实现 domain.MarginRequirementRepository.GetBySymbol
+func (r *marginRequirementRepositoryImpl) GetBySymbol(ctx context.Context, symbol string) (*domain.MarginRequirement, error) {
+	var model MarginRequirementModel
+	if err := r.db.WithContext(ctx).Where("symbol = ?", symbol).First(&model).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		logging.Error(ctx, "margin_requirement_repository.GetBySymbol failed", "symbol", symbol, "error", err)
+		return nil, fmt.Errorf("failed to get margin requirement: %w", err)
+	}
+
+	baseRate, _ := decimal.NewFromString(model.BaseMarginRate)
+	volFactor, _ := decimal.NewFromString(model.VolatilityFactor)
+
+	return &domain.MarginRequirement{
+		Model:            model.Model,
+		Symbol:           model.Symbol,
+		BaseMarginRate:   baseRate,
+		VolatilityFactor: volFactor,
+		UpdatedBy:        model.UpdatedBy,
+	}, nil
+}

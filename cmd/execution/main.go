@@ -11,6 +11,8 @@ import (
 	"google.golang.org/grpc"
 
 	pb "github.com/wyfcoding/financialtrading/goapi/execution/v1"
+	marketdatav1 "github.com/wyfcoding/financialtrading/goapi/marketdata/v1"
+	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/execution/application"
 	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/persistence/mysql"
 	executiongrpc "github.com/wyfcoding/financialtrading/internal/execution/interfaces/grpc"
@@ -51,7 +53,8 @@ type AppContext struct {
 
 // ServiceClients 下游微服务客户端集合
 type ServiceClients struct {
-	// 根据需要添加下游依赖
+	OrderConn      *grpc.ClientConn `service:"order"`
+	MarketDataConn *grpc.ClientConn `service:"marketdata"`
 }
 
 func main() {
@@ -163,6 +166,24 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 
 	// 5.2 Application (Service)
 	executionService := application.NewExecutionService(executionRepo)
+
+	if clients.OrderConn != nil {
+		algoMgr := application.NewAlgoManager(
+			executionRepo,
+			orderv1.NewOrderServiceClient(clients.OrderConn),
+		)
+		executionService.SetAlgoManager(algoMgr)
+	}
+
+	// 5.2.2 注入智能路由管理器 (SOR)
+	if clients.OrderConn != nil && clients.MarketDataConn != nil {
+		sorMgr := application.NewSORManager(
+			executionRepo,
+			orderv1.NewOrderServiceClient(clients.OrderConn),
+			marketdatav1.NewMarketDataServiceClient(clients.MarketDataConn),
+		)
+		executionService.SetSORManager(sorMgr)
+	}
 
 	// 5.3 Interface (HTTP Handlers)
 	handler := executionhttp.NewExecutionHandler(executionService)

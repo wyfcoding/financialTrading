@@ -16,6 +16,7 @@ type RiskManager struct {
 	metricsRepo    domain.RiskMetricsRepository
 	limitRepo      domain.RiskLimitRepository
 	alertRepo      domain.RiskAlertRepository
+	breakerRepo    domain.CircuitBreakerRepository
 }
 
 // NewRiskManager 构造函数。
@@ -24,17 +25,31 @@ func NewRiskManager(
 	metricsRepo domain.RiskMetricsRepository,
 	limitRepo domain.RiskLimitRepository,
 	alertRepo domain.RiskAlertRepository,
+	breakerRepo domain.CircuitBreakerRepository,
 ) *RiskManager {
 	return &RiskManager{
 		assessmentRepo: assessmentRepo,
 		metricsRepo:    metricsRepo,
 		limitRepo:      limitRepo,
 		alertRepo:      alertRepo,
+		breakerRepo:    breakerRepo,
 	}
 }
 
 // AssessRisk 评估交易风险
 func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*RiskAssessmentDTO, error) {
+	// 1. 检查账户熔断状态
+	breaker, err := m.breakerRepo.GetByUserID(ctx, req.UserID)
+	if err != nil {
+		return nil, err
+	}
+	if breaker != nil && breaker.IsFired {
+		return &RiskAssessmentDTO{
+			IsAllowed: false,
+			Reason:    fmt.Sprintf("Account trading suspended: %s", breaker.TriggerReason),
+		}, nil
+	}
+
 	quantity, _ := decimal.NewFromString(req.Quantity)
 	price, _ := decimal.NewFromString(req.Price)
 
@@ -61,6 +76,17 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 		MarginRequirement: marginRequirement,
 		IsAllowed:         true,
 		Reason:            "Risk assessment passed",
+	}
+
+	// 2. 检查组合风险限额 (Portfolio Risk Limits)
+	// 示例：检查单笔交易金额是否超过每日累计限额
+	limit, err := m.limitRepo.GetByUser(ctx, req.UserID, "MAX_SINGLE_ORDER_VALUE")
+	if err == nil && limit != nil {
+		orderValue := quantity.Mul(price)
+		if orderValue.GreaterThan(limit.LimitValue) {
+			assessment.IsAllowed = false
+			assessment.Reason = fmt.Sprintf("Order value %s exceeds limit %s", orderValue, limit.LimitValue)
+		}
 	}
 
 	if err := m.assessmentRepo.Save(ctx, assessment); err != nil {

@@ -117,3 +117,22 @@ func (h *GRPCHandler) GetClearingStatus(ctx context.Context, req *pb.GetClearing
 		ProgressPercentage: int64(completionPercentage),
 	}, nil
 }
+
+func (h *GRPCHandler) GetMarginRequirement(ctx context.Context, req *pb.GetMarginRequirementRequest) (*pb.GetMarginRequirementResponse, error) {
+	start := time.Now()
+	slog.Debug("gRPC GetMarginRequirement received", "symbol", req.Symbol)
+
+	margin, err := h.service.GetMarginRequirement(ctx, req.Symbol)
+	if err != nil {
+		slog.Error("gRPC GetMarginRequirement failed", "symbol", req.Symbol, "error", err, "duration", time.Since(start))
+		return nil, status.Errorf(codes.Internal, "failed to get margin requirement: %v", err)
+	}
+
+	slog.Debug("gRPC GetMarginRequirement successful", "symbol", req.Symbol, "duration", time.Since(start))
+	return &pb.GetMarginRequirementResponse{
+		Symbol:               margin.Symbol,
+		BaseMarginRate:       margin.BaseMarginRate.String(),
+		VolatilityMultiplier: margin.VolatilityFactor.String(),
+		CurrentMarginRate:    margin.CurrentMarginRate().String(),
+	}, nil
+}

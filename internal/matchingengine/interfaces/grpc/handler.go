@@ -30,11 +30,15 @@ func (h *GRPCHandler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderReques
 	slog.Info("gRPC SubmitOrder received", "order_id", req.OrderId, "symbol", req.Symbol, "side", req.Side, "price", req.Price, "quantity", req.Quantity)
 
 	result, err := h.service.SubmitOrder(ctx, &application.SubmitOrderRequest{
-		OrderID:  req.OrderId,
-		Symbol:   req.Symbol,
-		Side:     req.Side,
-		Price:    req.Price,
-		Quantity: req.Quantity,
+		OrderID:                req.OrderId,
+		Symbol:                 req.Symbol,
+		Side:                   req.Side,
+		Price:                  req.Price,
+		Quantity:               req.Quantity,
+		UserID:                 req.UserId,
+		IsIceberg:              req.IsIceberg,
+		IcebergDisplayQuantity: req.IcebergDisplayQuantity,
+		PostOnly:               req.PostOnly,
 	})
 	if err != nil {
 		slog.Error("gRPC SubmitOrder failed", "order_id", req.OrderId, "error", err, "duration", time.Since(start))

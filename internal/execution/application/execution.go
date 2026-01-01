@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 
+	executionv1 "github.com/wyfcoding/financialtrading/goapi/execution/v1"
 	"github.com/wyfcoding/financialtrading/internal/execution/domain"
 )
 
@@ -24,6 +25,22 @@ func NewExecutionService(repo domain.ExecutionRepository) *ExecutionService {
 
 func (s *ExecutionService) ExecuteOrder(ctx context.Context, req *ExecuteOrderRequest) (*ExecutionDTO, error) {
 	return s.manager.ExecuteOrder(ctx, req)
+}
+
+func (s *ExecutionService) SubmitAlgoOrder(ctx context.Context, req *executionv1.SubmitAlgoOrderRequest) (*executionv1.SubmitAlgoOrderResponse, error) {
+	return s.manager.SubmitAlgoOrder(ctx, req)
+}
+
+func (s *ExecutionService) SubmitSOROrder(ctx context.Context, req *executionv1.SubmitSOROrderRequest) (*executionv1.SubmitSOROrderResponse, error) {
+	return s.manager.SubmitSOROrder(ctx, req)
+}
+
+func (s *ExecutionService) SetAlgoManager(algoMgr *AlgoManager) {
+	s.manager.SetAlgoManager(algoMgr)
+}
+
+func (s *ExecutionService) SetSORManager(sorMgr *SORManager) {
+	s.manager.SetSORManager(sorMgr)
 }
 
 // --- Query (Reads) ---

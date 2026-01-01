@@ -33,6 +33,12 @@ type RiskAlertRepository interface {
 	DeleteByID(ctx context.Context, id string) error
 }
 
+// CircuitBreakerRepository 风险熔断仓储接口
+type CircuitBreakerRepository interface {
+	Save(ctx context.Context, cb *CircuitBreaker) error
+	GetByUserID(ctx context.Context, userID string) (*CircuitBreaker, error)
+}
+
 // RiskDomainService 风险领域服务
 type RiskDomainService interface {
 	AssessTradeRisk(ctx context.Context, userID, symbol, side string, quantity, price decimal.Decimal) (*RiskAssessment, error)

@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"context"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
@@ -220,6 +221,42 @@ func FromAlertDomain(d *domain.RiskAlert) *RiskAlertModel {
 	}
 }
 
+// CircuitBreakerModel 风险熔断数据库模型
+type CircuitBreakerModel struct {
+	gorm.Model
+	UserID        string     `gorm:"column:user_id;type:varchar(36);uniqueIndex;not null"`
+	IsFired       bool       `gorm:"column:is_fired;type:boolean;not null"`
+	TriggerReason string     `gorm:"column:trigger_reason;type:text"`
+	FiredAt       *time.Time `gorm:"column:fired_at;type:datetime"`
+	AutoResetAt   *time.Time `gorm:"column:auto_reset_at;type:datetime"`
+}
+
+func (CircuitBreakerModel) TableName() string {
+	return "risk_circuit_breakers"
+}
+
+func (m *CircuitBreakerModel) ToDomain() *domain.CircuitBreaker {
+	return &domain.CircuitBreaker{
+		Model:         m.Model,
+		UserID:        m.UserID,
+		IsFired:       m.IsFired,
+		TriggerReason: m.TriggerReason,
+		FiredAt:       m.FiredAt,
+		AutoResetAt:   m.AutoResetAt,
+	}
+}
+
+func FromCircuitBreakerDomain(d *domain.CircuitBreaker) *CircuitBreakerModel {
+	return &CircuitBreakerModel{
+		Model:         d.Model,
+		UserID:        d.UserID,
+		IsFired:       d.IsFired,
+		TriggerReason: d.TriggerReason,
+		FiredAt:       d.FiredAt,
+		AutoResetAt:   d.AutoResetAt,
+	}
+}
+
 type assessmentRepository struct {
 	db *gorm.DB
 }
@@ -357,4 +394,32 @@ func (r *alertRepository) GetByUser(ctx context.Context, userID string, limit in
 
 func (r *alertRepository) DeleteByID(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Delete(&RiskAlertModel{}, "id = ?", id).Error
+}
+
+type circuitBreakerRepository struct {
+	db *gorm.DB
+}
+
+func NewCircuitBreakerRepository(db *gorm.DB) domain.CircuitBreakerRepository {
+	return &circuitBreakerRepository{db: db}
+}
+
+func (r *circuitBreakerRepository) Save(ctx context.Context, cb *domain.CircuitBreaker) error {
+	model := FromCircuitBreakerDomain(cb)
+	if err := r.db.WithContext(ctx).Save(model).Error; err != nil {
+		return err
+	}
+	cb.Model = model.Model
+	return nil
+}
+
+func (r *circuitBreakerRepository) GetByUserID(ctx context.Context, userID string) (*domain.CircuitBreaker, error) {
+	var model CircuitBreakerModel
+	if err := r.db.WithContext(ctx).First(&model, "user_id = ?", userID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return model.ToDomain(), nil
 }

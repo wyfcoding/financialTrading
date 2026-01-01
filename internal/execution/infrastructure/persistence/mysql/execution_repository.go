@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/execution/domain"
@@ -29,6 +30,26 @@ type ExecutionModel struct {
 // TableName 指定表名
 func (ExecutionModel) TableName() string {
 	return "executions"
+}
+
+// AlgoOrderModel 是算法订单的数据库模型。
+type AlgoOrderModel struct {
+	gorm.Model
+	AlgoID            string    `gorm:"column:algo_id;type:varchar(36);uniqueIndex;not null"`
+	UserID            string    `gorm:"column:user_id;type:varchar(32);index;not null"`
+	Symbol            string    `gorm:"column:symbol;type:varchar(20);not null"`
+	Side              string    `gorm:"column:side;type:varchar(10);not null"`
+	TotalQuantity     string    `gorm:"column:total_quantity;type:decimal(32,18);not null"`
+	ExecutedQuantity  string    `gorm:"column:executed_quantity;type:decimal(32,18);not null"`
+	AlgoType          string    `gorm:"column:algo_type;type:varchar(20);not null"`
+	StartTime         time.Time `gorm:"column:start_time"`
+	EndTime           time.Time `gorm:"column:end_time"`
+	ParticipationRate string    `gorm:"column:participation_rate;type:decimal(10,4)"`
+	Status            string    `gorm:"column:status;type:varchar(20);index;not null"`
+}
+
+func (AlgoOrderModel) TableName() string {
+	return "algo_orders"
 }
 
 // executionRepositoryImpl 是 domain.ExecutionRepository 接口的 GORM 实现。
@@ -135,5 +156,88 @@ func (r *executionRepositoryImpl) toDomain(m *ExecutionModel) *domain.Execution 
 		ExecutedPrice:    p,
 		ExecutedQuantity: q,
 		Status:           domain.ExecutionStatus(m.Status),
+	}
+}
+
+// SaveAlgoOrder 实现 domain.ExecutionRepository.SaveAlgoOrder
+func (r *executionRepositoryImpl) SaveAlgoOrder(ctx context.Context, algoOrder *domain.AlgoOrder) error {
+	model := &AlgoOrderModel{
+		Model:             algoOrder.Model,
+		AlgoID:            algoOrder.AlgoID,
+		UserID:            algoOrder.UserID,
+		Symbol:            algoOrder.Symbol,
+		Side:              string(algoOrder.Side),
+		TotalQuantity:     algoOrder.TotalQuantity.String(),
+		ExecutedQuantity:  algoOrder.ExecutedQuantity.String(),
+		AlgoType:          string(algoOrder.AlgoType),
+		StartTime:         algoOrder.StartTime,
+		EndTime:           algoOrder.EndTime,
+		ParticipationRate: algoOrder.ParticipationRate.String(),
+		Status:            string(algoOrder.Status),
+	}
+
+	err := r.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "algo_id"}},
+		UpdateAll: true,
+	}).Create(model).Error
+
+	if err != nil {
+		logging.Error(ctx, "execution_repository.SaveAlgoOrder failed", "algo_id", algoOrder.AlgoID, "error", err)
+		return fmt.Errorf("failed to save algo order: %w", err)
+	}
+
+	algoOrder.Model = model.Model
+	return nil
+}
+
+// GetAlgoOrder 实现 domain.ExecutionRepository.GetAlgoOrder
+func (r *executionRepositoryImpl) GetAlgoOrder(ctx context.Context, algoID string) (*domain.AlgoOrder, error) {
+	var model AlgoOrderModel
+	if err := r.db.WithContext(ctx).Where("algo_id = ?", algoID).First(&model).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return r.algoToDomain(&model), nil
+}
+
+// ListAlgoOrders 实现 domain.ExecutionRepository.ListAlgoOrders
+func (r *executionRepositoryImpl) ListAlgoOrders(ctx context.Context, userID string, status domain.ExecutionStatus) ([]*domain.AlgoOrder, error) {
+	var models []AlgoOrderModel
+	db := r.db.WithContext(ctx).Where("user_id = ?", userID)
+	if status != "" {
+		db = db.Where("status = ?", string(status))
+	}
+
+	if err := db.Find(&models).Error; err != nil {
+		return nil, err
+	}
+
+	res := make([]*domain.AlgoOrder, len(models))
+	for i, m := range models {
+		res[i] = r.algoToDomain(&m)
+	}
+	return res, nil
+}
+
+func (r *executionRepositoryImpl) algoToDomain(m *AlgoOrderModel) *domain.AlgoOrder {
+	total, _ := decimal.NewFromString(m.TotalQuantity)
+	executed, _ := decimal.NewFromString(m.ExecutedQuantity)
+	participation, _ := decimal.NewFromString(m.ParticipationRate)
+
+	return &domain.AlgoOrder{
+		Model:             m.Model,
+		AlgoID:            m.AlgoID,
+		UserID:            m.UserID,
+		Symbol:            m.Symbol,
+		Side:              domain.OrderSide(m.Side),
+		TotalQuantity:     total,
+		ExecutedQuantity:  executed,
+		AlgoType:          domain.AlgoType(m.AlgoType),
+		StartTime:         m.StartTime,
+		EndTime:           m.EndTime,
+		ParticipationRate: participation,
+		Status:            domain.ExecutionStatus(m.Status),
 	}
 }
