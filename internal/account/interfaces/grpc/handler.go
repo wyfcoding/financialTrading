@@ -3,6 +3,8 @@ package grpc
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	"github.com/shopspring/decimal"
 	pb "github.com/wyfcoding/financialtrading/goapi/account/v1"
@@ -29,6 +31,9 @@ func NewGRPCHandler(appService *application.AccountApplicationService) *GRPCHand
 // CreateAccount 创建账户
 // 处理 gRPC CreateAccount 请求
 func (h *GRPCHandler) CreateAccount(ctx context.Context, req *pb.CreateAccountRequest) (*pb.CreateAccountResponse, error) {
+	start := time.Now()
+	slog.Info("gRPC CreateAccount received", "user_id", req.UserId, "account_type", req.AccountType, "currency", req.Currency)
+
 	// 调用应用服务创建账户
 	dto, err := h.appService.CreateAccount(ctx, &application.CreateAccountRequest{
 		UserID:      req.UserId,
@@ -36,9 +41,11 @@ func (h *GRPCHandler) CreateAccount(ctx context.Context, req *pb.CreateAccountRe
 		Currency:    req.Currency,
 	})
 	if err != nil {
+		slog.Error("gRPC CreateAccount failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to create account: %v", err)
 	}
 
+	slog.Info("gRPC CreateAccount successful", "user_id", req.UserId, "account_id", dto.AccountID, "duration", time.Since(start))
 	return &pb.CreateAccountResponse{
 		Account: &pb.AccountResponse{
 			AccountId:        dto.AccountID,
@@ -56,11 +63,16 @@ func (h *GRPCHandler) CreateAccount(ctx context.Context, req *pb.CreateAccountRe
 // GetAccount 获取账户信息
 // 处理 gRPC GetAccount 请求
 func (h *GRPCHandler) GetAccount(ctx context.Context, req *pb.GetAccountRequest) (*pb.GetAccountResponse, error) {
+	start := time.Now()
+	slog.Debug("gRPC GetAccount received", "account_id", req.AccountId)
+
 	dto, err := h.appService.GetAccount(ctx, req.AccountId)
 	if err != nil {
+		slog.Error("gRPC GetAccount failed", "account_id", req.AccountId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get account: %v", err)
 	}
 
+	slog.Debug("gRPC GetAccount successful", "account_id", req.AccountId, "duration", time.Since(start))
 	return &pb.GetAccountResponse{
 		Account: &pb.AccountResponse{
 			AccountId:        dto.AccountID,
@@ -78,33 +90,43 @@ func (h *GRPCHandler) GetAccount(ctx context.Context, req *pb.GetAccountRequest)
 // Deposit 账户充值
 // 处理 gRPC Deposit 请求
 func (h *GRPCHandler) Deposit(ctx context.Context, req *pb.DepositRequest) (*pb.DepositResponse, error) {
+	start := time.Now()
+	slog.Info("gRPC Deposit received", "account_id", req.AccountId, "amount", req.Amount)
+
 	amount, err := decimal.NewFromString(req.Amount)
 	if err != nil {
+		slog.Warn("gRPC Deposit invalid amount", "account_id", req.AccountId, "amount", req.Amount, "error", err)
 		return nil, status.Errorf(codes.InvalidArgument, "invalid amount: %v", err)
 	}
 
 	err = h.appService.Deposit(ctx, req.AccountId, amount)
 	if err != nil {
+		slog.Error("gRPC Deposit failed", "account_id", req.AccountId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to deposit: %v", err)
 	}
 
+	slog.Info("gRPC Deposit successful", "account_id", req.AccountId, "duration", time.Since(start))
 	return &pb.DepositResponse{
 		AccountId: req.AccountId,
 		Type:      "DEPOSIT",
 		Amount:    req.Amount,
 		Status:    "COMPLETED",
-		// TransactionID 和 Timestamp 理想情况下应由服务返回
 	}, nil
 }
 
 // GetBalance 获取账户余额
 // 处理 gRPC GetBalance 请求
 func (h *GRPCHandler) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb.GetBalanceResponse, error) {
+	start := time.Now()
+	slog.Debug("gRPC GetBalance received", "account_id", req.AccountId)
+
 	dto, err := h.appService.GetAccount(ctx, req.AccountId)
 	if err != nil {
+		slog.Error("gRPC GetBalance failed", "account_id", req.AccountId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get account: %v", err)
 	}
 
+	slog.Debug("gRPC GetBalance successful", "account_id", req.AccountId, "duration", time.Since(start))
 	return &pb.GetBalanceResponse{
 		AccountId:        dto.AccountID,
 		Balance:          dto.Balance,

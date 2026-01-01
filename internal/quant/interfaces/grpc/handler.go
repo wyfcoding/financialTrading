@@ -3,6 +3,7 @@ package grpc
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	pb "github.com/wyfcoding/financialtrading/goapi/quant/v1"
@@ -30,6 +31,7 @@ func (h *GRPCHandler) CreateStrategy(ctx context.Context, req *pb.CreateStrategy
 	// 调用应用服务创建策略
 	id, err := h.app.CreateStrategy(ctx, req.Name, req.Description, req.Script)
 	if err != nil {
+		slog.Error("Failed to create strategy", "name", req.Name, "error", err)
 		return nil, err
 	}
 
@@ -42,6 +44,7 @@ func (h *GRPCHandler) CreateStrategy(ctx context.Context, req *pb.CreateStrategy
 func (h *GRPCHandler) GetStrategy(ctx context.Context, req *pb.GetStrategyRequest) (*pb.GetStrategyResponse, error) {
 	strategy, err := h.app.GetStrategy(ctx, req.Id)
 	if err != nil {
+		slog.Error("Failed to get strategy", "id", req.Id, "error", err)
 		return nil, err
 	}
 	if strategy == nil {
@@ -57,6 +60,7 @@ func (h *GRPCHandler) GetStrategy(ctx context.Context, req *pb.GetStrategyReques
 func (h *GRPCHandler) RunBacktest(ctx context.Context, req *pb.RunBacktestRequest) (*pb.RunBacktestResponse, error) {
 	id, err := h.app.RunBacktest(ctx, req.StrategyId, req.Symbol, req.StartTime.AsTime(), req.EndTime.AsTime(), req.InitialCapital)
 	if err != nil {
+		slog.Error("Failed to run backtest", "strategy_id", req.StrategyId, "symbol", req.Symbol, "error", err)
 		return nil, err
 	}
 
@@ -69,6 +73,7 @@ func (h *GRPCHandler) RunBacktest(ctx context.Context, req *pb.RunBacktestReques
 func (h *GRPCHandler) GetBacktestResult(ctx context.Context, req *pb.GetBacktestResultRequest) (*pb.GetBacktestResultResponse, error) {
 	result, err := h.app.GetBacktestResult(ctx, req.Id)
 	if err != nil {
+		slog.Error("Failed to get backtest result", "id", req.Id, "error", err)
 		return nil, err
 	}
 	if result == nil {
@@ -99,7 +104,7 @@ func toProtoBacktestResult(r *domain.BacktestResult) *pb.BacktestResult {
 	md, ok2 := r.MaxDrawdown.Float64()
 	sr, ok3 := r.SharpeRatio.Float64()
 	if !ok1 || !ok2 || !ok3 {
-		// 记录日志或处理，此处暂不改变原逻辑
+		slog.Warn("Failed to convert some backtest metrics to float64", "backtest_id", r.ID, "ok1", ok1, "ok2", ok2, "ok3", ok3)
 	}
 
 	return &pb.BacktestResult{

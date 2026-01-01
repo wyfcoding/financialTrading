@@ -3,6 +3,8 @@ package grpc
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	pb "github.com/wyfcoding/financialtrading/goapi/referencedata/v1"
 	"github.com/wyfcoding/financialtrading/internal/referencedata/application"
@@ -20,25 +22,32 @@ type GRPCHandler struct {
 // NewGRPCHandler 创建 gRPC 处理器实例
 // app: 注入的参考数据应用服务
 func NewGRPCHandler(app *application.ReferenceDataService) *GRPCHandler {
-	return &GRPCHandler{app: app}
+	return &GRPCHandler{
+		app: app,
+	}
 }
 
 // GetSymbol 获取交易对
 // 处理 gRPC GetSymbol 请求
 func (h *GRPCHandler) GetSymbol(ctx context.Context, req *pb.GetSymbolRequest) (*pb.GetSymbolResponse, error) {
+	start := time.Now()
 	id := req.Id
 	if id == "" {
 		id = req.SymbolCode
 	}
+	slog.Debug("gRPC GetSymbol received", "id", id)
 
 	symbol, err := h.app.GetSymbol(ctx, id)
 	if err != nil {
+		slog.Error("gRPC GetSymbol failed", "id", id, "error", err, "duration", time.Since(start))
 		return nil, err
 	}
 	if symbol == nil {
+		slog.Debug("gRPC GetSymbol successful (not found)", "id", id, "duration", time.Since(start))
 		return &pb.GetSymbolResponse{}, nil
 	}
 
+	slog.Debug("gRPC GetSymbol successful", "id", id, "duration", time.Since(start))
 	return &pb.GetSymbolResponse{
 		Symbol: toProtoSymbol(symbol),
 	}, nil
@@ -46,6 +55,9 @@ func (h *GRPCHandler) GetSymbol(ctx context.Context, req *pb.GetSymbolRequest) (
 
 // ListSymbols 列出交易对
 func (h *GRPCHandler) ListSymbols(ctx context.Context, req *pb.ListSymbolsRequest) (*pb.ListSymbolsResponse, error) {
+	start := time.Now()
+	slog.Debug("gRPC ListSymbols received", "exchange_id", req.ExchangeId, "status", req.Status)
+
 	limit := int(req.PageSize)
 	if limit <= 0 {
 		limit = 10
@@ -54,6 +66,7 @@ func (h *GRPCHandler) ListSymbols(ctx context.Context, req *pb.ListSymbolsReques
 
 	symbols, err := h.app.ListSymbols(ctx, req.ExchangeId, req.Status, limit, offset)
 	if err != nil {
+		slog.Error("gRPC ListSymbols failed", "exchange_id", req.ExchangeId, "error", err, "duration", time.Since(start))
 		return nil, err
 	}
 
@@ -62,6 +75,7 @@ func (h *GRPCHandler) ListSymbols(ctx context.Context, req *pb.ListSymbolsReques
 		protoSymbols[i] = toProtoSymbol(s)
 	}
 
+	slog.Debug("gRPC ListSymbols successful", "exchange_id", req.ExchangeId, "count", len(protoSymbols), "duration", time.Since(start))
 	return &pb.ListSymbolsResponse{
 		Symbols: protoSymbols,
 	}, nil
@@ -69,19 +83,24 @@ func (h *GRPCHandler) ListSymbols(ctx context.Context, req *pb.ListSymbolsReques
 
 // GetExchange 获取交易所
 func (h *GRPCHandler) GetExchange(ctx context.Context, req *pb.GetExchangeRequest) (*pb.GetExchangeResponse, error) {
+	start := time.Now()
 	id := req.Id
 	if id == "" {
 		id = req.Name
 	}
+	slog.Debug("gRPC GetExchange received", "id", id)
 
 	exchange, err := h.app.GetExchange(ctx, id)
 	if err != nil {
+		slog.Error("gRPC GetExchange failed", "id", id, "error", err, "duration", time.Since(start))
 		return nil, err
 	}
 	if exchange == nil {
+		slog.Debug("gRPC GetExchange successful (not found)", "id", id, "duration", time.Since(start))
 		return &pb.GetExchangeResponse{}, nil
 	}
 
+	slog.Debug("gRPC GetExchange successful", "id", id, "duration", time.Since(start))
 	return &pb.GetExchangeResponse{
 		Exchange: toProtoExchange(exchange),
 	}, nil
@@ -89,6 +108,9 @@ func (h *GRPCHandler) GetExchange(ctx context.Context, req *pb.GetExchangeReques
 
 // ListExchanges 列出交易所
 func (h *GRPCHandler) ListExchanges(ctx context.Context, req *pb.ListExchangesRequest) (*pb.ListExchangesResponse, error) {
+	start := time.Now()
+	slog.Debug("gRPC ListExchanges received")
+
 	limit := int(req.PageSize)
 	if limit <= 0 {
 		limit = 10
@@ -97,6 +119,7 @@ func (h *GRPCHandler) ListExchanges(ctx context.Context, req *pb.ListExchangesRe
 
 	exchanges, err := h.app.ListExchanges(ctx, limit, offset)
 	if err != nil {
+		slog.Error("gRPC ListExchanges failed", "error", err, "duration", time.Since(start))
 		return nil, err
 	}
 
@@ -105,6 +128,7 @@ func (h *GRPCHandler) ListExchanges(ctx context.Context, req *pb.ListExchangesRe
 		protoExchanges[i] = toProtoExchange(e)
 	}
 
+	slog.Debug("gRPC ListExchanges successful", "count", len(protoExchanges), "duration", time.Since(start))
 	return &pb.ListExchangesResponse{
 		Exchanges: protoExchanges,
 	}, nil

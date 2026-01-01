@@ -3,6 +3,8 @@ package grpc
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	"github.com/shopspring/decimal"
 	pb "github.com/wyfcoding/financialtrading/goapi/position/v1"
@@ -29,6 +31,9 @@ func NewGRPCHandler(appService *application.PositionApplicationService) *GRPCHan
 // GetPositions 获取持仓列表
 // 处理 gRPC GetPositions 请求
 func (h *GRPCHandler) GetPositions(ctx context.Context, req *pb.GetPositionsRequest) (*pb.GetPositionsResponse, error) {
+	start := time.Now()
+	slog.Debug("gRPC GetPositions received", "user_id", req.UserId, "page", req.Page, "page_size", req.PageSize)
+
 	// 解析分页参数
 	limit := int(req.PageSize)
 	if limit <= 0 {
@@ -38,6 +43,7 @@ func (h *GRPCHandler) GetPositions(ctx context.Context, req *pb.GetPositionsRequ
 
 	dtos, total, err := h.appService.GetPositions(ctx, req.UserId, limit, offset)
 	if err != nil {
+		slog.Error("gRPC GetPositions failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get positions: %v", err)
 	}
 
@@ -46,6 +52,7 @@ func (h *GRPCHandler) GetPositions(ctx context.Context, req *pb.GetPositionsRequ
 		pbPositions = append(pbPositions, h.toProtoPosition(dto))
 	}
 
+	slog.Debug("gRPC GetPositions successful", "user_id", req.UserId, "count", len(pbPositions), "duration", time.Since(start))
 	return &pb.GetPositionsResponse{
 		Positions: pbPositions,
 		Total:     total,
@@ -55,11 +62,16 @@ func (h *GRPCHandler) GetPositions(ctx context.Context, req *pb.GetPositionsRequ
 // GetPosition 获取持仓详情
 // 处理 gRPC GetPosition 请求
 func (h *GRPCHandler) GetPosition(ctx context.Context, req *pb.GetPositionRequest) (*pb.GetPositionResponse, error) {
+	start := time.Now()
+	slog.Debug("gRPC GetPosition received", "position_id", req.PositionId)
+
 	dto, err := h.appService.GetPosition(ctx, req.PositionId)
 	if err != nil {
+		slog.Error("gRPC GetPosition failed", "position_id", req.PositionId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get position: %v", err)
 	}
 
+	slog.Debug("gRPC GetPosition successful", "position_id", req.PositionId, "duration", time.Since(start))
 	return &pb.GetPositionResponse{
 		Position: h.toProtoPosition(dto),
 	}, nil
@@ -68,22 +80,29 @@ func (h *GRPCHandler) GetPosition(ctx context.Context, req *pb.GetPositionReques
 // ClosePosition 平仓
 // 处理 gRPC ClosePosition 请求
 func (h *GRPCHandler) ClosePosition(ctx context.Context, req *pb.ClosePositionRequest) (*pb.ClosePositionResponse, error) {
+	start := time.Now()
+	slog.Info("gRPC ClosePosition received", "position_id", req.PositionId, "close_price", req.ClosePrice)
+
 	closePrice, err := decimal.NewFromString(req.ClosePrice)
 	if err != nil {
+		slog.Warn("gRPC ClosePosition invalid price", "position_id", req.PositionId, "price", req.ClosePrice, "error", err)
 		return nil, status.Errorf(codes.InvalidArgument, "invalid close price: %v", err)
 	}
 
 	err = h.appService.ClosePosition(ctx, req.PositionId, closePrice)
 	if err != nil {
+		slog.Error("gRPC ClosePosition failed", "position_id", req.PositionId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to close position: %v", err)
 	}
 
 	// 获取更新后的头寸以返回
 	dto, err := h.appService.GetPosition(ctx, req.PositionId)
 	if err != nil {
+		slog.Error("gRPC GetPosition after close failed", "position_id", req.PositionId, "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to get updated position: %v", err)
 	}
 
+	slog.Info("gRPC ClosePosition successful", "position_id", req.PositionId, "duration", time.Since(start))
 	return &pb.ClosePositionResponse{
 		Position: h.toProtoPosition(dto),
 	}, nil

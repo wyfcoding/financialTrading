@@ -5,6 +5,7 @@ package grpc
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	pb "github.com/wyfcoding/financialtrading/goapi/clearing/v1"
@@ -34,8 +35,10 @@ func NewGRPCHandler(appService *application.ClearingApplicationService) *GRPCHan
 // SettleTrade 实现了 gRPC 的 SettleTrade 方法。
 // 它接收 gRPC 请求，将其转换为应用层的 DTO，然后调用应用服务来处理。
 func (h *GRPCHandler) SettleTrade(ctx context.Context, req *pb.SettleTradeRequest) (*pb.SettleTradeResponse, error) {
+	start := time.Now()
+	slog.Info("gRPC SettleTrade received", "trade_id", req.TradeId, "buy_user_id", req.BuyUserId, "sell_user_id", req.SellUserId, "symbol", req.Symbol)
+
 	// 1. 将 gRPC 请求对象 (*pb.SettleTradeRequest) 转换为应用层 DTO (*application.SettleTradeRequest)。
-	//    这是接口层的核心职责之一：数据转换。
 	appReq := &application.SettleTradeRequest{
 		TradeID:    req.TradeId,
 		BuyUserID:  req.BuyUserId,
@@ -46,14 +49,13 @@ func (h *GRPCHandler) SettleTrade(ctx context.Context, req *pb.SettleTradeReques
 	}
 
 	// 2. 调用应用服务来执行核心业务逻辑,接收返回的 settlementID。
-	//    gRPC handler 本身不包含业务逻辑。
 	settlementID, err := h.appService.SettleTrade(ctx, appReq)
 	if err != nil {
-		// 3. 错误处理：如果应用层返回错误，将其转换为标准的 gRPC 错误。
-		//    使用 status.Errorf 可以附加 gRPC 状态码。
+		slog.Error("gRPC SettleTrade failed", "trade_id", req.TradeId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to settle trade: %v", err)
 	}
 
+	slog.Info("gRPC SettleTrade successful", "trade_id", req.TradeId, "settlement_id", settlementID, "duration", time.Since(start))
 	// 4. 构建并返回 gRPC 响应,填充从应用服务返回的 settlementID。
 	return &pb.SettleTradeResponse{
 		TradeId:        req.TradeId,
@@ -65,12 +67,17 @@ func (h *GRPCHandler) SettleTrade(ctx context.Context, req *pb.SettleTradeReques
 
 // ExecuteEODClearing 实现了 gRPC 的 ExecuteEODClearing 方法。
 func (h *GRPCHandler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEODClearingRequest) (*pb.ExecuteEODClearingResponse, error) {
+	start := time.Now()
+	slog.Info("gRPC ExecuteEODClearing received", "clearing_date", req.ClearingDate)
+
 	// 调用应用服务启动日终清算流程,接收返回的 clearingID。
 	clearingID, err := h.appService.ExecuteEODClearing(ctx, req.ClearingDate)
 	if err != nil {
+		slog.Error("gRPC ExecuteEODClearing failed", "clearing_date", req.ClearingDate, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to execute EOD clearing: %v", err)
 	}
 
+	slog.Info("gRPC ExecuteEODClearing successful", "clearing_date", req.ClearingDate, "clearing_id", clearingID, "duration", time.Since(start))
 	// 返回包含 clearingID 的响应,表示任务已开始。
 	return &pb.ExecuteEODClearingResponse{
 		Status:     "PROCESSING", // 表示任务已开始处理
@@ -81,13 +88,17 @@ func (h *GRPCHandler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEOD
 
 // GetClearingStatus 实现了 gRPC 的 GetClearingStatus 方法。
 func (h *GRPCHandler) GetClearingStatus(ctx context.Context, req *pb.GetClearingStatusRequest) (*pb.GetClearingStatusResponse, error) {
+	slog.Debug("gRPC GetClearingStatus received", "clearing_id", req.ClearingId)
+
 	// 调用应用服务获取清算任务状态。
 	clearing, err := h.appService.GetClearingStatus(ctx, req.ClearingId)
 	if err != nil {
+		slog.Error("gRPC GetClearingStatus failed", "clearing_id", req.ClearingId, "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to get clearing status: %v", err)
 	}
 	// 如果应用服务返回 nil（表示未找到），则返回 gRPC 的 NotFound 错误。
 	if clearing == nil {
+		slog.Warn("gRPC GetClearingStatus task not found", "clearing_id", req.ClearingId)
 		return nil, status.Errorf(codes.NotFound, "clearing task with id '%s' not found", req.ClearingId)
 	}
 
@@ -97,6 +108,7 @@ func (h *GRPCHandler) GetClearingStatus(ctx context.Context, req *pb.GetClearing
 		completionPercentage = float32(clearing.TradesSettled) / float32(clearing.TotalTrades) * 100
 	}
 
+	slog.Debug("gRPC GetClearingStatus successful", "clearing_id", req.ClearingId, "status", clearing.Status)
 	// 将从应用层获取的领域对象转换为 gRPC 响应对象。
 	return &pb.GetClearingStatusResponse{
 		ClearingId:         clearing.ClearingID,

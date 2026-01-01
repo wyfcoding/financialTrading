@@ -3,6 +3,7 @@ package grpc
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -30,6 +31,7 @@ func (h *GRPCHandler) RecordMetric(ctx context.Context, req *pb.RecordMetricRequ
 	ts := req.Metric.Timestamp.AsTime().UnixMilli()
 	err := h.app.RecordMetric(ctx, req.Metric.Name, val, req.Metric.Tags, ts)
 	if err != nil {
+		slog.Error("Failed to record metric", "name", req.Metric.Name, "error", err)
 		return nil, err
 	}
 
@@ -44,6 +46,7 @@ func (h *GRPCHandler) GetMetrics(ctx context.Context, req *pb.GetMetricsRequest)
 	end := req.EndTime.AsTime().UnixMilli()
 	metrics, err := h.app.GetMetrics(ctx, req.Name, start, end)
 	if err != nil {
+		slog.Error("Failed to get metrics", "name", req.Name, "error", err)
 		return nil, err
 	}
 
@@ -51,7 +54,7 @@ func (h *GRPCHandler) GetMetrics(ctx context.Context, req *pb.GetMetricsRequest)
 	for i, m := range metrics {
 		val, ok := m.Value.Float64()
 		if !ok {
-			// 记录日志或处理
+			slog.Warn("Failed to convert metric value to float64", "name", m.Name, "value", m.Value.String())
 		}
 		protoMetrics[i] = &pb.Metric{
 			Name:      m.Name,
@@ -70,6 +73,7 @@ func (h *GRPCHandler) GetMetrics(ctx context.Context, req *pb.GetMetricsRequest)
 func (h *GRPCHandler) GetSystemHealth(ctx context.Context, req *pb.GetSystemHealthRequest) (*pb.GetSystemHealthResponse, error) {
 	healths, err := h.app.GetSystemHealth(ctx, req.ServiceName)
 	if err != nil {
+		slog.Error("Failed to get system health", "service", req.ServiceName, "error", err)
 		return nil, err
 	}
 

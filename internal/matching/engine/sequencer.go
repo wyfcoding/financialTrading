@@ -2,6 +2,8 @@ package engine
 
 import (
 	"context"
+	"log/slog"
+	"runtime"
 
 	"github.com/wyfcoding/pkg/algorithm"
 )
@@ -26,8 +28,10 @@ type OrderSequencer struct {
 func NewOrderSequencer(capacity uint64) (*OrderSequencer, error) {
 	rb, err := algorithm.NewMpscRingBuffer[OrderEvent](capacity)
 	if err != nil {
+		slog.Error("Failed to initialize OrderSequencer buffer", "error", err)
 		return nil, err
 	}
+	slog.Info("OrderSequencer initialized", "capacity", capacity)
 	return &OrderSequencer{
 		buffer: rb,
 		stopCh: make(chan struct{}),
@@ -41,12 +45,15 @@ func (s *OrderSequencer) Enqueue(event *OrderEvent) bool {
 
 // Start 消费者：启动单线程定序处理逻辑
 func (s *OrderSequencer) Start(ctx context.Context, handler func(*OrderEvent)) {
+	slog.Info("OrderSequencer starting consumer loop")
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
+				slog.Info("OrderSequencer consumer loop stopped by context")
 				return
 			case <-s.stopCh:
+				slog.Info("OrderSequencer consumer loop stopped by stop channel")
 				return
 			default:
 				// 尝试从 RingBuffer 获取
@@ -56,7 +63,7 @@ func (s *OrderSequencer) Start(ctx context.Context, handler func(*OrderEvent)) {
 				} else {
 					// 如果没有数据，稍微让出 CPU，避免空转消耗过高
 					// 在极致高性能场景下会使用 Busy-Wait
-					// runtime.Gosched()
+					runtime.Gosched()
 				}
 			}
 		}
@@ -64,5 +71,6 @@ func (s *OrderSequencer) Start(ctx context.Context, handler func(*OrderEvent)) {
 }
 
 func (s *OrderSequencer) Stop() {
+	slog.Info("Stopping OrderSequencer")
 	close(s.stopCh)
 }

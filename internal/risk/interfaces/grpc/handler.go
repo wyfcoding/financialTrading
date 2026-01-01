@@ -3,6 +3,8 @@ package grpc
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	pb "github.com/wyfcoding/financialtrading/goapi/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/risk/application"
@@ -28,6 +30,9 @@ func NewGRPCHandler(appService *application.RiskApplicationService) *GRPCHandler
 // AssessRisk 评估交易风险
 // 处理 gRPC AssessRisk 请求
 func (h *GRPCHandler) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest) (*pb.AssessRiskResponse, error) {
+	start := time.Now()
+	slog.Info("gRPC AssessRisk received", "user_id", req.UserId, "symbol", req.Symbol, "side", req.Side)
+
 	// 调用应用服务评估风险
 	dto, err := h.appService.AssessRisk(ctx, &application.AssessRiskRequest{
 		UserID:   req.UserId,
@@ -37,9 +42,11 @@ func (h *GRPCHandler) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest)
 		Price:    req.Price,
 	})
 	if err != nil {
+		slog.Error("gRPC AssessRisk failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to assess risk: %v", err)
 	}
 
+	slog.Info("gRPC AssessRisk successful", "user_id", req.UserId, "risk_level", dto.RiskLevel, "is_allowed", dto.IsAllowed, "duration", time.Since(start))
 	return &pb.AssessRiskResponse{
 		RiskLevel:         dto.RiskLevel,
 		RiskScore:         dto.RiskScore,
@@ -52,11 +59,16 @@ func (h *GRPCHandler) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest)
 // GetRiskMetrics 获取风险指标
 // 处理 gRPC GetRiskMetrics 请求
 func (h *GRPCHandler) GetRiskMetrics(ctx context.Context, req *pb.GetRiskMetricsRequest) (*pb.GetRiskMetricsResponse, error) {
+	start := time.Now()
+	slog.Debug("gRPC GetRiskMetrics received", "user_id", req.UserId)
+
 	metrics, err := h.appService.GetRiskMetrics(ctx, req.UserId)
 	if err != nil {
+		slog.Error("gRPC GetRiskMetrics failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get risk metrics: %v", err)
 	}
 
+	slog.Debug("gRPC GetRiskMetrics successful", "user_id", req.UserId, "duration", time.Since(start))
 	return &pb.GetRiskMetricsResponse{
 		Metrics: &pb.RiskMetrics{
 			Var_95:      metrics.VaR95.String(),
@@ -71,13 +83,18 @@ func (h *GRPCHandler) GetRiskMetrics(ctx context.Context, req *pb.GetRiskMetrics
 // CheckRiskLimit 检查风险限额
 // 处理 gRPC CheckRiskLimit 请求
 func (h *GRPCHandler) CheckRiskLimit(ctx context.Context, req *pb.CheckRiskLimitRequest) (*pb.CheckRiskLimitResponse, error) {
+	start := time.Now()
+	slog.Debug("gRPC CheckRiskLimit received", "user_id", req.UserId, "limit_type", req.LimitType)
+
 	limit, err := h.appService.CheckRiskLimit(ctx, req.UserId, req.LimitType)
 	if err != nil {
+		slog.Error("gRPC CheckRiskLimit failed", "user_id", req.UserId, "limit_type", req.LimitType, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to check risk limit: %v", err)
 	}
 
 	remaining := limit.LimitValue.Sub(limit.CurrentValue)
 
+	slog.Debug("gRPC CheckRiskLimit successful", "user_id", req.UserId, "limit_type", req.LimitType, "is_exceeded", limit.IsExceeded, "duration", time.Since(start))
 	return &pb.CheckRiskLimitResponse{
 		LimitType:    limit.LimitType,
 		LimitValue:   limit.LimitValue.String(),
@@ -90,8 +107,12 @@ func (h *GRPCHandler) CheckRiskLimit(ctx context.Context, req *pb.CheckRiskLimit
 // GetRiskAlerts 获取风险告警
 // 处理 gRPC GetRiskAlerts 请求
 func (h *GRPCHandler) GetRiskAlerts(ctx context.Context, req *pb.GetRiskAlertsRequest) (*pb.GetRiskAlertsResponse, error) {
+	start := time.Now()
+	slog.Debug("gRPC GetRiskAlerts received", "user_id", req.UserId)
+
 	alerts, err := h.appService.GetRiskAlerts(ctx, req.UserId, 100) // Default limit
 	if err != nil {
+		slog.Error("gRPC GetRiskAlerts failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get risk alerts: %v", err)
 	}
 
@@ -106,6 +127,7 @@ func (h *GRPCHandler) GetRiskAlerts(ctx context.Context, req *pb.GetRiskAlertsRe
 		})
 	}
 
+	slog.Debug("gRPC GetRiskAlerts successful", "user_id", req.UserId, "alerts_count", len(pbAlerts), "duration", time.Since(start))
 	return &pb.GetRiskAlertsResponse{
 		Alerts: pbAlerts,
 	}, nil

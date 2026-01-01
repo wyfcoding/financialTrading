@@ -3,6 +3,8 @@ package grpc
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	pb "github.com/wyfcoding/financialtrading/goapi/notification/v1"
 	"github.com/wyfcoding/financialtrading/internal/notification/application"
@@ -20,18 +22,25 @@ type GRPCHandler struct {
 // NewGRPCHandler 创建 gRPC 处理器实例
 // app: 注入的通知应用服务
 func NewGRPCHandler(app *application.NotificationService) *GRPCHandler {
-	return &GRPCHandler{app: app}
+	return &GRPCHandler{
+		app: app,
+	}
 }
 
 // SendNotification 发送通知
 // 处理 gRPC SendNotification 请求
 func (h *GRPCHandler) SendNotification(ctx context.Context, req *pb.SendNotificationRequest) (*pb.SendNotificationResponse, error) {
+	start := time.Now()
+	slog.Info("gRPC SendNotification received", "user_id", req.UserId, "type", req.Type, "subject", req.Subject)
+
 	// 调用应用服务发送通知
 	id, err := h.app.SendNotification(ctx, req.UserId, req.Type, req.Subject, req.Content, req.Target)
 	if err != nil {
+		slog.Error("gRPC SendNotification failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, err
 	}
 
+	slog.Info("gRPC SendNotification successful", "user_id", req.UserId, "notification_id", id, "duration", time.Since(start))
 	return &pb.SendNotificationResponse{
 		NotificationId: id,
 		Status:         "SENT", // 简化处理
@@ -40,6 +49,9 @@ func (h *GRPCHandler) SendNotification(ctx context.Context, req *pb.SendNotifica
 
 // GetNotificationHistory 获取通知历史
 func (h *GRPCHandler) GetNotificationHistory(ctx context.Context, req *pb.GetNotificationHistoryRequest) (*pb.GetNotificationHistoryResponse, error) {
+	start := time.Now()
+	slog.Debug("gRPC GetNotificationHistory received", "user_id", req.UserId)
+
 	limit := int(req.PageSize)
 	if limit <= 0 {
 		limit = 10
@@ -48,6 +60,7 @@ func (h *GRPCHandler) GetNotificationHistory(ctx context.Context, req *pb.GetNot
 
 	notifications, _, err := h.app.GetNotificationHistory(ctx, req.UserId, limit, offset)
 	if err != nil {
+		slog.Error("gRPC GetNotificationHistory failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, err
 	}
 
@@ -56,9 +69,9 @@ func (h *GRPCHandler) GetNotificationHistory(ctx context.Context, req *pb.GetNot
 		protoNotifications[i] = toProtoNotification(n)
 	}
 
+	slog.Debug("gRPC GetNotificationHistory successful", "user_id", req.UserId, "count", len(protoNotifications), "duration", time.Since(start))
 	return &pb.GetNotificationHistoryResponse{
 		Notifications: protoNotifications,
-		// Total: total, // If Total field is not in proto yet, ignore or add if possible. Assuming it's not and fixing the lint.
 	}, nil
 }
 

@@ -3,6 +3,7 @@ package grpc
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/shopspring/decimal"
 	pb "github.com/wyfcoding/financialtrading/goapi/pricing/v1"
@@ -35,12 +36,13 @@ func (h *GRPCHandler) GetOptionPrice(ctx context.Context, req *pb.GetOptionPrice
 
 	price, err := h.app.GetOptionPrice(ctx, contract, decimal.NewFromFloat(req.UnderlyingPrice), req.Volatility, req.RiskFreeRate)
 	if err != nil {
+		slog.Error("Failed to get option price", "symbol", req.Contract.Symbol, "error", err)
 		return nil, err
 	}
 
 	p_val, ok := price.Float64()
 	if !ok {
-		// 记录日志，但不影响返回
+		slog.Warn("Failed to convert price to float64", "symbol", req.Contract.Symbol, "price", price.String())
 	}
 	return &pb.GetOptionPriceResponse{
 		Price:           p_val,
@@ -59,6 +61,7 @@ func (h *GRPCHandler) GetGreeks(ctx context.Context, req *pb.GetGreeksRequest) (
 
 	greeks, err := h.app.GetGreeks(ctx, contract, decimal.NewFromFloat(req.UnderlyingPrice), req.Volatility, req.RiskFreeRate)
 	if err != nil {
+		slog.Error("Failed to get greeks", "symbol", req.Contract.Symbol, "error", err)
 		return nil, err
 	}
 
@@ -68,7 +71,7 @@ func (h *GRPCHandler) GetGreeks(ctx context.Context, req *pb.GetGreeksRequest) (
 	v_val, ok4 := greeks.Vega.Float64()
 	r_val, ok5 := greeks.Rho.Float64()
 	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 {
-		// 记录日志
+		slog.Warn("Failed to convert some greeks to float64", "symbol", req.Contract.Symbol, "ok1", ok1, "ok2", ok2, "ok3", ok3, "ok4", ok4, "ok5", ok5)
 	}
 
 	return &pb.GetGreeksResponse{
