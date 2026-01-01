@@ -233,11 +233,21 @@ func (aas *AccountApplicationService) FreezeBalance(ctx context.Context, account
 	logging.Info(ctx, "Freezing balance", "account_id", accountID, "amount", amount.String(), "reason", reason)
 
 	account, err := aas.accountRepo.Get(ctx, accountID)
-	if err != nil || account == nil {
-		return fmt.Errorf("account not found or error: %v", err)
+	if err != nil {
+		logging.Error(ctx, "Failed to get account for freeze", "account_id", accountID, "error", err)
+		return fmt.Errorf("failed to get account: %w", err)
+	}
+	if account == nil {
+		logging.Warn(ctx, "Account not found for freeze", "account_id", accountID)
+		return fmt.Errorf("account not found")
 	}
 
 	if account.AvailableBalance.LessThan(amount) {
+		logging.Warn(ctx, "Insufficient available balance for freeze",
+			"account_id", accountID,
+			"available", account.AvailableBalance.String(),
+			"required", amount.String(),
+		)
 		return fmt.Errorf("insufficient available balance")
 	}
 
@@ -245,9 +255,14 @@ func (aas *AccountApplicationService) FreezeBalance(ctx context.Context, account
 	newFrozen := account.FrozenBalance.Add(amount)
 
 	if err := aas.accountRepo.UpdateBalance(ctx, accountID, account.Balance, newAvailable, newFrozen); err != nil {
+		logging.Error(ctx, "Failed to update balance for freeze",
+			"account_id", accountID,
+			"error", err,
+		)
 		return fmt.Errorf("failed to update frozen balance: %w", err)
 	}
 
+	logging.Info(ctx, "Balance frozen successfully", "account_id", accountID, "amount", amount.String())
 	return nil
 }
 
@@ -256,18 +271,34 @@ func (aas *AccountApplicationService) UnfreezeBalance(ctx context.Context, accou
 	logging.Info(ctx, "Unfreezing balance", "account_id", accountID, "amount", amount.String())
 
 	account, err := aas.accountRepo.Get(ctx, accountID)
-	if err != nil || account == nil {
+	if err != nil {
+		logging.Error(ctx, "Failed to get account for unfreeze", "account_id", accountID, "error", err)
+		return fmt.Errorf("failed to get account: %w", err)
+	}
+	if account == nil {
+		logging.Warn(ctx, "Account not found for unfreeze", "account_id", accountID)
 		return fmt.Errorf("account not found")
 	}
 
 	if account.FrozenBalance.LessThan(amount) {
+		logging.Warn(ctx, "Frozen balance insufficient to unfreeze",
+			"account_id", accountID,
+			"frozen", account.FrozenBalance.String(),
+			"required", amount.String(),
+		)
 		return fmt.Errorf("frozen balance insufficient to unfreeze")
 	}
 
 	newAvailable := account.AvailableBalance.Add(amount)
 	newFrozen := account.FrozenBalance.Sub(amount)
 
-	return aas.accountRepo.UpdateBalance(ctx, accountID, account.Balance, newAvailable, newFrozen)
+	if err := aas.accountRepo.UpdateBalance(ctx, accountID, account.Balance, newAvailable, newFrozen); err != nil {
+		logging.Error(ctx, "Failed to update balance for unfreeze", "account_id", accountID, "error", err)
+		return fmt.Errorf("failed to update balance: %w", err)
+	}
+
+	logging.Info(ctx, "Balance unfrozen successfully", "account_id", accountID, "amount", amount.String())
+	return nil
 }
 
 // DeductFrozenBalance 扣除已冻结的余额 (用于分布式事务确认)
@@ -275,11 +306,21 @@ func (aas *AccountApplicationService) DeductFrozenBalance(ctx context.Context, a
 	logging.Info(ctx, "Deducting frozen balance", "account_id", accountID, "amount", amount.String())
 
 	account, err := aas.accountRepo.Get(ctx, accountID)
-	if err != nil || account == nil {
+	if err != nil {
+		logging.Error(ctx, "Failed to get account for deduct", "account_id", accountID, "error", err)
+		return fmt.Errorf("failed to get account: %w", err)
+	}
+	if account == nil {
+		logging.Warn(ctx, "Account not found for deduct", "account_id", accountID)
 		return fmt.Errorf("account not found")
 	}
 
 	if account.FrozenBalance.LessThan(amount) {
+		logging.Warn(ctx, "Frozen balance insufficient to deduct",
+			"account_id", accountID,
+			"frozen", account.FrozenBalance.String(),
+			"required", amount.String(),
+		)
 		return fmt.Errorf("frozen balance insufficient to deduct")
 	}
 
@@ -287,6 +328,7 @@ func (aas *AccountApplicationService) DeductFrozenBalance(ctx context.Context, a
 	newFrozen := account.FrozenBalance.Sub(amount)
 
 	if err := aas.accountRepo.UpdateBalance(ctx, accountID, newBalance, account.AvailableBalance, newFrozen); err != nil {
+		logging.Error(ctx, "Failed to update balance for deduct", "account_id", accountID, "error", err)
 		return err
 	}
 
@@ -298,5 +340,14 @@ func (aas *AccountApplicationService) DeductFrozenBalance(ctx context.Context, a
 		Amount:        amount,
 		Status:        "COMPLETED",
 	}
-	return aas.transactionRepo.Save(ctx, transaction)
+	if err := aas.transactionRepo.Save(ctx, transaction); err != nil {
+		logging.Error(ctx, "Failed to save deduct transaction", "account_id", accountID, "error", err)
+	}
+
+	logging.Info(ctx, "Frozen balance deducted successfully",
+		"account_id", accountID,
+		"amount", amount.String(),
+		"transaction_id", transaction.TransactionID,
+	)
+	return nil
 }

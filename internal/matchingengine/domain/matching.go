@@ -5,6 +5,7 @@ import (
 	"container/list"
 	"context"
 	"fmt"
+	"log/slog"
 	"runtime"
 	"time"
 
@@ -60,9 +61,13 @@ type DisruptionEngine struct {
 	orderBook *OrderBook
 	ring      *algorithm.MpscRingBuffer[MatchTask]
 	stopChan  chan struct{}
+	logger    *slog.Logger
 }
 
-func NewDisruptionEngine(symbol string, capacity uint64) (*DisruptionEngine, error) {
+func NewDisruptionEngine(symbol string, capacity uint64, logger *slog.Logger) (*DisruptionEngine, error) {
+	if logger == nil {
+		logger = slog.Default().With("module", "disruption_engine", "symbol", symbol)
+	}
 	ring, err := algorithm.NewMpscRingBuffer[MatchTask](capacity)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ring buffer: %w", err)
@@ -72,6 +77,7 @@ func NewDisruptionEngine(symbol string, capacity uint64) (*DisruptionEngine, err
 		orderBook: NewOrderBook(symbol),
 		ring:      ring,
 		stopChan:  make(chan struct{}),
+		logger:    logger,
 	}
 	// 启动核心撮合 Worker (单线程)
 	go e.run()
@@ -79,6 +85,7 @@ func NewDisruptionEngine(symbol string, capacity uint64) (*DisruptionEngine, err
 }
 
 func (e *DisruptionEngine) run() {
+	e.logger.Info("Starting core matching worker", "symbol", e.symbol)
 	// 将 Worker 绑定到固定操作系统线程以获得极致性能
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -86,6 +93,7 @@ func (e *DisruptionEngine) run() {
 	for {
 		select {
 		case <-e.stopChan:
+			e.logger.Info("Stopping core matching worker", "symbol", e.symbol)
 			return
 		default:
 			task := e.ring.Poll()
@@ -110,6 +118,7 @@ func (e *DisruptionEngine) SubmitOrder(order *algorithm.Order) (*MatchingResult,
 	}
 
 	if !e.ring.Offer(task) {
+		e.logger.Warn("Failed to submit order: ring buffer full", "order_id", order.OrderID)
 		return nil, fmt.Errorf("engine busy, ring buffer full")
 	}
 
@@ -125,14 +134,18 @@ func (e *DisruptionEngine) applyOrder(order *algorithm.Order) *MatchingResult {
 		Status:            "PENDING",
 	}
 
+	e.logger.Debug("applying order", "order_id", order.OrderID, "side", order.Side, "price", order.Price.String(), "qty", order.Quantity.String())
+
 	if order.Side == "BUY" {
 		e.matchOrder(order, ob.Asks, result)
 		if result.RemainingQuantity.IsPositive() {
+			e.logger.Debug("order partially matched, adding remaining to book", "order_id", order.OrderID, "rem_qty", result.RemainingQuantity.String())
 			e.addToOrderBook(order, ob.Bids, -order.Price.InexactFloat64())
 		}
 	} else {
 		e.matchOrder(order, ob.Bids, result)
 		if result.RemainingQuantity.IsPositive() {
+			e.logger.Debug("order partially matched, adding remaining to book", "order_id", order.OrderID, "rem_qty", result.RemainingQuantity.String())
 			e.addToOrderBook(order, ob.Asks, order.Price.InexactFloat64())
 		}
 	}
@@ -143,6 +156,7 @@ func (e *DisruptionEngine) applyOrder(order *algorithm.Order) *MatchingResult {
 		} else {
 			result.Status = "PARTIALLY_MATCHED"
 		}
+		e.logger.Info("order execution finished", "order_id", order.OrderID, "status", result.Status, "trades", len(result.Trades))
 	}
 
 	return result

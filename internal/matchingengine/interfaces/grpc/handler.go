@@ -3,6 +3,8 @@ package grpc
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	pb "github.com/wyfcoding/financialtrading/goapi/matchingengine/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/application"
@@ -24,6 +26,9 @@ func NewGRPCHandler(appService *application.MatchingApplicationService) *GRPCHan
 }
 
 func (h *GRPCHandler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderRequest) (*pb.SubmitOrderResponse, error) {
+	start := time.Now()
+	slog.Info("gRPC SubmitOrder received", "order_id", req.OrderId, "symbol", req.Symbol, "side", req.Side, "price", req.Price, "quantity", req.Quantity)
+
 	result, err := h.appService.SubmitOrder(ctx, &application.SubmitOrderRequest{
 		OrderID:  req.OrderId,
 		Symbol:   req.Symbol,
@@ -32,6 +37,7 @@ func (h *GRPCHandler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderReques
 		Quantity: req.Quantity,
 	})
 	if err != nil {
+		slog.Error("gRPC SubmitOrder failed", "order_id", req.OrderId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to submit order: %v", err)
 	}
 
@@ -40,6 +46,7 @@ func (h *GRPCHandler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderReques
 		pbTrades = append(pbTrades, h.toProtoTrade(trade))
 	}
 
+	slog.Info("gRPC SubmitOrder successful", "order_id", req.OrderId, "trades_count", len(pbTrades), "duration", time.Since(start))
 	return &pb.SubmitOrderResponse{
 		OrderId:           result.OrderID,
 		MatchedTrades:     pbTrades,
@@ -49,9 +56,11 @@ func (h *GRPCHandler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderReques
 }
 
 func (h *GRPCHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequest) (*pb.GetOrderBookResponse, error) {
+	start := time.Now()
 	// 修正：application.GetOrderBook 不再需要 symbol 参数
 	snapshot, err := h.appService.GetOrderBook(ctx, int(req.Depth))
 	if err != nil {
+		slog.Error("gRPC GetOrderBook failed", "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get order book: %v", err)
 	}
 
@@ -71,6 +80,7 @@ func (h *GRPCHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequ
 		})
 	}
 
+	slog.Debug("gRPC GetOrderBook successful", "symbol", snapshot.Symbol, "duration", time.Since(start))
 	return &pb.GetOrderBookResponse{
 		Symbol:    snapshot.Symbol,
 		Bids:      pbBids,
@@ -80,8 +90,10 @@ func (h *GRPCHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequ
 }
 
 func (h *GRPCHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (*pb.GetTradesResponse, error) {
+	start := time.Now()
 	trades, err := h.appService.GetTrades(ctx, req.Symbol, int(req.Limit))
 	if err != nil {
+		slog.Error("gRPC GetTrades failed", "symbol", req.Symbol, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get trades: %v", err)
 	}
 
@@ -90,6 +102,7 @@ func (h *GRPCHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (
 		pbTrades = append(pbTrades, h.toProtoTrade(trade))
 	}
 
+	slog.Debug("gRPC GetTrades successful", "symbol", req.Symbol, "count", len(pbTrades), "duration", time.Since(start))
 	return &pb.GetTradesResponse{
 		Symbol: req.Symbol,
 		Trades: pbTrades,

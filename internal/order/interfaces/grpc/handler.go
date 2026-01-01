@@ -3,6 +3,8 @@ package grpc
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	pb "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/application"
@@ -30,6 +32,9 @@ func NewGRPCHandler(appService *application.OrderApplicationService) *GRPCHandle
 // CreateOrder 创建订单
 // 处理 gRPC CreateOrder 请求
 func (h *GRPCHandler) CreateOrder(ctx context.Context, req *pb.CreateOrderRequest) (*pb.CreateOrderResponse, error) {
+	start := time.Now()
+	slog.Info("gRPC CreateOrder received", "user_id", req.UserId, "symbol", req.Symbol, "side", req.Side, "price", req.Price, "quantity", req.Quantity)
+
 	// 调用应用服务创建订单
 	dto, err := h.appService.CreateOrder(ctx, &application.CreateOrderRequest{
 		UserID:        req.UserId,
@@ -42,9 +47,11 @@ func (h *GRPCHandler) CreateOrder(ctx context.Context, req *pb.CreateOrderReques
 		ClientOrderID: req.ClientOrderId,
 	})
 	if err != nil {
+		slog.Error("gRPC CreateOrder failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to create order: %v", err)
 	}
 
+	slog.Info("gRPC CreateOrder successful", "order_id", dto.OrderID, "user_id", req.UserId, "duration", time.Since(start))
 	// 返回创建成功的订单
 	return &pb.CreateOrderResponse{
 		Order: h.toProtoOrder(dto),
@@ -54,12 +61,17 @@ func (h *GRPCHandler) CreateOrder(ctx context.Context, req *pb.CreateOrderReques
 // CancelOrder 取消订单
 // 处理 gRPC CancelOrder 请求
 func (h *GRPCHandler) CancelOrder(ctx context.Context, req *pb.CancelOrderRequest) (*pb.CancelOrderResponse, error) {
+	start := time.Now()
+	slog.Info("gRPC CancelOrder received", "order_id", req.OrderId, "user_id", req.UserId)
+
 	// 调用应用服务取消订单
 	dto, err := h.appService.CancelOrder(ctx, req.OrderId, req.UserId)
 	if err != nil {
+		slog.Error("gRPC CancelOrder failed", "order_id", req.OrderId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to cancel order: %v", err)
 	}
 
+	slog.Info("gRPC CancelOrder successful", "order_id", req.OrderId, "duration", time.Since(start))
 	return &pb.CancelOrderResponse{
 		Order: h.toProtoOrder(dto),
 	}, nil
