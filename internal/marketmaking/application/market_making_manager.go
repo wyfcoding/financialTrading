@@ -6,6 +6,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // MarketMakingManager 处理所有做市相关的写入操作（Commands）。
@@ -72,8 +73,12 @@ func (m *MarketMakingManager) runMarketMaking(symbol string) {
 	askPrice := price.Mul(decimal.NewFromInt(1).Add(halfSpread))
 	quantity := strategy.MinOrderSize
 
-	m.orderClient.PlaceOrder(ctx, symbol, "BUY", bidPrice, quantity)
-	m.orderClient.PlaceOrder(ctx, symbol, "SELL", askPrice, quantity)
+	if _, err := m.orderClient.PlaceOrder(ctx, symbol, "BUY", bidPrice, quantity); err != nil {
+		logging.Error(ctx, "MarketMakingManager: failed to place buy order", "symbol", symbol, "error", err)
+	}
+	if _, err := m.orderClient.PlaceOrder(ctx, symbol, "SELL", askPrice, quantity); err != nil {
+		logging.Error(ctx, "MarketMakingManager: failed to place sell order", "symbol", symbol, "error", err)
+	}
 
 	perf := &domain.MarketMakingPerformance{
 		Symbol:      symbol,
@@ -84,5 +89,7 @@ func (m *MarketMakingManager) runMarketMaking(symbol string) {
 		StartTime:   time.Now(),
 		EndTime:     time.Now(),
 	}
-	m.performanceRepo.SavePerformance(ctx, perf)
+	if err := m.performanceRepo.SavePerformance(ctx, perf); err != nil {
+		logging.Error(ctx, "MarketMakingManager: failed to save performance", "symbol", symbol, "error", err)
+	}
 }

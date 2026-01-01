@@ -101,7 +101,9 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 			Severity:  string(riskLevel),
 			Message:   fmt.Sprintf("High risk detected for %s", req.Symbol),
 		}
-		m.alertRepo.Save(ctx, alert)
+		if err := m.alertRepo.Save(ctx, alert); err != nil {
+			logging.Error(ctx, "RiskManager: failed to save alert", "error", err)
+		}
 	}
 
 	return &RiskAssessmentDTO{

@@ -9,6 +9,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/domain"
 	"github.com/wyfcoding/pkg/idgen"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // MarketSimulationManager 处理所有市场模拟相关的写入操作（Commands）。
@@ -74,6 +75,8 @@ func (m *MarketSimulationManager) runSimulation(symbol string) {
 			basePrice = decimal.NewFromFloat(0.1)
 		}
 
-		m.publisher.Publish(context.Background(), symbol, basePrice)
+		if err := m.publisher.Publish(context.Background(), symbol, basePrice); err != nil {
+			logging.Error(context.Background(), "SimulationManager: failed to publish price", "symbol", symbol, "error", err)
+		}
 	}
 }

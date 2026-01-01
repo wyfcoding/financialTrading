@@ -61,32 +61,34 @@ func (m *AlgoManager) runTWAP(algo *domain.AlgoOrder) {
 	logging.Info(ctx, "TWAP started", "algo_id", algo.AlgoID, "slices", slices, "slice_qty", sliceQty.String())
 
 	for i := 0; i < slices; i++ {
-		select {
-		case <-ticker.C:
-			// 下达子订单
-			resp, err := m.orderCli.CreateOrder(ctx, &orderv1.CreateOrderRequest{
-				UserId:    algo.UserID,
-				Symbol:    algo.Symbol,
-				Side:      string(algo.Side),
-				OrderType: "LIMIT", // 修正字段名为 OrderType
-				Quantity:  sliceQty.String(),
-				Price:     "0",
-			})
-			if err != nil {
-				logging.Error(ctx, "TWAP: failed to place child order", "algo_id", algo.AlgoID, "error", err)
-				continue
-			}
-
-			// 更新执行进度
-			algo.ExecutedQuantity = algo.ExecutedQuantity.Add(sliceQty)
-			m.repo.SaveAlgoOrder(ctx, algo)
-
-			logging.Info(ctx, "TWAP slice executed", "algo_id", algo.AlgoID, "order_id", resp.Order.OrderId, "executed_qty", algo.ExecutedQuantity.String())
+		<-ticker.C
+		// 下达子订单
+		resp, err := m.orderCli.CreateOrder(ctx, &orderv1.CreateOrderRequest{
+			UserId:    algo.UserID,
+			Symbol:    algo.Symbol,
+			Side:      string(algo.Side),
+			OrderType: "LIMIT", // 修正字段名为 OrderType
+			Quantity:  sliceQty.String(),
+			Price:     "0",
+		})
+		if err != nil {
+			logging.Error(ctx, "TWAP: failed to place child order", "algo_id", algo.AlgoID, "error", err)
+			continue
 		}
+
+		// 更新执行进度
+		algo.ExecutedQuantity = algo.ExecutedQuantity.Add(sliceQty)
+		if err := m.repo.SaveAlgoOrder(ctx, algo); err != nil {
+			logging.Error(ctx, "AlgoManager: failed to save algo order", "algo_id", algo.AlgoID, "error", err)
+		}
+
+		logging.Info(ctx, "TWAP slice executed", "algo_id", algo.AlgoID, "order_id", resp.Order.OrderId, "executed_qty", algo.ExecutedQuantity.String())
 	}
 
 	algo.Status = domain.ExecutionStatusCompleted
-	m.repo.SaveAlgoOrder(ctx, algo)
+	if err := m.repo.SaveAlgoOrder(ctx, algo); err != nil {
+		logging.Error(ctx, "AlgoManager: failed to save algo order", "algo_id", algo.AlgoID, "error", err)
+	}
 	logging.Info(ctx, "TWAP completed", "algo_id", algo.AlgoID)
 }
 
@@ -107,7 +109,9 @@ func (m *AlgoManager) runVWAP(algo *domain.AlgoOrder) {
 		case <-ticker.C:
 			if algo.ExecutedQuantity.GreaterThanOrEqual(algo.TotalQuantity) {
 				algo.Status = domain.ExecutionStatusCompleted
-				m.repo.SaveAlgoOrder(ctx, algo)
+				if err := m.repo.SaveAlgoOrder(ctx, algo); err != nil {
+					logging.Error(ctx, "AlgoManager: failed to save algo order", "algo_id", algo.AlgoID, "error", err)
+				}
 				return
 			}
 
@@ -133,9 +137,11 @@ func (m *AlgoManager) runVWAP(algo *domain.AlgoOrder) {
 
 			if err == nil {
 				algo.ExecutedQuantity = algo.ExecutedQuantity.Add(sliceQty)
-				m.repo.SaveAlgoOrder(ctx, algo)
+				if err := m.repo.SaveAlgoOrder(ctx, algo); err != nil {
+					logging.Error(ctx, "AlgoManager: failed to save algo order", "algo_id", algo.AlgoID, "error", err)
+				}
 			}
-		case <-time.After(algo.EndTime.Sub(time.Now())):
+		case <-time.After(time.Until(algo.EndTime)):
 			m.failAlgo(ctx, algo, "time window expired")
 			return
 		}
@@ -144,6 +150,8 @@ func (m *AlgoManager) runVWAP(algo *domain.AlgoOrder) {
 
 func (m *AlgoManager) failAlgo(ctx context.Context, algo *domain.AlgoOrder, reason string) {
 	algo.Status = domain.ExecutionStatusFailed
-	m.repo.SaveAlgoOrder(ctx, algo)
+	if err := m.repo.SaveAlgoOrder(ctx, algo); err != nil {
+		logging.Error(ctx, "AlgoManager: failed to save algo order", "algo_id", algo.AlgoID, "error", err)
+	}
 	logging.Error(ctx, "Algorithm failed", "algo_id", algo.AlgoID, "reason", reason)
 }

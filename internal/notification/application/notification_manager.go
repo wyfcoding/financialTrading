@@ -7,6 +7,7 @@ import (
 
 	"github.com/wyfcoding/financialtrading/internal/notification/domain"
 	"github.com/wyfcoding/pkg/idgen"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // NotificationManager 处理所有通知相关的写入操作（Commands）。
@@ -59,7 +60,9 @@ func (m *NotificationManager) SendNotification(ctx context.Context, userID strin
 		now := time.Now()
 		notification.SentAt = &now
 	}
-	m.repo.Save(ctx, notification)
+	if err := m.repo.Save(ctx, notification); err != nil {
+		logging.Error(ctx, "NotificationManager: failed to save notification", "error", err)
+	}
 
 	return notification.NotificationID, nil
 }

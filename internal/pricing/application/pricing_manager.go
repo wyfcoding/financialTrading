@@ -6,6 +6,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
+	"github.com/wyfcoding/pkg/logging"
 )
 
 // PricingManager 处理所有定价相关的写入操作（Commands）。
@@ -47,7 +48,9 @@ func (m *PricingManager) GetOptionPrice(ctx context.Context, contract domain.Opt
 		Rho:             result.Rho,
 		CalculatedAt:    time.Now().UnixMilli(),
 	}
-	m.pricingRepo.Save(ctx, repoResult)
+	if err := m.pricingRepo.Save(ctx, repoResult); err != nil {
+		logging.Error(ctx, "PricingManager: failed to save price result", "error", err)
+	}
 
 	return result.Price, nil
 }
