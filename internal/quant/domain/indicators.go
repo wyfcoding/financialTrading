@@ -83,21 +83,9 @@ func (s *IndicatorService) CalculateMACD(prices []decimal.Decimal, fastPeriod, s
 		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("not enough data points for MACD calculation")
 	}
 
-	// 注意：这里简化了 EMA 计算，实际 MACD 需要基于 EMA 序列计算信号线 (Signal Line)
-	// 为了准确计算，我们需要计算出 EMA 序列，而不仅仅是最后一个点的 EMA
-
-	// 重新实现：计算 EMA 序列
+	// 计算完整的 EMA 序列以保证精度
 	fastEMAs := CalculateEMASeries(prices, fastPeriod)
 	slowEMAs := CalculateEMASeries(prices, slowPeriod)
-
-	// MACD 线 = 快线 EMA - 慢线 EMA
-	// 我们需要 MACD 线的序列来计算信号线
-	// 序列长度取决于较短的 slowEMAs
-	// slowEMAs 的起始点比 fastEMAs 晚 (slowPeriod - fastPeriod)
-
-	// 对齐序列
-	// fastEMAs 长度: len(prices)
-	// slowEMAs 长度: len(prices) (前 slowPeriod-1 个为 0 或无效)
 
 	macdLineSeries := make([]decimal.Decimal, len(prices))
 	for i := range prices {
@@ -107,24 +95,20 @@ func (s *IndicatorService) CalculateMACD(prices []decimal.Decimal, fastPeriod, s
 		macdLineSeries[i] = fastEMAs[i].Sub(slowEMAs[i])
 	}
 
-	// 信号线 = EMA(MACD 线, 信号线周期)
-	// 注意：MACD 线前 slowPeriod-1 个无效，计算信号线时要跳过
+	// 信号线 = EMA(MACD 线序列, 信号线周期)
 	validMACDSeries := macdLineSeries[slowPeriod-1:]
 	signalLineSeries := CalculateEMASeries(validMACDSeries, signalPeriod)
 
-	// 取最后一个值
+	// 取最新的计算结果
 	lastIndex := len(prices) - 1
 	macdLine := macdLineSeries[lastIndex]
-	// signalLineSeries 的长度是 len(prices) - (slowPeriod - 1)
-	// 对应的最后一个值是 signalLineSeries[len(signalLineSeries)-1]
 	signalLine := signalLineSeries[len(signalLineSeries)-1]
-
 	histogram := macdLine.Sub(signalLine)
 
 	return macdLine, signalLine, histogram, nil
 }
 
-// CalculateEMA 计算指数移动平均 (Exponential Moving Average) - 仅返回最后一个值
+// CalculateEMA 计算指数移动平均 (Exponential Moving Average)
 func CalculateEMA(prices []decimal.Decimal, period int) decimal.Decimal {
 	series := CalculateEMASeries(prices, period)
 	if len(series) == 0 {
@@ -133,22 +117,23 @@ func CalculateEMA(prices []decimal.Decimal, period int) decimal.Decimal {
 	return series[len(series)-1]
 }
 
-// CalculateEMASeries 计算 EMA 序列
+// CalculateEMASeries 计算完整的 EMA 序列
 func CalculateEMASeries(prices []decimal.Decimal, period int) []decimal.Decimal {
-	if len(prices) == 0 {
+	if len(prices) == 0 || period <= 0 {
 		return nil
 	}
 
 	emaSeries := make([]decimal.Decimal, len(prices))
 	k := decimal.NewFromFloat(2.0 / float64(period+1))
 
-	// 初始 EMA 通常用 SMA 代替，或者直接用第一个价格
-	// 这里简单处理：第一个价格作为初始 EMA
+	// 初始 EMA: 使用第一个价格点
 	emaSeries[0] = prices[0]
 
 	for i := 1; i < len(prices); i++ {
-		// EMA = Price(t) * k + EMA(y) * (1 - k)
-		emaSeries[i] = prices[i].Mul(k).Add(emaSeries[i-1].Mul(decimal.NewFromInt(1).Sub(k)))
+		// EMA 计算公式: EMA(t) = Price(t) * k + EMA(t-1) * (1 - k)
+		prevEMA := emaSeries[i-1]
+		currentPrice := prices[i]
+		emaSeries[i] = currentPrice.Mul(k).Add(prevEMA.Mul(decimal.NewFromInt(1).Sub(k)))
 	}
 
 	return emaSeries
