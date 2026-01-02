@@ -175,7 +175,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	}
 
 	// 5.3 Application (Service)
-	marketMakingService := application.NewMarketMakingService(strategyRepo, performanceRepo, orderClient, marketDataClient)
+	marketMakingService := application.NewMarketMakingService(strategyRepo, performanceRepo, orderClient, marketDataClient, logger.Logger)
 
 	// 5.4 Interface (HTTP Handlers)
 	handler := marketmakinghttp.NewMarketMakingHandler(marketMakingService)

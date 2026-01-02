@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
@@ -19,9 +20,10 @@ func NewMarketMakingService(
 	performanceRepo domain.PerformanceRepository,
 	orderClient domain.OrderClient,
 	marketDataClient domain.MarketDataClient,
+	logger *slog.Logger,
 ) *MarketMakingService {
 	return &MarketMakingService{
-		manager: NewMarketMakingManager(strategyRepo, performanceRepo, orderClient, marketDataClient),
+		manager: NewMarketMakingManager(strategyRepo, performanceRepo, orderClient, marketDataClient, logger),
 		query:   NewMarketMakingQuery(strategyRepo, performanceRepo),
 	}
 }

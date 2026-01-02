@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -16,9 +17,10 @@ type MarketMakingManager struct {
 	performanceRepo  domain.PerformanceRepository
 	orderClient      domain.OrderClient
 	marketDataClient domain.MarketDataClient
-	
+
 	activeTasks map[string]context.CancelFunc // 追踪活跃的做市任务
 	mu          sync.RWMutex
+	logger      *slog.Logger
 }
 
 // NewMarketMakingManager 构造函数。
@@ -27,6 +29,7 @@ func NewMarketMakingManager(
 	performanceRepo domain.PerformanceRepository,
 	orderClient domain.OrderClient,
 	marketDataClient domain.MarketDataClient,
+	logger *slog.Logger,
 ) *MarketMakingManager {
 	return &MarketMakingManager{
 		strategyRepo:     strategyRepo,
@@ -34,6 +37,7 @@ func NewMarketMakingManager(
 		orderClient:      orderClient,
 		marketDataClient: marketDataClient,
 		activeTasks:      make(map[string]context.CancelFunc),
+		logger:           logger,
 	}
 }
 
@@ -114,21 +118,40 @@ func (m *MarketMakingManager) executeQuote(ctx context.Context, symbol string) {
 	// 2. 获取当前策略配置
 	strategy, err := m.strategyRepo.GetStrategyBySymbol(ctx, symbol)
 	if err != nil || strategy == nil || strategy.Status != domain.StrategyStatusActive {
-		m.stopMarketMaking(symbol) // 如果策略失效，自动停止循环
+		m.stopMarketMaking(symbol)
 		return
 	}
 
-	// 3. 计算双向报价
+	// 3. 获取当前持仓 (真实风控)
+	pos, err := m.orderClient.GetPosition(ctx, symbol)
+	if err != nil {
+		m.logger.ErrorContext(ctx, "failed to fetch current position", "symbol", symbol, "error", err)
+		return
+	}
+
+	// 4. 计算双向报价
 	halfSpread := strategy.Spread.Div(decimal.NewFromInt(2))
 	bidPrice := price.Mul(decimal.NewFromInt(1).Sub(halfSpread))
 	askPrice := price.Mul(decimal.NewFromInt(1).Add(halfSpread))
 	quantity := strategy.MinOrderSize
 
-	// 4. 执行下单
-	_, err1 := m.orderClient.PlaceOrder(ctx, symbol, "BUY", bidPrice, quantity)
-	_, err2 := m.orderClient.PlaceOrder(ctx, symbol, "SELL", askPrice, quantity)
+	// 5. 执行带持仓限制的下单
+	var err1, err2 error
+	// 检查买入持仓限制 (假设正数为多头)
+	if pos.Add(quantity).LessThanOrEqual(strategy.MaxPosition) {
+		_, err1 = m.orderClient.PlaceOrder(ctx, symbol, "BUY", bidPrice, quantity)
+	} else {
+		m.logger.WarnContext(ctx, "skipping buy quote: max position reached", "symbol", symbol, "pos", pos.String())
+	}
 
-	// 5. 记录绩效
+	// 检查卖出持仓限制 (假设负数为空头，绝对值不超过 MaxPosition)
+	if pos.Sub(quantity).Abs().LessThanOrEqual(strategy.MaxPosition) {
+		_, err2 = m.orderClient.PlaceOrder(ctx, symbol, "SELL", askPrice, quantity)
+	} else {
+		m.logger.WarnContext(ctx, "skipping sell quote: max position reached", "symbol", symbol, "pos", pos.String())
+	}
+
+	// 6. 记录绩效
 	if err1 == nil && err2 == nil {
 		perf := &domain.MarketMakingPerformance{
 			Symbol:      symbol,

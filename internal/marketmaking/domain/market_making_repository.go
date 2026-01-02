@@ -25,6 +25,7 @@ type PerformanceRepository interface {
 // OrderClient 订单服务客户端接口
 type OrderClient interface {
 	PlaceOrder(ctx context.Context, symbol string, side string, price, quantity decimal.Decimal) (string, error)
+	GetPosition(ctx context.Context, symbol string) (decimal.Decimal, error)
 }
 
 // MarketDataClient 市场数据客户端接口
