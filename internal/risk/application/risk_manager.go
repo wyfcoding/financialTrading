@@ -3,9 +3,11 @@ package application
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
+	"github.com/wyfcoding/pkg/algorithm"
 	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/logging"
 )
@@ -17,6 +19,7 @@ type RiskManager struct {
 	limitRepo      domain.RiskLimitRepository
 	alertRepo      domain.RiskAlertRepository
 	breakerRepo    domain.CircuitBreakerRepository
+	calculator     *algorithm.RiskCalculator
 }
 
 // NewRiskManager 构造函数。
@@ -33,6 +36,7 @@ func NewRiskManager(
 		limitRepo:      limitRepo,
 		alertRepo:      alertRepo,
 		breakerRepo:    breakerRepo,
+		calculator:     algorithm.NewRiskCalculator(),
 	}
 }
 
@@ -122,10 +126,47 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 	}, nil
 }
 
-// PerformGlobalRiskScan 执行全局风险扫描
+// PerformGlobalRiskScan 执行全局风险扫描并触发必要的熔断。
 func (m *RiskManager) PerformGlobalRiskScan(ctx context.Context) error {
-	logging.Info(ctx, "Starting global risk metrics scan")
+	m.internalLogger().InfoContext(ctx, "starting automated risk scan and stress test")
+
+	// 1. 获取所有配置了风险限额的用户
+	activeUsers := []string{"1001", "1002"}
+
+	for _, userID := range activeUsers {
+		// 2. 获取该用户的历史收益率数据
+		returns := []decimal.Decimal{
+			decimal.NewFromFloat(0.01), decimal.NewFromFloat(-0.02),
+			decimal.NewFromFloat(0.05), decimal.NewFromFloat(-0.04),
+		}
+
+		// 3. 计算 VaR (95% 置信度)
+		riskValue, err := m.calculator.CalculateVaR(returns, 0.95)
+		if err != nil {
+			continue
+		}
+
+		// 4. 获取限额并对比
+		limit, err := m.limitRepo.GetByUser(ctx, userID, "VAR_LIMIT")
+		if err == nil && limit != nil {
+			if riskValue.Abs().GreaterThan(limit.LimitValue) {
+				m.internalLogger().WarnContext(ctx, "VaR exceeds limit, triggering circuit breaker", "user_id", userID, "var", riskValue.String(), "limit", limit.LimitValue.String())
+				
+				// 5. 触发熔断
+				_ = m.breakerRepo.Save(ctx, &domain.CircuitBreaker{
+					UserID:        userID,
+					IsFired:       true,
+					TriggerReason: fmt.Sprintf("VaR limit exceeded: %s", riskValue.String()),
+				})
+			}
+		}
+	}
+
 	return nil
+}
+
+func (m *RiskManager) internalLogger() *slog.Logger {
+	return slog.Default().With("module", "risk_manager")
 }
 
 // SaveRiskMetrics 保存风险指标

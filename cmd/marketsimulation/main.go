@@ -21,6 +21,7 @@ import (
 	configpkg "github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/databases"
 	"github.com/wyfcoding/pkg/grpcclient"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
 	"github.com/wyfcoding/pkg/idempotency"
 	"github.com/wyfcoding/pkg/limiter"
 	"github.com/wyfcoding/pkg/logging"
@@ -161,10 +162,13 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 
 	// 5.1 Infrastructure (Persistence & Publisher)
 	scenarioRepo := mysql.NewSimulationScenarioRepository(db.RawDB())
-	mockPublisher := publisher.NewMockMarketDataPublisher()
+	
+	// 初始化真实 Kafka 发布者
+	kafkaProducer := kafka.NewProducer(c.MessageQueue.Kafka, logger, m)
+	realPublisher := publisher.NewKafkaMarketDataPublisher(kafkaProducer, "market.quotes")
 
 	// 5.2 Application (Service)
-	simulationService := application.NewMarketSimulationService(scenarioRepo, mockPublisher)
+	simulationService := application.NewMarketSimulationService(scenarioRepo, realPublisher)
 
 	// 5.3 Interface (HTTP Handlers)
 	handler := simulationhttp.NewMarketSimulationHandler(simulationService)
@@ -172,6 +176,9 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	// 定义资源清理函数
 	cleanup := func() {
 		bootLog.Info("shutting down, releasing resources...")
+		if kafkaProducer != nil {
+			kafkaProducer.Close()
+		}
 		clientCleanup()
 		if redisCache != nil {
 			if err := redisCache.Close(); err != nil {
