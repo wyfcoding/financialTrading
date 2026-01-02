@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 
 	clearingv1 "github.com/wyfcoding/financialtrading/goapi/clearing/v1"
+	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	pb "github.com/wyfcoding/financialtrading/goapi/matchingengine/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/application"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/persistence/mysql"
@@ -53,6 +54,7 @@ type AppContext struct {
 // ServiceClients 下游微服务客户端集合
 type ServiceClients struct {
 	ClearingConn *grpc.ClientConn `service:"clearing"`
+	OrderConn    *grpc.ClientConn `service:"order"`
 
 	// 具体的客户端接口
 	Clearing clearingv1.ClearingServiceClient
@@ -184,6 +186,9 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	}
 	if clients.Clearing != nil {
 		matchingService.SetClearingClient(clients.Clearing)
+	}
+	if clients.OrderConn != nil {
+		matchingService.SetOrderClient(orderv1.NewOrderServiceClient(clients.OrderConn))
 	}
 
 	// 5.3 Interface (HTTP Handlers)

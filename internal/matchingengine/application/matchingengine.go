@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	clearingv1 "github.com/wyfcoding/financialtrading/goapi/clearing/v1"
+	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
 	"github.com/wyfcoding/pkg/algorithm"
 )
@@ -32,6 +33,10 @@ func NewMatchingEngineService(symbol string, tradeRepo domain.TradeRepository, o
 
 func (s *MatchingEngineService) SetClearingClient(cli clearingv1.ClearingServiceClient) {
 	s.manager.SetClearingClient(cli)
+}
+
+func (s *MatchingEngineService) SetOrderClient(cli orderv1.OrderServiceClient) {
+	s.manager.SetOrderClient(cli)
 }
 
 // --- Manager (Writes) ---

@@ -8,6 +8,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	clearingv1 "github.com/wyfcoding/financialtrading/goapi/clearing/v1"
+	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
 	"github.com/wyfcoding/pkg/algorithm"
 	"github.com/wyfcoding/pkg/logging"
@@ -19,6 +20,7 @@ type MatchingEngineManager struct {
 	tradeRepo     domain.TradeRepository
 	orderBookRepo domain.OrderBookRepository
 	clearingCli   clearingv1.ClearingServiceClient
+	orderCli      orderv1.OrderServiceClient
 	logger        *slog.Logger
 }
 
@@ -34,6 +36,10 @@ func NewMatchingEngineManager(symbol string, engine *domain.DisruptionEngine, tr
 
 func (m *MatchingEngineManager) SetClearingClient(cli clearingv1.ClearingServiceClient) {
 	m.clearingCli = cli
+}
+
+func (m *MatchingEngineManager) SetOrderClient(cli orderv1.OrderServiceClient) {
+	m.orderCli = cli
 }
 
 // SubmitOrder 提交订单进行撮合
@@ -102,7 +108,7 @@ func (m *MatchingEngineManager) processPostMatching(trades []*algorithm.Trade) {
 				m.logger.Error("failed to persist trade", "trade_id", t.TradeID, "error", err)
 			}
 
-			// 2. 报告到清算服务 (Internal Interaction)
+			// 2. 报告到清算服务
 			if m.clearingCli != nil {
 				_, err := m.clearingCli.SettleTrade(ctx, &clearingv1.SettleTradeRequest{
 					TradeId:    t.TradeID,
@@ -114,9 +120,34 @@ func (m *MatchingEngineManager) processPostMatching(trades []*algorithm.Trade) {
 				})
 				if err != nil {
 					m.logger.Error("failed to report trade to clearing", "trade_id", t.TradeID, "error", err)
-				} else {
-					m.logger.Info("trade reported to clearing successfully", "trade_id", t.TradeID)
 				}
+			}
+
+			// 3. 更新订单成交状态 (Cross-Project Interaction)
+			if m.orderCli != nil {
+				m.logger.Info("reporting fill to order service", "buy_order_id", t.BuyOrderID, "sell_order_id", t.SellOrderID, "qty", t.Quantity.String(), "price", t.Price.String())
+				
+				// 为买方更新
+				_, _ = m.orderCli.UpdateOrderStatus(ctx, &orderv1.UpdateOrderStatusRequest{
+					OrderId:          t.BuyOrderID,
+					UserId:           t.BuyUserID,
+					Status:           "PARTIALLY_FILLED",
+					FilledQuantity:   t.Quantity.String(),
+					LastFillPrice:    t.Price.String(),
+					LastFillQuantity: t.Quantity.String(),
+					Remark:           fmt.Sprintf("Buy filled via trade %s", t.TradeID),
+				})
+
+				// 为卖方更新
+				_, _ = m.orderCli.UpdateOrderStatus(ctx, &orderv1.UpdateOrderStatusRequest{
+					OrderId:          t.SellOrderID,
+					UserId:           t.SellUserID,
+					Status:           "PARTIALLY_FILLED",
+					FilledQuantity:   t.Quantity.String(),
+					LastFillPrice:    t.Price.String(),
+					LastFillQuantity: t.Quantity.String(),
+					Remark:           fmt.Sprintf("Sell filled via trade %s", t.TradeID),
+				})
 			}
 		}
 	}()

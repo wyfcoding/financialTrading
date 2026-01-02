@@ -18,6 +18,8 @@ service OrderService {
   rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse);
   // 实时更新订阅流。
   rpc SubscribeOrders(SubscribeOrdersRequest) returns (stream SubscribeOrdersResponse);
+  // 更新订单状态 (用于撮合反馈)。
+  rpc UpdateOrderStatus(UpdateOrderStatusRequest) returns (UpdateOrderStatusResponse);
 }
 
 // 委托单档案实体。
@@ -170,4 +172,19 @@ message SubscribeOrdersResponse {
   string filled_quantity = 5;
   // 时间。
   int64 timestamp = 6;
+}
+
+// 状态更新请求。
+message UpdateOrderStatusRequest {
+  string order_id = 1;
+  string user_id = 2;
+  string status = 3;
+  string filled_quantity = 4;
+  string last_fill_price = 5;
+  string last_fill_quantity = 6;
+  string remark = 7;
+}
+
+message UpdateOrderStatusResponse {
+  Order order = 1;
 }
