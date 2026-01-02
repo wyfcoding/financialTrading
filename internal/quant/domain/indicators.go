@@ -32,7 +32,7 @@ func (s *IndicatorService) CalculateRSI(prices []decimal.Decimal, period int) (d
 	gains := decimal.Zero
 	losses := decimal.Zero
 
-	// 计算初始平均涨跌幅
+	// 1. 计算初始平均涨跌幅 (简单平均作为起点)
 	for i := 1; i <= period; i++ {
 		change := prices[i].Sub(prices[i-1])
 		if change.GreaterThan(decimal.Zero) {
@@ -45,20 +45,20 @@ func (s *IndicatorService) CalculateRSI(prices []decimal.Decimal, period int) (d
 	avgGain := gains.Div(decimal.NewFromInt(int64(period)))
 	avgLoss := losses.Div(decimal.NewFromInt(int64(period)))
 
-	// 平滑计算后续数据
+	// 2. 使用 Wilder's Smoothing Method 进行后续计算
+	// Smoothed RS = ((prevAvgGain * (n-1)) + currentGain) / n
 	for i := period + 1; i < len(prices); i++ {
 		change := prices[i].Sub(prices[i-1])
-		currentGain := decimal.Zero
-		currentLoss := decimal.Zero
+		var currentGain, currentLoss decimal.Decimal
 
 		if change.GreaterThan(decimal.Zero) {
 			currentGain = change
+			currentLoss = decimal.Zero
 		} else {
+			currentGain = decimal.Zero
 			currentLoss = change.Abs()
 		}
 
-		// Wilder 平滑法
-		// 平均涨幅 = ((上一次平均涨幅 * (周期 - 1)) + 当前涨幅) / 周期
 		avgGain = avgGain.Mul(decimal.NewFromInt(int64(period - 1))).Add(currentGain).Div(decimal.NewFromInt(int64(period)))
 		avgLoss = avgLoss.Mul(decimal.NewFromInt(int64(period - 1))).Add(currentLoss).Div(decimal.NewFromInt(int64(period)))
 	}
