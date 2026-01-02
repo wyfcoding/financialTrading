@@ -126,6 +126,48 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 	}, nil
 }
 
+// CalculatePortfolioRisk 计算组合风险 (VaR, ES)
+func (m *RiskManager) CalculatePortfolioRisk(ctx context.Context, req *CalculatePortfolioRiskRequest) (*CalculatePortfolioRiskResponse, error) {
+	assets := make([]domain.PortfolioAsset, len(req.Assets))
+	for i, a := range req.Assets {
+		pos, _ := decimal.NewFromString(a.Position)
+		price, _ := decimal.NewFromString(a.CurrentPrice)
+		assets[i] = domain.PortfolioAsset{
+			Symbol:         a.Symbol,
+			Position:       pos,
+			CurrentPrice:   price,
+			Volatility:     a.Volatility,
+			ExpectedReturn: a.ExpectedReturn,
+		}
+	}
+
+	domainInput := domain.PortfolioRiskInput{
+		Assets:            assets,
+		CorrelationMatrix: req.CorrelationData,
+		TimeHorizon:       req.TimeHorizon,
+		Simulations:       req.Simulations,
+		ConfidenceLevel:   req.ConfidenceLevel,
+	}
+
+	result, err := domain.CalculatePortfolioRisk(domainInput)
+	if err != nil {
+		return nil, err
+	}
+
+	compVaR := make(map[string]string)
+	for k, v := range result.ComponentVaR {
+		compVaR[k] = v.String()
+	}
+
+	return &CalculatePortfolioRiskResponse{
+		TotalValue:      result.TotalValue.String(),
+		VaR:             result.VaR.String(),
+		ES:              result.ES.String(),
+		ComponentVaR:    compVaR,
+		Diversification: result.Diversification.String(),
+	}, nil
+}
+
 // PerformGlobalRiskScan 执行全局风险扫描并触发必要的熔断。
 func (m *RiskManager) PerformGlobalRiskScan(ctx context.Context) error {
 	m.internalLogger().InfoContext(ctx, "starting automated risk scan and stress test")

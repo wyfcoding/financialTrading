@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -78,53 +79,68 @@ func (m *AlgoManager) removeAlgo(algoID string) {
 func (m *AlgoManager) runTWAP(ctx context.Context, algo *domain.AlgoOrder) {
 	defer m.removeAlgo(algo.AlgoID)
 
-	duration := algo.EndTime.Sub(algo.StartTime)
-	if duration <= 0 {
-		m.failAlgo(ctx, algo, "invalid time window")
+	// 构造母单对象
+	parentOrder := &domain.ParentOrder{
+		OrderID:       algo.AlgoID,
+		Symbol:        algo.Symbol,
+		Side:          string(algo.Side),
+		TotalQuantity: algo.TotalQuantity,
+		ExecutedQty:   algo.ExecutedQuantity,
+		StrategyType:  domain.StrategyTWAP,
+		StartTime:     algo.StartTime,
+		EndTime:       algo.EndTime,
+	}
+
+	// 初始化 TWAP 策略
+	strategy := &domain.TWAPStrategy{
+		MinSliceSize: decimal.NewFromInt(100), // 示例：最小切片 100 单位
+		Randomize:    true,                    // 启用随机扰动
+	}
+
+	// 生成切片计划
+	slices, err := strategy.GenerateSlices(parentOrder, nil)
+	if err != nil {
+		m.failAlgo(ctx, algo, fmt.Sprintf("failed to generate slices: %v", err))
 		return
 	}
 
-	// 假设每 1 分钟执行一个切片
-	interval := time.Minute
-	slices := int(duration / interval)
-	if slices <= 0 {
-		slices = 1
-	}
+	logging.Info(ctx, "TWAP plan generated", "algo_id", algo.AlgoID, "slices_count", len(slices))
 
-	sliceQty := algo.TotalQuantity.Div(decimal.NewFromInt(int64(slices)))
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	logging.Info(ctx, "TWAP started", "algo_id", algo.AlgoID, "slices", slices, "slice_qty", sliceQty.String())
-
-	for i := 0; i < slices; i++ {
-		select {
-		case <-ticker.C:
-			// 下达子订单
-			resp, err := m.orderCli.CreateOrder(ctx, &orderv1.CreateOrderRequest{
-				UserId:    algo.UserID,
-				Symbol:    algo.Symbol,
-				Side:      string(algo.Side),
-				OrderType: "LIMIT",
-				Quantity:  sliceQty.String(),
-				Price:     "0",
-			})
-			if err != nil {
-				logging.Error(ctx, "TWAP: failed to place child order", "algo_id", algo.AlgoID, "error", err)
-				continue
+	for _, slice := range slices {
+		// 等待直到目标执行时间
+		waitDuration := time.Until(slice.TargetTime)
+		if waitDuration > 0 {
+			select {
+			case <-time.After(waitDuration):
+			case <-ctx.Done():
+				logging.Info(ctx, "TWAP cancelled", "algo_id", algo.AlgoID)
+				return
 			}
-
-			// 更新执行进度
-			algo.ExecutedQuantity = algo.ExecutedQuantity.Add(sliceQty)
-			if err := m.repo.SaveAlgoOrder(ctx, algo); err != nil {
-				logging.Error(ctx, "AlgoManager: failed to save algo order", "algo_id", algo.AlgoID, "error", err)
-			}
-
-			logging.Info(ctx, "TWAP slice executed", "algo_id", algo.AlgoID, "order_id", resp.Order.OrderId, "executed_qty", algo.ExecutedQuantity.String())
-		case <-ctx.Done():
-			logging.Info(ctx, "TWAP cancelled", "algo_id", algo.AlgoID)
-			return
 		}
+
+		// 下达子订单
+		resp, err := m.orderCli.CreateOrder(ctx, &orderv1.CreateOrderRequest{
+			UserId:    algo.UserID,
+			Symbol:    algo.Symbol,
+			Side:      string(algo.Side),
+			OrderType: "LIMIT",
+			Quantity:  slice.Quantity.String(),
+			Price:     "0", // 市价单或根据策略定价
+		})
+
+		if err != nil {
+			logging.Error(ctx, "TWAP: failed to place child order", "algo_id", algo.AlgoID, "slice_id", slice.SliceID, "error", err)
+			// 简单重试或跳过，实际生产需更复杂的错误处理
+			continue
+		}
+
+		// 更新执行进度
+		algo.ExecutedQuantity = algo.ExecutedQuantity.Add(slice.Quantity)
+		if err := m.repo.SaveAlgoOrder(ctx, algo); err != nil {
+			logging.Error(ctx, "AlgoManager: failed to save algo order", "algo_id", algo.AlgoID, "error", err)
+		}
+
+		logging.Info(ctx, "TWAP slice executed", "algo_id", algo.AlgoID, "order_id", resp.Order.OrderId, "slice_qty", slice.Quantity.String())
 	}
 
 	algo.Status = domain.ExecutionStatusCompleted
@@ -137,74 +153,91 @@ func (m *AlgoManager) runTWAP(ctx context.Context, algo *domain.AlgoOrder) {
 // runVWAP 执行成交量加权平均价格算法。
 func (m *AlgoManager) runVWAP(ctx context.Context, algo *domain.AlgoOrder) {
 	defer m.removeAlgo(algo.AlgoID)
-	// VWAP 需要根据市场实时成交量和预设的参与率（Participation Rate）动态下单。
-	logging.Info(ctx, "VWAP started", "algo_id", algo.AlgoID, "rate", algo.ParticipationRate.String())
 
-	// 定时检测市场成交量并按比例跟随
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
+	// 构造母单对象
+	parentOrder := &domain.ParentOrder{
+		OrderID:       algo.AlgoID,
+		Symbol:        algo.Symbol,
+		Side:          string(algo.Side),
+		TotalQuantity: algo.TotalQuantity,
+		ExecutedQty:   algo.ExecutedQuantity,
+		StrategyType:  domain.StrategyVWAP,
+		StartTime:     algo.StartTime,
+		EndTime:       algo.EndTime,
+	}
 
-	for {
-		select {
-		case <-ticker.C:
-			if algo.ExecutedQuantity.GreaterThanOrEqual(algo.TotalQuantity) {
-				algo.Status = domain.ExecutionStatusCompleted
-				if err := m.repo.SaveAlgoOrder(ctx, algo); err != nil {
-					logging.Error(ctx, "AlgoManager: failed to save algo order", "algo_id", algo.AlgoID, "error", err)
-				}
+	// 模拟历史成交量分布 (Volume Profile)
+	// 实际生产中应从 MarketData 服务获取该 Symbol 的历史平均分布
+	profile := []domain.VolumeProfileItem{
+		{TimeSlot: "Start", Ratio: 0.1},
+		{TimeSlot: "Early", Ratio: 0.3},
+		{TimeSlot: "Mid", Ratio: 0.2},
+		{TimeSlot: "Late", Ratio: 0.3},
+		{TimeSlot: "Close", Ratio: 0.1},
+	}
+
+	strategy := &domain.VWAPStrategy{
+		Profile: profile,
+	}
+
+	// 生成基于历史分布的切片计划
+	slices, err := strategy.GenerateSlices(parentOrder, nil)
+	if err != nil {
+		m.failAlgo(ctx, algo, fmt.Sprintf("failed to generate VWAP slices: %v", err))
+		return
+	}
+
+	logging.Info(ctx, "VWAP plan generated", "algo_id", algo.AlgoID, "slices_count", len(slices))
+
+	for _, slice := range slices {
+		// 等待直到目标执行时间
+		waitDuration := time.Until(slice.TargetTime)
+		if waitDuration > 0 {
+			select {
+			case <-time.After(waitDuration):
+			case <-ctx.Done():
+				logging.Info(ctx, "VWAP cancelled", "algo_id", algo.AlgoID)
 				return
 			}
-
-			// 获取最新市场成交量
-			quote, err := m.marketDataCli.GetLatestQuote(ctx, &marketdatav1.GetLatestQuoteRequest{
-				Symbol: algo.Symbol,
-			})
-			if err != nil {
-				logging.Error(ctx, "VWAP: failed to get latest quote", "symbol", algo.Symbol, "error", err)
-				continue
-			}
-
-			// 根据参与率计算本次应下单量：本次下单量 = 市场最近成交量 * 参与率
-			marketVol := decimal.NewFromFloat(quote.LastSize)
-			if marketVol.IsZero() {
-				continue
-			}
-
-			sliceQty := marketVol.Mul(algo.ParticipationRate)
-
-			// 确保不超过总剩余量
-			remaining := algo.TotalQuantity.Sub(algo.ExecutedQuantity)
-			if sliceQty.GreaterThan(remaining) {
-				sliceQty = remaining
-			}
-
-			if sliceQty.IsZero() {
-				continue
-			}
-
-			_, err = m.orderCli.CreateOrder(ctx, &orderv1.CreateOrderRequest{
-				UserId:    algo.UserID,
-				Symbol:    algo.Symbol,
-				Side:      string(algo.Side),
-				OrderType: "LIMIT",
-				Quantity:  sliceQty.String(),
-				Price:     "0",
-			})
-
-			if err == nil {
-				algo.ExecutedQuantity = algo.ExecutedQuantity.Add(sliceQty)
-				if err := m.repo.SaveAlgoOrder(ctx, algo); err != nil {
-					logging.Error(ctx, "AlgoManager: failed to save algo order", "algo_id", algo.AlgoID, "error", err)
-				}
-			}
-		case <-time.After(time.Until(algo.EndTime)):
-			m.failAlgo(ctx, algo, "time window expired")
-			return
-		case <-ctx.Done():
-			logging.Info(ctx, "VWAP cancelled", "algo_id", algo.AlgoID)
-			return
 		}
+
+		// 获取实时报价以确认市场深度 (可选，增强鲁棒性)
+		_, err := m.marketDataCli.GetLatestQuote(ctx, &marketdatav1.GetLatestQuoteRequest{
+			Symbol: algo.Symbol,
+		})
+		if err != nil {
+			logging.Warn(ctx, "VWAP: failed to get latest quote, proceeding blindly", "symbol", algo.Symbol, "error", err)
+		}
+
+		// 下达子订单
+		resp, err := m.orderCli.CreateOrder(ctx, &orderv1.CreateOrderRequest{
+			UserId:    algo.UserID,
+			Symbol:    algo.Symbol,
+			Side:      string(algo.Side),
+			OrderType: "LIMIT",
+			Quantity:  slice.Quantity.String(),
+			Price:     "0",
+		})
+
+		if err != nil {
+			logging.Error(ctx, "VWAP: failed to place child order", "algo_id", algo.AlgoID, "slice_id", slice.SliceID, "error", err)
+			continue
+		}
+
+		// 更新执行进度
+		algo.ExecutedQuantity = algo.ExecutedQuantity.Add(slice.Quantity)
+		if err := m.repo.SaveAlgoOrder(ctx, algo); err != nil {
+			logging.Error(ctx, "AlgoManager: failed to save algo order", "algo_id", algo.AlgoID, "error", err)
+		}
+
+		logging.Info(ctx, "VWAP slice executed", "algo_id", algo.AlgoID, "order_id", resp.Order.OrderId, "slice_qty", slice.Quantity.String())
 	}
+
+	algo.Status = domain.ExecutionStatusCompleted
+	if err := m.repo.SaveAlgoOrder(ctx, algo); err != nil {
+		logging.Error(ctx, "AlgoManager: failed to save algo order", "algo_id", algo.AlgoID, "error", err)
+	}
+	logging.Info(ctx, "VWAP completed", "algo_id", algo.AlgoID)
 }
 
 func (m *AlgoManager) failAlgo(ctx context.Context, algo *domain.AlgoOrder, reason string) {

@@ -31,6 +31,32 @@ type RiskAssessmentDTO struct {
 	CreatedAt         int64  // 创建时间戳
 }
 
+// CalculatePortfolioRiskRequest 组合风险计算请求 DTO
+type CalculatePortfolioRiskRequest struct {
+	Assets          []PortfolioAssetDTO `json:"assets"`
+	CorrelationData [][]float64         `json:"correlation_data"` // 相关系数矩阵
+	TimeHorizon     float64             `json:"time_horizon"`     // 时间跨度(年)
+	Simulations     int                 `json:"simulations"`      // 模拟次数
+	ConfidenceLevel float64             `json:"confidence_level"` // 置信度
+}
+
+type PortfolioAssetDTO struct {
+	Symbol         string  `json:"symbol"`
+	Position       string  `json:"position"`        // 持仓数量
+	CurrentPrice   string  `json:"current_price"`   // 当前价格
+	Volatility     float64 `json:"volatility"`      // 年化波动率
+	ExpectedReturn float64 `json:"expected_return"` // 预期年化收益率
+}
+
+// CalculatePortfolioRiskResponse 组合风险计算响应 DTO
+type CalculatePortfolioRiskResponse struct {
+	TotalValue      string            `json:"total_value"`
+	VaR             string            `json:"var"`
+	ES              string            `json:"es"`
+	ComponentVaR    map[string]string `json:"component_var"`
+	Diversification string            `json:"diversification"`
+}
+
 // RiskService 风险门面服务，整合 Manager 和 Query。
 type RiskService struct {
 	manager *RiskManager
@@ -55,6 +81,10 @@ func NewRiskService(
 
 func (s *RiskService) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*RiskAssessmentDTO, error) {
 	return s.manager.AssessRisk(ctx, req)
+}
+
+func (s *RiskService) CalculatePortfolioRisk(ctx context.Context, req *CalculatePortfolioRiskRequest) (*CalculatePortfolioRiskResponse, error) {
+	return s.manager.CalculatePortfolioRisk(ctx, req)
 }
 
 func (s *RiskService) PerformGlobalRiskScan(ctx context.Context) error {
