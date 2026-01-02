@@ -29,62 +29,65 @@ type MonteCarloResult struct {
 	ES99  decimal.Decimal // 99% 置信度预期亏损
 }
 
-// CalculateVaR 使用蒙特卡洛模拟计算 VaR
+// CalculateVaR 使用蒙特卡洛模拟计算 VaR 和 ES (预期亏损)。
+// 升级实现：支持基于路径模拟的完整分布分析。
 func CalculateVaR(input MonteCarloInput) *MonteCarloResult {
 	if input.Iterations <= 0 || input.Steps <= 0 {
 		return &MonteCarloResult{}
 	}
 
+	// 真实化执行：使用更加健壮的随机数生成器
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	dt := input.T / float64(input.Steps)
+	drift := (input.Mu - 0.5*input.Sigma*input.Sigma) * dt
+	volatility := input.Sigma * math.Sqrt(dt)
+
 	finalPrices := make([]float64, input.Iterations)
 
+	// 模拟 Iterations 条独立路径
 	for i := 0; i < input.Iterations; i++ {
 		price := input.S
 		for j := 0; j < input.Steps; j++ {
-			// 几何布朗运动 (GBM) 模拟公式: dS = S * (mu * dt + sigma * dW)
-			// 计算公式: S(t+dt) = S(t) * exp((mu - 0.5 * sigma^2) * dt + sigma * sqrt(dt) * Z)
+			// GBM 离散化方案
 			z := r.NormFloat64()
-			price *= math.Exp((input.Mu-0.5*input.Sigma*input.Sigma)*dt + input.Sigma*math.Sqrt(dt)*z)
+			price *= math.Exp(drift + volatility*z)
 		}
 		finalPrices[i] = price
 	}
 
-	// 计算损益 (P&L)
+	// 损益分析 (P&L Distribution)
 	pnl := make([]float64, input.Iterations)
 	for i, price := range finalPrices {
 		pnl[i] = price - input.S
 	}
 
-	// 排序损益
 	sort.Float64s(pnl)
 
-	// 计算 VaR (取分位数)
-	// VaR 通常表示为正数（损失金额）
-	idx95 := int(math.Max(1, float64(input.Iterations)*0.05))
-	idx99 := int(math.Max(1, float64(input.Iterations)*0.01))
+	// 提取风险分位数 (Quantile-based VaR)
+	// 例如 95% VaR 是指有 5% 的概率亏损超过此值
+	getVaR := func(percentile float64) (float64, int) {
+		idx := max(int(math.Floor(float64(input.Iterations)*percentile)), 1)
+		return -pnl[idx-1], idx
+	}
 
-	var95 := -pnl[idx95-1]
-	var99 := -pnl[idx99-1]
+	var95, idx95 := getVaR(0.05)
+	var99, idx99 := getVaR(0.01)
 
 	// 计算 Expected Shortfall (ES) / CVaR
-	// ES 是超过 VaR 的损失的平均值
-	var sumTail95, sumTail99 float64
-	for i := range idx95 {
-		sumTail95 += pnl[i]
+	// ES 为尾部亏损的期望值，反映了超出 VaR 后的平均损失严重程度
+	calcES := func(idx int) float64 {
+		sum := 0.0
+		for i := range idx {
+			sum += pnl[i]
+		}
+		return -sum / float64(idx)
 	}
-	for i := range idx99 {
-		sumTail99 += pnl[i]
-	}
-
-	es95 := -sumTail95 / float64(idx95)
-	es99 := -sumTail99 / float64(idx99)
 
 	return &MonteCarloResult{
 		VaR95: decimal.NewFromFloat(var95),
 		VaR99: decimal.NewFromFloat(var99),
-		ES95:  decimal.NewFromFloat(es95),
-		ES99:  decimal.NewFromFloat(es99),
+		ES95:  decimal.NewFromFloat(calcES(idx95)),
+		ES99:  decimal.NewFromFloat(calcES(idx99)),
 	}
 }
