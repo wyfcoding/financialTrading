@@ -136,32 +136,70 @@ func (m *SORManager) handleBestPrice(ctx context.Context, sorID, userID, symbol,
 	}, nil
 }
 
-func (m *SORManager) handleLiquidityAggregation(ctx context.Context, sorID, userID, symbol, side string, qty decimal.Decimal, venues []string) (*executionv1.SubmitSOROrderResponse, error) {
-	// 将大额订单平均拆分到所有可用场所
-	sliceQty := qty.Div(decimal.NewFromInt(int64(len(venues))))
+func (m *SORManager) handleLiquidityAggregation(ctx context.Context, sorID, userID, symbol, side string, totalQty decimal.Decimal, venues []string) (*executionv1.SubmitSOROrderResponse, error) {
+	type venueDepth struct {
+		name string
+		size decimal.Decimal
+	}
+	var availableDepths []venueDepth
+	var totalAvailableSize decimal.Decimal
 
-	failedCount := 0
+	// 1. 获取所有场所的真实流动性深度
 	for _, v := range venues {
-		slog.Info("SOR aggregating liquidity", "sor_id", sorID, "venue", v, "qty", sliceQty.String())
-		_, err := m.orderCli.CreateOrder(ctx, &orderv1.CreateOrderRequest{
-			UserId:    userID,
-			Symbol:    fmt.Sprintf("%s:%s", symbol, v),
-			Side:      side,
-			OrderType: "MARKET",
-			Quantity:  sliceQty.String(),
-		})
+		venueSymbol := fmt.Sprintf("%s:%s", symbol, v)
+		priceResp, err := m.marketCli.GetLatestQuote(ctx, &marketdatav1.GetLatestQuoteRequest{Symbol: venueSymbol})
 		if err != nil {
-			slog.Error("SOR split order failed", "venue", v, "error", err)
-			failedCount++
+			continue
+		}
+
+		var size decimal.Decimal
+		if side == "BUY" {
+			size = decimal.NewFromFloat(priceResp.AskSize)
+		} else {
+			size = decimal.NewFromFloat(priceResp.BidSize)
+		}
+
+		if size.GreaterThan(decimal.Zero) {
+			availableDepths = append(availableDepths, venueDepth{v, size})
+			totalAvailableSize = totalAvailableSize.Add(size)
 		}
 	}
 
-	if failedCount == len(venues) {
-		return nil, fmt.Errorf("all split orders failed for aggregation")
+	if totalAvailableSize.IsZero() {
+		return nil, fmt.Errorf("no available liquidity found for aggregation")
+	}
+
+	// 2. 按比例拆分订单规模并执行
+	successCount := 0
+	for _, vd := range availableDepths {
+		// 计算分配比例: weight = venue_size / total_size
+		weight := vd.size.Div(totalAvailableSize)
+		allocatedQty := totalQty.Mul(weight).Round(8) // 假设精度 8
+
+		if allocatedQty.IsZero() {
+			continue
+		}
+
+		slog.Info("SOR routing liquidity share", "sor_id", sorID, "venue", vd.name, "qty", allocatedQty.String(), "weight", weight.String())
+		
+		_, err := m.orderCli.CreateOrder(ctx, &orderv1.CreateOrderRequest{
+			UserId:    userID,
+			Symbol:    fmt.Sprintf("%s:%s", symbol, vd.name),
+			Side:      side,
+			OrderType: "MARKET",
+			Quantity:  allocatedQty.String(),
+		})
+		if err == nil {
+			successCount++
+		}
+	}
+
+	if successCount == 0 {
+		return nil, fmt.Errorf("liquidity aggregation execution failed on all venues")
 	}
 
 	return &executionv1.SubmitSOROrderResponse{
 		SorId:  sorID,
-		Status: "PARTIALLY_COMPLETED",
+		Status: "AGGREGATED_SUCCESS",
 	}, nil
 }
