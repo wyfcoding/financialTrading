@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/shopspring/decimal"
 )
@@ -137,4 +138,58 @@ func CalculateEMASeries(prices []decimal.Decimal, period int) []decimal.Decimal 
 	}
 
 	return emaSeries
+}
+
+// CalculateBollingerBands 计算布林带 (Bollinger Bands)
+// 返回: upperBand, middleBand, lowerBand
+func (s *IndicatorService) CalculateBollingerBands(prices []decimal.Decimal, period int, stdDevMult float64) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
+	if len(prices) < period {
+		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("not enough data points for Bollinger Bands")
+	}
+
+	// 1. 计算中轨 (SMA)
+	sum := decimal.Zero
+	recentPrices := prices[len(prices)-period:]
+	for _, p := range recentPrices {
+		sum = sum.Add(p)
+	}
+	middleBand := sum.Div(decimal.NewFromInt(int64(period)))
+
+	// 2. 计算标准差
+	varianceSum := decimal.Zero
+	for _, p := range recentPrices {
+		diff := p.Sub(middleBand)
+		varianceSum = varianceSum.Add(diff.Mul(diff))
+	}
+	variance := varianceSum.Div(decimal.NewFromInt(int64(period)))
+	stdDev := decimal.NewFromFloat(math.Sqrt(variance.InexactFloat64()))
+
+	// 3. 计算上下轨
+	mult := decimal.NewFromFloat(stdDevMult)
+	upperBand := middleBand.Add(stdDev.Mul(mult))
+	lowerBand := middleBand.Sub(stdDev.Mul(mult))
+
+	return upperBand, middleBand, lowerBand, nil
+}
+
+// CalculateATR 计算平均真实波幅 (Average True Range)
+func (s *IndicatorService) CalculateATR(highs, lows, closes []decimal.Decimal, period int) (decimal.Decimal, error) {
+	if len(highs) < period+1 {
+		return decimal.Zero, fmt.Errorf("not enough data points for ATR")
+	}
+
+	trSeries := make([]decimal.Decimal, len(highs)-1)
+	for i := 1; i < len(highs); i++ {
+		// TR = max(high-low, abs(high-prev_close), abs(low-prev_close))
+		h_l := highs[i].Sub(lows[i])
+		h_pc := highs[i].Sub(closes[i-1]).Abs()
+		l_pc := lows[i].Sub(closes[i-1]).Abs()
+		
+		tr := decimal.Max(h_l, h_pc, l_pc)
+		trSeries[i-1] = tr
+	}
+
+	// 计算 TR 序列的 EMA 或 SMA 作为 ATR
+	// 按照 Wilder 标准，通常使用类似 EMA 的平滑方式
+	return CalculateEMA(trSeries, period), nil
 }
