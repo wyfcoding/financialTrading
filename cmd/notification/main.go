@@ -13,7 +13,6 @@ import (
 	pb "github.com/wyfcoding/financialtrading/goapi/notification/v1"
 	"github.com/wyfcoding/financialtrading/internal/notification/application"
 	"github.com/wyfcoding/financialtrading/internal/notification/infrastructure/persistence/mysql"
-	"github.com/wyfcoding/financialtrading/internal/notification/infrastructure/sender"
 	notificationgrpc "github.com/wyfcoding/financialtrading/internal/notification/interfaces/grpc"
 	notificationhttp "github.com/wyfcoding/financialtrading/internal/notification/interfaces/http"
 	"github.com/wyfcoding/pkg/app"
@@ -21,10 +20,10 @@ import (
 	configpkg "github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/databases"
 	"github.com/wyfcoding/pkg/grpcclient"
-	"github.com/wyfcoding/pkg/messagequeue/kafka"
 	"github.com/wyfcoding/pkg/idempotency"
 	"github.com/wyfcoding/pkg/limiter"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
 	"github.com/wyfcoding/pkg/metrics"
 	"github.com/wyfcoding/pkg/middleware"
 )
@@ -162,11 +161,11 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 
 	// 5.1 Infrastructure (Persistence & Senders)
 	notificationRepo := mysql.NewNotificationRepository(db.RawDB())
-	
+
 	// 初始化真实 Kafka 发送器
 	kafkaProducer := kafka.NewProducer(c.MessageQueue.Kafka, logger, m)
-	emailSender := sender.NewKafkaNotificationSender(kafkaProducer, "notification.email")
-	smsSender := sender.NewKafkaNotificationSender(kafkaProducer, "notification.sms")
+	emailSender := kafka.NewKafkaNotificationSender(kafkaProducer, "notification.email")
+	smsSender := kafka.NewKafkaNotificationSender(kafkaProducer, "notification.sms")
 
 	// 5.2 Application (Service)
 	notificationService := application.NewNotificationService(notificationRepo, emailSender, smsSender)
