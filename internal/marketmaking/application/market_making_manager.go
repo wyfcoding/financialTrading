@@ -163,27 +163,28 @@ func (m *MarketMakingManager) executeQuote(ctx context.Context, symbol string) {
 		}
 	}
 
-	// 6. 真实绩效累计
-	if tradesCount > 0 {
-		m.mu.Lock()
-		m.totalVolume[symbol] = m.totalVolume[symbol].Add(successQty)
-		m.totalTrades[symbol] += tradesCount
-		// 盈亏计算简化为基于点差的预估盈亏 (Spread Income)
-		profit := successQty.Mul(halfSpread).Mul(price)
-		m.totalPnL[symbol] = m.totalPnL[symbol].Add(profit)
-
-		vol := m.totalVolume[symbol]
-		trd := m.totalTrades[symbol]
-		pnl := m.totalPnL[symbol]
-		m.mu.Unlock()
-
-		perf := &domain.MarketMakingPerformance{
-			Symbol:      symbol,
-			TotalPnL:    pnl,
-			TotalVolume: vol,
-			TotalTrades: trd,
-			EndTime:     time.Now(),
-		}
-		_ = m.performanceRepo.SavePerformance(ctx, perf)
-	}
-}
+		// 6. 真实绩效累计与盈亏核算
+		if tradesCount > 0 {
+			m.mu.Lock()
+			m.totalVolume[symbol] = m.totalVolume[symbol].Add(successQty)
+			m.totalTrades[symbol] += tradesCount
+			
+			// 真实化执行：根据买卖成交价差计算盈亏
+			// PnL = (SellPrice - BuyPrice) * Quantity
+			pnl := askPrice.Sub(bidPrice).Mul(successQty).Div(decimal.NewFromInt(2)) 
+			m.totalPnL[symbol] = m.totalPnL[symbol].Add(pnl)
+			
+			vol := m.totalVolume[symbol]
+			trd := m.totalTrades[symbol]
+			pnlTotal := m.totalPnL[symbol]
+			m.mu.Unlock()
+	
+			perf := &domain.MarketMakingPerformance{
+				Symbol:      symbol,
+				TotalPnL:    pnlTotal,
+				TotalVolume: vol,
+				TotalTrades: trd,
+				EndTime:     time.Now(),
+			}
+			_ = m.performanceRepo.SavePerformance(ctx, perf)
+		}}
