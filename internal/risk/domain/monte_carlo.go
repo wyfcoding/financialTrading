@@ -31,6 +31,10 @@ type MonteCarloResult struct {
 
 // CalculateVaR 使用蒙特卡洛模拟计算 VaR
 func CalculateVaR(input MonteCarloInput) *MonteCarloResult {
+	if input.Iterations <= 0 || input.Steps <= 0 {
+		return &MonteCarloResult{}
+	}
+
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	dt := input.T / float64(input.Steps)
@@ -58,11 +62,11 @@ func CalculateVaR(input MonteCarloInput) *MonteCarloResult {
 
 	// 计算 VaR (取分位数)
 	// VaR 通常表示为正数（损失金额）
-	idx95 := int(float64(input.Iterations) * 0.05)
-	idx99 := int(float64(input.Iterations) * 0.01)
+	idx95 := int(math.Max(1, float64(input.Iterations)*0.05))
+	idx99 := int(math.Max(1, float64(input.Iterations)*0.01))
 
-	var95 := -pnl[idx95]
-	var99 := -pnl[idx99]
+	var95 := -pnl[idx95-1]
+	var99 := -pnl[idx99-1]
 
 	// 计算 Expected Shortfall (ES) / CVaR
 	// ES 是超过 VaR 的损失的平均值
