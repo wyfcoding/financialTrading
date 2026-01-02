@@ -46,7 +46,7 @@ func (q *OrderQuery) GetOrder(ctx context.Context, orderID, userID string) (*Ord
 	}, nil
 }
 
-// ListOrders (Placeholder for future list logic if needed in application layer)
+// ListOrders 分页列出指定用户的订单记录。
 func (q *OrderQuery) ListOrders(ctx context.Context, userID string, status domain.OrderStatus, limit, offset int) ([]*OrderDTO, int64, error) {
 	orders, total, err := q.repo.ListByUser(ctx, userID, status, limit, offset)
 	if err != nil {
