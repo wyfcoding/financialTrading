@@ -17,10 +17,15 @@ type MarketMakingManager struct {
 	performanceRepo  domain.PerformanceRepository
 	orderClient      domain.OrderClient
 	marketDataClient domain.MarketDataClient
-
+	
 	activeTasks map[string]context.CancelFunc // 追踪活跃的做市任务
 	mu          sync.RWMutex
 	logger      *slog.Logger
+
+	// 实时绩效统计
+	totalPnL    map[string]decimal.Decimal
+	totalVolume map[string]decimal.Decimal
+	totalTrades map[string]int64
 }
 
 // NewMarketMakingManager 构造函数。
@@ -38,6 +43,9 @@ func NewMarketMakingManager(
 		marketDataClient: marketDataClient,
 		activeTasks:      make(map[string]context.CancelFunc),
 		logger:           logger,
+		totalPnL:         make(map[string]decimal.Decimal),
+		totalVolume:      make(map[string]decimal.Decimal),
+		totalTrades:      make(map[string]int64),
 	}
 }
 
@@ -136,27 +144,44 @@ func (m *MarketMakingManager) executeQuote(ctx context.Context, symbol string) {
 	quantity := strategy.MinOrderSize
 
 	// 5. 执行带持仓限制的下单
-	var err1, err2 error
-	// 检查买入持仓限制 (假设正数为多头)
+	var successQty decimal.Decimal
+	var tradesCount int64
+
+	// 检查买入持仓限制
 	if pos.Add(quantity).LessThanOrEqual(strategy.MaxPosition) {
-		_, err1 = m.orderClient.PlaceOrder(ctx, symbol, "BUY", bidPrice, quantity)
-	} else {
-		m.logger.WarnContext(ctx, "skipping buy quote: max position reached", "symbol", symbol, "pos", pos.String())
+		if _, err := m.orderClient.PlaceOrder(ctx, symbol, "BUY", bidPrice, quantity); err == nil {
+			successQty = successQty.Add(quantity)
+			tradesCount++
+		}
 	}
 
-	// 检查卖出持仓限制 (假设负数为空头，绝对值不超过 MaxPosition)
+	// 检查卖出持仓限制
 	if pos.Sub(quantity).Abs().LessThanOrEqual(strategy.MaxPosition) {
-		_, err2 = m.orderClient.PlaceOrder(ctx, symbol, "SELL", askPrice, quantity)
-	} else {
-		m.logger.WarnContext(ctx, "skipping sell quote: max position reached", "symbol", symbol, "pos", pos.String())
+		if _, err := m.orderClient.PlaceOrder(ctx, symbol, "SELL", askPrice, quantity); err == nil {
+			successQty = successQty.Add(quantity)
+			tradesCount++
+		}
 	}
 
-	// 6. 记录绩效
-	if err1 == nil && err2 == nil {
+	// 6. 真实绩效累计
+	if tradesCount > 0 {
+		m.mu.Lock()
+		m.totalVolume[symbol] = m.totalVolume[symbol].Add(successQty)
+		m.totalTrades[symbol] += tradesCount
+		// 盈亏计算简化为基于点差的预估盈亏 (Spread Income)
+		profit := successQty.Mul(halfSpread).Mul(price)
+		m.totalPnL[symbol] = m.totalPnL[symbol].Add(profit)
+		
+		vol := m.totalVolume[symbol]
+		trd := m.totalTrades[symbol]
+		pnl := m.totalPnL[symbol]
+		m.mu.Unlock()
+
 		perf := &domain.MarketMakingPerformance{
 			Symbol:      symbol,
-			TotalVolume: quantity.Mul(decimal.NewFromInt(2)),
-			TotalTrades: 2,
+			TotalPnL:    pnl,
+			TotalVolume: vol,
+			TotalTrades: trd,
 			EndTime:     time.Now(),
 		}
 		_ = m.performanceRepo.SavePerformance(ctx, perf)
