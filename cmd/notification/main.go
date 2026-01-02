@@ -21,6 +21,7 @@ import (
 	configpkg "github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/databases"
 	"github.com/wyfcoding/pkg/grpcclient"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
 	"github.com/wyfcoding/pkg/idempotency"
 	"github.com/wyfcoding/pkg/limiter"
 	"github.com/wyfcoding/pkg/logging"
@@ -161,8 +162,11 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 
 	// 5.1 Infrastructure (Persistence & Senders)
 	notificationRepo := mysql.NewNotificationRepository(db.RawDB())
-	emailSender := sender.NewMockEmailSender()
-	smsSender := sender.NewMockSMSSender()
+	
+	// 初始化真实 Kafka 发送器
+	kafkaProducer := kafka.NewProducer(c.MessageQueue.Kafka, logger, m)
+	emailSender := sender.NewKafkaNotificationSender(kafkaProducer, "notification.email")
+	smsSender := sender.NewKafkaNotificationSender(kafkaProducer, "notification.sms")
 
 	// 5.2 Application (Service)
 	notificationService := application.NewNotificationService(notificationRepo, emailSender, smsSender)
@@ -173,6 +177,9 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	// 定义资源清理函数
 	cleanup := func() {
 		bootLog.Info("shutting down, releasing resources...")
+		if kafkaProducer != nil {
+			kafkaProducer.Close()
+		}
 		clientCleanup()
 		if redisCache != nil {
 			if err := redisCache.Close(); err != nil {
