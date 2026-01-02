@@ -11,8 +11,8 @@ import (
 	"google.golang.org/grpc"
 
 	clearingv1 "github.com/wyfcoding/financialtrading/goapi/clearing/v1"
-	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	pb "github.com/wyfcoding/financialtrading/goapi/matchingengine/v1"
+	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/application"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/persistence/mysql"
 	matchinggrpc "github.com/wyfcoding/financialtrading/internal/matchingengine/interfaces/grpc"

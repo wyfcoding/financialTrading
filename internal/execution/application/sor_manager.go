@@ -181,7 +181,7 @@ func (m *SORManager) handleLiquidityAggregation(ctx context.Context, sorID, user
 		}
 
 		slog.Info("SOR routing liquidity share", "sor_id", sorID, "venue", vd.name, "qty", allocatedQty.String(), "weight", weight.String())
-		
+
 		_, err := m.orderCli.CreateOrder(ctx, &orderv1.CreateOrderRequest{
 			UserId:    userID,
 			Symbol:    fmt.Sprintf("%s:%s", symbol, vd.name),

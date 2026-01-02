@@ -126,7 +126,7 @@ func (m *MatchingEngineManager) processPostMatching(trades []*algorithm.Trade) {
 			// 3. 更新订单成交状态 (Cross-Project Interaction)
 			if m.orderCli != nil {
 				m.logger.Info("reporting fill to order service", "buy_order_id", t.BuyOrderID, "sell_order_id", t.SellOrderID, "qty", t.Quantity.String(), "price", t.Price.String())
-				
+
 				// 为买方更新
 				_, _ = m.orderCli.UpdateOrderStatus(ctx, &orderv1.UpdateOrderStatusRequest{
 					OrderId:          t.BuyOrderID,

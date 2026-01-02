@@ -17,7 +17,7 @@ type MarketMakingManager struct {
 	performanceRepo  domain.PerformanceRepository
 	orderClient      domain.OrderClient
 	marketDataClient domain.MarketDataClient
-	
+
 	activeTasks map[string]context.CancelFunc // 追踪活跃的做市任务
 	mu          sync.RWMutex
 	logger      *slog.Logger
@@ -171,7 +171,7 @@ func (m *MarketMakingManager) executeQuote(ctx context.Context, symbol string) {
 		// 盈亏计算简化为基于点差的预估盈亏 (Spread Income)
 		profit := successQty.Mul(halfSpread).Mul(price)
 		m.totalPnL[symbol] = m.totalPnL[symbol].Add(profit)
-		
+
 		vol := m.totalVolume[symbol]
 		trd := m.totalTrades[symbol]
 		pnl := m.totalPnL[symbol]

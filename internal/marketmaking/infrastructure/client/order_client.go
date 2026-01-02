@@ -18,7 +18,7 @@ import (
 // OrderClientImpl 订单服务客户端实现
 type OrderClientImpl struct {
 	orderCli    orderv1.OrderServiceClient
-	positionCli positionv1.PositionServiceClient 
+	positionCli positionv1.PositionServiceClient
 }
 
 // NewOrderClient 创建订单服务客户端

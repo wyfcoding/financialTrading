@@ -151,7 +151,7 @@ func (m *RiskManager) PerformGlobalRiskScan(ctx context.Context) error {
 		if err == nil && limit != nil {
 			if riskValue.Abs().GreaterThan(limit.LimitValue) {
 				m.internalLogger().WarnContext(ctx, "VaR exceeds limit, triggering circuit breaker", "user_id", userID, "var", riskValue.String(), "limit", limit.LimitValue.String())
-				
+
 				// 5. 触发熔断
 				_ = m.breakerRepo.Save(ctx, &domain.CircuitBreaker{
 					UserID:        userID,
