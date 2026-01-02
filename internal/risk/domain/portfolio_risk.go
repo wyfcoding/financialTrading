@@ -13,11 +13,11 @@ import (
 
 // PortfolioAsset 组合中的单项资产
 type PortfolioAsset struct {
-	Symbol      string          `json:"symbol"`
-	Position    decimal.Decimal `json:"position"`     // 持仓数量 (+为多, -为空)
-	CurrentPrice decimal.Decimal `json:"current_price"` // 当前单价
-	Volatility  float64         `json:"volatility"`   // 年化波动率 (sigma)
-	ExpectedReturn float64      `json:"expected_return"` // 预期年化收益率 (mu)
+	Symbol         string          `json:"symbol"`
+	Position       decimal.Decimal `json:"position"`        // 持仓数量 (+为多, -为空)
+	CurrentPrice   decimal.Decimal `json:"current_price"`   // 当前单价
+	Volatility     float64         `json:"volatility"`      // 年化波动率 (sigma)
+	ExpectedReturn float64         `json:"expected_return"` // 预期年化收益率 (mu)
 }
 
 // PortfolioRiskInput 组合风险计算输入
@@ -31,11 +31,11 @@ type PortfolioRiskInput struct {
 
 // PortfolioRiskResult 组合风险计算结果
 type PortfolioRiskResult struct {
-	TotalValue      decimal.Decimal `json:"total_value"`
-	VaR             decimal.Decimal `json:"var"`              // Value at Risk
-	ES              decimal.Decimal `json:"es"`               // Expected Shortfall (CVaR)
-	ComponentVaR    map[string]decimal.Decimal `json:"component_var"` //各资产对总风险的贡献 (Marginal VaR * Weight)
-	Diversification decimal.Decimal `json:"diversification"`  // 分散化效应带来的风险降低值
+	TotalValue      decimal.Decimal            `json:"total_value"`
+	VaR             decimal.Decimal            `json:"var"`             // Value at Risk
+	ES              decimal.Decimal            `json:"es"`              // Expected Shortfall (CVaR)
+	ComponentVaR    map[string]decimal.Decimal `json:"component_var"`   //各资产对总风险的贡献 (Marginal VaR * Weight)
+	Diversification decimal.Decimal            `json:"diversification"` // 分散化效应带来的风险降低值
 }
 
 // CalculatePortfolioRisk 执行多资产关联蒙特卡洛模拟
@@ -77,7 +77,7 @@ func CalculatePortfolioRisk(input PortfolioRiskInput) (*PortfolioRiskResult, err
 
 	// 3. 蒙特卡洛模拟
 	randSource := rand.New(rand.NewSource(time.Now().UnixNano()))
-	
+
 	// 初始组合价值
 	var initialTotalValue decimal.Decimal
 	assetValues := make([]float64, nAssets)
@@ -89,7 +89,7 @@ func CalculatePortfolioRisk(input PortfolioRiskInput) (*PortfolioRiskResult, err
 	initialValFloat := initialTotalValue.InexactFloat64()
 
 	portfolioPnLs := make([]float64, input.Simulations)
-	
+
 	// 漂移项 (Drift) = (mu - 0.5 * sigma^2) * T
 	drifts := make([]float64, nAssets)
 	for i := 0; i < nAssets; i++ {
@@ -114,7 +114,7 @@ func CalculatePortfolioRisk(input PortfolioRiskInput) (*PortfolioRiskResult, err
 			// S_T = S_0 * exp(drift + x)
 			// 注意：这里 x 已经是 correlated volatility part: sigma * sqrt(T) * epsilon
 			// 因为 Cov 矩阵在构建时已经乘以了 T，所以 L 分解出来的 scale 已经包含了 sqrt(T)
-			
+
 			returnRate := math.Exp(drifts[i] + x[i])
 			simAssetVal := assetValues[i] * returnRate
 			simPortfolioVal += simAssetVal
@@ -128,8 +128,12 @@ func CalculatePortfolioRisk(input PortfolioRiskInput) (*PortfolioRiskResult, err
 
 	// VaR
 	idx := int(math.Floor(float64(input.Simulations) * (1 - input.ConfidenceLevel)))
-	if idx < 0 { idx = 0 }
-	if idx >= input.Simulations { idx = input.Simulations - 1 }
+	if idx < 0 {
+		idx = 0
+	}
+	if idx >= input.Simulations {
+		idx = input.Simulations - 1
+	}
 	varValue := -portfolioPnLs[idx] // VaR 通常表示为正数损失
 
 	// ES (Expected Shortfall) - 尾部平均损失
@@ -150,6 +154,6 @@ func CalculatePortfolioRisk(input PortfolioRiskInput) (*PortfolioRiskResult, err
 		VaR:             decimal.NewFromFloat(math.Max(0, varValue)),
 		ES:              decimal.NewFromFloat(math.Max(0, esValue)),
 		ComponentVaR:    make(map[string]decimal.Decimal), // 需进一步实现
-		Diversification: decimal.Zero, // 需计算 Undiversified VaR 后相减
+		Diversification: decimal.Zero,                     // 需计算 Undiversified VaR 后相减
 	}, nil
 }
