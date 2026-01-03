@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/shopspring/decimal"
 	"github.com/dtm-labs/client/dtmgrpc"
+	"github.com/shopspring/decimal"
 	accountv1 "github.com/wyfcoding/financialtrading/goapi/account/v1"
+	positionv1 "github.com/wyfcoding/financialtrading/goapi/position/v1"
 	riskv1 "github.com/wyfcoding/financialtrading/goapi/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
 	"github.com/wyfcoding/pkg/dtm"
@@ -17,12 +18,14 @@ import (
 
 // OrderManager 处理所有订单相关的写入操作（Commands）。
 type OrderManager struct {
-	repo          domain.OrderRepository
-	riskEvaluator risk.Evaluator
-	riskCli       riskv1.RiskServiceClient
-	accountCli    accountv1.AccountServiceClient
-	dtmServer     string
-	accountSvcURL string // DTM 回调用的 Account 服务地址 (例如 "account:50051")
+	repo           domain.OrderRepository
+	riskEvaluator  risk.Evaluator
+	riskCli        riskv1.RiskServiceClient
+	accountCli     accountv1.AccountServiceClient
+	positionCli    positionv1.PositionServiceClient
+	dtmServer      string
+	accountSvcURL  string // DTM 回调用的 Account 服务地址
+	positionSvcURL string // DTM 回调用的 Position 服务地址
 }
 
 // NewOrderManager 构造函数。
@@ -40,6 +43,11 @@ func (m *OrderManager) SetRiskClient(cli riskv1.RiskServiceClient) {
 func (m *OrderManager) SetAccountClient(cli accountv1.AccountServiceClient, svcURL string) {
 	m.accountCli = cli
 	m.accountSvcURL = svcURL
+}
+
+func (m *OrderManager) SetPositionClient(cli positionv1.PositionServiceClient, svcURL string) {
+	m.positionCli = cli
+	m.positionSvcURL = svcURL
 }
 
 func (m *OrderManager) SetDTMServer(addr string) {
@@ -132,45 +140,43 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 	)
 
 	// --- 3. DTM TCC 分布式事务 ---
-	// 如果是买单，需要冻结资金。卖单需要冻结持仓（此处简化，假设只处理买单资金冻结，或者卖单需要 PositionService）
-	// 为演示目的，假设买单 (Side=BUY) 冻结 USDT。
-	if order.Side == domain.OrderSideBuy && m.dtmServer != "" {
-		logging.Info(ctx, "Initiating TCC transaction for BUY order", "order_id", orderID)
+	// BUY: 冻结资金 (USDT)
+	// SELL: 冻结持仓资产 (e.g., BTC)
+	if m.dtmServer != "" {
+		logging.Info(ctx, "Initiating TCC transaction for order", "order_id", orderID, "side", order.Side)
 
-		// 创建 TCC 事务
-		gid := orderID // 使用订单ID作为全局事务ID
+		gid := orderID
 		tcc := dtm.NewTcc(ctx, m.dtmServer, gid)
 
 		err = tcc.Execute(func(t *dtmgrpc.TccGrpc) error {
-			// Step 3.1: 资金冻结 (Try)
-			// 注意：AccountService 的地址通常需要配置。这里假设通过 accountSvcURL 传入。
-			// TCC 的 CallBranch 需要传入 Try, Confirm, Cancel 的完整 URL 或 gRPC Method
-			accountGrpcPrefix := m.accountSvcURL + "/api.account.v1.AccountService"
-
-			freezeReq := &accountv1.TccFreezeRequest{
-				UserId:   req.UserID,
-				Currency: "USDT", // 假设计价货币是 USDT，实际应从 Symbol 获取 (e.g., BTC/USDT)
-				Amount:   totalAmount.String(),
-				OrderId:  orderID,
+			switch order.Side {
+			case domain.OrderSideBuy:
+				// BUY 逻辑：冻结资金
+				accountGrpcPrefix := m.accountSvcURL + "/api.account.v1.AccountService"
+				freezeReq := &accountv1.TccFreezeRequest{
+					UserId:   req.UserID,
+					Currency: "USDT",
+					Amount:   totalAmount.String(),
+					OrderId:  orderID,
+				}
+				if err := dtm.CallBranch(t, freezeReq, accountGrpcPrefix+"/TccTryFreeze", accountGrpcPrefix+"/TccConfirmFreeze", accountGrpcPrefix+"/TccCancelFreeze"); err != nil {
+					return err
+				}
+			case domain.OrderSideSell:
+				// SELL 逻辑：冻结资产 (Position)
+				positionGrpcPrefix := m.positionSvcURL + "/api.position.v1.PositionService"
+				freezeReq := &positionv1.TccPositionRequest{
+					UserId:   req.UserID,
+					Symbol:   order.Symbol, // 标的代码，例如 "BTC/USDT"
+					Quantity: order.Quantity.String(),
+					OrderId:  orderID,
+				}
+				if err := dtm.CallBranch(t, freezeReq, positionGrpcPrefix+"/TccTryFreeze", positionGrpcPrefix+"/TccConfirmFreeze", positionGrpcPrefix+"/TccCancelFreeze"); err != nil {
+					return err
+				}
 			}
 
-			// 注册分支事务: Account.TccFreeze
-			if err := dtm.CallBranch(
-				t,
-				freezeReq,
-				accountGrpcPrefix+"/TccTryFreeze",
-				accountGrpcPrefix+"/TccConfirmFreeze",
-				accountGrpcPrefix+"/TccCancelFreeze",
-			); err != nil {
-				return fmt.Errorf("failed to call TccFreeze: %w", err)
-			}
-
-			// Step 3.2: 订单创建 (Try)
-			// 实际上订单创建本身也可以作为 TCC 的一部分，或者在 TCC Execute 内部执行本地事务。
-			// 在这里，我们将“保存订单”视为 TCC 的“Confirm”逻辑（或者 TCC 主体逻辑）。
-			// 但因为我们已经在 OrderService 内部，我们可以直接执行 DB 操作。
-			// 如果 DB 操作失败，TCC 会自动回滚（调用 Account 的 Cancel）。
-
+			// 订单本地落库
 			if err := m.repo.Save(ctx, order); err != nil {
 				return fmt.Errorf("failed to save order locally: %w", err)
 			}
@@ -181,9 +187,8 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 			logging.Error(ctx, "TCC transaction failed", "order_id", orderID, "error", err)
 			return nil, fmt.Errorf("order placement failed during transaction: %w", err)
 		}
-
 	} else {
-		// 无 DTM 或卖单（暂未实现卖单 TCC），走普通逻辑
+		// 无 DTM，走普通逻辑
 		if err := m.repo.Save(ctx, order); err != nil {
 			return nil, fmt.Errorf("failed to save order: %w", err)
 		}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/position/domain"
+	"github.com/wyfcoding/pkg/dtm"
 	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -48,10 +49,18 @@ func NewPositionRepository(db *gorm.DB) domain.PositionRepository {
 	}
 }
 
+// getDB 尝试从 Context 获取事务 DB，否则返回默认 DB
+func (r *positionRepositoryImpl) getDB(ctx context.Context) *gorm.DB {
+	if tx, ok := ctx.Value("tx_db").(*gorm.DB); ok {
+		return tx.WithContext(ctx)
+	}
+	return r.db.WithContext(ctx)
+}
+
 // Save 实现 domain.PositionRepository.Save
 func (r *positionRepositoryImpl) Save(ctx context.Context, position *domain.Position) error {
 	model := r.fromDomain(position)
-	err := r.db.WithContext(ctx).Clauses(clause.OnConflict{
+	err := r.getDB(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "position_id"}},
 		UpdateAll: true,
 	}).Create(model).Error
@@ -67,7 +76,7 @@ func (r *positionRepositoryImpl) Save(ctx context.Context, position *domain.Posi
 // Get 实现 domain.PositionRepository.Get
 func (r *positionRepositoryImpl) Get(ctx context.Context, positionID string) (*domain.Position, error) {
 	var model PositionModel
-	if err := r.db.WithContext(ctx).Where("position_id = ?", positionID).First(&model).Error; err != nil {
+	if err := r.getDB(ctx).Where("position_id = ?", positionID).First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -82,7 +91,7 @@ func (r *positionRepositoryImpl) Get(ctx context.Context, positionID string) (*d
 func (r *positionRepositoryImpl) GetByUser(ctx context.Context, userID string, limit, offset int) ([]*domain.Position, int64, error) {
 	var models []PositionModel
 	var total int64
-	db := r.db.WithContext(ctx).Model(&PositionModel{}).Where("user_id = ?", userID)
+	db := r.getDB(ctx).Model(&PositionModel{}).Where("user_id = ?", userID)
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -102,7 +111,7 @@ func (r *positionRepositoryImpl) GetByUser(ctx context.Context, userID string, l
 func (r *positionRepositoryImpl) GetBySymbol(ctx context.Context, symbol string, limit, offset int) ([]*domain.Position, int64, error) {
 	var models []PositionModel
 	var total int64
-	db := r.db.WithContext(ctx).Model(&PositionModel{}).Where("symbol = ?", symbol)
+	db := r.getDB(ctx).Model(&PositionModel{}).Where("symbol = ?", symbol)
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -121,7 +130,7 @@ func (r *positionRepositoryImpl) GetBySymbol(ctx context.Context, symbol string,
 // Update 实现 domain.PositionRepository.Update
 func (r *positionRepositoryImpl) Update(ctx context.Context, position *domain.Position) error {
 	model := r.fromDomain(position)
-	err := r.db.WithContext(ctx).Model(&PositionModel{}).Where("position_id = ?", position.PositionID).Updates(model).Error
+	err := r.getDB(ctx).Model(&PositionModel{}).Where("position_id = ?", position.PositionID).Updates(model).Error
 	if err != nil {
 		logging.Error(ctx, "position_repository.Update failed", "position_id", position.PositionID, "error", err)
 		return fmt.Errorf("failed to update position: %w", err)
@@ -132,7 +141,7 @@ func (r *positionRepositoryImpl) Update(ctx context.Context, position *domain.Po
 // Close 实现 domain.PositionRepository.Close
 func (r *positionRepositoryImpl) Close(ctx context.Context, positionID string, closePrice decimal.Decimal) error {
 	now := time.Now()
-	err := r.db.WithContext(ctx).Model(&PositionModel{}).Where("position_id = ?", positionID).Updates(map[string]interface{}{
+	err := r.getDB(ctx).Model(&PositionModel{}).Where("position_id = ?", positionID).Updates(map[string]interface{}{
 		"status":        "CLOSED",
 		"closed_at":     &now,
 		"current_price": closePrice.String(),
@@ -142,6 +151,14 @@ func (r *positionRepositoryImpl) Close(ctx context.Context, positionID string, c
 		return fmt.Errorf("failed to close position: %w", err)
 	}
 	return nil
+}
+
+// ExecWithBarrier 在分布式事务屏障下执行业务逻辑
+func (r *positionRepositoryImpl) ExecWithBarrier(ctx context.Context, barrier interface{}, fn func(context.Context) error) error {
+	return dtm.CallWithGorm(ctx, barrier, r.db, func(tx *gorm.DB) error {
+		txCtx := context.WithValue(ctx, "tx_db", tx)
+		return fn(txCtx)
+	})
 }
 
 func (r *positionRepositoryImpl) fromDomain(p *domain.Position) *PositionModel {

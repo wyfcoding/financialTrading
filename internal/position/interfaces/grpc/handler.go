@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/dtm-labs/client/dtmgrpc"
 	"github.com/shopspring/decimal"
 	pb "github.com/wyfcoding/financialtrading/goapi/position/v1"
 	"github.com/wyfcoding/financialtrading/internal/position/application"
@@ -106,6 +107,56 @@ func (h *GRPCHandler) ClosePosition(ctx context.Context, req *pb.ClosePositionRe
 	return &pb.ClosePositionResponse{
 		Position: h.toProtoPosition(dto),
 	}, nil
+}
+
+// TccTryFreeze TCC Try: 预冻结持仓
+func (h *GRPCHandler) TccTryFreeze(ctx context.Context, req *pb.TccPositionRequest) (*pb.TccPositionResponse, error) {
+	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
+	}
+
+	quantity, err := decimal.NewFromString(req.Quantity)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid quantity: %v", err)
+	}
+
+	if err := h.service.TccTryFreeze(ctx, barrier, req.UserId, req.Symbol, quantity); err != nil {
+		slog.Error("TccTryFreeze failed", "user_id", req.UserId, "symbol", req.Symbol, "error", err)
+		return nil, status.Errorf(codes.Aborted, "TccTryFreeze failed: %v", err)
+	}
+
+	return &pb.TccPositionResponse{Success: true}, nil
+}
+
+// TccConfirmFreeze TCC Confirm: 确认冻结
+func (h *GRPCHandler) TccConfirmFreeze(ctx context.Context, req *pb.TccPositionRequest) (*pb.TccPositionResponse, error) {
+	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
+	}
+
+	quantity, _ := decimal.NewFromString(req.Quantity)
+	if err := h.service.TccConfirmFreeze(ctx, barrier, req.UserId, req.Symbol, quantity); err != nil {
+		return nil, status.Errorf(codes.Internal, "TccConfirmFreeze failed: %v", err)
+	}
+
+	return &pb.TccPositionResponse{Success: true}, nil
+}
+
+// TccCancelFreeze TCC Cancel: 取消冻结
+func (h *GRPCHandler) TccCancelFreeze(ctx context.Context, req *pb.TccPositionRequest) (*pb.TccPositionResponse, error) {
+	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
+	}
+
+	quantity, _ := decimal.NewFromString(req.Quantity)
+	if err := h.service.TccCancelFreeze(ctx, barrier, req.UserId, req.Symbol, quantity); err != nil {
+		return nil, status.Errorf(codes.Internal, "TccCancelFreeze failed: %v", err)
+	}
+
+	return &pb.TccPositionResponse{Success: true}, nil
 }
 
 func (h *GRPCHandler) toProtoPosition(dto *application.PositionDTO) *pb.Position {

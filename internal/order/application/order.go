@@ -4,6 +4,7 @@ import (
 	"context"
 
 	accountv1 "github.com/wyfcoding/financialtrading/goapi/account/v1"
+	positionv1 "github.com/wyfcoding/financialtrading/goapi/position/v1"
 	riskv1 "github.com/wyfcoding/financialtrading/goapi/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
 	"github.com/wyfcoding/pkg/security/risk"
@@ -29,6 +30,10 @@ func (s *OrderService) SetRiskClient(cli riskv1.RiskServiceClient) {
 
 func (s *OrderService) SetAccountClient(cli accountv1.AccountServiceClient, svcURL string) {
 	s.manager.SetAccountClient(cli, svcURL)
+}
+
+func (s *OrderService) SetPositionClient(cli positionv1.PositionServiceClient, svcURL string) {
+	s.manager.SetPositionClient(cli, svcURL)
 }
 
 func (s *OrderService) SetDTMServer(addr string) {

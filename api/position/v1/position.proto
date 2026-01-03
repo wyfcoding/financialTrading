@@ -17,6 +17,28 @@ service PositionService {
 
   // 平仓。
   rpc ClosePosition(ClosePositionRequest) returns (ClosePositionResponse);
+
+  // --- TCC 分布式事务接口 ---
+  // TCC Try: 预冻结持仓/资产
+  rpc TccTryFreeze(TccPositionRequest) returns (TccPositionResponse);
+  // TCC Confirm: 确认冻结
+  rpc TccConfirmFreeze(TccPositionRequest) returns (TccPositionResponse);
+  // TCC Cancel: 取消冻结
+  rpc TccCancelFreeze(TccPositionRequest) returns (TccPositionResponse);
+}
+
+// TCC 持仓操作请求
+message TccPositionRequest {
+  string user_id = 1;
+  string symbol = 2;   // 标的，如 "BTC"
+  string quantity = 3; // 卖出数量
+  string order_id = 4; // 关联订单ID
+}
+
+// TCC 持仓操作响应
+message TccPositionResponse {
+  bool success = 1;
+  string message = 2;
 }
 
 // 持仓核心记录。

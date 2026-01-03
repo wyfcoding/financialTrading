@@ -27,8 +27,18 @@ func (s *PositionService) ClosePosition(ctx context.Context, positionID string, 
 	return s.manager.ClosePosition(ctx, positionID, closePrice)
 }
 
-func (s *PositionService) UpdatePositionPrice(ctx context.Context, positionID string, currentPrice decimal.Decimal) error {
-	return s.manager.UpdatePositionPrice(ctx, positionID, currentPrice)
+// --- TCC Facade ---
+
+func (s *PositionService) TccTryFreeze(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+	return s.manager.TccTryFreeze(ctx, barrier, userID, symbol, quantity)
+}
+
+func (s *PositionService) TccConfirmFreeze(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+	return s.manager.TccConfirmFreeze(ctx, barrier, userID, symbol, quantity)
+}
+
+func (s *PositionService) TccCancelFreeze(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+	return s.manager.TccCancelFreeze(ctx, barrier, userID, symbol, quantity)
 }
 
 // --- Query (Reads) ---

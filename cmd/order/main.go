@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 
 	accountv1 "github.com/wyfcoding/financialtrading/goapi/account/v1"
+	positionv1 "github.com/wyfcoding/financialtrading/goapi/position/v1"
 	pb "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	riskv1 "github.com/wyfcoding/financialtrading/goapi/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/application"
@@ -56,10 +57,12 @@ type AppContext struct {
 type ServiceClients struct {
 	RiskConn    *grpc.ClientConn `service:"risk"`
 	AccountConn *grpc.ClientConn `service:"account"`
+	PositionConn *grpc.ClientConn `service:"position"`
 
 	// 具体的客户端接口
 	Risk    riskv1.RiskServiceClient
 	Account accountv1.AccountServiceClient
+	Position positionv1.PositionServiceClient
 }
 
 func main() {
@@ -170,6 +173,9 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	if clients.AccountConn != nil {
 		clients.Account = accountv1.NewAccountServiceClient(clients.AccountConn)
 	}
+	if clients.PositionConn != nil {
+		clients.Position = positionv1.NewPositionServiceClient(clients.PositionConn)
+	}
 
 	// 5. DDD 分层装配
 	bootLog.Info("assembling services with full dependency injection...")
@@ -182,22 +188,31 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	if clients.Risk != nil {
 		orderService.SetRiskClient(clients.Risk)
 	}
-		if clients.Account != nil {
-			// DTM Server 默认地址，实际生产环境应从配置读取
-			dtmAddr := c.Services["dtm"].GRPCAddr
-			if dtmAddr == "" {
-				dtmAddr = "dtm:36790"
-			}
-			
-			// Account Service 回调地址，TCC 需要知道 Account 服务的 gRPC 地址
-			accountSvcAddr := c.Services["account"].GRPCAddr
-			if accountSvcAddr == "" {
-				accountSvcAddr = "account:50051" 
-			}
 	
-			orderService.SetAccountClient(clients.Account, accountSvcAddr)
-			orderService.SetDTMServer(dtmAddr)
+	// DTM Server 默认地址
+	dtmAddr := c.Services["dtm"].GRPCAddr
+	if dtmAddr == "" {
+		dtmAddr = "dtm:36790"
+	}
+	orderService.SetDTMServer(dtmAddr)
+
+	if clients.Account != nil {
+		// Account Service 回调地址
+		accountSvcAddr := c.Services["account"].GRPCAddr
+		if accountSvcAddr == "" {
+			accountSvcAddr = "account:50051" 
 		}
+		orderService.SetAccountClient(clients.Account, accountSvcAddr)
+	}
+
+	if clients.Position != nil {
+		// Position Service 回调地址
+		positionSvcAddr := c.Services["position"].GRPCAddr
+		if positionSvcAddr == "" {
+			positionSvcAddr = "position:50051"
+		}
+		orderService.SetPositionClient(clients.Position, positionSvcAddr)
+	}
 	// 5.3 Interface (HTTP Handlers)
 	handler := orderhttp.NewOrderHandler(orderService)
 
