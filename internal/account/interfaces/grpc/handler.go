@@ -137,6 +137,58 @@ func (h *GRPCHandler) GetBalance(ctx context.Context, req *pb.GetBalanceRequest)
 	}, nil
 }
 
+// SagaDeductFrozen Saga 正向: 扣除冻结
+func (h *GRPCHandler) SagaDeductFrozen(ctx context.Context, req *pb.SagaAccountRequest) (*pb.SagaAccountResponse, error) {
+	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
+	}
+	amount, _ := decimal.NewFromString(req.Amount)
+	if err := h.service.SagaDeductFrozen(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
+		return nil, status.Errorf(codes.Aborted, "SagaDeductFrozen failed: %v", err)
+	}
+	return &pb.SagaAccountResponse{Success: true}, nil
+}
+
+// SagaRefundFrozen Saga 补偿: 恢复冻结
+func (h *GRPCHandler) SagaRefundFrozen(ctx context.Context, req *pb.SagaAccountRequest) (*pb.SagaAccountResponse, error) {
+	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
+	}
+	amount, _ := decimal.NewFromString(req.Amount)
+	if err := h.service.SagaRefundFrozen(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
+		return nil, status.Errorf(codes.Internal, "SagaRefundFrozen failed: %v", err)
+	}
+	return &pb.SagaAccountResponse{Success: true}, nil
+}
+
+// SagaAddBalance Saga 正向: 增加余额
+func (h *GRPCHandler) SagaAddBalance(ctx context.Context, req *pb.SagaAccountRequest) (*pb.SagaAccountResponse, error) {
+	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
+	}
+	amount, _ := decimal.NewFromString(req.Amount)
+	if err := h.service.SagaAddBalance(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
+		return nil, status.Errorf(codes.Aborted, "SagaAddBalance failed: %v", err)
+	}
+	return &pb.SagaAccountResponse{Success: true}, nil
+}
+
+// SagaSubBalance Saga 补偿: 扣除余额
+func (h *GRPCHandler) SagaSubBalance(ctx context.Context, req *pb.SagaAccountRequest) (*pb.SagaAccountResponse, error) {
+	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
+	}
+	amount, _ := decimal.NewFromString(req.Amount)
+	if err := h.service.SagaSubBalance(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
+		return nil, status.Errorf(codes.Internal, "SagaSubBalance failed: %v", err)
+	}
+	return &pb.SagaAccountResponse{Success: true}, nil
+}
+
 // TccTryFreeze TCC Try: 预冻结
 func (h *GRPCHandler) TccTryFreeze(ctx context.Context, req *pb.TccFreezeRequest) (*pb.TccFreezeResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)

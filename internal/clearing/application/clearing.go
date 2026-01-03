@@ -2,7 +2,9 @@ package application
 
 import (
 	"context"
+	"log/slog"
 
+	accountv1 "github.com/wyfcoding/financialtrading/goapi/account/v1"
 	"github.com/wyfcoding/financialtrading/internal/clearing/domain"
 )
 
@@ -13,17 +15,29 @@ type ClearingService struct {
 }
 
 // NewClearingService 构造函数。
-func NewClearingService(settlementRepo domain.SettlementRepository, eodRepo domain.EODClearingRepository, marginRepo domain.MarginRequirementRepository) *ClearingService {
+func NewClearingService(settlementRepo domain.SettlementRepository, eodRepo domain.EODClearingRepository, marginRepo domain.MarginRequirementRepository, logger *slog.Logger) *ClearingService {
 	return &ClearingService{
-		manager: NewClearingManager(settlementRepo, eodRepo, marginRepo),
+		manager: NewClearingManager(settlementRepo, eodRepo, marginRepo, logger),
 		query:   NewClearingQuery(settlementRepo, eodRepo),
 	}
+}
+
+func (s *ClearingService) SetAccountClient(cli accountv1.AccountServiceClient, svcURL string) {
+	s.manager.SetAccountClient(cli, svcURL)
+}
+
+func (s *ClearingService) SetDTMServer(addr string) {
+	s.manager.SetDTMServer(addr)
 }
 
 // --- Manager (Writes) ---
 
 func (s *ClearingService) SettleTrade(ctx context.Context, req *SettleTradeRequest) (string, error) {
 	return s.manager.SettleTrade(ctx, req)
+}
+
+func (s *ClearingService) ProcessTradeExecution(ctx context.Context, event map[string]any) error {
+	return s.manager.ProcessTradeExecution(ctx, event)
 }
 
 func (s *ClearingService) ExecuteEODClearing(ctx context.Context, clearingDate string) (string, error) {

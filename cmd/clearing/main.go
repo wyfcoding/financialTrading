@@ -1,15 +1,19 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
 
+	kafkago "github.com/segmentio/kafka-go"
 	"github.com/wyfcoding/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 
+	accountv1 "github.com/wyfcoding/financialtrading/goapi/account/v1"
 	pb "github.com/wyfcoding/financialtrading/goapi/clearing/v1"
 	"github.com/wyfcoding/financialtrading/internal/clearing/application"
 	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/persistence/mysql"
@@ -23,6 +27,7 @@ import (
 	"github.com/wyfcoding/pkg/idempotency"
 	"github.com/wyfcoding/pkg/limiter"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
 	"github.com/wyfcoding/pkg/metrics"
 	"github.com/wyfcoding/pkg/middleware"
 )
@@ -47,11 +52,13 @@ type AppContext struct {
 	Metrics     *metrics.Metrics
 	Limiter     limiter.Limiter
 	Idempotency idempotency.Manager
+	Consumer    *kafka.Consumer
 }
 
 // ServiceClients 下游微服务客户端集合
 type ServiceClients struct {
-	// 根据需要添加下游依赖
+	AccountConn *grpc.ClientConn `service:"account"`
+	Account     accountv1.AccountServiceClient
 }
 
 func main() {
@@ -154,6 +161,9 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		}
 		return nil, nil, fmt.Errorf("grpc clients init error: %w", err)
 	}
+	if clients.AccountConn != nil {
+		clients.Account = accountv1.NewAccountServiceClient(clients.AccountConn)
+	}
 
 	// 5. DDD 分层装配
 	bootLog.Info("assembling services with full dependency injection...")
@@ -164,14 +174,46 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	marginRepo := mysql.NewMarginRequirementRepository(db.RawDB())
 
 	// 5.2 Application (Service)
-	clearingService := application.NewClearingService(settlementRepo, eodRepo, marginRepo)
+	clearingService := application.NewClearingService(settlementRepo, eodRepo, marginRepo, logger.Logger)
+	if clients.Account != nil {
+		// DTM Server 地址
+		dtmAddr := c.Services["dtm"].GRPCAddr
+		if dtmAddr == "" {
+			dtmAddr = "dtm:36790"
+		}
 
-	// 5.3 Interface (HTTP Handlers)
+		// Account 服务地址 (用于 Saga 回调)
+		accountSvcAddr := c.Services["account"].GRPCAddr
+		if accountSvcAddr == "" {
+			accountSvcAddr = "account:50051"
+		}
+
+		clearingService.SetAccountClient(clients.Account, accountSvcAddr)
+		clearingService.SetDTMServer(dtmAddr)
+	}
+
+	// 5.3 启动可靠成交事件消费
+	consumer := kafka.NewConsumer(c.MessageQueue.Kafka, logger, m)
+	consumer.Start(context.Background(), 5, func(ctx context.Context, msg kafkago.Message) error {
+		if msg.Topic != "trade.executed" {
+			return nil // 忽略不关心的 Topic
+		}
+		var event map[string]any
+		if err := json.Unmarshal(msg.Value, &event); err != nil {
+			return err
+		}
+		return clearingService.ProcessTradeExecution(ctx, event)
+	})
+
+	// 5.4 Interface (HTTP Handlers)
 	handler := clearinghttp.NewClearingHandler(clearingService)
 
 	// 定义资源清理函数
 	cleanup := func() {
 		bootLog.Info("shutting down, releasing resources...")
+		if consumer != nil {
+			consumer.Close()
+		}
 		clientCleanup()
 		if redisCache != nil {
 			if err := redisCache.Close(); err != nil {
@@ -194,5 +236,6 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		Metrics:     m,
 		Limiter:     rateLimiter,
 		Idempotency: idemManager,
+		Consumer:    consumer,
 	}, cleanup, nil
 }

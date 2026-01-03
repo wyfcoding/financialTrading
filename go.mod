@@ -5,6 +5,7 @@ go 1.25.5
 require (
 	github.com/dtm-labs/client v1.18.7
 	github.com/gin-gonic/gin v1.11.0
+	github.com/segmentio/kafka-go v0.4.49
 	github.com/shopspring/decimal v1.4.0
 	github.com/wyfcoding/pkg v0.0.0-20260103055146-09453ad29c6d
 	google.golang.org/grpc v1.78.0
@@ -81,7 +82,6 @@ require (
 	github.com/redis/go-redis/v9 v9.17.2 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
-	github.com/segmentio/kafka-go v0.4.49 // indirect
 	github.com/sony/gobreaker v1.0.0 // indirect
 	github.com/sony/sonyflake v1.3.0 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime"
+	"sync/atomic"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -61,6 +62,7 @@ type DisruptionEngine struct {
 	ring      *algorithm.MpscRingBuffer[MatchTask]
 	stopChan  chan struct{}
 	logger    *slog.Logger
+	halted    int32 // 0: 正常, 1: 停止 (原子操作)
 }
 
 func NewDisruptionEngine(symbol string, capacity uint64, logger *slog.Logger) (*DisruptionEngine, error) {
@@ -77,10 +79,23 @@ func NewDisruptionEngine(symbol string, capacity uint64, logger *slog.Logger) (*
 		ring:      ring,
 		stopChan:  make(chan struct{}),
 		logger:    logger,
+		halted:    0,
 	}
 	// 启动核心撮合 Worker (单线程)
 	go e.run()
 	return e, nil
+}
+
+// Halt 立即停止引擎。这是不可逆操作，用于处理严重一致性错误。
+func (e *DisruptionEngine) Halt() {
+	if atomic.CompareAndSwapInt32(&e.halted, 0, 1) {
+		e.logger.Error("ENGINE HALTED! Critical system failure detected. Manual intervention required.")
+	}
+}
+
+// IsHalted 检查引擎是否处于停止状态
+func (e *DisruptionEngine) IsHalted() bool {
+	return atomic.LoadInt32(&e.halted) == 1
 }
 
 func (e *DisruptionEngine) run() {
@@ -95,6 +110,13 @@ func (e *DisruptionEngine) run() {
 			e.logger.Info("Stopping core matching worker", "symbol", e.symbol)
 			return
 		default:
+			// 检查引擎是否因严重错误已停止
+			if e.IsHalted() {
+				e.logger.Error("Worker inactive: engine is halted")
+				time.Sleep(1 * time.Second) // 避免空转导致的 CPU 占用
+				continue
+			}
+
 			task := e.ring.Poll()
 			if task == nil {
 				runtime.Gosched()
@@ -110,6 +132,11 @@ func (e *DisruptionEngine) run() {
 
 // SubmitOrder 提交订单到引擎
 func (e *DisruptionEngine) SubmitOrder(order *algorithm.Order) (*MatchingResult, error) {
+	// 入口拦截：若引擎已熔断，直接拒绝请求
+	if e.IsHalted() {
+		return nil, fmt.Errorf("engine is halted due to a critical persistence error")
+	}
+
 	resChan := make(chan *MatchingResult, 1)
 	task := &MatchTask{
 		Order:      order,

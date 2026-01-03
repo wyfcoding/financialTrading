@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"time"
@@ -25,6 +26,8 @@ import (
 	"github.com/wyfcoding/pkg/idempotency"
 	"github.com/wyfcoding/pkg/limiter"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
+	"github.com/wyfcoding/pkg/messagequeue/outbox"
 	"github.com/wyfcoding/pkg/metrics"
 	"github.com/wyfcoding/pkg/middleware"
 )
@@ -49,6 +52,7 @@ type AppContext struct {
 	Metrics     *metrics.Metrics
 	Limiter     limiter.Limiter
 	Idempotency idempotency.Manager
+	Outbox      *outbox.Processor
 }
 
 // ServiceClients 下游微服务客户端集合
@@ -150,7 +154,19 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
 	idemManager := idempotency.NewRedisManager(redisCache.GetClient(), IdempotencyPrefix)
 
-	// 4. 初始化下游微服务客户端
+	// 4. 初始化消息队列与 Outbox
+	producer := kafka.NewProducer(c.MessageQueue.Kafka, logger, m)
+
+	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
+	outboxProcessor := outbox.NewProcessor(outboxMgr, func(ctx context.Context, topic, key string, payload []byte) error {
+		if producer == nil {
+			return fmt.Errorf("kafka producer not initialized")
+		}
+		return producer.PublishToTopic(ctx, topic, []byte(key), payload)
+	}, 100, 5*time.Second)
+	outboxProcessor.Start()
+
+	// 5. 初始化下游微服务客户端
 	clients := &ServiceClients{}
 	clientCleanup, err := grpcclient.InitClients(c.Services, m, c.CircuitBreaker, clients)
 	if err != nil {
@@ -165,16 +181,16 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		clients.Clearing = clearingv1.NewClearingServiceClient(clients.ClearingConn)
 	}
 
-	// 5. DDD 分层装配
+	// 6. DDD 分层装配
 	bootLog.Info("assembling services with full dependency injection...")
 
-	// 5.1 Infrastructure (Persistence)
+	// 6.1 Infrastructure (Persistence)
 	tradeRepo, orderBookRepo := mysql.NewMatchingRepository(db.RawDB())
 
-	// 5.2 Application (Service)
+	// 6.2 Application (Service)
 	// 顶级架构：撮合引擎通常是单实例单交易对，此处可以从配置加载，例如 "BTC/USDT"
 	defaultSymbol := "BTC/USDT"
-	matchingService, err := application.NewMatchingEngineService(defaultSymbol, tradeRepo, orderBookRepo, logger.Logger)
+	matchingService, err := application.NewMatchingEngineService(defaultSymbol, tradeRepo, orderBookRepo, db.RawDB(), outboxMgr, logger.Logger)
 	if err != nil {
 		redisCache.Close()
 		if sqlDB, err := db.RawDB().DB(); err == nil {
@@ -191,13 +207,17 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		matchingService.SetOrderClient(orderv1.NewOrderServiceClient(clients.OrderConn))
 	}
 
-	// 5.3 Interface (HTTP Handlers)
+	// 6.3 Interface (HTTP Handlers)
 	handler := matchinghttp.NewMatchingHandler(matchingService)
 
 	// 定义资源清理函数
 	cleanup := func() {
 		bootLog.Info("shutting down, releasing resources...")
+		outboxProcessor.Stop()
 		clientCleanup()
+		if producer != nil {
+			producer.Close()
+		}
 		if redisCache != nil {
 			if err := redisCache.Close(); err != nil {
 				bootLog.Error("failed to close redis cache", "error", err)
@@ -219,5 +239,6 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		Metrics:     m,
 		Limiter:     rateLimiter,
 		Idempotency: idemManager,
+		Outbox:      outboxProcessor,
 	}, cleanup, nil
 }

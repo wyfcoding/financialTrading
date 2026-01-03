@@ -12,6 +12,8 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
 	"github.com/wyfcoding/pkg/algorithm"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/outbox"
+	"gorm.io/gorm"
 )
 
 // MatchingEngineManager 处理所有撮合引擎相关的写入操作（Commands）。
@@ -22,14 +24,26 @@ type MatchingEngineManager struct {
 	clearingCli   clearingv1.ClearingServiceClient
 	orderCli      orderv1.OrderServiceClient
 	logger        *slog.Logger
+	db            *gorm.DB
+	outbox        *outbox.Manager
 }
 
 // NewMatchingEngineManager 构造函数。
-func NewMatchingEngineManager(symbol string, engine *domain.DisruptionEngine, tradeRepo domain.TradeRepository, orderBookRepo domain.OrderBookRepository, logger *slog.Logger) *MatchingEngineManager {
+func NewMatchingEngineManager(
+	symbol string,
+	engine *domain.DisruptionEngine,
+	tradeRepo domain.TradeRepository,
+	orderBookRepo domain.OrderBookRepository,
+	db *gorm.DB,
+	outboxMgr *outbox.Manager,
+	logger *slog.Logger,
+) *MatchingEngineManager {
 	return &MatchingEngineManager{
 		engine:        engine,
 		tradeRepo:     tradeRepo,
 		orderBookRepo: orderBookRepo,
+		db:            db,
+		outbox:        outboxMgr,
 		logger:        logger.With("module", "matching_engine_manager", "symbol", symbol),
 	}
 }
@@ -98,59 +112,51 @@ func (m *MatchingEngineManager) SubmitOrder(ctx context.Context, req *SubmitOrde
 }
 
 func (m *MatchingEngineManager) processPostMatching(trades []*algorithm.Trade) {
-	m.logger.Debug("starting post-matching processing", "count", len(trades))
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
+	m.logger.Debug("starting reliable post-matching processing", "count", len(trades))
+
+	// 使用本地事务确保成交记录与 Outbox 消息的一致性
+	err := m.db.Transaction(func(tx *gorm.DB) error {
+		// 将事务注入 Context，供 Repository 使用
+		ctx := context.WithValue(context.Background(), "tx_db", tx)
+
 		for _, t := range trades {
 			// 1. 持久化到本地 DB
 			if err := m.tradeRepo.Save(ctx, t); err != nil {
-				m.logger.Error("failed to persist trade", "trade_id", t.TradeID, "error", err)
+				return fmt.Errorf("failed to persist trade %s: %w", t.TradeID, err)
 			}
 
-			// 2. 报告到清算服务
-			if m.clearingCli != nil {
-				_, err := m.clearingCli.SettleTrade(ctx, &clearingv1.SettleTradeRequest{
-					TradeId:    t.TradeID,
-					BuyUserId:  t.BuyUserID,
-					SellUserId: t.SellUserID,
-					Symbol:     t.Symbol,
-					Quantity:   t.Quantity.String(),
-					Price:      t.Price.String(),
-				})
-				if err != nil {
-					m.logger.Error("failed to report trade to clearing", "trade_id", t.TradeID, "error", err)
-				}
+			// 2. 写入 Outbox 事件
+			// 消息包含结算所需的所有关键信息
+			event := map[string]any{
+				"trade_id":     t.TradeID,
+				"buy_order_id": t.BuyOrderID,
+				"sell_order_id": t.SellOrderID,
+				"buy_user_id":  t.BuyUserID,
+				"sell_user_id": t.SellUserID,
+				"symbol":       t.Symbol,
+				"quantity":     t.Quantity.String(),
+				"price":        t.Price.String(),
+				"executed_at":  t.Timestamp,
 			}
 
-			// 3. 更新订单成交状态 (Cross-Project Interaction)
-			if m.orderCli != nil {
-				m.logger.Info("reporting fill to order service", "buy_order_id", t.BuyOrderID, "sell_order_id", t.SellOrderID, "qty", t.Quantity.String(), "price", t.Price.String())
-
-				// 为买方更新
-				_, _ = m.orderCli.UpdateOrderStatus(ctx, &orderv1.UpdateOrderStatusRequest{
-					OrderId:          t.BuyOrderID,
-					UserId:           t.BuyUserID,
-					Status:           "PARTIALLY_FILLED",
-					FilledQuantity:   t.Quantity.String(),
-					LastFillPrice:    t.Price.String(),
-					LastFillQuantity: t.Quantity.String(),
-					Remark:           fmt.Sprintf("Buy filled via trade %s", t.TradeID),
-				})
-
-				// 为卖方更新
-				_, _ = m.orderCli.UpdateOrderStatus(ctx, &orderv1.UpdateOrderStatusRequest{
-					OrderId:          t.SellOrderID,
-					UserId:           t.SellUserID,
-					Status:           "PARTIALLY_FILLED",
-					FilledQuantity:   t.Quantity.String(),
-					LastFillPrice:    t.Price.String(),
-					LastFillQuantity: t.Quantity.String(),
-					Remark:           fmt.Sprintf("Sell filled via trade %s", t.TradeID),
-				})
+			if err := m.outbox.PublishInTx(tx, "trade.executed", t.TradeID, event); err != nil {
+				return fmt.Errorf("failed to publish outbox event for trade %s: %w", t.TradeID, err)
 			}
 		}
-	}()
+		return nil
+	})
+
+	if err != nil {
+		m.logger.Error("CRITICAL: failed post-matching transactional processing. HALTING ENGINE!", "error", err)
+		
+		// 立即熔断引擎：这是最高级别的安全保护
+		// 一旦内存状态与 DB 发生分歧，必须停止一切交易以防止损失扩大。
+		m.engine.Halt()
+		
+		// 在实际系统中，此处还应触发 PagerDuty/短信告警给运维人员。
+	} else {
+		m.logger.Info("post-matching trades persisted and outbox events created", "count", len(trades))
+	}
 }
 
 // SaveSnapshot (Manually trigger snapshot if needed)

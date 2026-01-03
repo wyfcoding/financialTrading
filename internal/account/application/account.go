@@ -39,8 +39,22 @@ func (s *AccountService) UnfreezeBalance(ctx context.Context, accountID string, 
 	return s.manager.UnfreezeBalance(ctx, accountID, amount)
 }
 
-func (s *AccountService) DeductFrozenBalance(ctx context.Context, accountID string, amount decimal.Decimal) error {
-	return s.manager.DeductFrozenBalance(ctx, accountID, amount)
+// --- Saga Facade ---
+
+func (s *AccountService) SagaDeductFrozen(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+	return s.manager.SagaDeductFrozen(ctx, barrier, userID, currency, amount)
+}
+
+func (s *AccountService) SagaRefundFrozen(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+	return s.manager.SagaRefundFrozen(ctx, barrier, userID, currency, amount)
+}
+
+func (s *AccountService) SagaAddBalance(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+	return s.manager.SagaAddBalance(ctx, barrier, userID, currency, amount)
+}
+
+func (s *AccountService) SagaSubBalance(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+	return s.manager.SagaSubBalance(ctx, barrier, userID, currency, amount)
 }
 
 // --- TCC Facade ---

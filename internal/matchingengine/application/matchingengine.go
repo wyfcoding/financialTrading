@@ -9,6 +9,8 @@ import (
 	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
 	"github.com/wyfcoding/pkg/algorithm"
+	"github.com/wyfcoding/pkg/messagequeue/outbox"
+	"gorm.io/gorm"
 )
 
 // MatchingEngineService 撮合门面服务，整合 Manager 和 Query。
@@ -18,7 +20,14 @@ type MatchingEngineService struct {
 }
 
 // NewMatchingEngineService 构造函数。
-func NewMatchingEngineService(symbol string, tradeRepo domain.TradeRepository, orderBookRepo domain.OrderBookRepository, logger *slog.Logger) (*MatchingEngineService, error) {
+func NewMatchingEngineService(
+	symbol string,
+	tradeRepo domain.TradeRepository,
+	orderBookRepo domain.OrderBookRepository,
+	db *gorm.DB,
+	outboxMgr *outbox.Manager,
+	logger *slog.Logger,
+) (*MatchingEngineService, error) {
 	// 初始化 Disruptor 模式引擎
 	engine, err := domain.NewDisruptionEngine(symbol, 1048576, logger)
 	if err != nil {
@@ -26,7 +35,7 @@ func NewMatchingEngineService(symbol string, tradeRepo domain.TradeRepository, o
 	}
 
 	return &MatchingEngineService{
-		manager: NewMatchingEngineManager(symbol, engine, tradeRepo, orderBookRepo, logger),
+		manager: NewMatchingEngineManager(symbol, engine, tradeRepo, orderBookRepo, db, outboxMgr, logger),
 		query:   NewMatchingEngineQuery(engine, tradeRepo),
 	}, nil
 }

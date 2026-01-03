@@ -27,6 +27,17 @@ service AccountService {
   // 获取交易历史。
   rpc GetTransactionHistory(GetTransactionHistoryRequest) returns (GetTransactionHistoryResponse);
 
+  // --- Saga 结算分布式事务接口 ---
+  // 1. 扣除冻结资金 (Forward)
+  rpc SagaDeductFrozen(SagaAccountRequest) returns (SagaAccountResponse);
+  // 补偿: 恢复冻结资金 (Compensate)
+  rpc SagaRefundFrozen(SagaAccountRequest) returns (SagaAccountResponse);
+
+  // 2. 增加余额 (Forward)
+  rpc SagaAddBalance(SagaAccountRequest) returns (SagaAccountResponse);
+  // 补偿: 扣除余额 (Compensate)
+  rpc SagaSubBalance(SagaAccountRequest) returns (SagaAccountResponse);
+
   // --- TCC 分布式事务接口 ---
   // TCC Try: 预冻结资金 (Available -> Frozen)
   rpc TccTryFreeze(TccFreezeRequest) returns (TccFreezeResponse);
@@ -48,6 +59,19 @@ message TccFreezeRequest {
 message TccFreezeResponse {
   bool success = 1;
   string message = 2;
+}
+
+// Saga 账户操作请求
+message SagaAccountRequest {
+  string user_id = 1;
+  string currency = 2;
+  string amount = 3;
+  string trade_id = 4; // 关联成交ID，用于业务幂等
+}
+
+// Saga 账户操作响应
+message SagaAccountResponse {
+  bool success = 1;
 }
 
 // 账户详细信息响应。

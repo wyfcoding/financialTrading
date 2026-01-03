@@ -48,6 +48,14 @@ func NewMatchingRepository(db *gorm.DB) (domain.TradeRepository, domain.OrderBoo
 	return impl, impl
 }
 
+// getDBFromContext 尝试从 Context 获取事务 DB，否则返回默认 DB
+func (r *matchingRepositoryImpl) getDB(ctx context.Context) *gorm.DB {
+	if tx, ok := ctx.Value("tx_db").(*gorm.DB); ok {
+		return tx.WithContext(ctx)
+	}
+	return r.db.WithContext(ctx)
+}
+
 // TradeRepository methods
 func (r *matchingRepositoryImpl) Save(ctx context.Context, t *algorithm.Trade) error {
 	m := &TradeModel{
@@ -59,7 +67,7 @@ func (r *matchingRepositoryImpl) Save(ctx context.Context, t *algorithm.Trade) e
 		Quantity:    t.Quantity.String(),
 		ExecutedAt:  t.Timestamp,
 	}
-	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
+	return r.getDB(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "trade_id"}},
 		UpdateAll: true,
 	}).Create(m).Error
@@ -67,7 +75,7 @@ func (r *matchingRepositoryImpl) Save(ctx context.Context, t *algorithm.Trade) e
 
 func (r *matchingRepositoryImpl) GetTradeHistory(ctx context.Context, symbol string, limit int) ([]*algorithm.Trade, error) {
 	var models []TradeModel
-	if err := r.db.WithContext(ctx).Where("symbol = ?", symbol).Order("executed_at desc").Limit(limit).Find(&models).Error; err != nil {
+	if err := r.getDB(ctx).Where("symbol = ?", symbol).Order("executed_at desc").Limit(limit).Find(&models).Error; err != nil {
 		return nil, err
 	}
 	res := make([]*algorithm.Trade, len(models))
@@ -102,7 +110,7 @@ func (r *matchingRepositoryImpl) SaveSnapshot(ctx context.Context, s *domain.Ord
 		Asks:      string(asks),
 		Timestamp: s.Timestamp,
 	}
-	err = r.db.WithContext(ctx).Create(m).Error
+	err = r.getDB(ctx).Create(m).Error
 	if err == nil {
 		s.Model = m.Model
 	}
@@ -111,7 +119,7 @@ func (r *matchingRepositoryImpl) SaveSnapshot(ctx context.Context, s *domain.Ord
 
 func (r *matchingRepositoryImpl) GetLatestOrderBook(ctx context.Context, symbol string) (*domain.OrderBookSnapshot, error) {
 	var m OrderBookSnapshotModel
-	if err := r.db.WithContext(ctx).Where("symbol = ?", symbol).Order("timestamp desc").First(&m).Error; err != nil {
+	if err := r.getDB(ctx).Where("symbol = ?", symbol).Order("timestamp desc").First(&m).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
