@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
+	"github.com/wyfcoding/pkg/cache"
+	"github.com/wyfcoding/pkg/security/risk"
 )
 
 // AssessRiskRequest 风险评估请求 DTO
@@ -70,9 +72,11 @@ func NewRiskService(
 	limitRepo domain.RiskLimitRepository,
 	alertRepo domain.RiskAlertRepository,
 	breakerRepo domain.CircuitBreakerRepository,
+	ruleEngine risk.Evaluator,
+	localCache cache.Cache,
 ) *RiskService {
 	return &RiskService{
-		manager: NewRiskManager(assessmentRepo, metricsRepo, limitRepo, alertRepo, breakerRepo),
+		manager: NewRiskManager(assessmentRepo, metricsRepo, limitRepo, alertRepo, breakerRepo, ruleEngine, localCache),
 		query:   NewRiskQuery(assessmentRepo, metricsRepo, limitRepo, alertRepo),
 	}
 }

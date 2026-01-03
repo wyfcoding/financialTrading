@@ -25,6 +25,7 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 	"github.com/wyfcoding/pkg/metrics"
 	"github.com/wyfcoding/pkg/middleware"
+	pkgsecurity "github.com/wyfcoding/pkg/security/risk"
 )
 
 // BootstrapName 服务唯一标识
@@ -140,9 +141,10 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		return nil, nil, fmt.Errorf("redis init error: %w", err)
 	}
 
-	// 3. 初始化治理组件 (限流器、幂等管理器)
+	// 3. 初始化治理组件 (限流器、幂等管理器、动态规则引擎)
 	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
 	idemManager := idempotency.NewRedisManager(redisCache.GetClient(), IdempotencyPrefix)
+	ruleEngine := pkgsecurity.NewDynamicRiskEngine(logger.Logger)
 
 	// 4. 初始化下游微服务客户端
 	clients := &ServiceClients{}
@@ -166,7 +168,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	breakerRepo := mysql.NewCircuitBreakerRepository(db.RawDB())
 
 	// 5.2 Application (Service)
-	riskService := application.NewRiskService(assessmentRepo, metricsRepo, limitRepo, alertRepo, breakerRepo)
+	riskService := application.NewRiskService(assessmentRepo, metricsRepo, limitRepo, alertRepo, breakerRepo, ruleEngine, redisCache)
 
 	// 5.3 Interface (HTTP Handlers)
 	handler := riskhttp.NewRiskHandler(riskService)

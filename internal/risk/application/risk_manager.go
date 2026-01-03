@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
 	"github.com/wyfcoding/pkg/algorithm"
+	"github.com/wyfcoding/pkg/cache"
 	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/security/risk"
 )
 
 // RiskManager 处理所有风险管理相关的写入操作（Commands）。
@@ -20,6 +23,8 @@ type RiskManager struct {
 	alertRepo      domain.RiskAlertRepository
 	breakerRepo    domain.CircuitBreakerRepository
 	calculator     *algorithm.RiskCalculator
+	ruleEngine     risk.Evaluator // 动态规则引擎
+	localCache     cache.Cache    // 本地热点缓存
 }
 
 // NewRiskManager 构造函数。
@@ -29,6 +34,8 @@ func NewRiskManager(
 	limitRepo domain.RiskLimitRepository,
 	alertRepo domain.RiskAlertRepository,
 	breakerRepo domain.CircuitBreakerRepository,
+	ruleEngine risk.Evaluator,
+	localCache cache.Cache,
 ) *RiskManager {
 	return &RiskManager{
 		assessmentRepo: assessmentRepo,
@@ -37,17 +44,30 @@ func NewRiskManager(
 		alertRepo:      alertRepo,
 		breakerRepo:    breakerRepo,
 		calculator:     algorithm.NewRiskCalculator(),
+		ruleEngine:     ruleEngine,
+		localCache:     localCache,
 	}
 }
 
-// AssessRisk 评估交易风险
+// AssessRisk 评估交易风险 (修复版：功能完整 + 性能增强)
 func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*RiskAssessmentDTO, error) {
-	// 1. 检查账户熔断状态
+	// 1. 极速熔断检查 (L1 Cache)
+	breakerKey := fmt.Sprintf("breaker:%s", req.UserID)
+	var isFired bool
+	if err := m.localCache.Get(ctx, breakerKey, &isFired); err == nil && isFired {
+		return &RiskAssessmentDTO{
+			IsAllowed: false,
+			Reason:    "Account trading suspended (cached)",
+		}, nil
+	}
+
+	// 2. 检查账户熔断状态 (数据库回源)
 	breaker, err := m.breakerRepo.GetByUserID(ctx, req.UserID)
 	if err != nil {
 		return nil, err
 	}
 	if breaker != nil && breaker.IsFired {
+		_ = m.localCache.Set(ctx, breakerKey, true, 30*time.Second)
 		return &RiskAssessmentDTO{
 			IsAllowed: false,
 			Reason:    fmt.Sprintf("Account trading suspended: %s", breaker.TriggerReason),
@@ -56,20 +76,34 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 
 	quantity, _ := decimal.NewFromString(req.Quantity)
 	price, _ := decimal.NewFromString(req.Price)
+	orderValue := quantity.Mul(price)
 
-	assessmentID := fmt.Sprintf("RISK-%d", idgen.GenID())
-	riskLevel := domain.RiskLevelLow
-	riskScore := decimal.NewFromInt(20)
-	marginRequirement := quantity.Mul(price).Mul(decimal.NewFromFloat(0.1))
-
-	if quantity.GreaterThan(decimal.NewFromInt(10000)) {
-		riskLevel = domain.RiskLevelHigh
-		riskScore = decimal.NewFromInt(75)
-		marginRequirement = quantity.Mul(price).Mul(decimal.NewFromFloat(0.2))
+	// 3. 动态规则引擎评估
+	assessmentResult, err := m.ruleEngine.Assess(ctx, "trade.assess", map[string]any{
+		"user_id":     req.UserID,
+		"symbol":      req.Symbol,
+		"quantity":    quantity.InexactFloat64(),
+		"order_value": orderValue.InexactFloat64(),
+	})
+	if err != nil {
+		m.internalLogger().ErrorContext(ctx, "rule engine assessment failed", "error", err)
+		return nil, fmt.Errorf("risk system internal error")
 	}
 
+	// 初始分值与等级
+	riskLevel := domain.RiskLevelLow
+	riskScore := decimal.NewFromInt(int64(assessmentResult.Score))
+	if assessmentResult.Level == risk.Reject {
+		riskLevel = domain.RiskLevelCritical
+	} else if assessmentResult.Score > 50 {
+		riskLevel = domain.RiskLevelHigh
+	}
+
+	// 保证金计算 (基础 10%)
+	marginRequirement := orderValue.Mul(decimal.NewFromFloat(0.1))
+
 	assessment := &domain.RiskAssessment{
-		ID:                assessmentID,
+		ID:                fmt.Sprintf("RISK-%d", idgen.GenID()),
 		UserID:            req.UserID,
 		Symbol:            req.Symbol,
 		Side:              req.Side,
@@ -78,38 +112,39 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 		RiskLevel:         riskLevel,
 		RiskScore:         riskScore,
 		MarginRequirement: marginRequirement,
-		IsAllowed:         true,
-		Reason:            "Risk assessment passed",
+		IsAllowed:         assessmentResult.Level != risk.Reject,
+		Reason:            assessmentResult.Reason,
 	}
 
-	// 2. 检查组合风险限额 (Portfolio Risk Limits)
-	// 示例：检查单笔交易金额是否超过每日累计限额
+	// 2. 检查组合风险限额 (Portfolio Risk Limits) ---
 	limit, err := m.limitRepo.GetByUser(ctx, req.UserID, "MAX_SINGLE_ORDER_VALUE")
 	if err == nil && limit != nil {
-		orderValue := quantity.Mul(price)
 		if orderValue.GreaterThan(limit.LimitValue) {
 			assessment.IsAllowed = false
 			assessment.Reason = fmt.Sprintf("Order value %s exceeds limit %s", orderValue, limit.LimitValue)
 		}
 	}
 
+	// 持久化评估结果
 	if err := m.assessmentRepo.Save(ctx, assessment); err != nil {
 		return nil, err
 	}
 
+	// 3. 风险告警逻辑 ---
 	if riskLevel == domain.RiskLevelHigh || riskLevel == domain.RiskLevelCritical {
 		alert := &domain.RiskAlert{
 			ID:        fmt.Sprintf("ALERT-%d", idgen.GenID()),
 			UserID:    req.UserID,
 			AlertType: "HIGH_RISK",
 			Severity:  string(riskLevel),
-			Message:   fmt.Sprintf("High risk detected for %s", req.Symbol),
+			Message:   fmt.Sprintf("High risk detected for %s: %s", req.Symbol, assessment.Reason),
 		}
 		if err := m.alertRepo.Save(ctx, alert); err != nil {
-			logging.Error(ctx, "RiskManager: failed to save alert", "error", err)
+			logging.Error(ctx, "failed to save alert", "error", err)
 		}
 	}
 
+	// 4. 返回完整的 DTO ---
 	return &RiskAssessmentDTO{
 		AssessmentID:      assessment.ID,
 		UserID:            assessment.UserID,
