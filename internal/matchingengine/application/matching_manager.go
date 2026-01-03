@@ -56,53 +56,91 @@ func (m *MatchingEngineManager) SetOrderClient(cli orderv1.OrderServiceClient) {
 	m.orderCli = cli
 }
 
-// RecoverState 从数据库恢复引擎状态
+// RecoverState 从数据库恢复引擎状态 (生产级分页重放实现)
 func (m *MatchingEngineManager) RecoverState(ctx context.Context) error {
-	m.logger.Info("starting matching engine state recovery...")
+	m.logger.Info("starting matching engine state recovery from Order Service", "symbol", m.engine.Symbol())
 
-	// 1. 调用 Order Service 获取所有活跃订单
-	// 注意：此处需要 OrderServiceClient 提供相应接口，
-	// 若无直接接口，可直接从 orderRepo (如果在同进程) 或通过 gRPC 获取。
-	// 为了演示 Recovery 闭环，假设我们通过 orderCli 获取。
 	if m.orderCli == nil {
-		m.logger.Warn("order client not available, skipping recovery")
-		return nil
+		return fmt.Errorf("critical error: order client is nil, cannot recover engine state")
 	}
 
-	resp, err := m.orderCli.ListOrders(ctx, &orderv1.ListOrdersRequest{
-		Symbol: m.engine.Symbol(), 
-		Status: "OPEN", // 状态在 proto 中定义为 string
-	})
-	if err != nil {
-		return fmt.Errorf("failed to fetch active orders for recovery: %w", err)
-	}
+	// 定义需要恢复的活跃状态列表
+	// OPEN: 挂单中, PARTIALLY_FILLED: 部分成交
+	activeStatuses := []string{"OPEN", "PARTIALLY_FILLED"}
+	totalReplayed := 0
 
-	for _, o := range resp.Orders {
-		// 计算剩余可撮合数量
-		price, _ := decimal.NewFromString(o.Price)
-		qty, _ := decimal.NewFromString(o.Quantity)
-		filled, _ := decimal.NewFromString(o.FilledQuantity)
-		remQty := qty.Sub(filled)
+	for _, status := range activeStatuses {
+		page := int32(1)
+		pageSize := int32(500) // 每页拉取 500 条，平衡网络带宽与内存占用
 
-		if remQty.IsPositive() {
-			m.engine.ReplayOrder(&algorithm.Order{
-				OrderID:   o.OrderId,
-				Symbol:    o.Symbol,
-				Side:      o.Side,
-				Price:     price,
-				Quantity:  remQty,
-				UserID:    o.UserId,
-				Timestamp: time.Unix(o.CreatedAt, 0).UnixNano(),
+		for {
+			m.logger.Debug("fetching active orders page", "status", status, "page", page)
+
+			// 通过 gRPC 调用 Order 服务获取活跃订单
+			// 仓库实现中已保证按 CreatedAt 正序排列，确保回放时的时间优先级 (FIFO) 正确
+			resp, err := m.orderCli.ListOrders(ctx, &orderv1.ListOrdersRequest{
+				Symbol:   m.engine.Symbol(),
+				Status:   status,
+				Page:     page,
+				PageSize: pageSize,
 			})
+			if err != nil {
+				return fmt.Errorf("failed to fetch orders from OrderService (status=%s, page=%d): %w", status, page, err)
+			}
+
+			if len(resp.Orders) == 0 {
+				break // 该状态下的订单已拉取完毕
+			}
+
+			for _, o := range resp.Orders {
+				// 1. 解析价格与数量
+				price, err := decimal.NewFromString(o.Price)
+				if err != nil {
+					m.logger.Error("failed to parse order price during recovery", "order_id", o.OrderId, "price", o.Price)
+					continue
+				}
+				qty, _ := decimal.NewFromString(o.Quantity)
+				filled, _ := decimal.NewFromString(o.FilledQuantity)
+
+				// 2. 计算剩余可撮合数量 (总数量 - 已成交数量)
+				remQty := qty.Sub(filled)
+
+				if remQty.IsPositive() {
+					// 3. 将订单无损注入内存订单簿
+					// 注意：此处调用 ReplayOrder，它只负责重建索引，不会触发成交或发送任何消息
+					m.engine.ReplayOrder(&algorithm.Order{
+						OrderID:   o.OrderId,
+						Symbol:    o.Symbol,
+						Side:      o.Side,
+						Price:     price,
+						Quantity:  remQty,
+						UserID:    o.UserId,
+						Timestamp: o.CreatedAt, // 使用原始下单时间戳，保证撮合队列的绝对公平
+					})
+					totalReplayed++
+				}
+			}
+
+			// 如果返回结果少于页大小，说明是最后一页
+			if int32(len(resp.Orders)) < pageSize {
+				break
+			}
+			page++
 		}
 	}
 
-	m.logger.Info("state recovery finished", "replayed_count", len(resp.Orders))
+	m.logger.Info("matching engine state recovery completed successfully",
+		"symbol", m.engine.Symbol(),
+		"total_replayed_orders", totalReplayed)
 	return nil
 }
 
 // SubmitOrder 提交订单进行撮合
 func (m *MatchingEngineManager) SubmitOrder(ctx context.Context, req *SubmitOrderRequest) (*domain.MatchingResult, error) {
+	// 入口拦截：若引擎正在恢复中或因故障停止，拒绝新请求
+	if m.engine.IsHalted() {
+		return nil, fmt.Errorf("matching engine is currently unavailable (halted)")
+	}
 	// 记录性能监控
 	defer logging.LogDuration(ctx, "Order matching processing finished",
 		"order_id", req.OrderID,
@@ -165,23 +203,22 @@ func (m *MatchingEngineManager) processPostMatching(trades []*algorithm.Trade) {
 		ctx := context.WithValue(context.Background(), "tx_db", tx)
 
 		for _, t := range trades {
-			// 1. 持久化到本地 DB
+			// 1. 持久化成交记录
 			if err := m.tradeRepo.Save(ctx, t); err != nil {
 				return fmt.Errorf("failed to persist trade %s: %w", t.TradeID, err)
 			}
 
 			// 2. 写入 Outbox 事件
-			// 消息包含结算所需的所有关键信息
 			event := map[string]any{
-				"trade_id":     t.TradeID,
-				"buy_order_id": t.BuyOrderID,
+				"trade_id":      t.TradeID,
+				"buy_order_id":  t.BuyOrderID,
 				"sell_order_id": t.SellOrderID,
-				"buy_user_id":  t.BuyUserID,
-				"sell_user_id": t.SellUserID,
-				"symbol":       t.Symbol,
-				"quantity":     t.Quantity.String(),
-				"price":        t.Price.String(),
-				"executed_at":  t.Timestamp,
+				"buy_user_id":   t.BuyUserID,
+				"sell_user_id":  t.SellUserID,
+				"symbol":        t.Symbol,
+				"quantity":      t.Quantity.String(),
+				"price":         t.Price.String(),
+				"executed_at":   t.Timestamp,
 			}
 
 			if err := m.outbox.PublishInTx(tx, "trade.executed", t.TradeID, event); err != nil {
@@ -193,18 +230,18 @@ func (m *MatchingEngineManager) processPostMatching(trades []*algorithm.Trade) {
 
 	if err != nil {
 		m.logger.Error("CRITICAL: failed post-matching transactional processing. HALTING ENGINE!", "error", err)
-		
+
 		// 立即熔断引擎：这是最高级别的安全保护
 		// 一旦内存状态与 DB 发生分歧，必须停止一切交易以防止损失扩大。
 		m.engine.Halt()
-		
+
 		// 在实际系统中，此处还应触发 PagerDuty/短信告警给运维人员。
 	} else {
 		m.logger.Info("post-matching trades persisted and outbox events created", "count", len(trades))
 	}
 }
 
-// SaveSnapshot (Manually trigger snapshot if needed)
+// SaveSnapshot 触发快照
 func (m *MatchingEngineManager) SaveSnapshot(ctx context.Context, depth int) error {
 	snapshot := m.engine.GetOrderBookSnapshot(depth)
 	return m.orderBookRepo.SaveSnapshot(ctx, snapshot)
