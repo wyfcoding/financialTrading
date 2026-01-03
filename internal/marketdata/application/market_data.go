@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/domain"
@@ -19,14 +20,19 @@ func NewMarketDataService(
 	klineRepo domain.KlineRepository,
 	tradeRepo domain.TradeRepository,
 	orderBookRepo domain.OrderBookRepository,
+	logger *slog.Logger,
 ) *MarketDataService {
 	return &MarketDataService{
-		manager: NewMarketDataManager(quoteRepo, klineRepo, tradeRepo, orderBookRepo),
+		manager: NewMarketDataManager(quoteRepo, klineRepo, tradeRepo, orderBookRepo, logger),
 		query:   NewMarketDataQuery(quoteRepo, klineRepo, tradeRepo, orderBookRepo),
 	}
 }
 
 // --- Manager (Writes) ---
+
+func (s *MarketDataService) HandleTradeExecuted(ctx context.Context, event map[string]any) error {
+	return s.manager.HandleTradeExecuted(ctx, event)
+}
 
 func (s *MarketDataService) SaveQuote(ctx context.Context, symbol string, bidPrice, askPrice, bidSize, askSize, lastPrice, lastSize decimal.Decimal, timestamp int64, source string) error {
 	return s.manager.SaveQuote(ctx, symbol, bidPrice, askPrice, bidSize, askSize, lastPrice, lastSize, timestamp, source)

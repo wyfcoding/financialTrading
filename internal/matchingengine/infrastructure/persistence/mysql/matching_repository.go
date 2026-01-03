@@ -17,12 +17,12 @@ import (
 type TradeModel struct {
 	gorm.Model
 	TradeID     string `gorm:"column:trade_id;type:varchar(32);uniqueIndex;not null"`
-	Symbol      string `gorm:"column:symbol;type:varchar(20);index;not null"`
+	Symbol      string `gorm:"column:symbol;type:varchar(20);index:idx_symbol_time;not null"`
 	BuyOrderID  string `gorm:"column:buy_order_id;type:varchar(32);index;not null"`
 	SellOrderID string `gorm:"column:sell_order_id;type:varchar(32);index;not null"`
 	Price       string `gorm:"column:price;type:decimal(32,18);not null"`
 	Quantity    string `gorm:"column:quantity;type:decimal(32,18);not null"`
-	ExecutedAt  int64  `gorm:"column:executed_at;type:bigint"`
+	ExecutedAt  int64  `gorm:"column:executed_at;type:bigint;index:idx_symbol_time"`
 }
 
 func (TradeModel) TableName() string { return "matching_trades" }

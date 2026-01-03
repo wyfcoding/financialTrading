@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
@@ -8,6 +10,7 @@ import (
 	"github.com/wyfcoding/pkg/response"
 
 	"github.com/gin-gonic/gin"
+	kafkago "github.com/segmentio/kafka-go"
 	"google.golang.org/grpc"
 
 	pb "github.com/wyfcoding/financialtrading/goapi/marketdata/v1"
@@ -23,6 +26,7 @@ import (
 	"github.com/wyfcoding/pkg/idempotency"
 	"github.com/wyfcoding/pkg/limiter"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
 	"github.com/wyfcoding/pkg/metrics"
 	"github.com/wyfcoding/pkg/middleware"
 )
@@ -47,11 +51,12 @@ type AppContext struct {
 	Metrics     *metrics.Metrics
 	Limiter     limiter.Limiter
 	Idempotency idempotency.Manager
+	Consumer    *kafka.Consumer
 }
 
 // ServiceClients 下游微服务客户端集合
 type ServiceClients struct {
-	// 根据需要添加下游依赖
+	// 目前 MarketData 服务无下游强依赖
 }
 
 func main() {
@@ -160,20 +165,35 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 
 	// 5.1 Infrastructure (Persistence)
 	quoteRepo := mysql.NewQuoteRepository(db.RawDB())
-
-	// 5.2 Application (Service)
-	// 需要 mock 缺少的 repo 或者从 db 获取
 	klineRepo := mysql.NewKlineRepository(db.RawDB())
 	tradeRepo := mysql.NewTradeRepository(db.RawDB())
 	orderBookRepo := mysql.NewOrderBookRepository(db.RawDB())
-	marketDataService := application.NewMarketDataService(quoteRepo, klineRepo, tradeRepo, orderBookRepo)
 
-	// 5.3 Interface (HTTP Handlers)
+	// 5.2 Application (Service)
+	marketDataService := application.NewMarketDataService(quoteRepo, klineRepo, tradeRepo, orderBookRepo, logger.Logger)
+
+	// 5.3 启动 Kafka 消费者 (可靠成交事件消费 -> K 线实时计算)
+	consumer := kafka.NewConsumer(c.MessageQueue.Kafka, logger, m)
+	consumer.Start(context.Background(), 10, func(ctx context.Context, msg kafkago.Message) error {
+		if msg.Topic != "trade.executed" {
+			return nil
+		}
+		var event map[string]any
+		if err := json.Unmarshal(msg.Value, &event); err != nil {
+			return err
+		}
+		return marketDataService.HandleTradeExecuted(ctx, event)
+	})
+
+	// 5.4 Interface (HTTP Handlers)
 	handler := marketdatahttp.NewHandler(marketDataService)
 
 	// 定义资源清理函数
 	cleanup := func() {
 		bootLog.Info("shutting down, releasing resources...")
+		if consumer != nil {
+			consumer.Close()
+		}
 		clientCleanup()
 		if redisCache != nil {
 			if err := redisCache.Close(); err != nil {
@@ -196,5 +216,6 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		Metrics:     m,
 		Limiter:     rateLimiter,
 		Idempotency: idemManager,
+		Consumer:    consumer,
 	}, cleanup, nil
 }
