@@ -24,6 +24,8 @@ type Account struct {
 	AvailableBalance decimal.Decimal `gorm:"column:available_balance;type:decimal(32,18);default:0;not null" json:"available_balance"`
 	// 冻结余额
 	FrozenBalance decimal.Decimal `gorm:"column:frozen_balance;type:decimal(32,18);default:0;not null" json:"frozen_balance"`
+	// 版本号 (用于乐观锁并发控制)
+	Version int64 `gorm:"column:version;default:0;not null" json:"version"`
 }
 
 // Transaction 交易记录

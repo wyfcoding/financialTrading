@@ -2,8 +2,13 @@ package domain
 
 import (
 	"context"
+	"errors"
 
 	"github.com/shopspring/decimal"
+)
+
+var (
+	ErrConcurrentUpdate = errors.New("account record concurrent update detected")
 )
 
 // AccountRepository 账户仓储接口
@@ -14,8 +19,8 @@ type AccountRepository interface {
 	Get(ctx context.Context, accountID string) (*Account, error)
 	// GetByUser 根据用户 ID 获取账户列表
 	GetByUser(ctx context.Context, userID string) ([]*Account, error)
-	// UpdateBalance 显式更新账户余额（含锁或原子操作建议在仓储实现中处理）
-	UpdateBalance(ctx context.Context, accountID string, balance, availableBalance, frozenBalance decimal.Decimal) error
+	// UpdateBalance 显式更新账户余额 (带乐观锁版本检查)
+	UpdateBalance(ctx context.Context, accountID string, balance, availableBalance, frozenBalance decimal.Decimal, currentVersion int64) error
 
 	// ExecWithBarrier 在分布式事务屏障下执行业务逻辑
 	// barrier 类型应为 *dtmgrpc.BranchBarrier，使用 interface{} 避免领域层强依赖

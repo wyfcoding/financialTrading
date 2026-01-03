@@ -24,6 +24,7 @@ type AccountModel struct {
 	Balance          string `gorm:"column:balance;type:decimal(32,18);default:'0';not null"`
 	AvailableBalance string `gorm:"column:available_balance;type:decimal(32,18);default:'0';not null"`
 	FrozenBalance    string `gorm:"column:frozen_balance;type:decimal(32,18);default:'0';not null"`
+	Version          int64  `gorm:"column:version;default:0;not null"`
 }
 
 // TableName 指定表名
@@ -54,6 +55,7 @@ func (r *accountRepositoryImpl) Save(ctx context.Context, account *domain.Accoun
 		Balance:          account.Balance.String(),
 		AvailableBalance: account.AvailableBalance.String(),
 		FrozenBalance:    account.FrozenBalance.String(),
+		Version:          account.Version,
 	}
 
 	err := r.getDB(ctx).Clauses(clause.OnConflict{
@@ -98,17 +100,27 @@ func (r *accountRepositoryImpl) GetByUser(ctx context.Context, userID string) ([
 	return accounts, nil
 }
 
-// UpdateBalance 实现 domain.AccountRepository.UpdateBalance
-func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, accountID string, balance, available, frozen decimal.Decimal) error {
-	err := r.getDB(ctx).Model(&AccountModel{}).Where("account_id = ?", accountID).Updates(map[string]interface{}{
-		"balance":           balance.String(),
-		"available_balance": available.String(),
-		"frozen_balance":    frozen.String(),
-	}).Error
-	if err != nil {
-		logging.Error(ctx, "account_repository.UpdateBalance failed", "account_id", accountID, "error", err)
-		return fmt.Errorf("failed to update balance: %w", err)
+// UpdateBalance 实现 domain.AccountRepository.UpdateBalance (带乐观锁)
+func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, accountID string, balance, available, frozen decimal.Decimal, currentVersion int64) error {
+	result := r.getDB(ctx).Model(&AccountModel{}).
+		Where("account_id = ? AND version = ?", accountID, currentVersion).
+		Updates(map[string]interface{}{
+			"balance":           balance.String(),
+			"available_balance": available.String(),
+			"frozen_balance":    frozen.String(),
+			"version":           currentVersion + 1, // 版本号递增
+		})
+
+	if result.Error != nil {
+		logging.Error(ctx, "account_repository.UpdateBalance failed", "account_id", accountID, "error", result.Error)
+		return fmt.Errorf("failed to update balance: %w", result.Error)
 	}
+
+	if result.RowsAffected == 0 {
+		// 可能是账户不存在，也可能是版本号已被其他事务修改
+		return domain.ErrConcurrentUpdate
+	}
+
 	return nil
 }
 
@@ -153,6 +165,7 @@ func (r *accountRepositoryImpl) toDomain(m *AccountModel) *domain.Account {
 		Balance:          balance,
 		AvailableBalance: available,
 		FrozenBalance:    frozen,
+		Version:          m.Version,
 	}
 }
 
