@@ -1,0 +1,21 @@
+{{- if .Values.observability.metrics.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "order.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "order.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "order.selectorLabels" . | nindent 6 }}
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: {{ .Values.observability.metrics.serviceMonitor.interval }}
+    honorLabels: true
+  namespaceSelector:
+    matchNames:
+    - {{ .Release.Namespace }}
+{{- end }}

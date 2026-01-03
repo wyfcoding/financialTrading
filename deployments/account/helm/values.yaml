@@ -88,3 +88,18 @@ secrets:
   dbPassword: ""
   redisPassword: ""
   jwtSecret: ""
+
+# 可观测性预设
+observability:
+  tracing:
+    enabled: true
+    samplingRate: 100
+    provider: "otel"
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 15s
+  logging:
+    level: "info"
+    format: "json"

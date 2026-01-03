@@ -154,6 +154,22 @@ spec:
     - "default/payment.default.svc.cluster.local"
     - "default/inventory.default.svc.cluster.local"
 ---
+---
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: {{ include "marketdata.fullname" . }}-telemetry
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "marketdata.name" . }}
+  tracing:
+  - providers:
+    - name: {{ .Values.observability.tracing.provider }}
+    randomSamplingPercentage: {{ .Values.observability.tracing.samplingRate }}
+---
+
 apiVersion: security.istio.io/v1beta1
 kind: RequestAuthentication
 metadata:
@@ -168,6 +184,22 @@ spec:
     jwksUri: "http://auth-service.default.svc.cluster.local/v1/jwks" # 内部鉴权服务提供的 JWKS 终结点
     forwardOriginalToken: true # 转发原始 Token 供业务审计使用
 ---
+---
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: {{ include "marketdata.fullname" . }}-telemetry
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "marketdata.name" . }}
+  tracing:
+  - providers:
+    - name: {{ .Values.observability.tracing.provider }}
+    randomSamplingPercentage: {{ .Values.observability.tracing.samplingRate }}
+---
+
 apiVersion: security.istio.io/v1beta1
 kind: AuthorizationPolicy
 metadata:
