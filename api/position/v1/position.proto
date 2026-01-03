@@ -18,6 +18,17 @@ service PositionService {
   // 平仓。
   rpc ClosePosition(ClosePositionRequest) returns (ClosePositionResponse);
 
+  // --- Saga 结算分布式事务接口 ---
+  // 1. 扣除冻结持仓 (Forward)
+  rpc SagaDeductFrozen(SagaPositionRequest) returns (SagaPositionResponse);
+  // 补偿: 恢复冻结持仓 (Compensate)
+  rpc SagaRefundFrozen(SagaPositionRequest) returns (SagaPositionResponse);
+
+  // 2. 增加持仓 (Forward)
+  rpc SagaAddPosition(SagaPositionRequest) returns (SagaPositionResponse);
+  // 补偿: 扣除持仓 (Compensate)
+  rpc SagaSubPosition(SagaPositionRequest) returns (SagaPositionResponse);
+
   // --- TCC 分布式事务接口 ---
   // TCC Try: 预冻结持仓/资产
   rpc TccTryFreeze(TccPositionRequest) returns (TccPositionResponse);
@@ -39,6 +50,19 @@ message TccPositionRequest {
 message TccPositionResponse {
   bool success = 1;
   string message = 2;
+}
+
+// Saga 持仓操作请求
+message SagaPositionRequest {
+  string user_id = 1;
+  string symbol = 2;
+  string quantity = 3;
+  string trade_id = 4;
+}
+
+// Saga 持仓操作响应
+message SagaPositionResponse {
+  bool success = 1;
 }
 
 // 持仓核心记录。

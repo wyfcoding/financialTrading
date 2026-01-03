@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"log/slog"
 
 	accountv1 "github.com/wyfcoding/financialtrading/goapi/account/v1"
 	positionv1 "github.com/wyfcoding/financialtrading/goapi/position/v1"
@@ -16,10 +17,10 @@ type OrderService struct {
 	query   *OrderQuery
 }
 
-// NewOrderService 构造函数。
-func NewOrderService(repo domain.OrderRepository, riskEvaluator risk.Evaluator) *OrderService {
+// NewOrderService 创建订单服务实例。
+func NewOrderService(repo domain.OrderRepository, riskEvaluator risk.Evaluator, logger *slog.Logger) *OrderService {
 	return &OrderService{
-		manager: NewOrderManager(repo, riskEvaluator),
+		manager: NewOrderManager(repo, riskEvaluator, logger),
 		query:   NewOrderQuery(repo),
 	}
 }
@@ -44,6 +45,10 @@ func (s *OrderService) SetDTMServer(addr string) {
 
 func (s *OrderService) CreateOrder(ctx context.Context, req *CreateOrderRequest) (*OrderDTO, error) {
 	return s.manager.CreateOrder(ctx, req)
+}
+
+func (s *OrderService) HandleTradeExecuted(ctx context.Context, event map[string]any) error {
+	return s.manager.HandleTradeExecuted(ctx, event)
 }
 
 func (s *OrderService) CancelOrder(ctx context.Context, orderID, userID string) (*OrderDTO, error) {

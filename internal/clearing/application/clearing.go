@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	accountv1 "github.com/wyfcoding/financialtrading/goapi/account/v1"
+	positionv1 "github.com/wyfcoding/financialtrading/goapi/position/v1"
 	"github.com/wyfcoding/financialtrading/internal/clearing/domain"
 )
 
@@ -26,6 +27,10 @@ func (s *ClearingService) SetAccountClient(cli accountv1.AccountServiceClient, s
 	s.manager.SetAccountClient(cli, svcURL)
 }
 
+func (s *ClearingService) SetPositionClient(cli positionv1.PositionServiceClient, svcURL string) {
+	s.manager.SetPositionClient(cli, svcURL)
+}
+
 func (s *ClearingService) SetDTMServer(addr string) {
 	s.manager.SetDTMServer(addr)
 }
@@ -38,6 +43,18 @@ func (s *ClearingService) SettleTrade(ctx context.Context, req *SettleTradeReque
 
 func (s *ClearingService) ProcessTradeExecution(ctx context.Context, event map[string]any) error {
 	return s.manager.ProcessTradeExecution(ctx, event)
+}
+
+func (s *ClearingService) SagaMarkSettlementCompleted(ctx context.Context, settlementID string) error {
+	return s.manager.SagaMarkSettlementCompleted(ctx, settlementID)
+}
+
+func (s *ClearingService) SagaMarkSettlementFailed(ctx context.Context, settlementID, reason string) error {
+	return s.manager.SagaMarkSettlementFailed(ctx, settlementID, reason)
+}
+
+func (s *ClearingService) SetSvcURL(url string) {
+	s.manager.SetSvcURL(url)
 }
 
 func (s *ClearingService) ExecuteEODClearing(ctx context.Context, clearingDate string) (string, error) {

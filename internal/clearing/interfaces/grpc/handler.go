@@ -136,3 +136,19 @@ func (h *GRPCHandler) GetMarginRequirement(ctx context.Context, req *pb.GetMargi
 		CurrentMarginRate:    margin.CurrentMarginRate().String(),
 	}, nil
 }
+
+// SagaMarkSettlementCompleted Saga 正向: 确认结算成功
+func (h *GRPCHandler) SagaMarkSettlementCompleted(ctx context.Context, req *pb.SagaSettlementRequest) (*pb.SagaSettlementResponse, error) {
+	if err := h.service.SagaMarkSettlementCompleted(ctx, req.SettlementId); err != nil {
+		return nil, status.Errorf(codes.Internal, "SagaMarkSettlementCompleted failed: %v", err)
+	}
+	return &pb.SagaSettlementResponse{Success: true}, nil
+}
+
+// SagaMarkSettlementFailed Saga 补偿: 标记结算失败
+func (h *GRPCHandler) SagaMarkSettlementFailed(ctx context.Context, req *pb.SagaSettlementRequest) (*pb.SagaSettlementResponse, error) {
+	if err := h.service.SagaMarkSettlementFailed(ctx, req.SettlementId, req.Reason); err != nil {
+		return nil, status.Errorf(codes.Internal, "SagaMarkSettlementFailed failed: %v", err)
+	}
+	return &pb.SagaSettlementResponse{Success: true}, nil
+}

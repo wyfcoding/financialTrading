@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/dtm-labs/client/dtmgrpc"
 	"github.com/shopspring/decimal"
@@ -26,13 +27,15 @@ type OrderManager struct {
 	dtmServer      string
 	accountSvcURL  string // DTM 回调用的 Account 服务地址
 	positionSvcURL string // DTM 回调用的 Position 服务地址
+	logger         *slog.Logger
 }
 
 // NewOrderManager 构造函数。
-func NewOrderManager(repo domain.OrderRepository, riskEvaluator risk.Evaluator) *OrderManager {
+func NewOrderManager(repo domain.OrderRepository, riskEvaluator risk.Evaluator, logger *slog.Logger) *OrderManager {
 	return &OrderManager{
 		repo:          repo,
 		riskEvaluator: riskEvaluator,
+		logger:        logger.With("module", "order_manager"),
 	}
 }
 
@@ -208,6 +211,47 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 		CreatedAt:      order.CreatedAt.Unix(),
 		UpdatedAt:      order.UpdatedAt.Unix(),
 	}, nil
+}
+
+// HandleTradeExecuted 处理撮合引擎发出的成交事件
+func (m *OrderManager) HandleTradeExecuted(ctx context.Context, event map[string]any) error {
+	tradeID := event["trade_id"].(string)
+	buyOrderID := event["buy_order_id"].(string)
+	sellOrderID := event["sell_order_id"].(string)
+	quantity, _ := decimal.NewFromString(event["quantity"].(string))
+	price, _ := decimal.NewFromString(event["price"].(string))
+
+	m.logger.Info("handling trade executed event", "trade_id", tradeID, "buy_order", buyOrderID, "sell_order", sellOrderID)
+
+	// 更新买单状态
+	if err := m.updateFillStatus(ctx, buyOrderID, quantity, price, "Buy match"); err != nil {
+		return err
+	}
+
+	// 更新卖单状态
+	if err := m.updateFillStatus(ctx, sellOrderID, quantity, price, "Sell match"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *OrderManager) updateFillStatus(ctx context.Context, orderID string, qty, price decimal.Decimal, msg string) error {
+	order, err := m.repo.Get(ctx, orderID)
+	if err != nil || order == nil {
+		return err
+	}
+
+	// 累计成交量 (简化处理：实际应检查 TradeID 是否已处理过)
+	order.FilledQuantity = order.FilledQuantity.Add(qty)
+	if order.FilledQuantity.GreaterThanOrEqual(order.Quantity) {
+		order.Status = domain.OrderStatusFilled
+	} else {
+		order.Status = domain.OrderStatusPartiallyFilled
+	}
+	order.Remark = fmt.Sprintf("%s: %s @ %s", msg, qty.String(), price.String())
+
+	return m.repo.Save(ctx, order)
 }
 
 // CancelOrder 取消订单

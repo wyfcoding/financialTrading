@@ -20,6 +20,24 @@ service ClearingService {
 
   // 获取指定品种的实时保证金要求。
   rpc GetMarginRequirement(GetMarginRequirementRequest) returns (GetMarginRequirementResponse);
+
+  // --- Saga 状态同步接口 ---
+  // 确认结算成功 (Saga 最后一步正向操作)
+  rpc SagaMarkSettlementCompleted(SagaSettlementRequest) returns (SagaSettlementResponse);
+  // 标记结算失败 (Saga 补偿操作)
+  rpc SagaMarkSettlementFailed(SagaSettlementRequest) returns (SagaSettlementResponse);
+}
+
+// Saga 结算回调请求
+message SagaSettlementRequest {
+  string settlement_id = 1;
+  string trade_id = 2;
+  string reason = 3;
+}
+
+// Saga 结算回调响应
+message SagaSettlementResponse {
+  bool success = 1;
 }
 
 // 清算记录。

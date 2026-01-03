@@ -159,6 +159,58 @@ func (h *GRPCHandler) TccCancelFreeze(ctx context.Context, req *pb.TccPositionRe
 	return &pb.TccPositionResponse{Success: true}, nil
 }
 
+// SagaDeductFrozen Saga 正向: 扣除冻结持仓
+func (h *GRPCHandler) SagaDeductFrozen(ctx context.Context, req *pb.SagaPositionRequest) (*pb.SagaPositionResponse, error) {
+	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "barrier error: %v", err)
+	}
+	qty, _ := decimal.NewFromString(req.Quantity)
+	if err := h.service.SagaDeductFrozen(ctx, barrier, req.UserId, req.Symbol, qty); err != nil {
+		return nil, status.Errorf(codes.Aborted, "SagaDeductFrozen failed: %v", err)
+	}
+	return &pb.SagaPositionResponse{Success: true}, nil
+}
+
+// SagaRefundFrozen Saga 补偿: 恢复冻结持仓
+func (h *GRPCHandler) SagaRefundFrozen(ctx context.Context, req *pb.SagaPositionRequest) (*pb.SagaPositionResponse, error) {
+	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "barrier error: %v", err)
+	}
+	qty, _ := decimal.NewFromString(req.Quantity)
+	if err := h.service.SagaRefundFrozen(ctx, barrier, req.UserId, req.Symbol, qty); err != nil {
+		return nil, status.Errorf(codes.Internal, "SagaRefundFrozen failed: %v", err)
+	}
+	return &pb.SagaPositionResponse{Success: true}, nil
+}
+
+// SagaAddPosition Saga 正向: 增加持仓
+func (h *GRPCHandler) SagaAddPosition(ctx context.Context, req *pb.SagaPositionRequest) (*pb.SagaPositionResponse, error) {
+	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "barrier error: %v", err)
+	}
+	qty, _ := decimal.NewFromString(req.Quantity)
+	if err := h.service.SagaAddPosition(ctx, barrier, req.UserId, req.Symbol, qty); err != nil {
+		return nil, status.Errorf(codes.Aborted, "SagaAddPosition failed: %v", err)
+	}
+	return &pb.SagaPositionResponse{Success: true}, nil
+}
+
+// SagaSubPosition Saga 补偿: 扣除持仓
+func (h *GRPCHandler) SagaSubPosition(ctx context.Context, req *pb.SagaPositionRequest) (*pb.SagaPositionResponse, error) {
+	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "barrier error: %v", err)
+	}
+	qty, _ := decimal.NewFromString(req.Quantity)
+	if err := h.service.SagaSubPosition(ctx, barrier, req.UserId, req.Symbol, qty); err != nil {
+		return nil, status.Errorf(codes.Internal, "SagaSubPosition failed: %v", err)
+	}
+	return &pb.SagaPositionResponse{Success: true}, nil
+}
+
 func (h *GRPCHandler) toProtoPosition(dto *application.PositionDTO) *pb.Position {
 	var closedAt int64
 	if dto.ClosedAt != nil {

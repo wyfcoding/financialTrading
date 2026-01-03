@@ -41,6 +41,24 @@ func (s *PositionService) TccCancelFreeze(ctx context.Context, barrier interface
 	return s.manager.TccCancelFreeze(ctx, barrier, userID, symbol, quantity)
 }
 
+// --- Saga Facade ---
+
+func (s *PositionService) SagaDeductFrozen(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+	return s.manager.SagaDeductFrozen(ctx, barrier, userID, symbol, quantity)
+}
+
+func (s *PositionService) SagaRefundFrozen(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+	return s.manager.SagaRefundFrozen(ctx, barrier, userID, symbol, quantity)
+}
+
+func (s *PositionService) SagaAddPosition(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+	return s.manager.SagaAddPosition(ctx, barrier, userID, symbol, quantity)
+}
+
+func (s *PositionService) SagaSubPosition(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+	return s.manager.SagaSubPosition(ctx, barrier, userID, symbol, quantity)
+}
+
 // --- Query (Reads) ---
 
 func (s *PositionService) GetPositions(ctx context.Context, userID string, limit, offset int) ([]*PositionDTO, int64, error) {

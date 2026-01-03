@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
@@ -8,11 +10,12 @@ import (
 	"github.com/wyfcoding/pkg/response"
 
 	"github.com/gin-gonic/gin"
+	kafkago "github.com/segmentio/kafka-go"
 	"google.golang.org/grpc"
 
 	accountv1 "github.com/wyfcoding/financialtrading/goapi/account/v1"
-	positionv1 "github.com/wyfcoding/financialtrading/goapi/position/v1"
 	pb "github.com/wyfcoding/financialtrading/goapi/order/v1"
+	positionv1 "github.com/wyfcoding/financialtrading/goapi/position/v1"
 	riskv1 "github.com/wyfcoding/financialtrading/goapi/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/application"
 	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/persistence/mysql"
@@ -26,6 +29,7 @@ import (
 	"github.com/wyfcoding/pkg/idempotency"
 	"github.com/wyfcoding/pkg/limiter"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
 	"github.com/wyfcoding/pkg/metrics"
 	"github.com/wyfcoding/pkg/middleware"
 	"github.com/wyfcoding/pkg/security/risk"
@@ -51,17 +55,18 @@ type AppContext struct {
 	Metrics     *metrics.Metrics
 	Limiter     limiter.Limiter
 	Idempotency idempotency.Manager
+	Consumer    *kafka.Consumer
 }
 
 // ServiceClients 下游微服务客户端集合
 type ServiceClients struct {
-	RiskConn    *grpc.ClientConn `service:"risk"`
-	AccountConn *grpc.ClientConn `service:"account"`
+	RiskConn     *grpc.ClientConn `service:"risk"`
+	AccountConn  *grpc.ClientConn `service:"account"`
 	PositionConn *grpc.ClientConn `service:"position"`
 
 	// 具体的客户端接口
-	Risk    riskv1.RiskServiceClient
-	Account accountv1.AccountServiceClient
+	Risk     riskv1.RiskServiceClient
+	Account  accountv1.AccountServiceClient
 	Position positionv1.PositionServiceClient
 }
 
@@ -184,7 +189,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	orderRepo := mysql.NewOrderRepository(db.RawDB())
 
 	// 5.2 Application (Service)
-	orderService := application.NewOrderService(orderRepo, riskEvaluator)
+	orderService := application.NewOrderService(orderRepo, riskEvaluator, logger.Logger)
 	if clients.Risk != nil {
 		orderService.SetRiskClient(clients.Risk)
 	}
@@ -213,12 +218,29 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		}
 		orderService.SetPositionClient(clients.Position, positionSvcAddr)
 	}
-	// 5.3 Interface (HTTP Handlers)
+
+	// 5.3 启动成交事件消费 (可靠更新订单状态)
+	tradeConsumer := kafka.NewConsumer(c.MessageQueue.Kafka, logger, m)
+	tradeConsumer.Start(context.Background(), 5, func(ctx context.Context, msg kafkago.Message) error {
+		if msg.Topic != "trade.executed" {
+			return nil
+		}
+		var event map[string]any
+		if err := json.Unmarshal(msg.Value, &event); err != nil {
+			return err
+		}
+		return orderService.HandleTradeExecuted(ctx, event)
+	})
+
+	// 5.4 Interface (HTTP Handlers)
 	handler := orderhttp.NewOrderHandler(orderService)
 
 	// 定义资源清理函数
 	cleanup := func() {
 		bootLog.Info("shutting down, releasing resources...")
+		if tradeConsumer != nil {
+			tradeConsumer.Close()
+		}
 		clientCleanup()
 		if redisCache != nil {
 			if err := redisCache.Close(); err != nil {
@@ -241,5 +263,6 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		Metrics:     m,
 		Limiter:     rateLimiter,
 		Idempotency: idemManager,
+		Consumer:    tradeConsumer,
 	}, cleanup, nil
 }

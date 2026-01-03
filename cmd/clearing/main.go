@@ -15,6 +15,7 @@ import (
 
 	accountv1 "github.com/wyfcoding/financialtrading/goapi/account/v1"
 	pb "github.com/wyfcoding/financialtrading/goapi/clearing/v1"
+	positionv1 "github.com/wyfcoding/financialtrading/goapi/position/v1"
 	"github.com/wyfcoding/financialtrading/internal/clearing/application"
 	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/persistence/mysql"
 	clearinggrpc "github.com/wyfcoding/financialtrading/internal/clearing/interfaces/grpc"
@@ -57,8 +58,10 @@ type AppContext struct {
 
 // ServiceClients 下游微服务客户端集合
 type ServiceClients struct {
-	AccountConn *grpc.ClientConn `service:"account"`
-	Account     accountv1.AccountServiceClient
+	AccountConn  *grpc.ClientConn `service:"account"`
+	PositionConn *grpc.ClientConn `service:"position"`
+	Account      accountv1.AccountServiceClient
+	Position     positionv1.PositionServiceClient
 }
 
 func main() {
@@ -164,6 +167,9 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	if clients.AccountConn != nil {
 		clients.Account = accountv1.NewAccountServiceClient(clients.AccountConn)
 	}
+	if clients.PositionConn != nil {
+		clients.Position = positionv1.NewPositionServiceClient(clients.PositionConn)
+	}
 
 	// 5. DDD 分层装配
 	bootLog.Info("assembling services with full dependency injection...")
@@ -173,26 +179,38 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	eodRepo := mysql.NewEODClearingRepository(db.RawDB())
 	marginRepo := mysql.NewMarginRequirementRepository(db.RawDB())
 
-	// 5.2 Application (Service)
-	clearingService := application.NewClearingService(settlementRepo, eodRepo, marginRepo, logger.Logger)
-	if clients.Account != nil {
-		// DTM Server 地址
+		// 5.2 Application (Service)
+		clearingService := application.NewClearingService(settlementRepo, eodRepo, marginRepo, logger.Logger)
+		
+		// 注入 DTM 和 参与者地址
 		dtmAddr := c.Services["dtm"].GRPCAddr
 		if dtmAddr == "" {
 			dtmAddr = "dtm:36790"
 		}
-
-		// Account 服务地址 (用于 Saga 回调)
-		accountSvcAddr := c.Services["account"].GRPCAddr
-		if accountSvcAddr == "" {
-			accountSvcAddr = "account:50051"
-		}
-
-		clearingService.SetAccountClient(clients.Account, accountSvcAddr)
 		clearingService.SetDTMServer(dtmAddr)
-	}
-
-	// 5.3 启动可靠成交事件消费
+	
+		// 注入本服务地址 (用于 Saga 状态同步回调)
+		clearingSvcAddr := c.Services["clearing"].GRPCAddr
+		if clearingSvcAddr == "" {
+			clearingSvcAddr = "clearing:50051"
+		}
+		clearingService.SetSvcURL(clearingSvcAddr)
+	
+		if clients.Account != nil {
+			accountSvcAddr := c.Services["account"].GRPCAddr
+			if accountSvcAddr == "" {
+				accountSvcAddr = "account:50051"
+			}
+			clearingService.SetAccountClient(clients.Account, accountSvcAddr)
+		}
+	
+		if clients.Position != nil {
+			positionSvcAddr := c.Services["position"].GRPCAddr
+			if positionSvcAddr == "" {
+				positionSvcAddr = "position:50051"
+			}
+			clearingService.SetPositionClient(clients.Position, positionSvcAddr)
+		}	// 5.3 启动可靠成交事件消费
 	consumer := kafka.NewConsumer(c.MessageQueue.Kafka, logger, m)
 	consumer.Start(context.Background(), 5, func(ctx context.Context, msg kafkago.Message) error {
 		if msg.Topic != "trade.executed" {

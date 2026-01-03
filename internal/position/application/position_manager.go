@@ -6,6 +6,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/position/domain"
+	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/logging"
 )
 
@@ -114,6 +115,83 @@ func (m *PositionManager) TccCancelFreeze(ctx context.Context, barrier interface
 		if targetPos != nil {
 			targetPos.Quantity = targetPos.Quantity.Add(quantity)
 			return m.repo.Update(ctx, targetPos)
+		}
+		return nil
+	})
+}
+
+// --- Saga Distributed Transaction Support ---
+
+// SagaDeductFrozen Saga 正向: 扣除已冻结持仓 (成交确认，资产永久转出)
+func (m *PositionManager) SagaDeductFrozen(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+	return m.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
+		// 注意：在 TCC 模式下，我们在 Try 阶段直接扣减了 Quantity。
+		// 这里作为 Saga 的正向步骤，如果是从 TCC 演进来的，则此处可能为空。
+		// 但为了保持 Saga 结算逻辑的完整性（即：成交后扣除资产），我们执行最终确认。
+		return nil // 假设资产在撮合前已通过 TCC 预扣，此处仅作为占位
+	})
+}
+
+// SagaRefundFrozen Saga 补偿: 恢复冻结持仓
+func (m *PositionManager) SagaRefundFrozen(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+	return m.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
+		// 恢复扣除的资产
+		return m.TccCancelFreeze(ctx, barrier, userID, symbol, quantity)
+	})
+}
+
+// SagaAddPosition Saga 正向: 增加持仓 (买方资产入账)
+func (m *PositionManager) SagaAddPosition(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+	return m.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
+		positions, _, err := m.repo.GetByUser(ctx, userID, 100, 0)
+		if err != nil {
+			return err
+		}
+
+		var targetPos *domain.Position
+		for _, p := range positions {
+			if p.Symbol == symbol {
+				targetPos = p
+				break
+			}
+		}
+
+		if targetPos == nil {
+			// 创建新持仓
+			targetPos = &domain.Position{
+				PositionID:   fmt.Sprintf("POS-%d", idgen.GenID()),
+				UserID:       userID,
+				Symbol:       symbol,
+				Side:         "LONG", // 默认多头
+				Quantity:     quantity,
+				EntryPrice:   decimal.Zero, // 实际应由撮合价计算，此处简化
+				CurrentPrice: decimal.Zero,
+				Status:       "OPEN",
+			}
+			return m.repo.Save(ctx, targetPos)
+		}
+
+		targetPos.Quantity = targetPos.Quantity.Add(quantity)
+		return m.repo.Update(ctx, targetPos)
+	})
+}
+
+// SagaSubPosition Saga 补偿: 扣除已增加的持仓
+func (m *PositionManager) SagaSubPosition(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+	return m.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
+		positions, _, err := m.repo.GetByUser(ctx, userID, 100, 0)
+		if err != nil {
+			return err
+		}
+
+		for _, p := range positions {
+			if p.Symbol == symbol {
+				if p.Quantity.LessThan(quantity) {
+					return fmt.Errorf("insufficient quantity to roll back position")
+				}
+				p.Quantity = p.Quantity.Sub(quantity)
+				return m.repo.Update(ctx, p)
+			}
 		}
 		return nil
 	})
