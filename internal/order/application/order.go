@@ -61,8 +61,8 @@ func (s *OrderService) GetOrder(ctx context.Context, orderID, userID string) (*O
 	return s.query.GetOrder(ctx, orderID, userID)
 }
 
-func (s *OrderService) ListOrders(ctx context.Context, userID string, status domain.OrderStatus, limit, offset int) ([]*OrderDTO, int64, error) {
-	return s.query.ListOrders(ctx, userID, status, limit, offset)
+func (s *OrderService) ListOrders(ctx context.Context, userID, symbol string, status domain.OrderStatus, limit, offset int) ([]*OrderDTO, int64, error) {
+	return s.query.ListOrders(ctx, userID, symbol, status, limit, offset)
 }
 
 // --- Legacy Compatibility Types ---

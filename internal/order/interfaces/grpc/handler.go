@@ -8,6 +8,7 @@ import (
 
 	pb "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/application"
+	"github.com/wyfcoding/financialtrading/internal/order/domain"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -87,6 +88,32 @@ func (h *GRPCHandler) GetOrder(ctx context.Context, req *pb.GetOrderRequest) (*p
 
 	return &pb.GetOrderResponse{
 		Order: h.toProtoOrder(dto),
+	}, nil
+}
+
+// ListOrders 分页检索订单列表
+func (h *GRPCHandler) ListOrders(ctx context.Context, req *pb.ListOrdersRequest) (*pb.ListOrdersResponse, error) {
+	limit := int(req.PageSize)
+	if limit <= 0 {
+		limit = 100 // 恢复模式下可能需要更大量拉取
+	}
+	offset := max(int((req.Page-1)*req.PageSize), 0)
+
+	dtos, total, err := h.service.ListOrders(ctx, req.UserId, req.Symbol, domain.OrderStatus(req.Status), limit, offset)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list orders: %v", err)
+	}
+
+	orders := make([]*pb.Order, 0, len(dtos))
+	for _, dto := range dtos {
+		orders = append(orders, h.toProtoOrder(dto))
+	}
+
+	return &pb.ListOrdersResponse{
+		Orders:   orders,
+		Total:    total,
+		Page:     req.Page,
+		PageSize: int32(limit),
 	}, nil
 }
 

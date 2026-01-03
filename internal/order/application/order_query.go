@@ -47,8 +47,19 @@ func (q *OrderQuery) GetOrder(ctx context.Context, orderID, userID string) (*Ord
 }
 
 // ListOrders 分页列出指定用户的订单记录。
-func (q *OrderQuery) ListOrders(ctx context.Context, userID string, status domain.OrderStatus, limit, offset int) ([]*OrderDTO, int64, error) {
-	orders, total, err := q.repo.ListByUser(ctx, userID, status, limit, offset)
+func (q *OrderQuery) ListOrders(ctx context.Context, userID string, symbol string, status domain.OrderStatus, limit, offset int) ([]*OrderDTO, int64, error) {
+	var orders []*domain.Order
+	var total int64
+	var err error
+
+	if userID != "" {
+		orders, total, err = q.repo.ListByUser(ctx, userID, status, limit, offset)
+	} else if symbol != "" {
+		orders, total, err = q.repo.ListBySymbol(ctx, symbol, status, limit, offset)
+	} else {
+		return nil, 0, fmt.Errorf("either user_id or symbol must be provided")
+	}
+
 	if err != nil {
 		return nil, 0, err
 	}

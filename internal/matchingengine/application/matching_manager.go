@@ -56,6 +56,51 @@ func (m *MatchingEngineManager) SetOrderClient(cli orderv1.OrderServiceClient) {
 	m.orderCli = cli
 }
 
+// RecoverState 从数据库恢复引擎状态
+func (m *MatchingEngineManager) RecoverState(ctx context.Context) error {
+	m.logger.Info("starting matching engine state recovery...")
+
+	// 1. 调用 Order Service 获取所有活跃订单
+	// 注意：此处需要 OrderServiceClient 提供相应接口，
+	// 若无直接接口，可直接从 orderRepo (如果在同进程) 或通过 gRPC 获取。
+	// 为了演示 Recovery 闭环，假设我们通过 orderCli 获取。
+	if m.orderCli == nil {
+		m.logger.Warn("order client not available, skipping recovery")
+		return nil
+	}
+
+	resp, err := m.orderCli.ListOrders(ctx, &orderv1.ListOrdersRequest{
+		Symbol: m.engine.Symbol(), 
+		Status: "OPEN", // 状态在 proto 中定义为 string
+	})
+	if err != nil {
+		return fmt.Errorf("failed to fetch active orders for recovery: %w", err)
+	}
+
+	for _, o := range resp.Orders {
+		// 计算剩余可撮合数量
+		price, _ := decimal.NewFromString(o.Price)
+		qty, _ := decimal.NewFromString(o.Quantity)
+		filled, _ := decimal.NewFromString(o.FilledQuantity)
+		remQty := qty.Sub(filled)
+
+		if remQty.IsPositive() {
+			m.engine.ReplayOrder(&algorithm.Order{
+				OrderID:   o.OrderId,
+				Symbol:    o.Symbol,
+				Side:      o.Side,
+				Price:     price,
+				Quantity:  remQty,
+				UserID:    o.UserId,
+				Timestamp: time.Unix(o.CreatedAt, 0).UnixNano(),
+			})
+		}
+	}
+
+	m.logger.Info("state recovery finished", "replayed_count", len(resp.Orders))
+	return nil
+}
+
 // SubmitOrder 提交订单进行撮合
 func (m *MatchingEngineManager) SubmitOrder(ctx context.Context, req *SubmitOrderRequest) (*domain.MatchingResult, error) {
 	// 记录性能监控

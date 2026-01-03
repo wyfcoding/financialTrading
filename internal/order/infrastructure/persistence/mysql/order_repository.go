@@ -138,6 +138,26 @@ func (r *orderRepositoryImpl) ListBySymbol(ctx context.Context, symbol string, s
 	return orders, total, nil
 }
 
+// GetActiveOrdersBySymbol 获取活跃订单实现
+func (r *orderRepositoryImpl) GetActiveOrdersBySymbol(ctx context.Context, symbol string) ([]*domain.Order, error) {
+	var models []OrderModel
+	// 查询 OPEN 或 PARTIALLY_FILLED 状态的订单，按创建时间正序排列 (便于回放)
+	err := r.db.WithContext(ctx).
+		Where("symbol = ? AND (status = ? OR status = ?)", symbol, string(domain.OrderStatusOpen), string(domain.OrderStatusPartiallyFilled)).
+		Order("created_at asc").
+		Find(&models).Error
+	if err != nil {
+		logging.Error(ctx, "order_repository.GetActiveOrdersBySymbol failed", "symbol", symbol, "error", err)
+		return nil, fmt.Errorf("failed to get active orders: %w", err)
+	}
+
+	orders := make([]*domain.Order, len(models))
+	for i, m := range models {
+		orders[i] = r.toDomain(&m)
+	}
+	return orders, nil
+}
+
 // UpdateStatus 实现 domain.OrderRepository.UpdateStatus
 func (r *orderRepositoryImpl) UpdateStatus(ctx context.Context, orderID string, status domain.OrderStatus) error {
 	err := r.db.WithContext(ctx).Model(&OrderModel{}).Where("order_id = ?", orderID).Update("status", string(status)).Error

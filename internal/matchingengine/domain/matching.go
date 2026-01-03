@@ -98,6 +98,10 @@ func (e *DisruptionEngine) IsHalted() bool {
 	return atomic.LoadInt32(&e.halted) == 1
 }
 
+func (e *DisruptionEngine) Symbol() string {
+	return e.symbol
+}
+
 func (e *DisruptionEngine) run() {
 	e.logger.Info("Starting core matching worker", "symbol", e.symbol)
 	// 将 Worker 绑定到固定操作系统线程以获得极致性能
@@ -149,6 +153,18 @@ func (e *DisruptionEngine) SubmitOrder(order *algorithm.Order) (*MatchingResult,
 	}
 
 	return <-resChan, nil
+}
+
+// ReplayOrder 回放订单逻辑：仅用于系统启动恢复阶段，不触发新成交逻辑，仅重建订单簿。
+func (e *DisruptionEngine) ReplayOrder(order *algorithm.Order) {
+	// 在恢复模式下，由于是单线程初始化，无需通过 RingBuffer，直接操作订单簿。
+	ob := e.orderBook
+	if order.Side == "BUY" {
+		e.addToOrderBook(order, ob.Bids, -order.Price.InexactFloat64())
+	} else {
+		e.addToOrderBook(order, ob.Asks, order.Price.InexactFloat64())
+	}
+	e.logger.Debug("order replayed into memory book", "order_id", order.OrderID, "rem_qty", order.Quantity.String())
 }
 
 // applyOrder 核心内部撮合逻辑

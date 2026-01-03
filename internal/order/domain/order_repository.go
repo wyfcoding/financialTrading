@@ -16,6 +16,8 @@ type OrderRepository interface {
 	ListByUser(ctx context.Context, userID string, status OrderStatus, limit, offset int) ([]*Order, int64, error)
 	// ListBySymbol 获取交易对订单列表
 	ListBySymbol(ctx context.Context, symbol string, status OrderStatus, limit, offset int) ([]*Order, int64, error)
+	// GetActiveOrdersBySymbol 获取指定交易对的所有活跃订单 (OPEN, PARTIALLY_FILLED)
+	GetActiveOrdersBySymbol(ctx context.Context, symbol string) ([]*Order, error)
 	// UpdateStatus 更新订单状态
 	UpdateStatus(ctx context.Context, orderID string, status OrderStatus) error
 	// UpdateFilledQuantity 更新已成交数量

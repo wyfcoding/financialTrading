@@ -17,6 +17,7 @@ import (
 type MatchingEngineService struct {
 	manager *MatchingEngineManager
 	query   *MatchingEngineQuery
+	logger  *slog.Logger
 }
 
 // NewMatchingEngineService 构造函数。
@@ -37,6 +38,7 @@ func NewMatchingEngineService(
 	return &MatchingEngineService{
 		manager: NewMatchingEngineManager(symbol, engine, tradeRepo, orderBookRepo, db, outboxMgr, logger),
 		query:   NewMatchingEngineQuery(engine, tradeRepo),
+		logger:  logger,
 	}, nil
 }
 
@@ -46,6 +48,11 @@ func (s *MatchingEngineService) SetClearingClient(cli clearingv1.ClearingService
 
 func (s *MatchingEngineService) SetOrderClient(cli orderv1.OrderServiceClient) {
 	s.manager.SetOrderClient(cli)
+	// 在设置 Client 后立即尝试恢复状态 (或者在 main.go 中手动触发)
+	ctx := context.Background()
+	if err := s.manager.RecoverState(ctx); err != nil {
+		s.logger.Error("failed to recover engine state", "error", err)
+	}
 }
 
 // --- Manager (Writes) ---
