@@ -226,8 +226,54 @@ func (m *OrderManager) CancelOrder(ctx context.Context, orderID, userID string) 
 		return nil, fmt.Errorf("order cannot be cancelled, current status: %s", order.Status)
 	}
 
+	// --- 架构优化：同步执行资产解冻 ---
+	// 订单取消必须伴随资产解冻，否则会造成坏账。
+	// 虽然此处没有开启全局 DTM 事务（因为是用户主动触发的单向操作），
+	// 但我们复用之前为 TCC 定义的 Cancel 接口来执行解冻。
+
+	if order.Status == domain.OrderStatusOpen || order.Status == domain.OrderStatusPartiallyFilled {
+		// 计算需要解冻的金额/数量 (总额 - 已成交额)
+		remainingQty := order.Quantity.Sub(order.FilledQuantity)
+
+		switch order.Side {
+		case domain.OrderSideBuy:
+			// 买单解冻 USDT
+			remainingAmount := remainingQty.Mul(order.Price)
+			if m.accountCli != nil {
+				_, err := m.accountCli.TccCancelFreeze(ctx, &accountv1.TccFreezeRequest{
+					UserId:   userID,
+					Currency: "USDT",
+					Amount:   remainingAmount.String(),
+					OrderId:  orderID,
+				})
+				if err != nil {
+					logging.Error(ctx, "failed to unfreeze funds during cancellation", "order_id", orderID, "error", err)
+					return nil, fmt.Errorf("failed to unfreeze funds: %w", err)
+				}
+			}
+		case domain.OrderSideSell:
+			// 卖单解冻标的资产 (e.g., BTC)
+			if m.positionCli != nil {
+				_, err := m.positionCli.TccCancelFreeze(ctx, &positionv1.TccPositionRequest{
+					UserId:   userID,
+					Symbol:   order.Symbol,
+					Quantity: remainingQty.String(),
+					OrderId:  orderID,
+				})
+				if err != nil {
+					logging.Error(ctx, "failed to unfreeze assets during cancellation", "order_id", orderID, "error", err)
+					return nil, fmt.Errorf("failed to unfreeze assets: %w", err)
+				}
+			}
+		}
+	}
+
+	// 资产解冻成功后，更新本地订单状态
 	if err := m.repo.UpdateStatus(ctx, orderID, domain.OrderStatusCancelled); err != nil {
-		return nil, fmt.Errorf("failed to cancel order: %w", err)
+		logging.Error(ctx, "failed to update order status after unfreezing", "order_id", orderID, "error", err)
+		// 注意：此处是极其罕见的故障点（解冻成功但状态更新失败）。
+		// 在金融系统中，通常会有对账脚本扫描这类“僵尸订单”并自动修复状态。
+		return nil, fmt.Errorf("failed to finalize cancellation: %w", err)
 	}
 
 	order.Status = domain.OrderStatusCancelled
