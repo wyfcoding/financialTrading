@@ -221,7 +221,7 @@ func (m *MatchingEngineManager) processPostMatching(trades []*algorithm.Trade) {
 				"executed_at":   t.Timestamp,
 			}
 
-			if err := m.outbox.PublishInTx(tx, "trade.executed", t.TradeID, event); err != nil {
+			if err := m.outbox.PublishInTx(ctx, tx, "trade.executed", t.TradeID, event); err != nil {
 				return fmt.Errorf("failed to publish outbox event for trade %s: %w", t.TradeID, err)
 			}
 		}
