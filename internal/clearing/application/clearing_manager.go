@@ -171,10 +171,18 @@ func (m *ClearingManager) ProcessTradeExecution(ctx context.Context, event map[s
 		UserId: sellUserID, Symbol: symbol, Quantity: quantityStr,
 		TradeId: tradeID,
 	})
-	saga.Add(positionSvc+"/SagaAddPosition", positionSvc+"/SagaSubPosition", &positionv1.SagaPositionRequest{
-		UserId: buyUserID, Symbol: symbol, Quantity: quantityStr,
-		TradeId: tradeID,
-	})
+	// 步骤 4: 买方增加持仓 (Base Asset, e.g., BTC)
+	saga.Add(
+		positionSvc+"/SagaAddPosition",
+		positionSvc+"/SagaSubPosition",
+		&positionv1.SagaPositionRequest{
+			UserId:   buyUserID,
+			Symbol:   symbol,
+			Quantity: quantityStr,
+			Price:    priceStr, // 传递成交价
+			TradeId:  tradeID,
+		},
+	)
 
 	// [关键优化] 步骤 5: 成功终结桩
 	// 只有当上述所有资金、资产对冲都成功后，才会执行此正向操作，将 PENDING 改为 COMPLETED。

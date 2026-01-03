@@ -192,7 +192,8 @@ func (h *GRPCHandler) SagaAddPosition(ctx context.Context, req *pb.SagaPositionR
 		return nil, status.Errorf(codes.Internal, "barrier error: %v", err)
 	}
 	qty, _ := decimal.NewFromString(req.Quantity)
-	if err := h.service.SagaAddPosition(ctx, barrier, req.UserId, req.Symbol, qty); err != nil {
+	price, _ := decimal.NewFromString(req.Price)
+	if err := h.service.SagaAddPosition(ctx, barrier, req.UserId, req.Symbol, qty, price); err != nil {
 		return nil, status.Errorf(codes.Aborted, "SagaAddPosition failed: %v", err)
 	}
 	return &pb.SagaPositionResponse{Success: true}, nil

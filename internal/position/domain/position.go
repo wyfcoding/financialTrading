@@ -38,4 +38,20 @@ type Position struct {
 	Status string `gorm:"column:status;type:varchar(20);index;not null" json:"status"`
 }
 
+// AddQuantity 增加持仓数量并滚动计算开仓均价 (加权平均成本法)
+func (p *Position) AddQuantity(qty, price decimal.Decimal) {
+	if qty.IsZero() {
+		return
+	}
+
+	// 新开仓均价 = (旧持仓量 * 旧均价 + 新成交量 * 成交价) / (旧持仓量 + 新成交量)
+	totalCost := p.Quantity.Mul(p.EntryPrice).Add(qty.Mul(price))
+	newQty := p.Quantity.Add(qty)
+	
+	if !newQty.IsZero() {
+		p.EntryPrice = totalCost.Div(newQty)
+	}
+	p.Quantity = newQty
+}
+
 // End of domain file

@@ -51,8 +51,8 @@ func (s *PositionService) SagaRefundFrozen(ctx context.Context, barrier interfac
 	return s.manager.SagaRefundFrozen(ctx, barrier, userID, symbol, quantity)
 }
 
-func (s *PositionService) SagaAddPosition(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
-	return s.manager.SagaAddPosition(ctx, barrier, userID, symbol, quantity)
+func (s *PositionService) SagaAddPosition(ctx context.Context, barrier interface{}, userID, symbol string, quantity, price decimal.Decimal) error {
+	return s.manager.SagaAddPosition(ctx, barrier, userID, symbol, quantity, price)
 }
 
 func (s *PositionService) SagaSubPosition(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {

@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/position/domain"
@@ -140,8 +141,8 @@ func (m *PositionManager) SagaRefundFrozen(ctx context.Context, barrier interfac
 	})
 }
 
-// SagaAddPosition Saga 正向: 增加持仓 (买方资产入账)
-func (m *PositionManager) SagaAddPosition(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+// SagaAddPosition Saga 正向: 增加持仓 (买方资产入账，带开仓均价计算)
+func (m *PositionManager) SagaAddPosition(ctx context.Context, barrier interface{}, userID, symbol string, quantity, price decimal.Decimal) error {
 	return m.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		positions, _, err := m.repo.GetByUser(ctx, userID, 100, 0)
 		if err != nil {
@@ -150,7 +151,7 @@ func (m *PositionManager) SagaAddPosition(ctx context.Context, barrier interface
 
 		var targetPos *domain.Position
 		for _, p := range positions {
-			if p.Symbol == symbol {
+			if p.Symbol == symbol && p.Status == "OPEN" {
 				targetPos = p
 				break
 			}
@@ -164,14 +165,16 @@ func (m *PositionManager) SagaAddPosition(ctx context.Context, barrier interface
 				Symbol:       symbol,
 				Side:         "LONG", // 默认多头
 				Quantity:     quantity,
-				EntryPrice:   decimal.Zero, // 实际应由撮合价计算，此处简化
-				CurrentPrice: decimal.Zero,
+				EntryPrice:   price, // 第一笔成交价即为初始均价
+				CurrentPrice: price,
 				Status:       "OPEN",
+				OpenedAt:     time.Now(),
 			}
 			return m.repo.Save(ctx, targetPos)
 		}
 
-		targetPos.Quantity = targetPos.Quantity.Add(quantity)
+		// 使用领域层逻辑滚动计算均价
+		targetPos.AddQuantity(quantity, price)
 		return m.repo.Update(ctx, targetPos)
 	})
 }
