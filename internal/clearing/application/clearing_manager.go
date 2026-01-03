@@ -166,11 +166,18 @@ func (m *ClearingManager) ProcessTradeExecution(ctx context.Context, event map[s
 		TradeId: tradeID,
 	})
 
-	// 步骤 3 & 4: 资产对冲
-	saga.Add(positionSvc+"/SagaDeductFrozen", positionSvc+"/SagaRefundFrozen", &positionv1.SagaPositionRequest{
-		UserId: sellUserID, Symbol: symbol, Quantity: quantityStr,
-		TradeId: tradeID,
-	})
+	// 步骤 3: 卖方扣除冻结持仓 (Base Asset, e.g., BTC)
+	saga.Add(
+		positionSvc+"/SagaDeductFrozen",
+		positionSvc+"/SagaRefundFrozen",
+		&positionv1.SagaPositionRequest{
+			UserId:   sellUserID,
+			Symbol:   symbol,
+			Quantity: quantityStr,
+			Price:    priceStr, // 传递成交价用于盈亏计算
+			TradeId:  tradeID,
+		},
+	)
 	// 步骤 4: 买方增加持仓 (Base Asset, e.g., BTC)
 	saga.Add(
 		positionSvc+"/SagaAddPosition",

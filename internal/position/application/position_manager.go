@@ -123,13 +123,34 @@ func (m *PositionManager) TccCancelFreeze(ctx context.Context, barrier interface
 
 // --- Saga Distributed Transaction Support ---
 
-// SagaDeductFrozen Saga 正向: 扣除已冻结持仓 (成交确认，资产永久转出)
-func (m *PositionManager) SagaDeductFrozen(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+// SagaDeductFrozen Saga 正向: 扣除已冻结持仓 (成交确认，盈亏结转)
+func (m *PositionManager) SagaDeductFrozen(ctx context.Context, barrier interface{}, userID, symbol string, quantity, price decimal.Decimal) error {
 	return m.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		// 注意：在 TCC 模式下，我们在 Try 阶段直接扣减了 Quantity。
-		// 这里作为 Saga 的正向步骤，如果是从 TCC 演进来的，则此处可能为空。
-		// 但为了保持 Saga 结算逻辑的完整性（即：成交后扣除资产），我们执行最终确认。
-		return nil // 假设资产在撮合前已通过 TCC 预扣，此处仅作为占位
+		// 1. 查找用户在该币种的持仓
+		positions, _, err := m.repo.GetByUser(ctx, userID, 100, 0)
+		if err != nil {
+			return err
+		}
+
+		var targetPos *domain.Position
+		for _, p := range positions {
+			if p.Symbol == symbol {
+				targetPos = p
+				break
+			}
+		}
+
+		if targetPos == nil {
+			// 在 TCC 模式下，卖单必定已有持仓被冻结，此处若为空说明数据异常
+			return fmt.Errorf("position not found for PnL realization: user=%s, symbol=%s", userID, symbol)
+		}
+
+		// 2. 执行盈亏核算
+		// 注意：此时数量在 TCC Try 阶段已经从 Quantity 中扣除，此处主要结转盈亏
+		targetPos.RealizePnL(quantity, price)
+
+		// 3. 更新持仓记录
+		return m.repo.Update(ctx, targetPos)
 	})
 }
 

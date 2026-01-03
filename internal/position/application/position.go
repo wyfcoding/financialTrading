@@ -43,8 +43,8 @@ func (s *PositionService) TccCancelFreeze(ctx context.Context, barrier interface
 
 // --- Saga Facade ---
 
-func (s *PositionService) SagaDeductFrozen(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
-	return s.manager.SagaDeductFrozen(ctx, barrier, userID, symbol, quantity)
+func (s *PositionService) SagaDeductFrozen(ctx context.Context, barrier interface{}, userID, symbol string, quantity, price decimal.Decimal) error {
+	return s.manager.SagaDeductFrozen(ctx, barrier, userID, symbol, quantity, price)
 }
 
 func (s *PositionService) SagaRefundFrozen(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {

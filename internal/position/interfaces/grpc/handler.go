@@ -166,7 +166,8 @@ func (h *GRPCHandler) SagaDeductFrozen(ctx context.Context, req *pb.SagaPosition
 		return nil, status.Errorf(codes.Internal, "barrier error: %v", err)
 	}
 	qty, _ := decimal.NewFromString(req.Quantity)
-	if err := h.service.SagaDeductFrozen(ctx, barrier, req.UserId, req.Symbol, qty); err != nil {
+	price, _ := decimal.NewFromString(req.Price)
+	if err := h.service.SagaDeductFrozen(ctx, barrier, req.UserId, req.Symbol, qty, price); err != nil {
 		return nil, status.Errorf(codes.Aborted, "SagaDeductFrozen failed: %v", err)
 	}
 	return &pb.SagaPositionResponse{Success: true}, nil

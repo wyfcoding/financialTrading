@@ -54,4 +54,20 @@ func (p *Position) AddQuantity(qty, price decimal.Decimal) {
 	p.Quantity = newQty
 }
 
+// RealizePnL 实现盈亏结转：当卖出资产时，根据开仓均价计算并记录已实现盈亏
+func (p *Position) RealizePnL(qty, price decimal.Decimal) {
+	if qty.IsZero() {
+		return
+	}
+
+	// 盈亏计算公式：(成交价 - 成本价) * 成交数量
+	pnl := price.Sub(p.EntryPrice).Mul(qty)
+	
+	// 累加到已实现盈亏
+	p.RealizedPnL = p.RealizedPnL.Add(pnl)
+	
+	// 注意：在 TCC 模式下，Quantity 在下单时已扣除，此处无需再次操作数量
+	// 但如果是纯 Saga 模式，此处还需 p.Quantity = p.Quantity.Sub(qty)
+}
+
 // End of domain file
