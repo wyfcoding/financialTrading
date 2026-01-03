@@ -153,6 +153,10 @@ spec:
     - "./*"
     - "default/payment.default.svc.cluster.local"
     - "default/inventory.default.svc.cluster.local"
+    - "default/account.default.svc.cluster.local"
+    - "default/position.default.svc.cluster.local"
+    - "default/risk.default.svc.cluster.local"
+    - "default/dtm.default.svc.cluster.local"
 ---
 ---
 apiVersion: telemetry.istio.io/v1alpha1
