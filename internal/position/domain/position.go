@@ -36,6 +36,8 @@ type Position struct {
 	ClosedAt *time.Time `gorm:"column:closed_at;type:datetime" json:"closed_at"`
 	// 状态
 	Status string `gorm:"column:status;type:varchar(20);index;not null" json:"status"`
+	// 版本号 (用于乐观锁)
+	Version int64 `gorm:"column:version;default:0;not null" json:"version"`
 }
 
 // AddQuantity 增加持仓数量并滚动计算开仓均价 (加权平均成本法)

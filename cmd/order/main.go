@@ -229,7 +229,29 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		if err := json.Unmarshal(msg.Value, &event); err != nil {
 			return err
 		}
-		return orderService.HandleTradeExecuted(ctx, event)
+
+		tradeID := event["trade_id"].(string)
+		// 增加幂等保护：防止同一笔成交重复更新订单
+		idemKey := fmt.Sprintf("order:trade:%s", tradeID)
+		isFirst, _, err := idemManager.TryStart(ctx, idemKey, 24*time.Hour)
+		if err != nil {
+			bootLog.Error("idempotency check error", "trade_id", tradeID, "error", err)
+			return err
+		}
+		if !isFirst {
+			bootLog.Warn("skipping already processed trade event", "trade_id", tradeID)
+			return nil
+		}
+
+		// 执行业务逻辑
+		if err := orderService.HandleTradeExecuted(ctx, event); err != nil {
+			_ = idemManager.Delete(ctx, idemKey) // 失败允许重试
+			return err
+		}
+
+		// 标记完成
+		_ = idemManager.Finish(ctx, idemKey, &idempotency.Response{Body: "OK"}, 24*time.Hour)
+		return nil
 	})
 
 	// 5.4 Interface (HTTP Handlers)

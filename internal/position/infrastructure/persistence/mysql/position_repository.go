@@ -30,6 +30,7 @@ type PositionModel struct {
 	OpenedAt      time.Time  `gorm:"column:opened_at;type:datetime;not null"`
 	ClosedAt      *time.Time `gorm:"column:closed_at;type:datetime"`
 	Status        string     `gorm:"column:status;type:varchar(20);index;not null"`
+	Version       int64      `gorm:"column:version;default:0;not null"`
 }
 
 // TableName 指定表名
@@ -127,14 +128,31 @@ func (r *positionRepositoryImpl) GetBySymbol(ctx context.Context, symbol string,
 	return positions, total, nil
 }
 
-// Update 实现 domain.PositionRepository.Update
+// Update 实现 domain.PositionRepository.Update (带乐观锁)
 func (r *positionRepositoryImpl) Update(ctx context.Context, position *domain.Position) error {
 	model := r.fromDomain(position)
-	err := r.getDB(ctx).Model(&PositionModel{}).Where("position_id = ?", position.PositionID).Updates(model).Error
-	if err != nil {
-		logging.Error(ctx, "position_repository.Update failed", "position_id", position.PositionID, "error", err)
-		return fmt.Errorf("failed to update position: %w", err)
+	result := r.getDB(ctx).Model(&PositionModel{}).
+		Where("position_id = ? AND version = ?", position.PositionID, position.Version).
+		Updates(map[string]interface{}{
+			"quantity":       model.Quantity,
+			"entry_price":    model.EntryPrice,
+			"current_price":  model.CurrentPrice,
+			"unrealized_pnl": model.UnrealizedPnL,
+			"realized_pnl":   model.RealizedPnL,
+			"status":         model.Status,
+			"version":        position.Version + 1, // 版本号递增
+		})
+
+	if result.Error != nil {
+		logging.Error(ctx, "position_repository.Update failed", "position_id", position.PositionID, "error", result.Error)
+		return fmt.Errorf("failed to update position: %w", result.Error)
 	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("concurrent update detected for position %s", position.PositionID)
+	}
+
+	position.Version++ // 更新本地版本号
 	return nil
 }
 
@@ -145,6 +163,7 @@ func (r *positionRepositoryImpl) Close(ctx context.Context, positionID string, c
 		"status":        "CLOSED",
 		"closed_at":     &now,
 		"current_price": closePrice.String(),
+		"version":       gorm.Expr("version + 1"),
 	}).Error
 	if err != nil {
 		logging.Error(ctx, "position_repository.Close failed", "position_id", positionID, "error", err)
@@ -154,7 +173,7 @@ func (r *positionRepositoryImpl) Close(ctx context.Context, positionID string, c
 }
 
 // ExecWithBarrier 在分布式事务屏障下执行业务逻辑
-func (r *positionRepositoryImpl) ExecWithBarrier(ctx context.Context, barrier interface{}, fn func(context.Context) error) error {
+func (r *positionRepositoryImpl) ExecWithBarrier(ctx context.Context, barrier interface{}, fn func(ctx context.Context) error) error {
 	return dtm.CallWithGorm(ctx, barrier, r.db, func(tx *gorm.DB) error {
 		txCtx := context.WithValue(ctx, "tx_db", tx)
 		return fn(txCtx)
@@ -176,30 +195,21 @@ func (r *positionRepositoryImpl) fromDomain(p *domain.Position) *PositionModel {
 		OpenedAt:      p.OpenedAt,
 		ClosedAt:      p.ClosedAt,
 		Status:        p.Status,
+		Version:       p.Version,
 	}
 }
 
 func (r *positionRepositoryImpl) toDomain(m *PositionModel) *domain.Position {
 	qty, err := decimal.NewFromString(m.Quantity)
-	if err != nil {
-		qty = decimal.Zero
-	}
+	if err != nil { qty = decimal.Zero }
 	entry, err := decimal.NewFromString(m.EntryPrice)
-	if err != nil {
-		entry = decimal.Zero
-	}
+	if err != nil { entry = decimal.Zero }
 	current, err := decimal.NewFromString(m.CurrentPrice)
-	if err != nil {
-		current = decimal.Zero
-	}
+	if err != nil { current = decimal.Zero }
 	unrealized, err := decimal.NewFromString(m.UnrealizedPnL)
-	if err != nil {
-		unrealized = decimal.Zero
-	}
+	if err != nil { unrealized = decimal.Zero }
 	realized, err := decimal.NewFromString(m.RealizedPnL)
-	if err != nil {
-		realized = decimal.Zero
-	}
+	if err != nil { realized = decimal.Zero }
 
 	return &domain.Position{
 		Model:         m.Model,
@@ -215,5 +225,6 @@ func (r *positionRepositoryImpl) toDomain(m *PositionModel) *domain.Position {
 		OpenedAt:      m.OpenedAt,
 		ClosedAt:      m.ClosedAt,
 		Status:        m.Status,
+		Version:       m.Version,
 	}
 }
