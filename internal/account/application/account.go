@@ -5,6 +5,8 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/account/domain"
+	"github.com/wyfcoding/pkg/messagequeue/outbox"
+	"gorm.io/gorm"
 )
 
 // AccountService 账户门面服务，整合 Manager 和 Query。
@@ -14,9 +16,14 @@ type AccountService struct {
 }
 
 // NewAccountService 构造函数。
-func NewAccountService(accountRepo domain.AccountRepository, transactionRepo domain.TransactionRepository) *AccountService {
+func NewAccountService(
+	accountRepo domain.AccountRepository,
+	transactionRepo domain.TransactionRepository,
+	outboxMgr *outbox.Manager,
+	db *gorm.DB,
+) *AccountService {
 	return &AccountService{
-		manager: NewAccountManager(accountRepo, transactionRepo),
+		manager: NewAccountManager(accountRepo, transactionRepo, outboxMgr, db),
 		query:   NewAccountQuery(accountRepo, transactionRepo),
 	}
 }

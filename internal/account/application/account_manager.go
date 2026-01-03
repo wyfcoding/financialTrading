@@ -7,19 +7,30 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/account/domain"
 	"github.com/wyfcoding/pkg/idgen"
+	"github.com/wyfcoding/pkg/messagequeue/outbox"
+	"gorm.io/gorm"
 )
 
 // AccountManager 处理所有账户相关的写入操作（Commands）。
 type AccountManager struct {
 	accountRepo     domain.AccountRepository
 	transactionRepo domain.TransactionRepository
+	outbox          *outbox.Manager
+	db              *gorm.DB
 }
 
 // NewAccountManager 构造函数。
-func NewAccountManager(accountRepo domain.AccountRepository, transactionRepo domain.TransactionRepository) *AccountManager {
+func NewAccountManager(
+	accountRepo domain.AccountRepository,
+	transactionRepo domain.TransactionRepository,
+	outboxMgr *outbox.Manager,
+	db *gorm.DB,
+) *AccountManager {
 	return &AccountManager{
 		accountRepo:     accountRepo,
 		transactionRepo: transactionRepo,
+		outbox:          outboxMgr,
+		db:              db,
 	}
 }
 
@@ -61,39 +72,41 @@ func (m *AccountManager) CreateAccount(ctx context.Context, req *CreateAccountRe
 
 // Deposit 充值
 func (m *AccountManager) Deposit(ctx context.Context, accountID string, amount decimal.Decimal) error {
-	account, err := m.accountRepo.Get(ctx, accountID)
-	if err != nil {
-		return err
-	}
-	if account == nil {
-		return fmt.Errorf("account not found")
-	}
+	return m.db.Transaction(func(tx *gorm.DB) error {
+		txCtx := context.WithValue(ctx, "tx_db", tx)
+		account, err := m.accountRepo.Get(txCtx, accountID)
+		if err != nil || account == nil {
+			return fmt.Errorf("account not found")
+		}
 
-	newBalance := account.Balance.Add(amount)
-	newAvailable := account.AvailableBalance.Add(amount)
+		newBalance := account.Balance.Add(amount)
+		newAvailable := account.AvailableBalance.Add(amount)
 
-	if err := m.accountRepo.UpdateBalance(ctx, accountID, newBalance, newAvailable, account.FrozenBalance, account.Version); err != nil {
-		return err
-	}
+		if err := m.accountRepo.UpdateBalance(txCtx, accountID, newBalance, newAvailable, account.FrozenBalance, account.Version); err != nil {
+			return err
+		}
 
-	transaction := &domain.Transaction{
-		TransactionID: fmt.Sprintf("TXN-%d", idgen.GenID()),
-		AccountID:     accountID,
-		Type:          "DEPOSIT",
-		Amount:        amount,
-		Status:        "COMPLETED",
-	}
+		transactionID := fmt.Sprintf("TXN-%d", idgen.GenID())
+		if err := m.transactionRepo.Save(txCtx, &domain.Transaction{
+			TransactionID: transactionID,
+			AccountID:     accountID,
+			Type:          "DEPOSIT",
+			Amount:        amount,
+			Status:        "COMPLETED",
+		}); err != nil {
+			return err
+		}
 
-	return m.transactionRepo.Save(ctx, transaction)
+		return m.outbox.PublishInTx(ctx, tx, "account.balance.changed", transactionID, map[string]any{
+			"user_id": account.UserID, "currency": account.Currency, "change": amount.String(), "type": "DEPOSIT",
+		})
+	})
 }
 
 // FreezeBalance 冻结余额
 func (m *AccountManager) FreezeBalance(ctx context.Context, accountID string, amount decimal.Decimal, reason string) error {
 	account, err := m.accountRepo.Get(ctx, accountID)
-	if err != nil {
-		return err
-	}
-	if account == nil {
+	if err != nil || account == nil {
 		return fmt.Errorf("account not found")
 	}
 
@@ -110,15 +123,12 @@ func (m *AccountManager) FreezeBalance(ctx context.Context, accountID string, am
 // UnfreezeBalance 解冻余额
 func (m *AccountManager) UnfreezeBalance(ctx context.Context, accountID string, amount decimal.Decimal) error {
 	account, err := m.accountRepo.Get(ctx, accountID)
-	if err != nil {
-		return err
-	}
-	if account == nil {
+	if err != nil || account == nil {
 		return fmt.Errorf("account not found")
 	}
 
 	if account.FrozenBalance.LessThan(amount) {
-		return fmt.Errorf("frozen balance insufficient to unfreeze")
+		return fmt.Errorf("frozen balance insufficient")
 	}
 
 	newAvailable := account.AvailableBalance.Add(amount)
@@ -129,90 +139,69 @@ func (m *AccountManager) UnfreezeBalance(ctx context.Context, accountID string, 
 
 // DeductFrozenBalance 扣除已冻结的余额
 func (m *AccountManager) DeductFrozenBalance(ctx context.Context, accountID string, amount decimal.Decimal) error {
-	account, err := m.accountRepo.Get(ctx, accountID)
-	if err != nil {
-		return err
-	}
-	if account == nil {
-		return fmt.Errorf("account not found")
-	}
+	return m.db.Transaction(func(tx *gorm.DB) error {
+		txCtx := context.WithValue(ctx, "tx_db", tx)
+		account, err := m.accountRepo.Get(txCtx, accountID)
+		if err != nil || account == nil {
+			return fmt.Errorf("account not found")
+		}
+		if account.FrozenBalance.LessThan(amount) {
+			return fmt.Errorf("frozen balance insufficient to deduct")
+		}
+		newBalance := account.Balance.Sub(amount)
+		newFrozen := account.FrozenBalance.Sub(amount)
 
-	if account.FrozenBalance.LessThan(amount) {
-		return fmt.Errorf("frozen balance insufficient to deduct")
-	}
+		if err := m.accountRepo.UpdateBalance(txCtx, accountID, newBalance, account.AvailableBalance, newFrozen, account.Version); err != nil {
+			return err
+		}
 
-	newBalance := account.Balance.Sub(amount)
-	newFrozen := account.FrozenBalance.Sub(amount)
-
-	if err := m.accountRepo.UpdateBalance(ctx, accountID, newBalance, account.AvailableBalance, newFrozen, account.Version); err != nil {
-		return err
-	}
-
-	transaction := &domain.Transaction{
-		TransactionID: fmt.Sprintf("DED-%d", idgen.GenID()),
-		AccountID:     accountID,
-		Type:          "DEDUCT",
-		Amount:        amount,
-		Status:        "COMPLETED",
-	}
-	return m.transactionRepo.Save(ctx, transaction)
+		transactionID := fmt.Sprintf("DED-%d", idgen.GenID())
+		return m.transactionRepo.Save(txCtx, &domain.Transaction{
+			TransactionID: transactionID, AccountID: accountID, Type: "DEDUCT", Amount: amount, Status: "COMPLETED",
+		})
+	})
 }
 
 // --- TCC Distributed Transaction Support ---
 
-// TccTryFreeze TCC Try: 预冻结资金
 func (m *AccountManager) TccTryFreeze(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
 	return m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		// 1. 查找账户
 		account, err := m.getAccount(ctx, userID, currency)
 		if err != nil {
 			return err
 		}
-
-		// 2. 检查余额
 		if account.AvailableBalance.LessThan(amount) {
 			return fmt.Errorf("insufficient available balance")
 		}
 
-		// 3. 执行冻结 (Available -> Frozen)
 		newAvailable := account.AvailableBalance.Sub(amount)
 		newFrozen := account.FrozenBalance.Add(amount)
-
 		return m.accountRepo.UpdateBalance(ctx, account.AccountID, account.Balance, newAvailable, newFrozen, account.Version)
 	})
 }
 
-// TccConfirmFreeze TCC Confirm: 确认冻结
 func (m *AccountManager) TccConfirmFreeze(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
-	return m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		return nil
-	})
+	return m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error { return nil })
 }
 
-// TccCancelFreeze TCC Cancel: 取消冻结 (Frozen -> Available)
 func (m *AccountManager) TccCancelFreeze(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
 	return m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		// 1. 查找账户
 		account, err := m.getAccount(ctx, userID, currency)
 		if err != nil {
 			return err
 		}
-
-		// 2. 执行解冻 (Frozen -> Available)
 		if account.FrozenBalance.LessThan(amount) {
-			return fmt.Errorf("frozen balance mismatch during cancel")
+			return fmt.Errorf("frozen balance mismatch")
 		}
 
 		newAvailable := account.AvailableBalance.Add(amount)
 		newFrozen := account.FrozenBalance.Sub(amount)
-
 		return m.accountRepo.UpdateBalance(ctx, account.AccountID, account.Balance, newAvailable, newFrozen, account.Version)
 	})
 }
 
 // --- Saga Distributed Transaction Support ---
 
-// SagaDeductFrozen Saga 正向: 扣除冻结资金 (成交确认，资产永久转出)
 func (m *AccountManager) SagaDeductFrozen(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
 	return m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		account, err := m.getAccount(ctx, userID, currency)
@@ -230,17 +219,13 @@ func (m *AccountManager) SagaDeductFrozen(ctx context.Context, barrier interface
 			return err
 		}
 
-		return m.transactionRepo.Save(ctx, &domain.Transaction{
-			TransactionID: fmt.Sprintf("SAGA-DED-%d", idgen.GenID()),
-			AccountID:     account.AccountID,
-			Type:          "SETTLE_OUT",
-			Amount:        amount.Neg(),
-			Status:        "COMPLETED",
+		// 发布可靠结算出账事件
+		return m.outbox.PublishInTx(ctx, ctx.Value("tx_db").(*gorm.DB), "account.balance.changed", fmt.Sprintf("SAGA-DED-%s", userID), map[string]any{
+			"user_id": userID, "currency": currency, "change": amount.Neg().String(), "type": "SETTLE_OUT",
 		})
 	})
 }
 
-// SagaRefundFrozen Saga 补偿: 恢复冻结资金 (回滚扣除操作)
 func (m *AccountManager) SagaRefundFrozen(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
 	return m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		account, err := m.getAccount(ctx, userID, currency)
@@ -253,7 +238,6 @@ func (m *AccountManager) SagaRefundFrozen(ctx context.Context, barrier interface
 	})
 }
 
-// SagaAddBalance Saga 正向: 增加余额 (成交确认，资产入账)
 func (m *AccountManager) SagaAddBalance(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
 	return m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		account, err := m.getAccount(ctx, userID, currency)
@@ -267,17 +251,13 @@ func (m *AccountManager) SagaAddBalance(ctx context.Context, barrier interface{}
 			return err
 		}
 
-		return m.transactionRepo.Save(ctx, &domain.Transaction{
-			TransactionID: fmt.Sprintf("SAGA-ADD-%d", idgen.GenID()),
-			AccountID:     account.AccountID,
-			Type:          "SETTLE_IN",
-			Amount:        amount,
-			Status:        "COMPLETED",
+		// 发布可靠结算入账事件
+		return m.outbox.PublishInTx(ctx, ctx.Value("tx_db").(*gorm.DB), "account.balance.changed", fmt.Sprintf("SAGA-ADD-%s", userID), map[string]any{
+			"user_id": userID, "currency": currency, "change": amount.String(), "type": "SETTLE_IN",
 		})
 	})
 }
 
-// SagaSubBalance Saga 补偿: 扣除已增加的余额 (回滚入账操作)
 func (m *AccountManager) SagaSubBalance(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
 	return m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		account, err := m.getAccount(ctx, userID, currency)

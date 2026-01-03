@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"time"
@@ -23,6 +24,8 @@ import (
 	"github.com/wyfcoding/pkg/idempotency"
 	"github.com/wyfcoding/pkg/limiter"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
+	"github.com/wyfcoding/pkg/messagequeue/outbox"
 	"github.com/wyfcoding/pkg/metrics"
 	"github.com/wyfcoding/pkg/middleware"
 )
@@ -47,6 +50,7 @@ type AppContext struct {
 	Metrics     *metrics.Metrics
 	Limiter     limiter.Limiter
 	Idempotency idempotency.Manager
+	Outbox      *outbox.Processor
 }
 
 // ServiceClients 下游微服务客户端集合
@@ -140,14 +144,24 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		return nil, nil, fmt.Errorf("redis init error: %w", err)
 	}
 
-	// 3. 初始化治理组件 (限流器、幂等管理器)
+	// 3. 初始化消息队列与 Outbox (可靠事件流架构)
+	producer := kafka.NewProducer(c.MessageQueue.Kafka, logger, m)
+	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
+	outboxProcessor := outbox.NewProcessor(outboxMgr, func(ctx context.Context, topic, key string, payload []byte) error {
+		return producer.PublishToTopic(ctx, topic, []byte(key), payload)
+	}, 100, 5*time.Second)
+	outboxProcessor.Start()
+
+	// 4. 初始化治理组件 (限流器、幂等管理器)
 	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
 	idemManager := idempotency.NewRedisManager(redisCache.GetClient(), IdempotencyPrefix)
 
-	// 4. 初始化下游微服务客户端
+	// 5. 初始化下游微服务客户端
 	clients := &ServiceClients{}
 	clientCleanup, err := grpcclient.InitClients(c.Services, m, c.CircuitBreaker, clients)
 	if err != nil {
+		outboxProcessor.Stop()
+		producer.Close()
 		redisCache.Close()
 		if sqlDB, err := db.RawDB().DB(); err == nil {
 			sqlDB.Close()
@@ -155,23 +169,25 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		return nil, nil, fmt.Errorf("grpc clients init error: %w", err)
 	}
 
-	// 5. DDD 分层装配
+	// 6. DDD 分层装配
 	bootLog.Info("assembling services with full dependency injection...")
 
-	// 5.1 Infrastructure (Persistence)
+	// 6.1 Infrastructure (Persistence)
 	accountRepo := mysql.NewAccountRepository(db.RawDB())
 	transactionRepo := mysql.NewTransactionRepository(db.RawDB())
 
-	// 5.2 Application (Service)
-	accountService := application.NewAccountService(accountRepo, transactionRepo)
+	// 6.2 Application (Service)
+	accountService := application.NewAccountService(accountRepo, transactionRepo, outboxMgr, db.RawDB())
 
-	// 5.3 Interface (HTTP Handlers)
+	// 6.3 Interface (HTTP Handlers)
 	handler := accounthttp.NewAccountHandler(accountService)
 
 	// 定义资源清理函数
 	cleanup := func() {
 		bootLog.Info("shutting down, releasing resources...")
+		outboxProcessor.Stop()
 		clientCleanup()
+		producer.Close()
 		if redisCache != nil {
 			if err := redisCache.Close(); err != nil {
 				bootLog.Error("failed to close redis cache", "error", err)
@@ -193,5 +209,6 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		Metrics:     m,
 		Limiter:     rateLimiter,
 		Idempotency: idemManager,
+		Outbox:      outboxProcessor,
 	}, cleanup, nil
 }
