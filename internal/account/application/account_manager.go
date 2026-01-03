@@ -156,3 +156,85 @@ func (m *AccountManager) DeductFrozenBalance(ctx context.Context, accountID stri
 	}
 	return m.transactionRepo.Save(ctx, transaction)
 }
+
+// --- TCC Distributed Transaction Support ---
+
+// TccTryFreeze TCC Try: 预冻结资金
+func (m *AccountManager) TccTryFreeze(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+	return m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
+		// 1. 查找账户
+		accounts, err := m.accountRepo.GetByUser(ctx, userID)
+		if err != nil {
+			return err
+		}
+		var targetAccount *domain.Account
+		for _, acc := range accounts {
+			if acc.Currency == currency {
+				targetAccount = acc
+				break
+			}
+		}
+		if targetAccount == nil {
+			return fmt.Errorf("account not found for user %s currency %s", userID, currency)
+		}
+
+		// 2. 检查余额
+		if targetAccount.AvailableBalance.LessThan(amount) {
+			return fmt.Errorf("insufficient available balance")
+		}
+
+		// 3. 执行冻结 (Available -> Frozen)
+		newAvailable := targetAccount.AvailableBalance.Sub(amount)
+		newFrozen := targetAccount.FrozenBalance.Add(amount)
+
+		// 注意：ExecWithBarrier 内部注入了带事务的 DB 到 ctx，所以 UpdateBalance 会在事务中执行
+		return m.accountRepo.UpdateBalance(ctx, targetAccount.AccountID, targetAccount.Balance, newAvailable, newFrozen)
+	})
+}
+
+// TccConfirmFreeze TCC Confirm: 确认冻结 (Try 阶段已完成资金划转，此处为空操作，仅满足协议)
+func (m *AccountManager) TccConfirmFreeze(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+	return m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
+		// Try 阶段已经将资金移动到冻结状态，确认阶段不需要做额外操作
+		// 除非业务需要修改状态（例如生成一条“确认冻结”的流水）
+		return nil
+	})
+}
+
+// TccCancelFreeze TCC Cancel: 取消冻结 (Frozen -> Available)
+func (m *AccountManager) TccCancelFreeze(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+	return m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
+		// 1. 查找账户
+		accounts, err := m.accountRepo.GetByUser(ctx, userID)
+		if err != nil {
+			return err
+		}
+		var targetAccount *domain.Account
+		for _, acc := range accounts {
+			if acc.Currency == currency {
+				targetAccount = acc
+				break
+			}
+		}
+		if targetAccount == nil {
+			return fmt.Errorf("account not found for user %s currency %s", userID, currency)
+		}
+
+		// 2. 执行解冻 (Frozen -> Available)
+		// 注意：这里假设 Try 成功执行了。如果 Try 没执行，DTM 的空补偿策略会处理（Barrier 自动处理）
+		// 如果是“悬挂”请求（Cancel 先到），Barrier 也会拦截
+		
+		// 只有当 Frozen 足够时才解冻。
+		// 在 TCC Cancel 中，理论上资金一定在 Frozen 中（因为 Try 成功了）。
+		// 但为了健壮性，还是检查一下。
+		if targetAccount.FrozenBalance.LessThan(amount) {
+			// 这通常不应该发生，除非手动干预了数据
+			return fmt.Errorf("frozen balance mismatch during cancel")
+		}
+
+		newAvailable := targetAccount.AvailableBalance.Add(amount)
+		newFrozen := targetAccount.FrozenBalance.Sub(amount)
+
+		return m.accountRepo.UpdateBalance(ctx, targetAccount.AccountID, targetAccount.Balance, newAvailable, newFrozen)
+	})
+}

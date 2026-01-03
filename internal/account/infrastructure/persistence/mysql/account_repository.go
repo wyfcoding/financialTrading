@@ -8,6 +8,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/account/domain"
+	"github.com/wyfcoding/pkg/dtm"
 	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -55,7 +56,7 @@ func (r *accountRepositoryImpl) Save(ctx context.Context, account *domain.Accoun
 		FrozenBalance:    account.FrozenBalance.String(),
 	}
 
-	err := r.db.WithContext(ctx).Clauses(clause.OnConflict{
+	err := r.getDB(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "account_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"user_id", "account_type", "currency", "balance", "available_balance", "frozen_balance"}),
 	}).Create(model).Error
@@ -71,7 +72,7 @@ func (r *accountRepositoryImpl) Save(ctx context.Context, account *domain.Accoun
 // Get 实现 domain.AccountRepository.Get
 func (r *accountRepositoryImpl) Get(ctx context.Context, accountID string) (*domain.Account, error) {
 	var model AccountModel
-	if err := r.db.WithContext(ctx).Where("account_id = ?", accountID).First(&model).Error; err != nil {
+	if err := r.getDB(ctx).Where("account_id = ?", accountID).First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -85,7 +86,7 @@ func (r *accountRepositoryImpl) Get(ctx context.Context, accountID string) (*dom
 // GetByUser 实现 domain.AccountRepository.GetByUser
 func (r *accountRepositoryImpl) GetByUser(ctx context.Context, userID string) ([]*domain.Account, error) {
 	var models []AccountModel
-	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&models).Error; err != nil {
+	if err := r.getDB(ctx).Where("user_id = ?", userID).Find(&models).Error; err != nil {
 		logging.Error(ctx, "account_repository.GetByUser failed", "user_id", userID, "error", err)
 		return nil, fmt.Errorf("failed to get accounts by user: %w", err)
 	}
@@ -99,7 +100,7 @@ func (r *accountRepositoryImpl) GetByUser(ctx context.Context, userID string) ([
 
 // UpdateBalance 实现 domain.AccountRepository.UpdateBalance
 func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, accountID string, balance, available, frozen decimal.Decimal) error {
-	err := r.db.WithContext(ctx).Model(&AccountModel{}).Where("account_id = ?", accountID).Updates(map[string]interface{}{
+	err := r.getDB(ctx).Model(&AccountModel{}).Where("account_id = ?", accountID).Updates(map[string]interface{}{
 		"balance":           balance.String(),
 		"available_balance": available.String(),
 		"frozen_balance":    frozen.String(),
@@ -109,6 +110,24 @@ func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, accountID str
 		return fmt.Errorf("failed to update balance: %w", err)
 	}
 	return nil
+}
+
+// ExecWithBarrier 实现 domain.AccountRepository.ExecWithBarrier
+func (r *accountRepositoryImpl) ExecWithBarrier(ctx context.Context, barrier interface{}, fn func(ctx context.Context) error) error {
+	// 使用 pkg/dtm 的 CallWithGorm 辅助函数 (通过反射避免直接依赖 dtmcli)
+	return dtm.CallWithGorm(ctx, barrier, r.db, func(tx *gorm.DB) error {
+		// 将事务 DB 注入 context，以便后续操作使用该事务
+		txCtx := context.WithValue(ctx, "tx_db", tx)
+		return fn(txCtx)
+	})
+}
+
+// getDBFromContext 尝试从 Context 获取事务 DB，否则返回默认 DB
+func (r *accountRepositoryImpl) getDB(ctx context.Context) *gorm.DB {
+	if tx, ok := ctx.Value("tx_db").(*gorm.DB); ok {
+		return tx.WithContext(ctx)
+	}
+	return r.db.WithContext(ctx)
 }
 
 func (r *accountRepositoryImpl) toDomain(m *AccountModel) *domain.Account {

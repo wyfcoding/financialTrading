@@ -26,6 +26,28 @@ service AccountService {
 
   // 获取交易历史。
   rpc GetTransactionHistory(GetTransactionHistoryRequest) returns (GetTransactionHistoryResponse);
+
+  // --- TCC 分布式事务接口 ---
+  // TCC Try: 预冻结资金 (Available -> Frozen)
+  rpc TccTryFreeze(TccFreezeRequest) returns (TccFreezeResponse);
+  // TCC Confirm: 确认冻结 (空操作，或更新状态，因为 Try 阶段已实际冻结)
+  rpc TccConfirmFreeze(TccFreezeRequest) returns (TccFreezeResponse);
+  // TCC Cancel: 取消冻结 (Frozen -> Available)
+  rpc TccCancelFreeze(TccFreezeRequest) returns (TccFreezeResponse);
+}
+
+// TCC 冻结请求
+message TccFreezeRequest {
+  string user_id = 1;
+  string currency = 2; // 币种，如 "USDT", "BTC"
+  string amount = 3;   // 冻结金额
+  string order_id = 4; // 关联订单ID (用于幂等去重)
+}
+
+// TCC 响应
+message TccFreezeResponse {
+  bool success = 1;
+  string message = 2;
 }
 
 // 账户详细信息响应。

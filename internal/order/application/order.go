@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 
+	accountv1 "github.com/wyfcoding/financialtrading/goapi/account/v1"
 	riskv1 "github.com/wyfcoding/financialtrading/goapi/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
 	"github.com/wyfcoding/pkg/security/risk"
@@ -24,6 +25,14 @@ func NewOrderService(repo domain.OrderRepository, riskEvaluator risk.Evaluator) 
 
 func (s *OrderService) SetRiskClient(cli riskv1.RiskServiceClient) {
 	s.manager.SetRiskClient(cli)
+}
+
+func (s *OrderService) SetAccountClient(cli accountv1.AccountServiceClient, svcURL string) {
+	s.manager.SetAccountClient(cli, svcURL)
+}
+
+func (s *OrderService) SetDTMServer(addr string) {
+	s.manager.SetDTMServer(addr)
 }
 
 // --- Manager (Writes) ---

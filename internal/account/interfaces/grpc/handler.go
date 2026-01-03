@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/dtm-labs/client/dtmgrpc"
 	"github.com/shopspring/decimal"
 	pb "github.com/wyfcoding/financialtrading/goapi/account/v1"
 	"github.com/wyfcoding/financialtrading/internal/account/application"
@@ -134,4 +135,64 @@ func (h *GRPCHandler) GetBalance(ctx context.Context, req *pb.GetBalanceRequest)
 		FrozenBalance:    dto.FrozenBalance,
 		Timestamp:        dto.UpdatedAt,
 	}, nil
+}
+
+// TccTryFreeze TCC Try: 预冻结
+func (h *GRPCHandler) TccTryFreeze(ctx context.Context, req *pb.TccFreezeRequest) (*pb.TccFreezeResponse, error) {
+	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
+	}
+
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid amount: %v", err)
+	}
+
+	if err := h.service.TccTryFreeze(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
+		slog.Error("TccTryFreeze failed", "user_id", req.UserId, "error", err)
+		return nil, status.Errorf(codes.Aborted, "TccTryFreeze failed: %v", err)
+	}
+
+	return &pb.TccFreezeResponse{Success: true}, nil
+}
+
+// TccConfirmFreeze TCC Confirm: 确认冻结
+func (h *GRPCHandler) TccConfirmFreeze(ctx context.Context, req *pb.TccFreezeRequest) (*pb.TccFreezeResponse, error) {
+	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
+	}
+
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid amount: %v", err)
+	}
+
+	if err := h.service.TccConfirmFreeze(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
+		slog.Error("TccConfirmFreeze failed", "user_id", req.UserId, "error", err)
+		return nil, status.Errorf(codes.Internal, "TccConfirmFreeze failed: %v", err)
+	}
+
+	return &pb.TccFreezeResponse{Success: true}, nil
+}
+
+// TccCancelFreeze TCC Cancel: 取消冻结
+func (h *GRPCHandler) TccCancelFreeze(ctx context.Context, req *pb.TccFreezeRequest) (*pb.TccFreezeResponse, error) {
+	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
+	}
+
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid amount: %v", err)
+	}
+
+	if err := h.service.TccCancelFreeze(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
+		slog.Error("TccCancelFreeze failed", "user_id", req.UserId, "error", err)
+		return nil, status.Errorf(codes.Internal, "TccCancelFreeze failed: %v", err)
+	}
+
+	return &pb.TccFreezeResponse{Success: true}, nil
 }

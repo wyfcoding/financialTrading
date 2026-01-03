@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 
+	accountv1 "github.com/wyfcoding/financialtrading/goapi/account/v1"
 	pb "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	riskv1 "github.com/wyfcoding/financialtrading/goapi/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/application"
@@ -53,10 +54,12 @@ type AppContext struct {
 
 // ServiceClients 下游微服务客户端集合
 type ServiceClients struct {
-	RiskConn *grpc.ClientConn `service:"risk"`
+	RiskConn    *grpc.ClientConn `service:"risk"`
+	AccountConn *grpc.ClientConn `service:"account"`
 
 	// 具体的客户端接口
-	Risk riskv1.RiskServiceClient
+	Risk    riskv1.RiskServiceClient
+	Account accountv1.AccountServiceClient
 }
 
 func main() {
@@ -164,6 +167,9 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	if clients.RiskConn != nil {
 		clients.Risk = riskv1.NewRiskServiceClient(clients.RiskConn)
 	}
+	if clients.AccountConn != nil {
+		clients.Account = accountv1.NewAccountServiceClient(clients.AccountConn)
+	}
 
 	// 5. DDD 分层装配
 	bootLog.Info("assembling services with full dependency injection...")
@@ -176,7 +182,22 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	if clients.Risk != nil {
 		orderService.SetRiskClient(clients.Risk)
 	}
-
+		if clients.Account != nil {
+			// DTM Server 默认地址，实际生产环境应从配置读取
+			dtmAddr := c.Services["dtm"].GRPCAddr
+			if dtmAddr == "" {
+				dtmAddr = "dtm:36790"
+			}
+			
+			// Account Service 回调地址，TCC 需要知道 Account 服务的 gRPC 地址
+			accountSvcAddr := c.Services["account"].GRPCAddr
+			if accountSvcAddr == "" {
+				accountSvcAddr = "account:50051" 
+			}
+	
+			orderService.SetAccountClient(clients.Account, accountSvcAddr)
+			orderService.SetDTMServer(dtmAddr)
+		}
 	// 5.3 Interface (HTTP Handlers)
 	handler := orderhttp.NewOrderHandler(orderService)
 

@@ -16,6 +16,10 @@ type AccountRepository interface {
 	GetByUser(ctx context.Context, userID string) ([]*Account, error)
 	// UpdateBalance 显式更新账户余额（含锁或原子操作建议在仓储实现中处理）
 	UpdateBalance(ctx context.Context, accountID string, balance, availableBalance, frozenBalance decimal.Decimal) error
+
+	// ExecWithBarrier 在分布式事务屏障下执行业务逻辑
+	// barrier 类型应为 *dtmgrpc.BranchBarrier，使用 interface{} 避免领域层强依赖
+	ExecWithBarrier(ctx context.Context, barrier interface{}, fn func(ctx context.Context) error) error
 }
 
 // TransactionRepository 交易记录仓储接口

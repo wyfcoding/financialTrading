@@ -43,6 +43,20 @@ func (s *AccountService) DeductFrozenBalance(ctx context.Context, accountID stri
 	return s.manager.DeductFrozenBalance(ctx, accountID, amount)
 }
 
+// --- TCC Facade ---
+
+func (s *AccountService) TccTryFreeze(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+	return s.manager.TccTryFreeze(ctx, barrier, userID, currency, amount)
+}
+
+func (s *AccountService) TccConfirmFreeze(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+	return s.manager.TccConfirmFreeze(ctx, barrier, userID, currency, amount)
+}
+
+func (s *AccountService) TccCancelFreeze(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+	return s.manager.TccCancelFreeze(ctx, barrier, userID, currency, amount)
+}
+
 // --- Query (Reads) ---
 
 func (s *AccountService) GetAccount(ctx context.Context, accountID string) (*AccountDTO, error) {
