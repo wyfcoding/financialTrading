@@ -1,12 +1,11 @@
 package http
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/account/application"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/response"
 )
 
 // HTTP 处理器
@@ -46,20 +45,20 @@ func (h *AccountHandler) Freeze(c *gin.Context) {
 	accountID := c.Param("id")
 	var req BalanceActionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Error(c, err)
 		return
 	}
 
 	amount, err := decimal.NewFromString(req.Amount)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid amount format"})
+		response.Error(c, err)
 		return
 	}
 	if err := h.accountService.FreezeBalance(c.Request.Context(), accountID, amount, req.Reason); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Error(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"status": "frozen"})
+	response.Success(c, gin.H{"status": "frozen"})
 }
 
 // Unfreeze 解冻余额
@@ -67,56 +66,56 @@ func (h *AccountHandler) Unfreeze(c *gin.Context) {
 	accountID := c.Param("id")
 	var req BalanceActionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Error(c, err)
 		return
 	}
 
 	amount, err := decimal.NewFromString(req.Amount)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid amount format"})
+		response.Error(c, err)
 		return
 	}
 	if err := h.accountService.UnfreezeBalance(c.Request.Context(), accountID, amount); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Error(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"status": "unfrozen"})
+	response.Success(c, gin.H{"status": "unfrozen"})
 }
 
 // CreateAccount 创建账户
 func (h *AccountHandler) CreateAccount(c *gin.Context) {
 	var req application.CreateAccountRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Error(c, err)
 		return
 	}
 
 	account, err := h.accountService.CreateAccount(c.Request.Context(), &req)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to create account", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, account)
+	response.Success(c, account)
 }
 
 // GetAccount 获取账户
 func (h *AccountHandler) GetAccount(c *gin.Context) {
 	accountID := c.Param("id")
 	if accountID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "account_id is required"})
+		response.Error(c, nil) // or custom error
 		return
 	}
 
 	account, err := h.accountService.GetAccount(c.Request.Context(), accountID)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get account", "account_id", accountID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, account)
+	response.Success(c, account)
 }
 
 // DepositRequest 充值请求
@@ -128,27 +127,27 @@ type DepositRequest struct {
 func (h *AccountHandler) Deposit(c *gin.Context) {
 	accountID := c.Param("id")
 	if accountID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "account_id is required"})
+		response.Error(c, nil)
 		return
 	}
 
 	var req DepositRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Error(c, err)
 		return
 	}
 
 	amount, err := decimal.NewFromString(req.Amount)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid amount"})
+		response.Error(c, err)
 		return
 	}
 
 	if err := h.accountService.Deposit(c.Request.Context(), accountID, amount); err != nil {
 		logging.Error(c.Request.Context(), "Failed to deposit", "account_id", accountID, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "success"})
+	response.Success(c, gin.H{"status": "success"})
 }

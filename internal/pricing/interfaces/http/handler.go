@@ -73,7 +73,7 @@ func (h *PricingHandler) GetOptionPrice(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response.Success(c, gin.H{
 		"price":            price,
 		"calculation_time": time.Now(),
 	})
@@ -101,7 +101,7 @@ func (h *PricingHandler) GetGreeks(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response.Success(c, gin.H{
 		"greeks":           greeks,
 		"calculation_time": time.Now(),
 	})

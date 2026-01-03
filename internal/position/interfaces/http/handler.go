@@ -65,7 +65,7 @@ func (h *PositionHandler) GetPositions(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response.Success(c, gin.H{
 		"data":  dtos,
 		"total": total,
 	})

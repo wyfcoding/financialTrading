@@ -1,12 +1,13 @@
 package http
 
 import (
-	"net/http"
+	"fmt"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/application"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/response"
 )
 
 // HTTP 处理器
@@ -38,9 +39,7 @@ func (h *Handler) GetLatestQuote(c *gin.Context) {
 	// 验证输入
 	if symbol == "" {
 		logging.Warn(ctx, "Invalid request: symbol is required")
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "symbol is required",
-		})
+		response.Error(c, fmt.Errorf("symbol is required"))
 		return
 	}
 
@@ -55,16 +54,12 @@ func (h *Handler) GetLatestQuote(c *gin.Context) {
 			"symbol", symbol,
 			"error", err,
 		)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		response.Error(c, err)
 		return
 	}
 
 	// 返回响应
-	c.JSON(http.StatusOK, gin.H{
-		"data": quoteDTO,
-	})
+	response.Success(c, quoteDTO)
 }
 
 // GetHistoricalQuotes 获取历史行情
@@ -86,9 +81,7 @@ func (h *Handler) GetHistoricalQuotes(c *gin.Context) {
 	// 验证输入
 	if symbol == "" || startTime == "" || endTime == "" {
 		logging.Warn(ctx, "Invalid request parameters")
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "symbol, start_time, and end_time are required",
-		})
+		response.Error(c, fmt.Errorf("symbol, start_time, and end_time are required"))
 		return
 	}
 
@@ -99,9 +92,7 @@ func (h *Handler) GetHistoricalQuotes(c *gin.Context) {
 			"start_time", startTime,
 			"error", err,
 		)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "start_time must be a valid int64 timestamp",
-		})
+		response.Error(c, fmt.Errorf("start_time must be a valid int64 timestamp"))
 		return
 	}
 
@@ -111,9 +102,7 @@ func (h *Handler) GetHistoricalQuotes(c *gin.Context) {
 			"end_time", endTime,
 			"error", err,
 		)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "end_time must be a valid int64 timestamp",
-		})
+		response.Error(c, fmt.Errorf("end_time must be a valid int64 timestamp"))
 		return
 	}
 
@@ -123,9 +112,7 @@ func (h *Handler) GetHistoricalQuotes(c *gin.Context) {
 			"start_time", startTimeInt,
 			"end_time", endTimeInt,
 		)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "start_time must be before end_time",
-		})
+		response.Error(c, fmt.Errorf("start_time must be before end_time"))
 		return
 	}
 
@@ -136,16 +123,12 @@ func (h *Handler) GetHistoricalQuotes(c *gin.Context) {
 			"symbol", symbol,
 			"error", err,
 		)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		response.Error(c, err)
 		return
 	}
 
 	// 返回响应
-	c.JSON(http.StatusOK, gin.H{
-		"data": quotes,
-	})
+	response.Success(c, quotes)
 }
 
 // QuoteResponse 行情响应

@@ -89,7 +89,7 @@ func (h *NotificationHandler) GetNotificationHistory(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response.Success(c, gin.H{
 		"notifications": notifications,
 		"total":         total,
 	})

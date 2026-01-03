@@ -67,7 +67,7 @@ func (h *ClearingHandler) SettleTrade(c *gin.Context) {
 	}
 
 	// 3. 返回成功的响应,包含 settlementID。
-	c.JSON(http.StatusOK, gin.H{
+	response.Success(c, gin.H{
 		"status":        "success",
 		"message":       "Trade settlement initiated",
 		"settlement_id": settlementID,
@@ -105,7 +105,7 @@ func (h *ClearingHandler) ExecuteEODClearing(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response.Success(c, gin.H{
 		"status":      "processing",
 		"message":     "EOD clearing process started",
 		"clearing_id": clearingID,
