@@ -9,6 +9,11 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/marketdata/domain"
 )
 
+// Broadcaster 广播接口，屏蔽 WebSocket 或其他推送实现
+type Broadcaster interface {
+	Broadcast(topic string, payload any)
+}
+
 // MarketDataManager 处理所有市场数据相关的写入操作（Commands）。
 type MarketDataManager struct {
 	quoteRepo     domain.QuoteRepository
@@ -16,6 +21,7 @@ type MarketDataManager struct {
 	tradeRepo     domain.TradeRepository
 	orderBookRepo domain.OrderBookRepository
 	logger        *slog.Logger
+	broadcaster   Broadcaster
 }
 
 // NewMarketDataManager 构造函数。
@@ -33,6 +39,10 @@ func NewMarketDataManager(
 		orderBookRepo: orderBookRepo,
 		logger:        logger.With("module", "market_data_manager"),
 	}
+}
+
+func (m *MarketDataManager) SetBroadcaster(b Broadcaster) {
+	m.broadcaster = b
 }
 
 // SaveQuote 保存行情数据
@@ -77,11 +87,11 @@ func (m *MarketDataManager) HandleTradeExecuted(ctx context.Context, event map[s
 	symbol := event["symbol"].(string)
 	price, _ := decimal.NewFromString(event["price"].(string))
 	quantity, _ := decimal.NewFromString(event["quantity"].(string))
-	executedAt := event["executed_at"].(int64) // 假设为纳秒
+	executedAt := event["executed_at"].(int64)
 
 	m.logger.Debug("processing trade for market data", "trade_id", tradeID, "symbol", symbol)
 
-	// 1. 保存成交快照 (用于行情服务的成交历史拉取)
+	// 1. 保存成交快照
 	trade := &domain.Trade{
 		TradeID:   tradeID,
 		Symbol:    symbol,
@@ -94,7 +104,12 @@ func (m *MarketDataManager) HandleTradeExecuted(ctx context.Context, event map[s
 		return fmt.Errorf("failed to save trade snapshot: %w", err)
 	}
 
-	// 2. 增量更新 K 线 (此处实现 1m K 线增量逻辑)
+	// 2. 实时推送成交消息 (Ticker)
+	if m.broadcaster != nil {
+		m.broadcaster.Broadcast(symbol+".trade", trade)
+	}
+
+	// 3. 增量更新 K 线
 	return m.updateKline(ctx, symbol, price, quantity, executedAt)
 }
 
@@ -144,5 +159,14 @@ func (m *MarketDataManager) updateKline(ctx context.Context, symbol string, pric
 		}
 	}
 
-	return m.klineRepo.Save(ctx, kline)
+	if err := m.klineRepo.Save(ctx, kline); err != nil {
+		return err
+	}
+
+	// 4. 实时推送 K 线更新
+	if m.broadcaster != nil {
+		m.broadcaster.Broadcast(symbol+".kline.1m", kline)
+	}
+
+	return nil
 }

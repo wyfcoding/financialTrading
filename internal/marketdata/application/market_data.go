@@ -22,10 +22,15 @@ func NewMarketDataService(
 	orderBookRepo domain.OrderBookRepository,
 	logger *slog.Logger,
 ) *MarketDataService {
+	manager := NewMarketDataManager(quoteRepo, klineRepo, tradeRepo, orderBookRepo, logger)
 	return &MarketDataService{
-		manager: NewMarketDataManager(quoteRepo, klineRepo, tradeRepo, orderBookRepo, logger),
+		manager: manager,
 		query:   NewMarketDataQuery(quoteRepo, klineRepo, tradeRepo, orderBookRepo),
 	}
+}
+
+func (s *MarketDataService) SetBroadcaster(b Broadcaster) {
+	s.manager.SetBroadcaster(b)
 }
 
 // --- Manager (Writes) ---

@@ -29,6 +29,7 @@ import (
 	"github.com/wyfcoding/pkg/messagequeue/kafka"
 	"github.com/wyfcoding/pkg/metrics"
 	"github.com/wyfcoding/pkg/middleware"
+	"github.com/wyfcoding/pkg/server"
 )
 
 // BootstrapName 服务唯一标识
@@ -52,6 +53,7 @@ type AppContext struct {
 	Limiter     limiter.Limiter
 	Idempotency idempotency.Manager
 	Consumer    *kafka.Consumer
+	WS          *server.WSManager
 }
 
 // ServiceClients 下游微服务客户端集合
@@ -106,6 +108,11 @@ func registerGin(e *gin.Engine, svc any) {
 		})
 	}
 
+	// 1. WebSocket 入口
+	e.GET("/ws", func(c *gin.Context) {
+		ctx.WS.ServeHTTP(c.Writer, c.Request)
+	})
+
 	// 指标暴露
 	if ctx.Config.Metrics.Enabled {
 		e.GET(ctx.Config.Metrics.Path, gin.WrapH(ctx.Metrics.Handler()))
@@ -114,7 +121,7 @@ func registerGin(e *gin.Engine, svc any) {
 	// 全局限流中间件
 	e.Use(middleware.RateLimitWithLimiter(ctx.Limiter))
 
-	// 业务 API 路由 v1 (与 ecommerce 对齐)
+	// 业务 API 路由 v1
 	api := e.Group("/api/v1")
 	{
 		ctx.Handler.RegisterRoutes(api)
@@ -145,11 +152,15 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		return nil, nil, fmt.Errorf("redis init error: %w", err)
 	}
 
-	// 3. 初始化治理组件 (限流器、幂等管理器)
+	// 3. 初始化 WebSocket 管理器
+	wsManager := server.NewWSManager(logger.Logger)
+	go wsManager.Run(context.Background())
+
+	// 4. 初始化治理组件
 	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
 	idemManager := idempotency.NewRedisManager(redisCache.GetClient(), IdempotencyPrefix)
 
-	// 4. 初始化下游微服务客户端
+	// 5. 初始化下游微服务客户端
 	clients := &ServiceClients{}
 	clientCleanup, err := grpcclient.InitClients(c.Services, m, c.CircuitBreaker, clients)
 	if err != nil {
@@ -160,19 +171,19 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		return nil, nil, fmt.Errorf("grpc clients init error: %w", err)
 	}
 
-	// 5. DDD 分层装配
+	// 6. DDD 分层装配
 	bootLog.Info("assembling services with full dependency injection...")
 
-	// 5.1 Infrastructure (Persistence)
 	quoteRepo := mysql.NewQuoteRepository(db.RawDB())
 	klineRepo := mysql.NewKlineRepository(db.RawDB())
 	tradeRepo := mysql.NewTradeRepository(db.RawDB())
 	orderBookRepo := mysql.NewOrderBookRepository(db.RawDB())
 
-	// 5.2 Application (Service)
 	marketDataService := application.NewMarketDataService(quoteRepo, klineRepo, tradeRepo, orderBookRepo, logger.Logger)
-
-	// 5.3 启动 Kafka 消费者 (可靠成交事件消费 -> K 线实时计算)
+	// 【关键注入】：将 WebSocket 广播器注入 Manager
+	marketDataService.SetBroadcaster(wsManager)
+	
+	// 7. 启动 Kafka 消费者 (行情增量计算与推送)
 	consumer := kafka.NewConsumer(c.MessageQueue.Kafka, logger, m)
 	consumer.Start(context.Background(), 10, func(ctx context.Context, msg kafkago.Message) error {
 		if msg.Topic != "trade.executed" {
@@ -185,7 +196,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		return marketDataService.HandleTradeExecuted(ctx, event)
 	})
 
-	// 5.4 Interface (HTTP Handlers)
+	// 5.3 Interface (HTTP Handlers)
 	handler := marketdatahttp.NewHandler(marketDataService)
 
 	// 定义资源清理函数
@@ -217,5 +228,6 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		Limiter:     rateLimiter,
 		Idempotency: idemManager,
 		Consumer:    consumer,
+		WS:          wsManager,
 	}, cleanup, nil
 }
