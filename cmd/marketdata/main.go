@@ -29,6 +29,7 @@ import (
 	"github.com/wyfcoding/pkg/messagequeue/kafka"
 	"github.com/wyfcoding/pkg/metrics"
 	"github.com/wyfcoding/pkg/middleware"
+	"github.com/wyfcoding/pkg/redis"
 	"github.com/wyfcoding/pkg/server"
 )
 
@@ -108,7 +109,7 @@ func registerGin(e *gin.Engine, svc any) {
 		})
 	}
 
-	// 1. WebSocket 入口
+	// WebSocket 入口
 	e.GET("/ws", func(c *gin.Context) {
 		ctx.WS.ServeHTTP(c.Writer, c.Request)
 	})
@@ -156,6 +157,34 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	wsManager := server.NewWSManager(logger.Logger)
 	go wsManager.Run(context.Background())
 
+	// --- 3.1 分布式行情同步中心 (跨节点广播) ---
+	distBroadcaster := &distributedBroadcaster{
+		local: wsManager,
+		redis: redisCache.GetClient(),
+	}
+
+	// 订阅 Redis 行情总线，接收来自其他实例的消息
+	go func() {
+		pubsub := redisCache.GetClient().Subscribe(context.Background(), "marketdata.broadcast")
+		defer pubsub.Close()
+		for {
+			msg, err := pubsub.ReceiveMessage(context.Background())
+			if err != nil {
+				bootLog.Error("redis cluster sync error", "error", err)
+				time.Sleep(time.Second)
+				continue
+			}
+			var envelope struct {
+				T string `json:"t"`
+				P []byte `json:"p"`
+			}
+			if err := json.Unmarshal([]byte(msg.Payload), &envelope); err == nil {
+				// 仅分发给连接在本机的客户端
+				wsManager.BroadcastRaw(envelope.T, envelope.P)
+			}
+		}
+	}()
+
 	// 4. 初始化治理组件
 	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
 	idemManager := idempotency.NewRedisManager(redisCache.GetClient(), IdempotencyPrefix)
@@ -168,22 +197,21 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		if sqlDB, err := db.RawDB().DB(); err == nil {
 			sqlDB.Close()
 		}
-		return nil, nil, fmt.Errorf("grpc clients init error: %w", err)
+		return nil, nil, err
 	}
 
 	// 6. DDD 分层装配
-	bootLog.Info("assembling services with full dependency injection...")
-
+	bootLog.Info("assembling services...")
 	quoteRepo := mysql.NewQuoteRepository(db.RawDB())
 	klineRepo := mysql.NewKlineRepository(db.RawDB())
 	tradeRepo := mysql.NewTradeRepository(db.RawDB())
 	orderBookRepo := mysql.NewOrderBookRepository(db.RawDB())
 
 	marketDataService := application.NewMarketDataService(quoteRepo, klineRepo, tradeRepo, orderBookRepo, logger.Logger)
-	// 【关键注入】：将 WebSocket 广播器注入 Manager
-	marketDataService.SetBroadcaster(wsManager)
-	
-	// 7. 启动 Kafka 消费者 (行情增量计算与推送)
+	// 注入支持分布式的广播器
+	marketDataService.SetBroadcaster(distBroadcaster)
+
+	// 7. 启动成交事件消费
 	consumer := kafka.NewConsumer(c.MessageQueue.Kafka, logger, m)
 	consumer.Start(context.Background(), 10, func(ctx context.Context, msg kafkago.Message) error {
 		if msg.Topic != "trade.executed" {
@@ -196,38 +224,47 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		return marketDataService.HandleTradeExecuted(ctx, event)
 	})
 
-	// 5.3 Interface (HTTP Handlers)
 	handler := marketdatahttp.NewHandler(marketDataService)
 
-	// 定义资源清理函数
 	cleanup := func() {
-		bootLog.Info("shutting down, releasing resources...")
+		bootLog.Info("shutting down...")
 		if consumer != nil {
 			consumer.Close()
 		}
 		clientCleanup()
 		if redisCache != nil {
-			if err := redisCache.Close(); err != nil {
-				bootLog.Error("failed to close redis cache", "error", err)
-			}
+			redisCache.Close()
 		}
-		if sqlDB, err := db.RawDB().DB(); err == nil && sqlDB != nil {
-			if err := sqlDB.Close(); err != nil {
-				bootLog.Error("failed to close sql database", "error", err)
-			}
+		if sqlDB, err := db.RawDB().DB(); err == nil {
+			sqlDB.Close()
 		}
 	}
 
-	// 返回应用上下文与清理函数
 	return &AppContext{
-		Config:      c,
-		MarketData:  marketDataService,
-		Clients:     clients,
-		Handler:     handler,
-		Metrics:     m,
-		Limiter:     rateLimiter,
-		Idempotency: idemManager,
-		Consumer:    consumer,
-		WS:          wsManager,
+		Config: c, MarketData: marketDataService, Clients: clients, Handler: handler,
+		Metrics: m, Limiter: rateLimiter, Idempotency: idemManager, Consumer: consumer, WS: wsManager,
 	}, cleanup, nil
+}
+
+// distributedBroadcaster 实现跨节点推送
+type distributedBroadcaster struct {
+	local *server.WSManager
+	redis *redis.Client
+}
+
+func (b *distributedBroadcaster) Broadcast(topic string, payload any) {
+	data, _ := json.Marshal(payload)
+	// 1. 本地广播
+	b.local.BroadcastRaw(topic, data)
+	// 2. 发送到 Redis 总线供其他节点消费
+	go func() {
+		syncMsg := struct {
+			T string `json:"t"`
+			P []byte `json:"p"`
+		}{T: topic, P: data}
+		msgJSON, _ := json.Marshal(syncMsg)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		_ = b.redis.Publish(ctx, "marketdata.broadcast", string(msgJSON))
+	}()
 }
