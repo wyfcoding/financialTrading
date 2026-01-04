@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/wyfcoding/pkg/database"
 	"github.com/wyfcoding/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -19,7 +20,6 @@ import (
 	"github.com/wyfcoding/pkg/app"
 	"github.com/wyfcoding/pkg/cache"
 	configpkg "github.com/wyfcoding/pkg/config"
-	"github.com/wyfcoding/pkg/databases"
 	"github.com/wyfcoding/pkg/grpcclient"
 	"github.com/wyfcoding/pkg/idempotency"
 	"github.com/wyfcoding/pkg/limiter"
@@ -128,7 +128,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	configpkg.PrintWithMask(c)
 
 	// 1. 初始化数据库 (MySQL)
-	db, err := databases.NewDB(c.Data.Database, c.CircuitBreaker, logger, m)
+	db, err := database.NewDB(c.Data.Database, c.CircuitBreaker, logger, m)
 	if err != nil {
 		return nil, nil, fmt.Errorf("database init error: %w", err)
 	}

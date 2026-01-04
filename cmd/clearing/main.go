@@ -8,6 +8,7 @@ import (
 	"time"
 
 	kafkago "github.com/segmentio/kafka-go"
+	"github.com/wyfcoding/pkg/database"
 	"github.com/wyfcoding/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -23,7 +24,6 @@ import (
 	"github.com/wyfcoding/pkg/app"
 	"github.com/wyfcoding/pkg/cache"
 	configpkg "github.com/wyfcoding/pkg/config"
-	"github.com/wyfcoding/pkg/databases"
 	"github.com/wyfcoding/pkg/grpcclient"
 	"github.com/wyfcoding/pkg/idempotency"
 	"github.com/wyfcoding/pkg/limiter"
@@ -136,7 +136,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	configpkg.PrintWithMask(c)
 
 	// 1. 初始化数据库 (MySQL)
-	db, err := databases.NewDB(c.Data.Database, c.CircuitBreaker, logger, m)
+	db, err := database.NewDB(c.Data.Database, c.CircuitBreaker, logger, m)
 	if err != nil {
 		return nil, nil, fmt.Errorf("database init error: %w", err)
 	}
@@ -179,38 +179,38 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	eodRepo := mysql.NewEODClearingRepository(db.RawDB())
 	marginRepo := mysql.NewMarginRequirementRepository(db.RawDB())
 
-		// 5.2 Application (Service)
-		clearingService := application.NewClearingService(settlementRepo, eodRepo, marginRepo, logger.Logger)
-		
-		// 注入 DTM 和 参与者地址
-		dtmAddr := c.Services["dtm"].GRPCAddr
-		if dtmAddr == "" {
-			dtmAddr = "dtm:36790"
+	// 5.2 Application (Service)
+	clearingService := application.NewClearingService(settlementRepo, eodRepo, marginRepo, logger.Logger)
+
+	// 注入 DTM 和 参与者地址
+	dtmAddr := c.Services["dtm"].GRPCAddr
+	if dtmAddr == "" {
+		dtmAddr = "dtm:36790"
+	}
+	clearingService.SetDTMServer(dtmAddr)
+
+	// 注入本服务地址 (用于 Saga 状态同步回调)
+	clearingSvcAddr := c.Services["clearing"].GRPCAddr
+	if clearingSvcAddr == "" {
+		clearingSvcAddr = "clearing:50051"
+	}
+	clearingService.SetSvcURL(clearingSvcAddr)
+
+	if clients.Account != nil {
+		accountSvcAddr := c.Services["account"].GRPCAddr
+		if accountSvcAddr == "" {
+			accountSvcAddr = "account:50051"
 		}
-		clearingService.SetDTMServer(dtmAddr)
-	
-		// 注入本服务地址 (用于 Saga 状态同步回调)
-		clearingSvcAddr := c.Services["clearing"].GRPCAddr
-		if clearingSvcAddr == "" {
-			clearingSvcAddr = "clearing:50051"
+		clearingService.SetAccountClient(clients.Account, accountSvcAddr)
+	}
+
+	if clients.Position != nil {
+		positionSvcAddr := c.Services["position"].GRPCAddr
+		if positionSvcAddr == "" {
+			positionSvcAddr = "position:50051"
 		}
-		clearingService.SetSvcURL(clearingSvcAddr)
-	
-		if clients.Account != nil {
-			accountSvcAddr := c.Services["account"].GRPCAddr
-			if accountSvcAddr == "" {
-				accountSvcAddr = "account:50051"
-			}
-			clearingService.SetAccountClient(clients.Account, accountSvcAddr)
-		}
-	
-		if clients.Position != nil {
-			positionSvcAddr := c.Services["position"].GRPCAddr
-			if positionSvcAddr == "" {
-				positionSvcAddr = "position:50051"
-			}
-			clearingService.SetPositionClient(clients.Position, positionSvcAddr)
-		}	// 5.3 启动可靠成交事件消费
+		clearingService.SetPositionClient(clients.Position, positionSvcAddr)
+	} // 5.3 启动可靠成交事件消费
 	consumer := kafka.NewConsumer(c.MessageQueue.Kafka, logger, m)
 	consumer.Start(context.Background(), 5, func(ctx context.Context, msg kafkago.Message) error {
 		if msg.Topic != "trade.executed" {
