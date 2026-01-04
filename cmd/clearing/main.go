@@ -214,13 +214,35 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	consumer := kafka.NewConsumer(c.MessageQueue.Kafka, logger, m)
 	consumer.Start(context.Background(), 5, func(ctx context.Context, msg kafkago.Message) error {
 		if msg.Topic != "trade.executed" {
-			return nil // 忽略不关心的 Topic
+			return nil
 		}
 		var event map[string]any
 		if err := json.Unmarshal(msg.Value, &event); err != nil {
 			return err
 		}
-		return clearingService.ProcessTradeExecution(ctx, event)
+
+		tradeID := event["trade_id"].(string)
+		// --- 幂等性加固：确保成交结算唯一性 ---
+		idemKey := fmt.Sprintf("clearing:trade:%s", tradeID)
+		isFirst, _, err := idemManager.TryStart(ctx, idemKey, 48*time.Hour) // 结算流水保留久一点
+		if err != nil {
+			bootLog.Error("idempotency check error in clearing", "trade_id", tradeID, "error", err)
+			return err
+		}
+		if !isFirst {
+			bootLog.Warn("skipping already processed clearing event", "trade_id", tradeID)
+			return nil
+		}
+
+		// 执行核心结算编排 (Saga)
+		if err := clearingService.ProcessTradeExecution(ctx, event); err != nil {
+			_ = idemManager.Delete(ctx, idemKey) // 失败允许重试
+			return err
+		}
+
+		// 记录完成状态
+		_ = idemManager.Finish(ctx, idemKey, &idempotency.Response{Body: "DONE"}, 48*time.Hour)
+		return nil
 	})
 
 	// 5.4 Interface (HTTP Handlers)
