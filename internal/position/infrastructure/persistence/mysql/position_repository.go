@@ -201,15 +201,25 @@ func (r *positionRepositoryImpl) fromDomain(p *domain.Position) *PositionModel {
 
 func (r *positionRepositoryImpl) toDomain(m *PositionModel) *domain.Position {
 	qty, err := decimal.NewFromString(m.Quantity)
-	if err != nil { qty = decimal.Zero }
+	if err != nil {
+		qty = decimal.Zero
+	}
 	entry, err := decimal.NewFromString(m.EntryPrice)
-	if err != nil { entry = decimal.Zero }
+	if err != nil {
+		entry = decimal.Zero
+	}
 	current, err := decimal.NewFromString(m.CurrentPrice)
-	if err != nil { current = decimal.Zero }
+	if err != nil {
+		current = decimal.Zero
+	}
 	unrealized, err := decimal.NewFromString(m.UnrealizedPnL)
-	if err != nil { unrealized = decimal.Zero }
+	if err != nil {
+		unrealized = decimal.Zero
+	}
 	realized, err := decimal.NewFromString(m.RealizedPnL)
-	if err != nil { realized = decimal.Zero }
+	if err != nil {
+		realized = decimal.Zero
+	}
 
 	return &domain.Position{
 		Model:         m.Model,

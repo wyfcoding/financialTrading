@@ -150,7 +150,7 @@ func (m *MarketDataManager) updateKline(ctx context.Context, symbol string, pric
 		kline.Volume = kline.Volume.Add(quantity)
 		kline.QuoteAssetVolume = kline.QuoteAssetVolume.Add(tradeValue)
 		kline.TradeCount++
-		
+
 		if price.GreaterThan(kline.High) {
 			kline.High = price
 		}

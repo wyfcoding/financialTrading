@@ -49,7 +49,7 @@ func (p *Position) AddQuantity(qty, price decimal.Decimal) {
 	// 新开仓均价 = (旧持仓量 * 旧均价 + 新成交量 * 成交价) / (旧持仓量 + 新成交量)
 	totalCost := p.Quantity.Mul(p.EntryPrice).Add(qty.Mul(price))
 	newQty := p.Quantity.Add(qty)
-	
+
 	if !newQty.IsZero() {
 		p.EntryPrice = totalCost.Div(newQty)
 	}
@@ -64,10 +64,10 @@ func (p *Position) RealizePnL(qty, price decimal.Decimal) {
 
 	// 盈亏计算公式：(成交价 - 成本价) * 成交数量
 	pnl := price.Sub(p.EntryPrice).Mul(qty)
-	
+
 	// 累加到已实现盈亏
 	p.RealizedPnL = p.RealizedPnL.Add(pnl)
-	
+
 	// 注意：在 TCC 模式下，Quantity 在下单时已扣除，此处无需再次操作数量
 	// 但如果是纯 Saga 模式，此处还需 p.Quantity = p.Quantity.Sub(qty)
 }

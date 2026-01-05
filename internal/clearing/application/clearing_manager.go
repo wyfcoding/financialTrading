@@ -17,16 +17,16 @@ import (
 
 // ClearingManager 处理所有清算相关的写入操作（Commands）。
 type ClearingManager struct {
-	settlementRepo  domain.SettlementRepository
-	eodRepo         domain.EODClearingRepository
-	marginRepo      domain.MarginRequirementRepository
-	accountCli      accountv1.AccountServiceClient
-	positionCli     positionv1.PositionServiceClient
-	logger          *slog.Logger
-	dtmServer       string
-	accountSvcURL   string // Account 服务 gRPC 地址
-	positionSvcURL  string // Position 服务 gRPC 地址
-	clearingSvcURL  string // 本服务 gRPC 地址 (用于 Saga 回调)
+	settlementRepo domain.SettlementRepository
+	eodRepo        domain.EODClearingRepository
+	marginRepo     domain.MarginRequirementRepository
+	accountCli     accountv1.AccountServiceClient
+	positionCli    positionv1.PositionServiceClient
+	logger         *slog.Logger
+	dtmServer      string
+	accountSvcURL  string // Account 服务 gRPC 地址
+	positionSvcURL string // Position 服务 gRPC 地址
+	clearingSvcURL string // 本服务 gRPC 地址 (用于 Saga 回调)
 }
 
 // NewClearingManager 构造函数。
@@ -151,7 +151,7 @@ func (m *ClearingManager) ProcessTradeExecution(ctx context.Context, event map[s
 	// 正向为空，补偿为 MarkFailed。
 	// 一旦后面任何一步失败，DTM 会自动调用此补偿，将 PENDING 改为 FAILED。
 	saga.Add(
-		"", 
+		"",
 		clearingSvc+"/SagaMarkSettlementFailed",
 		statusReq,
 	)
