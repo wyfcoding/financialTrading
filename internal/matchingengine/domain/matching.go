@@ -55,14 +55,15 @@ type MatchTask struct {
 	ResultChan chan *MatchingResult // 同步结果返回
 }
 
-// DisruptionEngine 基于 MpscRingBuffer 的高性能撮合引擎
+// DisruptionEngine 是一个基于 LMAX Disruptor 思想设计的高性能撮合引擎实现。
+// 核心架构：采用单线程 Worker 独占模式访问内存订单簿，完全消除锁竞争，实现极低延迟。
 type DisruptionEngine struct {
-	symbol    string
-	orderBook *OrderBook
-	ring      *algorithm.MpscRingBuffer[MatchTask]
-	stopChan  chan struct{}
-	logger    *slog.Logger
-	halted    int32 // 0: 正常, 1: 停止 (原子操作)
+	symbol    string                               // 交易对标识 (如 BTC/USDT)
+	orderBook *OrderBook                           // 内存订单簿（跳表实现）
+	ring      *algorithm.MpscRingBuffer[MatchTask] // 定序任务队列 (Multiple Producer Single Consumer)
+	stopChan  chan struct{}                        // 停机信号
+	logger    *slog.Logger                         // 结构化日志记录器
+	halted    int32                                // 引擎熔断状态标识 (0: 正常, 1: 熔断)
 }
 
 func NewDisruptionEngine(symbol string, capacity uint64, logger *slog.Logger) (*DisruptionEngine, error) {
@@ -86,10 +87,11 @@ func NewDisruptionEngine(symbol string, capacity uint64, logger *slog.Logger) (*
 	return e, nil
 }
 
-// Halt 立即停止引擎。这是不可逆操作，用于处理严重一致性错误。
+// Halt 立即且不可逆地停止引擎运行。
+// 触发场景：发生数据库写入失败等足以导致内存与持久化不一致的严重错误时。
 func (e *DisruptionEngine) Halt() {
 	if atomic.CompareAndSwapInt32(&e.halted, 0, 1) {
-		e.logger.Error("ENGINE HALTED! Critical system failure detected. Manual intervention required.")
+		e.logger.Error("engine halted! critical system failure detected. manual intervention required.")
 	}
 }
 
@@ -102,25 +104,27 @@ func (e *DisruptionEngine) Symbol() string {
 	return e.symbol
 }
 
+// run 是撮合引擎的核心事件循环，在独立线程中执行。
 func (e *DisruptionEngine) run() {
-	e.logger.Info("Starting core matching worker", "symbol", e.symbol)
-	// 将 Worker 绑定到固定操作系统线程以获得极致性能
+	e.logger.Info("starting core matching worker", "symbol", e.symbol)
+	// 将当前协程绑定至固定的操作系统线程，避免上下文切换抖动
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
 	for {
 		select {
 		case <-e.stopChan:
-			e.logger.Info("Stopping core matching worker", "symbol", e.symbol)
+			e.logger.Info("stopping core matching worker", "symbol", e.symbol)
 			return
 		default:
 			// 检查引擎是否因严重错误已停止
 			if e.IsHalted() {
-				e.logger.Error("Worker inactive: engine is halted")
+				e.logger.Error("worker inactive: engine is halted")
 				time.Sleep(1 * time.Second) // 避免空转导致的 CPU 占用
 				continue
 			}
 
+			// 从无锁环形缓冲区轮询任务
 			task := e.ring.Poll()
 			if task == nil {
 				runtime.Gosched()
@@ -134,7 +138,7 @@ func (e *DisruptionEngine) run() {
 	}
 }
 
-// SubmitOrder 提交订单到引擎
+// SubmitOrder 接收外部提交的订单请求并压入定序队列。
 func (e *DisruptionEngine) SubmitOrder(order *algorithm.Order) (*MatchingResult, error) {
 	// 入口拦截：若引擎已熔断，直接拒绝请求
 	if e.IsHalted() {
@@ -147,8 +151,9 @@ func (e *DisruptionEngine) SubmitOrder(order *algorithm.Order) (*MatchingResult,
 		ResultChan: resChan,
 	}
 
+	// 压入 RingBuffer，若队列满则立即报错（不阻塞业务线程）
 	if !e.ring.Offer(task) {
-		e.logger.Warn("Failed to submit order: ring buffer full", "order_id", order.OrderID)
+		e.logger.Warn("failed to submit order: ring buffer full", "order_id", order.OrderID)
 		return nil, fmt.Errorf("engine busy, ring buffer full")
 	}
 
@@ -167,7 +172,7 @@ func (e *DisruptionEngine) ReplayOrder(order *algorithm.Order) {
 	e.logger.Debug("order replayed into memory book", "order_id", order.OrderID, "rem_qty", order.Quantity.String())
 }
 
-// applyOrder 核心内部撮合逻辑
+// applyOrder 核心内部撮合入口。
 func (e *DisruptionEngine) applyOrder(order *algorithm.Order) *MatchingResult {
 	ob := e.orderBook
 	result := &MatchingResult{
@@ -178,6 +183,7 @@ func (e *DisruptionEngine) applyOrder(order *algorithm.Order) *MatchingResult {
 
 	e.logger.Debug("applying order", "order_id", order.OrderID, "side", order.Side, "price", order.Price.String(), "qty", order.Quantity.String())
 
+	// 根据买卖方向选择对应的对手盘进行深度优先遍历撮合
 	if order.Side == "BUY" {
 		e.matchOrder(order, ob.Asks, result)
 		if result.RemainingQuantity.IsPositive() {
@@ -198,7 +204,7 @@ func (e *DisruptionEngine) applyOrder(order *algorithm.Order) *MatchingResult {
 		} else {
 			result.Status = "PARTIALLY_MATCHED"
 		}
-		e.logger.Info("order execution finished", "order_id", order.OrderID, "status", result.Status, "trades", len(result.Trades))
+		e.logger.Info("order execution finished", "order_id", order.OrderID, "status", result.Status, "trades_count", len(result.Trades))
 	}
 
 	return result
@@ -313,33 +319,34 @@ func (e *DisruptionEngine) collectLevels(book *algorithm.SkipList[float64, *Orde
 	return levels
 }
 
+// generateTradeID 生成内部唯一的成交记录编号。
 func generateTradeID() string {
 	return "T-" + time.Now().Format("20060102150405.000000")
 }
 
-// MatchingResult 撮合结果
+// MatchingResult 描述了订单进入引擎后的撮合最终状态。
 type MatchingResult struct {
-	OrderID           string             // 订单 ID
-	Trades            []*algorithm.Trade // 成交列表
-	RemainingQuantity decimal.Decimal    // 剩余数量
-	Status            string             // 状态 (MATCHED, PARTIALLY_MATCHED)
+	OrderID           string             // 关联的订单 ID
+	Trades            []*algorithm.Trade // 本次撮合产生的所有成交明细
+	RemainingQuantity decimal.Decimal    // 订单剩余未成交的数量
+	Status            string             // 最终撮合状态 (MATCHED, PARTIALLY_MATCHED 等)
 }
 
-// OrderBookLevel 订单簿档位
+// OrderBookLevel 描述订单簿中单一价格档位的聚合信息。
 type OrderBookLevel struct {
-	Price    decimal.Decimal `json:"price"`
-	Quantity decimal.Decimal `json:"quantity"`
+	Price    decimal.Decimal `json:"price"`    // 该档位的委托价格
+	Quantity decimal.Decimal `json:"quantity"` // 该档位所有挂单的总数量
 }
 
-// OrderBookSnapshot 订单簿快照
+// OrderBookSnapshot 存储订单簿在某一时刻的完整状态，用于持久化恢复。
 type OrderBookSnapshot struct {
 	gorm.Model
-	Symbol    string            `gorm:"column:symbol;type:varchar(20);index;not null"`
-	Bids      []*OrderBookLevel `gorm:"-"`
-	Asks      []*OrderBookLevel `gorm:"-"`
-	BidsJSON  string            `gorm:"column:bids;type:text"`
-	AsksJSON  string            `gorm:"column:asks;type:text"`
-	Timestamp int64             `gorm:"column:timestamp;type:bigint"`
+	Symbol    string            `gorm:"column:symbol;type:varchar(20);index;not null;comment:交易对标识"`
+	Bids      []*OrderBookLevel `gorm:"-"`                                     // 内存中的买盘层级列表
+	Asks      []*OrderBookLevel `gorm:"-"`                                     // 内存中的卖盘层级列表
+	BidsJSON  string            `gorm:"column:bids;type:text;comment:买盘详情序列化"` // 持久化的买盘数据 (JSON)
+	AsksJSON  string            `gorm:"column:asks;type:text;comment:卖盘详情序列化"` // 持久化的卖盘数据 (JSON)
+	Timestamp int64             `gorm:"column:timestamp;type:bigint;comment:快照时间戳"`
 }
 
 // End of domain file

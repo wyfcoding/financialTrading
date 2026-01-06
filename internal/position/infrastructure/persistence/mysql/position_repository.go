@@ -15,22 +15,23 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// PositionModel 持仓数据库模型
+// PositionModel 持仓数据库模型，直接映射 positions 表。
+// 遵循规范：嵌入 gorm.Model 并提供详细的业务字段注释。
 type PositionModel struct {
 	gorm.Model
-	PositionID    string     `gorm:"column:position_id;type:varchar(32);uniqueIndex;not null"`
-	UserID        string     `gorm:"column:user_id;type:varchar(32);index;not null"`
-	Symbol        string     `gorm:"column:symbol;type:varchar(20);index;not null"`
-	Side          string     `gorm:"column:side;type:varchar(10);not null"`
-	Quantity      string     `gorm:"column:quantity;type:decimal(32,18);not null"`
-	EntryPrice    string     `gorm:"column:entry_price;type:decimal(32,18);not null"`
-	CurrentPrice  string     `gorm:"column:current_price;type:decimal(32,18);not null"`
-	UnrealizedPnL string     `gorm:"column:unrealized_pnl;type:decimal(32,18);not null"`
-	RealizedPnL   string     `gorm:"column:realized_pnl;type:decimal(32,18);not null"`
-	OpenedAt      time.Time  `gorm:"column:opened_at;type:datetime;not null"`
-	ClosedAt      *time.Time `gorm:"column:closed_at;type:datetime"`
-	Status        string     `gorm:"column:status;type:varchar(20);index;not null"`
-	Version       int64      `gorm:"column:version;default:0;not null"`
+	PositionID    string     `gorm:"column:position_id;type:varchar(32);uniqueIndex;not null;comment:持仓唯一标识"`
+	UserID        string     `gorm:"column:user_id;type:varchar(32);index;not null;comment:所属用户ID"`
+	Symbol        string     `gorm:"column:symbol;type:varchar(20);index;not null;comment:交易对名称"`
+	Side          string     `gorm:"column:side;type:varchar(10);not null;comment:持仓方向(LONG/SHORT)"`
+	Quantity      string     `gorm:"column:quantity;type:decimal(32,18);not null;comment:持仓数量"`
+	EntryPrice    string     `gorm:"column:entry_price;type:decimal(32,18);not null;comment:开仓平均价格"`
+	CurrentPrice  string     `gorm:"column:current_price;type:decimal(32,18);not null;comment:当前市场标记价格"`
+	UnrealizedPnL string     `gorm:"column:unrealized_pnl;type:decimal(32,18);not null;comment:未实现盈亏"`
+	RealizedPnL   string     `gorm:"column:realized_pnl;type:decimal(32,18);not null;comment:已实现盈亏"`
+	OpenedAt      time.Time  `gorm:"column:opened_at;type:datetime;not null;comment:首次开仓时间"`
+	ClosedAt      *time.Time `gorm:"column:closed_at;type:datetime;comment:最终平仓时间"`
+	Status        string     `gorm:"column:status;type:varchar(20);index;not null;comment:持仓状态(OPEN/CLOSED)"`
+	Version       int64      `gorm:"column:version;default:0;not null;comment:乐观锁版本号"`
 }
 
 // TableName 指定表名
@@ -66,7 +67,7 @@ func (r *positionRepositoryImpl) Save(ctx context.Context, position *domain.Posi
 		UpdateAll: true,
 	}).Create(model).Error
 	if err != nil {
-		logging.Error(ctx, "position_repository.Save failed", "position_id", position.PositionID, "error", err)
+		logging.Error(ctx, "position_repository.save failed", "position_id", position.PositionID, "error", err)
 		return fmt.Errorf("failed to save position: %w", err)
 	}
 
@@ -81,7 +82,7 @@ func (r *positionRepositoryImpl) Get(ctx context.Context, positionID string) (*d
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		logging.Error(ctx, "position_repository.Get failed", "position_id", positionID, "error", err)
+		logging.Error(ctx, "position_repository.get failed", "position_id", positionID, "error", err)
 		return nil, fmt.Errorf("failed to get position: %w", err)
 	}
 
@@ -97,7 +98,7 @@ func (r *positionRepositoryImpl) GetByUser(ctx context.Context, userID string, l
 		return nil, 0, err
 	}
 	if err := db.Order("created_at desc").Limit(limit).Offset(offset).Find(&models).Error; err != nil {
-		logging.Error(ctx, "position_repository.GetByUser failed", "user_id", userID, "error", err)
+		logging.Error(ctx, "position_repository.get_by_user failed", "user_id", userID, "error", err)
 		return nil, 0, fmt.Errorf("failed to get positions by user: %w", err)
 	}
 
@@ -117,7 +118,7 @@ func (r *positionRepositoryImpl) GetBySymbol(ctx context.Context, symbol string,
 		return nil, 0, err
 	}
 	if err := db.Order("created_at desc").Limit(limit).Offset(offset).Find(&models).Error; err != nil {
-		logging.Error(ctx, "position_repository.GetBySymbol failed", "symbol", symbol, "error", err)
+		logging.Error(ctx, "position_repository.get_by_symbol failed", "symbol", symbol, "error", err)
 		return nil, 0, fmt.Errorf("failed to get positions by symbol: %w", err)
 	}
 
@@ -144,7 +145,7 @@ func (r *positionRepositoryImpl) Update(ctx context.Context, position *domain.Po
 		})
 
 	if result.Error != nil {
-		logging.Error(ctx, "position_repository.Update failed", "position_id", position.PositionID, "error", result.Error)
+		logging.Error(ctx, "position_repository.update failed", "position_id", position.PositionID, "error", result.Error)
 		return fmt.Errorf("failed to update position: %w", result.Error)
 	}
 
@@ -166,7 +167,7 @@ func (r *positionRepositoryImpl) Close(ctx context.Context, positionID string, c
 		"version":       gorm.Expr("version + 1"),
 	}).Error
 	if err != nil {
-		logging.Error(ctx, "position_repository.Close failed", "position_id", positionID, "error", err)
+		logging.Error(ctx, "position_repository.close failed", "position_id", positionID, "error", err)
 		return fmt.Errorf("failed to close position: %w", err)
 	}
 	return nil

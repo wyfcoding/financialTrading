@@ -13,21 +13,21 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// OrderModel 订单数据库模型
+// OrderModel 订单数据库模型，直接映射 orders 表。
 type OrderModel struct {
 	gorm.Model
-	OrderID        string `gorm:"column:order_id;type:varchar(32);uniqueIndex;not null"`
-	UserID         string `gorm:"column:user_id;type:varchar(32);index;not null"`
-	Symbol         string `gorm:"column:symbol;type:varchar(20);index;not null"`
-	Side           string `gorm:"column:side;type:varchar(10);not null"`
-	Type           string `gorm:"column:type;type:varchar(20);not null"`
-	Price          string `gorm:"column:price;type:decimal(32,18);not null"`
-	Quantity       string `gorm:"column:quantity;type:decimal(32,18);not null"`
-	FilledQuantity string `gorm:"column:filled_quantity;type:decimal(32,18);default:'0';not null"`
-	Status         string `gorm:"column:status;type:varchar(20);index;not null"`
-	TimeInForce    string `gorm:"column:time_in_force;type:varchar(10);not null"`
-	ClientOrderID  string `gorm:"column:client_order_id;type:varchar(32);index"`
-	Remark         string `gorm:"column:remark;type:varchar(255)"`
+	OrderID        string `gorm:"column:order_id;type:varchar(32);uniqueIndex;not null;comment:订单唯一标识"`
+	UserID         string `gorm:"column:user_id;type:varchar(32);index;not null;comment:所属用户ID"`
+	Symbol         string `gorm:"column:symbol;type:varchar(20);index;not null;comment:交易对(如BTC/USDT)"`
+	Side           string `gorm:"column:side;type:varchar(10);not null;comment:买卖方向(BUY/SELL)"`
+	Type           string `gorm:"column:type;type:varchar(20);not null;comment:订单类型(LIMIT/MARKET)"`
+	Price          string `gorm:"column:price;type:decimal(32,18);not null;comment:委托价格"`
+	Quantity       string `gorm:"column:quantity;type:decimal(32,18);not null;comment:委托数量"`
+	FilledQuantity string `gorm:"column:filled_quantity;type:decimal(32,18);default:'0';not null;comment:累计成交数量"`
+	Status         string `gorm:"column:status;type:varchar(20);index;not null;comment:当前订单状态"`
+	TimeInForce    string `gorm:"column:time_in_force;type:varchar(10);not null;comment:有效期策略(GTC/IOC)"`
+	ClientOrderID  string `gorm:"column:client_order_id;type:varchar(32);index;comment:客户端自定义ID"`
+	Remark         string `gorm:"column:remark;type:varchar(255);comment:订单备注/成交详情"`
 }
 
 // TableName 指定表名
@@ -70,7 +70,7 @@ func (r *orderRepositoryImpl) Save(ctx context.Context, order *domain.Order) err
 		DoUpdates: clause.AssignmentColumns([]string{"status", "filled_quantity", "remark"}),
 	}).Create(model).Error
 	if err != nil {
-		logging.Error(ctx, "order_repository.Save failed", "order_id", order.OrderID, "error", err)
+		logging.Error(ctx, "order_repository.save failed", "order_id", order.OrderID, "error", err)
 		return fmt.Errorf("failed to save order: %w", err)
 	}
 
@@ -85,7 +85,7 @@ func (r *orderRepositoryImpl) Get(ctx context.Context, orderID string) (*domain.
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		logging.Error(ctx, "order_repository.Get failed", "order_id", orderID, "error", err)
+		logging.Error(ctx, "order_repository.get failed", "order_id", orderID, "error", err)
 		return nil, fmt.Errorf("failed to get order: %w", err)
 	}
 
@@ -104,7 +104,7 @@ func (r *orderRepositoryImpl) ListByUser(ctx context.Context, userID string, sta
 		return nil, 0, err
 	}
 	if err := db.Order("created_at desc").Limit(limit).Offset(offset).Find(&models).Error; err != nil {
-		logging.Error(ctx, "order_repository.ListByUser failed", "user_id", userID, "error", err)
+		logging.Error(ctx, "order_repository.list_by_user failed", "user_id", userID, "error", err)
 		return nil, 0, fmt.Errorf("failed to list orders: %w", err)
 	}
 
@@ -127,7 +127,7 @@ func (r *orderRepositoryImpl) ListBySymbol(ctx context.Context, symbol string, s
 		return nil, 0, err
 	}
 	if err := db.Order("created_at desc").Limit(limit).Offset(offset).Find(&models).Error; err != nil {
-		logging.Error(ctx, "order_repository.ListBySymbol failed", "symbol", symbol, "error", err)
+		logging.Error(ctx, "order_repository.list_by_symbol failed", "symbol", symbol, "error", err)
 		return nil, 0, fmt.Errorf("failed to list orders: %w", err)
 	}
 
@@ -147,7 +147,7 @@ func (r *orderRepositoryImpl) GetActiveOrdersBySymbol(ctx context.Context, symbo
 		Order("created_at asc").
 		Find(&models).Error
 	if err != nil {
-		logging.Error(ctx, "order_repository.GetActiveOrdersBySymbol failed", "symbol", symbol, "error", err)
+		logging.Error(ctx, "order_repository.get_active_orders_by_symbol failed", "symbol", symbol, "error", err)
 		return nil, fmt.Errorf("failed to get active orders: %w", err)
 	}
 
@@ -162,7 +162,7 @@ func (r *orderRepositoryImpl) GetActiveOrdersBySymbol(ctx context.Context, symbo
 func (r *orderRepositoryImpl) UpdateStatus(ctx context.Context, orderID string, status domain.OrderStatus) error {
 	err := r.db.WithContext(ctx).Model(&OrderModel{}).Where("order_id = ?", orderID).Update("status", string(status)).Error
 	if err != nil {
-		logging.Error(ctx, "order_repository.UpdateStatus failed", "order_id", orderID, "error", err)
+		logging.Error(ctx, "order_repository.update_status failed", "order_id", orderID, "error", err)
 		return fmt.Errorf("failed to update order status: %w", err)
 	}
 	return nil
@@ -172,7 +172,7 @@ func (r *orderRepositoryImpl) UpdateStatus(ctx context.Context, orderID string, 
 func (r *orderRepositoryImpl) UpdateFilledQuantity(ctx context.Context, orderID string, filledQuantity decimal.Decimal) error {
 	err := r.db.WithContext(ctx).Model(&OrderModel{}).Where("order_id = ?", orderID).Update("filled_quantity", filledQuantity.String()).Error
 	if err != nil {
-		logging.Error(ctx, "order_repository.UpdateFilledQuantity failed", "order_id", orderID, "error", err)
+		logging.Error(ctx, "order_repository.update_filled_quantity failed", "order_id", orderID, "error", err)
 		return fmt.Errorf("failed to update filled quantity: %w", err)
 	}
 	return nil
@@ -181,7 +181,7 @@ func (r *orderRepositoryImpl) UpdateFilledQuantity(ctx context.Context, orderID 
 // Delete 实现 domain.OrderRepository.Delete
 func (r *orderRepositoryImpl) Delete(ctx context.Context, orderID string) error {
 	if err := r.db.WithContext(ctx).Where("order_id = ?", orderID).Delete(&OrderModel{}).Error; err != nil {
-		logging.Error(ctx, "order_repository.Delete failed", "order_id", orderID, "error", err)
+		logging.Error(ctx, "order_repository.delete failed", "order_id", orderID, "error", err)
 		return fmt.Errorf("failed to delete order: %w", err)
 	}
 	return nil

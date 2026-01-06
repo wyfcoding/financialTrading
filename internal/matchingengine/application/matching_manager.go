@@ -48,10 +48,12 @@ func NewMatchingEngineManager(
 	}
 }
 
+// SetClearingClient 设置清算服务客户端。
 func (m *MatchingEngineManager) SetClearingClient(cli clearingv1.ClearingServiceClient) {
 	m.clearingCli = cli
 }
 
+// SetOrderClient 设置订单服务客户端。
 func (m *MatchingEngineManager) SetOrderClient(cli orderv1.OrderServiceClient) {
 	m.orderCli = cli
 }

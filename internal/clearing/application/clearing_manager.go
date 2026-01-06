@@ -1,3 +1,4 @@
+// Package application 提供了清算模块的业务逻辑编排。
 package application
 
 import (
@@ -17,19 +18,19 @@ import (
 
 // ClearingManager 处理所有清算相关的写入操作（Commands）。
 type ClearingManager struct {
-	settlementRepo domain.SettlementRepository
-	eodRepo        domain.EODClearingRepository
-	marginRepo     domain.MarginRequirementRepository
-	accountCli     accountv1.AccountServiceClient
-	positionCli    positionv1.PositionServiceClient
-	logger         *slog.Logger
-	dtmServer      string
-	accountSvcURL  string // Account 服务 gRPC 地址
-	positionSvcURL string // Position 服务 gRPC 地址
-	clearingSvcURL string // 本服务 gRPC 地址 (用于 Saga 回调)
+	settlementRepo domain.SettlementRepository        // 结算记录仓储
+	eodRepo        domain.EODClearingRepository       // 日终清算仓储
+	marginRepo     domain.MarginRequirementRepository // 保证金规则仓储
+	accountCli     accountv1.AccountServiceClient     // 账户服务客户端
+	positionCli    positionv1.PositionServiceClient    // 持仓服务客户端
+	logger         *slog.Logger                       // 结构化日志记录器
+	dtmServer      string                             // DTM 服务端地址
+	accountSvcURL  string                             // Account 服务 gRPC 基地址
+	positionSvcURL string                             // Position 服务 gRPC 基地址
+	clearingSvcURL string                             // Clearing 服务 gRPC 基地址 (回调使用)
 }
 
-// NewClearingManager 构造函数。
+// NewClearingManager 构造一个新的清算管理器实例。
 func NewClearingManager(
 	settlementRepo domain.SettlementRepository,
 	eodRepo domain.EODClearingRepository,
@@ -44,45 +45,49 @@ func NewClearingManager(
 	}
 }
 
+// SetAccountClient 注入账户服务客户端及其访问路径。
 func (m *ClearingManager) SetAccountClient(cli accountv1.AccountServiceClient, svcURL string) {
 	m.accountCli = cli
 	m.accountSvcURL = svcURL
 }
 
+// SetPositionClient 注入持仓服务客户端及其访问路径。
 func (m *ClearingManager) SetPositionClient(cli positionv1.PositionServiceClient, svcURL string) {
 	m.positionCli = cli
 	m.positionSvcURL = svcURL
 }
 
+// SetDTMServer 配置分布式事务协调器地址。
 func (m *ClearingManager) SetDTMServer(addr string) {
 	m.dtmServer = addr
 }
 
+// SetSvcURL 配置当前服务的基地址，用于 Saga 回调注册。
 func (m *ClearingManager) SetSvcURL(url string) {
 	m.clearingSvcURL = url
 }
 
-// SagaMarkSettlementCompleted Saga 正向: 确认结算成功
+// SagaMarkSettlementCompleted Saga 正向阶段：确认结算流程已合规终结。
 func (m *ClearingManager) SagaMarkSettlementCompleted(ctx context.Context, settlementID string) error {
 	settlement, err := m.settlementRepo.Get(ctx, settlementID)
 	if err != nil || settlement == nil {
-		return fmt.Errorf("settlement not found: %s", settlementID)
+		return fmt.Errorf("settlement record not found: %s", settlementID)
 	}
 	settlement.Status = domain.SettlementStatusCompleted
 	return m.settlementRepo.Save(ctx, settlement)
 }
 
-// SagaMarkSettlementFailed Saga 补偿: 标记结算失败
+// SagaMarkSettlementFailed Saga 补偿阶段：将处于中间态的结算标记为失败。
 func (m *ClearingManager) SagaMarkSettlementFailed(ctx context.Context, settlementID string, reason string) error {
 	settlement, err := m.settlementRepo.Get(ctx, settlementID)
 	if err != nil || settlement == nil {
-		return fmt.Errorf("settlement not found: %s", settlementID)
+		return fmt.Errorf("settlement record not found: %s", settlementID)
 	}
 	settlement.Status = domain.SettlementStatusFailed
 	return m.settlementRepo.Save(ctx, settlement)
 }
 
-// SettleTrade 清算单笔交易 (gRPC 外部调用入口)
+// SettleTrade 清算单笔交易 (gRPC 外部调用入口)。
 func (m *ClearingManager) SettleTrade(ctx context.Context, req *SettleTradeRequest) (string, error) {
 	event := map[string]any{
 		"trade_id":     req.TradeID,
@@ -96,30 +101,36 @@ func (m *ClearingManager) SettleTrade(ctx context.Context, req *SettleTradeReque
 	return "", err
 }
 
-// ProcessTradeExecution 处理来自消息队列的成交事件 (生产级全闭环 Saga)
+// ProcessTradeExecution 处理来自成交引擎的异步成交事件，执行分布式 Saga 清算。
+// 架构逻辑：
+// 1. 本地幂等初始化记录。
+// 2. 编排 Saga：对冲资金（买卖双方）-> 对冲持仓（买卖双方）-> 终结状态。
 func (m *ClearingManager) ProcessTradeExecution(ctx context.Context, event map[string]any) error {
-	tradeID := event["trade_id"].(string)
-	buyUserID := event["buy_user_id"].(string)
-	sellUserID := event["sell_user_id"].(string)
-	symbol := event["symbol"].(string)
-	quantityStr := event["quantity"].(string)
-	priceStr := event["price"].(string)
+	tradeID, _ := event["trade_id"].(string)
+	buyUserID, _ := event["buy_user_id"].(string)
+	sellUserID, _ := event["sell_user_id"].(string)
+	symbol, _ := event["symbol"].(string)
+	quantityStr, _ := event["quantity"].(string)
+	priceStr, _ := event["price"].(string)
 
-	m.logger.Info("orchestrating full closed-loop saga settlement", "trade_id", tradeID, "symbol", symbol)
+	m.logger.InfoContext(ctx, "orchestrating trade settlement saga", "trade_id", tradeID, "symbol", symbol)
 
-	// 1. 幂等性预检 (若已完成则跳过)
 	existing, _ := m.settlementRepo.GetByTrade(ctx, tradeID)
 	if existing != nil && existing.Status == domain.SettlementStatusCompleted {
 		return nil
 	}
 
-	// 2. 本地初始化结算记录 (状态：PENDING)
-	// 此操作必须先于 Saga 提交，确保状态同步桩有据可循
 	gid := fmt.Sprintf("SAGA-SETTLE-%s", tradeID)
 	if existing == nil {
-		qty, _ := decimal.NewFromString(quantityStr)
-		prc, _ := decimal.NewFromString(priceStr)
-		err := m.settlementRepo.Save(ctx, &domain.Settlement{
+		qty, err := decimal.NewFromString(quantityStr)
+		if err != nil {
+			return fmt.Errorf("invalid qty: %w", err)
+		}
+		prc, err := decimal.NewFromString(priceStr)
+		if err != nil {
+			return fmt.Errorf("invalid prc: %w", err)
+		}
+		err = m.settlementRepo.Save(ctx, &domain.Settlement{
 			SettlementID:   gid,
 			TradeID:        tradeID,
 			BuyUserID:      buyUserID,
@@ -131,91 +142,65 @@ func (m *ClearingManager) ProcessTradeExecution(ctx context.Context, event map[s
 			SettlementTime: time.Now(),
 		})
 		if err != nil {
-			return fmt.Errorf("failed to init local settlement record: %w", err)
+			return fmt.Errorf("failed to init local settlement: %w", err)
 		}
 	}
 
-	// 3. 构建闭环 Saga 事务
 	saga := dtm.NewSaga(ctx, m.dtmServer, gid)
-
 	accountSvc := m.accountSvcURL + "/api.account.v1.AccountService"
 	positionSvc := m.positionSvcURL + "/api.position.v1.PositionService"
 	clearingSvc := m.clearingSvcURL + "/api.clearing.v1.ClearingService"
 
-	statusReq := &clearingv1.SagaSettlementRequest{
-		SettlementId: gid,
-		TradeId:      tradeID,
-	}
+	statusReq := &clearingv1.SagaSettlementRequest{SettlementId: gid, TradeId: tradeID}
 
-	// [关键优化] 步骤 0: 状态跟踪桩
-	// 正向为空，补偿为 MarkFailed。
-	// 一旦后面任何一步失败，DTM 会自动调用此补偿，将 PENDING 改为 FAILED。
-	saga.Add(
-		"",
-		clearingSvc+"/SagaMarkSettlementFailed",
-		statusReq,
-	)
+	// 注册 Saga 步骤
+	saga.Add("", clearingSvc+"/SagaMarkSettlementFailed", statusReq)
 
-	// 步骤 1 & 2: 资金对冲
-	saga.Add(accountSvc+"/SagaDeductFrozen", accountSvc+"/SagaRefundFrozen", &accountv1.SagaAccountRequest{
-		UserId: buyUserID, Currency: "USDT", Amount: m.calcAmount(quantityStr, priceStr),
-		TradeId: tradeID,
-	})
-	saga.Add(accountSvc+"/SagaAddBalance", accountSvc+"/SagaSubBalance", &accountv1.SagaAccountRequest{
-		UserId: sellUserID, Currency: "USDT", Amount: m.calcAmount(quantityStr, priceStr),
-		TradeId: tradeID,
-	})
-
-	// 步骤 3: 卖方扣除冻结持仓 (Base Asset, e.g., BTC)
-	saga.Add(
-		positionSvc+"/SagaDeductFrozen",
-		positionSvc+"/SagaRefundFrozen",
-		&positionv1.SagaPositionRequest{
-			UserId:   sellUserID,
-			Symbol:   symbol,
-			Quantity: quantityStr,
-			Price:    priceStr, // 传递成交价用于盈亏计算
-			TradeId:  tradeID,
-		},
-	)
-	// 步骤 4: 买方增加持仓 (Base Asset, e.g., BTC)
-	saga.Add(
-		positionSvc+"/SagaAddPosition",
-		positionSvc+"/SagaSubPosition",
-		&positionv1.SagaPositionRequest{
-			UserId:   buyUserID,
-			Symbol:   symbol,
-			Quantity: quantityStr,
-			Price:    priceStr, // 传递成交价
-			TradeId:  tradeID,
-		},
-	)
-
-	// [关键优化] 步骤 5: 成功终结桩
-	// 只有当上述所有资金、资产对冲都成功后，才会执行此正向操作，将 PENDING 改为 COMPLETED。
-	saga.Add(
-		clearingSvc+"/SagaMarkSettlementCompleted",
-		"",
-		statusReq,
-	)
-
-	// 4. 提交 Saga
-	if err := saga.Submit(); err != nil {
-		m.logger.Error("failed to submit full-loop saga settlement", "gid", gid, "error", err)
+	amount, err := m.calcAmount(quantityStr, priceStr)
+	if err != nil {
 		return err
 	}
 
-	m.logger.Info("full-loop saga settlement submitted successfully", "gid", gid)
+	// 资金流转
+	saga.Add(accountSvc+"/SagaDeductFrozen", accountSvc+"/SagaRefundFrozen", &accountv1.SagaAccountRequest{
+		UserId: buyUserID, Currency: "USDT", Amount: amount, TradeId: tradeID,
+	})
+	saga.Add(accountSvc+"/SagaAddBalance", accountSvc+"/SagaSubBalance", &accountv1.SagaAccountRequest{
+		UserId: sellUserID, Currency: "USDT", Amount: amount, TradeId: tradeID,
+	})
+
+	// 资产流转
+	saga.Add(positionSvc+"/SagaDeductFrozen", positionSvc+"/SagaRefundFrozen", &positionv1.SagaPositionRequest{
+		UserId: sellUserID, Symbol: symbol, Quantity: quantityStr, Price: priceStr, TradeId: tradeID,
+	})
+	saga.Add(positionSvc+"/SagaAddPosition", positionSvc+"/SagaSubPosition", &positionv1.SagaPositionRequest{
+		UserId: buyUserID, Symbol: symbol, Quantity: quantityStr, Price: priceStr, TradeId: tradeID,
+	})
+
+	saga.Add(clearingSvc+"/SagaMarkSettlementCompleted", "", statusReq)
+
+	if err := saga.Submit(); err != nil {
+		m.logger.ErrorContext(ctx, "failed to submit settlement saga", "gid", gid, "error", err)
+		return err
+	}
+
+	m.logger.InfoContext(ctx, "settlement saga submitted successfully", "gid", gid)
 	return nil
 }
 
-func (m *ClearingManager) calcAmount(q, p string) string {
-	qd, _ := decimal.NewFromString(q)
-	pd, _ := decimal.NewFromString(p)
-	return qd.Mul(pd).String()
+func (m *ClearingManager) calcAmount(q, p string) (string, error) {
+	qd, err := decimal.NewFromString(q)
+	if err != nil {
+		return "", err
+	}
+	pd, err := decimal.NewFromString(p)
+	if err != nil {
+		return "", err
+	}
+	return qd.Mul(pd).String(), nil
 }
 
-// ExecuteEODClearing 执行日终清算
+// ExecuteEODClearing 启动日终清算流程。
 func (m *ClearingManager) ExecuteEODClearing(ctx context.Context, clearingDate string) (string, error) {
 	clearingID := fmt.Sprintf("EOD-%d", idgen.GenID())
 	clearing := &domain.EODClearing{
@@ -227,15 +212,19 @@ func (m *ClearingManager) ExecuteEODClearing(ctx context.Context, clearingDate s
 		TotalTrades:   0,
 	}
 	if err := m.eodRepo.Save(ctx, clearing); err != nil {
+		m.logger.ErrorContext(ctx, "failed to initiate EOD clearing", "date", clearingDate, "error", err)
 		return "", err
 	}
+
+	m.logger.InfoContext(ctx, "EOD clearing initiated", "clearing_id", clearingID, "date", clearingDate)
 	return clearingID, nil
 }
 
-// GetMarginRequirement 获取指定品种的实时保证金要求
+// GetMarginRequirement 实时获取并计算品种保证金率。
 func (m *ClearingManager) GetMarginRequirement(ctx context.Context, symbol string) (*domain.MarginRequirement, error) {
 	margin, err := m.marginRepo.GetBySymbol(ctx, symbol)
 	if err != nil {
+		m.logger.ErrorContext(ctx, "failed to fetch margin requirement", "symbol", symbol, "error", err)
 		return nil, err
 	}
 	if margin == nil {
@@ -245,5 +234,7 @@ func (m *ClearingManager) GetMarginRequirement(ctx context.Context, symbol strin
 			VolatilityFactor: decimal.Zero,
 		}, nil
 	}
+
+	m.logger.DebugContext(ctx, "margin requirement fetched", "symbol", symbol, "rate", margin.BaseMarginRate.String())
 	return margin, nil
 }

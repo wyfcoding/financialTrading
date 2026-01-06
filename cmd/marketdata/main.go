@@ -265,6 +265,8 @@ func (b *distributedBroadcaster) Broadcast(topic string, payload any) {
 		msgJSON, _ := json.Marshal(syncMsg)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		_ = b.redis.Publish(ctx, "marketdata.broadcast", string(msgJSON))
+		if err := b.redis.Publish(ctx, "marketdata.broadcast", string(msgJSON)).Err(); err != nil {
+			slog.Warn("failed to publish market data to redis", "error", err, "topic", topic)
+		}
 	}()
 }

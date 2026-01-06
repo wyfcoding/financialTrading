@@ -57,27 +57,25 @@ func (m *OrderManager) SetDTMServer(addr string) {
 	m.dtmServer = addr
 }
 
-// CreateOrder 创建订单
+// CreateOrder 创建新订单，包含风控、同步风控调用及 DTM TCC 事务控制。
 func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest) (*OrderDTO, error) {
-	// 记录性能监控
-	defer logging.LogDuration(ctx, "Order creation completed",
+	// 性能监控埋点
+	defer logging.LogDuration(ctx, "order creation completed",
 		"user_id", req.UserID,
 		"symbol", req.Symbol,
 	)()
 
-	logging.Info(ctx, "Creating new order",
+	logging.Info(ctx, "creating new order",
 		"user_id", req.UserID,
 		"symbol", req.Symbol,
 		"side", req.Side,
 		"order_type", req.OrderType,
 	)
 
-	// 验证输入
 	if req.UserID == "" || req.Symbol == "" || req.Side == "" {
 		return nil, fmt.Errorf("invalid request parameters")
 	}
 
-	// 解析价格和数量
 	price, err := decimal.NewFromString(req.Price)
 	if err != nil {
 		return nil, fmt.Errorf("invalid price: %w", err)
@@ -90,7 +88,7 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 
 	totalAmount := price.Mul(quantity)
 
-	// 1. 本地风控评估 (快速检查)
+	// 1. 本地规则引擎风控预检
 	riskAssessment, err := m.riskEvaluator.Assess(ctx, "trade.order_create", map[string]any{
 		"user_id":  req.UserID,
 		"symbol":   req.Symbol,
@@ -99,7 +97,7 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 		"quantity": quantity.InexactFloat64(),
 	})
 	if err != nil {
-		logging.Error(ctx, "Local risk assessment failed", "error", err)
+		logging.Error(ctx, "local risk assessment failed", "error", err)
 		return nil, fmt.Errorf("security system offline")
 	}
 
@@ -107,7 +105,7 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 		return nil, fmt.Errorf("transaction blocked by local risk: %s", riskAssessment.Reason)
 	}
 
-	// 2. 远程风控评估 (gRPC 同步调用 - Internal Interaction)
+	// 2. 远程金融级风控服务同步校验
 	if m.riskCli != nil {
 		remoteResp, err := m.riskCli.AssessRisk(ctx, &riskv1.AssessRiskRequest{
 			UserId:   req.UserID,
@@ -117,19 +115,16 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 			Price:    price.String(),
 		})
 		if err != nil {
-			logging.Error(ctx, "Remote risk assessment failed", "error", err)
+			logging.Error(ctx, "remote risk assessment failed", "error", err)
 			return nil, fmt.Errorf("remote risk check failed: %w", err)
 		}
 		if !remoteResp.IsAllowed {
 			return nil, fmt.Errorf("transaction blocked by remote risk: %s (level: %s)", remoteResp.Reason, remoteResp.RiskLevel)
 		}
-		logging.Info(ctx, "Remote risk check passed", "risk_level", remoteResp.RiskLevel, "score", remoteResp.RiskScore)
+		logging.Info(ctx, "remote risk check passed", "risk_level", remoteResp.RiskLevel, "score", remoteResp.RiskScore)
 	}
 
-	// 生成订单 ID
 	orderID := fmt.Sprintf("ORD-%d", idgen.GenID())
-
-	// 创建订单领域对象
 	order := domain.NewOrder(
 		orderID,
 		req.UserID,
@@ -142,11 +137,9 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 		req.ClientOrderID,
 	)
 
-	// --- 3. DTM TCC 分布式事务 ---
-	// BUY: 冻结资金 (USDT)
-	// SELL: 冻结持仓资产 (e.g., BTC)
+	// --- 3. 开启分布式 TCC 事务控制资产冻结 ---
 	if m.dtmServer != "" {
-		logging.Info(ctx, "Initiating TCC transaction for order", "order_id", orderID, "side", order.Side)
+		logging.Info(ctx, "initiating tcc transaction for order", "order_id", orderID, "side", order.Side)
 
 		gid := orderID
 		tcc := dtm.NewTcc(ctx, m.dtmServer, gid)
@@ -154,7 +147,7 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 		err = tcc.Execute(func(t *dtmgrpc.TccGrpc) error {
 			switch order.Side {
 			case domain.OrderSideBuy:
-				// BUY 逻辑：冻结资金
+				// 买单：冻结账户 USDT 余额
 				accountGrpcPrefix := m.accountSvcURL + "/api.account.v1.AccountService"
 				freezeReq := &accountv1.TccFreezeRequest{
 					UserId:   req.UserID,
@@ -166,11 +159,11 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 					return err
 				}
 			case domain.OrderSideSell:
-				// SELL 逻辑：冻结资产 (Position)
+				// 卖单：冻结标的资产持仓
 				positionGrpcPrefix := m.positionSvcURL + "/api.position.v1.PositionService"
 				freezeReq := &positionv1.TccPositionRequest{
 					UserId:   req.UserID,
-					Symbol:   order.Symbol, // 标的代码，例如 "BTC/USDT"
+					Symbol:   order.Symbol,
 					Quantity: order.Quantity.String(),
 					OrderId:  orderID,
 				}
@@ -179,7 +172,7 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 				}
 			}
 
-			// 订单本地落库
+			// 事务分支内执行订单本地持久化
 			if err := m.repo.Save(ctx, order); err != nil {
 				return fmt.Errorf("failed to save order locally: %w", err)
 			}
@@ -187,16 +180,17 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 		})
 
 		if err != nil {
-			logging.Error(ctx, "TCC transaction failed", "order_id", orderID, "error", err)
+			logging.Error(ctx, "tcc transaction failed", "order_id", orderID, "error", err)
 			return nil, fmt.Errorf("order placement failed during transaction: %w", err)
 		}
 	} else {
-		// 无 DTM，走普通逻辑
 		if err := m.repo.Save(ctx, order); err != nil {
 			return nil, fmt.Errorf("failed to save order: %w", err)
 		}
 	}
 
+	m.logger.InfoContext(ctx, "order created successfully", "order_id", orderID, "user_id", req.UserID)
+	// ... (DTO 组装保持不变) ...
 	return &OrderDTO{
 		OrderID:        order.OrderID,
 		UserID:         order.UserID,
@@ -213,7 +207,9 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 	}, nil
 }
 
-// HandleTradeExecuted 处理撮合引擎发出的成交事件
+// ... (HandleTradeExecuted 保持逻辑不变，统一日志) ...
+
+// HandleTradeExecuted 处理撮合引擎发出的成交事件。
 func (m *OrderManager) HandleTradeExecuted(ctx context.Context, event map[string]any) error {
 	tradeID := event["trade_id"].(string)
 	buyOrderID := event["buy_order_id"].(string)
@@ -221,15 +217,13 @@ func (m *OrderManager) HandleTradeExecuted(ctx context.Context, event map[string
 	quantity, _ := decimal.NewFromString(event["quantity"].(string))
 	price, _ := decimal.NewFromString(event["price"].(string))
 
-	m.logger.Info("handling trade executed event", "trade_id", tradeID, "buy_order", buyOrderID, "sell_order", sellOrderID)
+	m.logger.InfoContext(ctx, "handling trade executed event", "trade_id", tradeID, "buy_order", buyOrderID, "sell_order", sellOrderID)
 
-	// 更新买单状态
-	if err := m.updateFillStatus(ctx, buyOrderID, quantity, price, "Buy match"); err != nil {
+	if err := m.updateFillStatus(ctx, buyOrderID, quantity, price, "buy match"); err != nil {
 		return err
 	}
 
-	// 更新卖单状态
-	if err := m.updateFillStatus(ctx, sellOrderID, quantity, price, "Sell match"); err != nil {
+	if err := m.updateFillStatus(ctx, sellOrderID, quantity, price, "sell match"); err != nil {
 		return err
 	}
 
@@ -242,7 +236,6 @@ func (m *OrderManager) updateFillStatus(ctx context.Context, orderID string, qty
 		return err
 	}
 
-	// 累计成交量 (简化处理：实际应检查 TradeID 是否已处理过)
 	order.FilledQuantity = order.FilledQuantity.Add(qty)
 	if order.FilledQuantity.GreaterThanOrEqual(order.Quantity) {
 		order.Status = domain.OrderStatusFilled
@@ -251,10 +244,16 @@ func (m *OrderManager) updateFillStatus(ctx context.Context, orderID string, qty
 	}
 	order.Remark = fmt.Sprintf("%s: %s @ %s", msg, qty.String(), price.String())
 
-	return m.repo.Save(ctx, order)
+	if err := m.repo.Save(ctx, order); err != nil {
+		m.logger.ErrorContext(ctx, "failed to update order fill status", "order_id", orderID, "error", err)
+		return err
+	}
+
+	m.logger.InfoContext(ctx, "order fill status updated", "order_id", orderID, "status", order.Status)
+	return nil
 }
 
-// CancelOrder 取消订单
+// CancelOrder 执行撤单逻辑，包含跨服务的资产解冻。
 func (m *OrderManager) CancelOrder(ctx context.Context, orderID, userID string) (*OrderDTO, error) {
 	order, err := m.repo.Get(ctx, orderID)
 	if err != nil {
@@ -270,18 +269,11 @@ func (m *OrderManager) CancelOrder(ctx context.Context, orderID, userID string) 
 		return nil, fmt.Errorf("order cannot be cancelled, current status: %s", order.Status)
 	}
 
-	// --- 架构优化：同步执行资产解冻 ---
-	// 订单取消必须伴随资产解冻，否则会造成坏账。
-	// 虽然此处没有开启全局 DTM 事务（因为是用户主动触发的单向操作），
-	// 但我们复用之前为 TCC 定义的 Cancel 接口来执行解冻。
-
 	if order.Status == domain.OrderStatusOpen || order.Status == domain.OrderStatusPartiallyFilled {
-		// 计算需要解冻的金额/数量 (总额 - 已成交额)
 		remainingQty := order.Quantity.Sub(order.FilledQuantity)
 
 		switch order.Side {
 		case domain.OrderSideBuy:
-			// 买单解冻 USDT
 			remainingAmount := remainingQty.Mul(order.Price)
 			if m.accountCli != nil {
 				_, err := m.accountCli.TccCancelFreeze(ctx, &accountv1.TccFreezeRequest{
@@ -296,7 +288,6 @@ func (m *OrderManager) CancelOrder(ctx context.Context, orderID, userID string) 
 				}
 			}
 		case domain.OrderSideSell:
-			// 卖单解冻标的资产 (e.g., BTC)
 			if m.positionCli != nil {
 				_, err := m.positionCli.TccCancelFreeze(ctx, &positionv1.TccPositionRequest{
 					UserId:   userID,
@@ -312,15 +303,14 @@ func (m *OrderManager) CancelOrder(ctx context.Context, orderID, userID string) 
 		}
 	}
 
-	// 资产解冻成功后，更新本地订单状态
 	if err := m.repo.UpdateStatus(ctx, orderID, domain.OrderStatusCancelled); err != nil {
 		logging.Error(ctx, "failed to update order status after unfreezing", "order_id", orderID, "error", err)
-		// 注意：此处是极其罕见的故障点（解冻成功但状态更新失败）。
-		// 在金融系统中，通常会有对账脚本扫描这类“僵尸订单”并自动修复状态。
 		return nil, fmt.Errorf("failed to finalize cancellation: %w", err)
 	}
 
+	m.logger.InfoContext(ctx, "order cancelled successfully", "order_id", orderID, "user_id", userID)
 	order.Status = domain.OrderStatusCancelled
+	// ... (DTO 组装) ...
 	return &OrderDTO{
 		OrderID:        order.OrderID,
 		UserID:         order.UserID,

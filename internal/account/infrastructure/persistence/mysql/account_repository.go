@@ -14,17 +14,17 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// AccountModel 账户数据库模型
+// AccountModel 账户数据库模型，直接映射 accounts 表。
 type AccountModel struct {
 	gorm.Model
-	AccountID        string `gorm:"column:account_id;type:varchar(32);uniqueIndex;not null"`
-	UserID           string `gorm:"column:user_id;type:varchar(32);index;not null"`
-	AccountType      string `gorm:"column:account_type;type:varchar(20);not null"`
-	Currency         string `gorm:"column:currency;type:varchar(10);not null"`
-	Balance          string `gorm:"column:balance;type:decimal(32,18);default:'0';not null"`
-	AvailableBalance string `gorm:"column:available_balance;type:decimal(32,18);default:'0';not null"`
-	FrozenBalance    string `gorm:"column:frozen_balance;type:decimal(32,18);default:'0';not null"`
-	Version          int64  `gorm:"column:version;default:0;not null"`
+	AccountID        string `gorm:"column:account_id;type:varchar(32);uniqueIndex;not null;comment:账户唯一标识"`
+	UserID           string `gorm:"column:user_id;type:varchar(32);index;not null;comment:关联的用户ID"`
+	AccountType      string `gorm:"column:account_type;type:varchar(20);not null;comment:账户类型(SPOT/MARGIN)"`
+	Currency         string `gorm:"column:currency;type:varchar(10);not null;comment:货币类型(USDT/BTC)"`
+	Balance          string `gorm:"column:balance;type:decimal(32,18);default:'0';not null;comment:总余额"`
+	AvailableBalance string `gorm:"column:available_balance;type:decimal(32,18);default:'0';not null;comment:当前可用余额"`
+	FrozenBalance    string `gorm:"column:frozen_balance;type:decimal(32,18);default:'0';not null;comment:冻结锁定金额"`
+	Version          int64  `gorm:"column:version;default:0;not null;comment:乐观锁版本号"`
 }
 
 // TableName 指定表名
@@ -37,14 +37,14 @@ type accountRepositoryImpl struct {
 	db *gorm.DB
 }
 
-// NewAccountRepository 创建账户仓储实例
+// NewAccountRepository 创建并返回一个新的账户仓储实例。
 func NewAccountRepository(db *gorm.DB) domain.AccountRepository {
 	return &accountRepositoryImpl{
 		db: db,
 	}
 }
 
-// Save 实现 domain.AccountRepository.Save
+// Save 持久化账户实体，支持冲突时的局部更新。
 func (r *accountRepositoryImpl) Save(ctx context.Context, account *domain.Account) error {
 	model := &AccountModel{
 		Model:            account.Model,
@@ -63,7 +63,7 @@ func (r *accountRepositoryImpl) Save(ctx context.Context, account *domain.Accoun
 		DoUpdates: clause.AssignmentColumns([]string{"user_id", "account_type", "currency", "balance", "available_balance", "frozen_balance"}),
 	}).Create(model).Error
 	if err != nil {
-		logging.Error(ctx, "account_repository.Save failed", "account_id", account.AccountID, "error", err)
+		logging.Error(ctx, "account_repository.save failed", "account_id", account.AccountID, "error", err)
 		return fmt.Errorf("failed to save account: %w", err)
 	}
 
@@ -71,25 +71,25 @@ func (r *accountRepositoryImpl) Save(ctx context.Context, account *domain.Accoun
 	return nil
 }
 
-// Get 实现 domain.AccountRepository.Get
+// Get 根据账户 ID 获取详情。
 func (r *accountRepositoryImpl) Get(ctx context.Context, accountID string) (*domain.Account, error) {
 	var model AccountModel
 	if err := r.getDB(ctx).Where("account_id = ?", accountID).First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		logging.Error(ctx, "account_repository.Get failed", "account_id", accountID, "error", err)
+		logging.Error(ctx, "account_repository.get failed", "account_id", accountID, "error", err)
 		return nil, fmt.Errorf("failed to get account: %w", err)
 	}
 
 	return r.toDomain(&model), nil
 }
 
-// GetByUser 实现 domain.AccountRepository.GetByUser
+// GetByUser 获取指定用户的所有资产账户。
 func (r *accountRepositoryImpl) GetByUser(ctx context.Context, userID string) ([]*domain.Account, error) {
 	var models []AccountModel
 	if err := r.getDB(ctx).Where("user_id = ?", userID).Find(&models).Error; err != nil {
-		logging.Error(ctx, "account_repository.GetByUser failed", "user_id", userID, "error", err)
+		logging.Error(ctx, "account_repository.get_by_user failed", "user_id", userID, "error", err)
 		return nil, fmt.Errorf("failed to get accounts by user: %w", err)
 	}
 
@@ -100,7 +100,7 @@ func (r *accountRepositoryImpl) GetByUser(ctx context.Context, userID string) ([
 	return accounts, nil
 }
 
-// UpdateBalance 实现 domain.AccountRepository.UpdateBalance (带乐观锁)
+// UpdateBalance 执行账户金额的原子更新，必须校验版本号以触发乐观锁。
 func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, accountID string, balance, available, frozen decimal.Decimal, currentVersion int64) error {
 	result := r.getDB(ctx).Model(&AccountModel{}).
 		Where("account_id = ? AND version = ?", accountID, currentVersion).
@@ -108,33 +108,29 @@ func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, accountID str
 			"balance":           balance.String(),
 			"available_balance": available.String(),
 			"frozen_balance":    frozen.String(),
-			"version":           currentVersion + 1, // 版本号递增
+			"version":           currentVersion + 1,
 		})
 
 	if result.Error != nil {
-		logging.Error(ctx, "account_repository.UpdateBalance failed", "account_id", accountID, "error", result.Error)
+		logging.Error(ctx, "account_repository.update_balance failed", "account_id", accountID, "error", result.Error)
 		return fmt.Errorf("failed to update balance: %w", result.Error)
 	}
 
 	if result.RowsAffected == 0 {
-		// 可能是账户不存在，也可能是版本号已被其他事务修改
 		return domain.ErrConcurrentUpdate
 	}
 
 	return nil
 }
 
-// ExecWithBarrier 实现 domain.AccountRepository.ExecWithBarrier
+// ExecWithBarrier 实现 DTM 子事务屏障封装。
 func (r *accountRepositoryImpl) ExecWithBarrier(ctx context.Context, barrier interface{}, fn func(ctx context.Context) error) error {
-	// 使用 pkg/dtm 的 CallWithGorm 辅助函数 (通过反射避免直接依赖 dtmcli)
 	return dtm.CallWithGorm(ctx, barrier, r.db, func(tx *gorm.DB) error {
-		// 将事务 DB 注入 context，以便后续操作使用该事务
 		txCtx := context.WithValue(ctx, "tx_db", tx)
 		return fn(txCtx)
 	})
 }
 
-// getDBFromContext 尝试从 Context 获取事务 DB，否则返回默认 DB
 func (r *accountRepositoryImpl) getDB(ctx context.Context) *gorm.DB {
 	if tx, ok := ctx.Value("tx_db").(*gorm.DB); ok {
 		return tx.WithContext(ctx)
@@ -169,14 +165,14 @@ func (r *accountRepositoryImpl) toDomain(m *AccountModel) *domain.Account {
 	}
 }
 
-// TransactionModel 交易记录数据库模型
+// TransactionModel 交易记录数据库模型。
 type TransactionModel struct {
 	gorm.Model
-	TransactionID string `gorm:"column:transaction_id;type:varchar(32);uniqueIndex;not null"`
-	AccountID     string `gorm:"column:account_id;type:varchar(32);index;not null"`
-	Type          string `gorm:"column:type;type:varchar(20);not null"`
-	Amount        string `gorm:"column:amount;type:decimal(32,18);not null"`
-	Status        string `gorm:"column:status;type:varchar(20);not null"`
+	TransactionID string `gorm:"column:transaction_id;type:varchar(32);uniqueIndex;not null;comment:流水唯一标识"`
+	AccountID     string `gorm:"column:account_id;type:varchar(32);index;not null;comment:关联账户ID"`
+	Type          string `gorm:"column:type;type:varchar(20);not null;comment:流水类型"`
+	Amount        string `gorm:"column:amount;type:decimal(32,18);not null;comment:涉及金额"`
+	Status        string `gorm:"column:status;type:varchar(20);not null;comment:流水状态"`
 }
 
 // TableName 指定表名
@@ -189,12 +185,11 @@ type transactionRepositoryImpl struct {
 	db *gorm.DB
 }
 
-// NewTransactionRepository 创建交易记录仓储实例
+// NewTransactionRepository 创建交易记录仓储实例。
 func NewTransactionRepository(db *gorm.DB) domain.TransactionRepository {
 	return &transactionRepositoryImpl{db: db}
 }
 
-// Save 实现 domain.TransactionRepository.Save
 func (r *transactionRepositoryImpl) Save(ctx context.Context, transaction *domain.Transaction) error {
 	model := &TransactionModel{
 		Model:         transaction.Model,
@@ -205,14 +200,13 @@ func (r *transactionRepositoryImpl) Save(ctx context.Context, transaction *domai
 		Status:        transaction.Status,
 	}
 	if err := r.db.WithContext(ctx).Create(model).Error; err != nil {
-		logging.Error(ctx, "transaction_repository.Save failed", "transaction_id", transaction.TransactionID, "error", err)
+		logging.Error(ctx, "transaction_repository.save failed", "transaction_id", transaction.TransactionID, "error", err)
 		return fmt.Errorf("failed to save transaction: %w", err)
 	}
 	transaction.Model = model.Model
 	return nil
 }
 
-// GetHistory 实现 domain.TransactionRepository.GetHistory
 func (r *transactionRepositoryImpl) GetHistory(ctx context.Context, accountID string, limit, offset int) ([]*domain.Transaction, int64, error) {
 	var models []TransactionModel
 	var total int64
@@ -221,7 +215,7 @@ func (r *transactionRepositoryImpl) GetHistory(ctx context.Context, accountID st
 		return nil, 0, err
 	}
 	if err := db.Order("created_at desc").Limit(limit).Offset(offset).Find(&models).Error; err != nil {
-		logging.Error(ctx, "transaction_repository.GetHistory failed", "account_id", accountID, "error", err)
+		logging.Error(ctx, "transaction_repository.get_history failed", "account_id", accountID, "error", err)
 		return nil, 0, fmt.Errorf("failed to get history: %w", err)
 	}
 

@@ -13,50 +13,42 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// TradeModel 成交记录数据库模型
+// TradeModel 成交记录数据库模型，记录撮合引擎产出的每一笔匹配。
 type TradeModel struct {
 	gorm.Model
-	TradeID     string `gorm:"column:trade_id;type:varchar(32);uniqueIndex;not null"`
-	Symbol      string `gorm:"column:symbol;type:varchar(20);index:idx_symbol_time;not null"`
-	BuyOrderID  string `gorm:"column:buy_order_id;type:varchar(32);index;not null"`
-	SellOrderID string `gorm:"column:sell_order_id;type:varchar(32);index;not null"`
-	Price       string `gorm:"column:price;type:decimal(32,18);not null"`
-	Quantity    string `gorm:"column:quantity;type:decimal(32,18);not null"`
-	ExecutedAt  int64  `gorm:"column:executed_at;type:bigint;index:idx_symbol_time"`
+	TradeID     string `gorm:"column:trade_id;type:varchar(32);uniqueIndex;not null;comment:成交唯一标识"`
+	Symbol      string `gorm:"column:symbol;type:varchar(20);index:idx_symbol_time;not null;comment:交易对名称"`
+	BuyOrderID  string `gorm:"column:buy_order_id;type:varchar(32);index;not null;comment:买方订单ID"`
+	SellOrderID string `gorm:"column:sell_order_id;type:varchar(32);index;not null;comment:卖方订单ID"`
+	Price       string `gorm:"column:price;type:decimal(32,18);not null;comment:成交价格"`
+	Quantity    string `gorm:"column:quantity;type:decimal(32,18);not null;comment:成交数量"`
+	ExecutedAt  int64  `gorm:"column:executed_at;type:bigint;index:idx_symbol_time;comment:撮合完成时间戳"`
 }
 
 func (TradeModel) TableName() string { return "matching_trades" }
 
-// OrderBookSnapshotModel 订单簿快照数据库模型
+// OrderBookSnapshotModel 订单簿快照数据库模型，用于引擎冷启动恢复。
 type OrderBookSnapshotModel struct {
 	gorm.Model
-	Symbol    string `gorm:"column:symbol;type:varchar(20);index;not null"`
-	Bids      string `gorm:"column:bids;type:text"`
-	Asks      string `gorm:"column:asks;type:text"`
-	Timestamp int64  `gorm:"column:timestamp;type:bigint"`
+	Symbol    string `gorm:"column:symbol;type:varchar(20);index;not null;comment:交易对名称"`
+	Bids      string `gorm:"column:bids;type:text;comment:买盘序列化"`
+	Asks      string `gorm:"column:asks;type:text;comment:卖盘序列化"`
+	Timestamp int64  `gorm:"column:timestamp;type:bigint;comment:快照时间戳"`
 }
 
 func (OrderBookSnapshotModel) TableName() string { return "matching_order_book_snapshots" }
 
-// matchingRepositoryImpl 撮合仓储实现
+// matchingRepositoryImpl 撮合仓储实现。
 type matchingRepositoryImpl struct {
 	db *gorm.DB
 }
 
+// NewMatchingRepository 创建撮合相关的仓储实现实例。
 func NewMatchingRepository(db *gorm.DB) (domain.TradeRepository, domain.OrderBookRepository) {
 	impl := &matchingRepositoryImpl{db: db}
 	return impl, impl
 }
 
-// getDBFromContext 尝试从 Context 获取事务 DB，否则返回默认 DB
-func (r *matchingRepositoryImpl) getDB(ctx context.Context) *gorm.DB {
-	if tx, ok := ctx.Value("tx_db").(*gorm.DB); ok {
-		return tx.WithContext(ctx)
-	}
-	return r.db.WithContext(ctx)
-}
-
-// TradeRepository methods
 func (r *matchingRepositoryImpl) Save(ctx context.Context, t *algorithm.Trade) error {
 	m := &TradeModel{
 		TradeID:     t.TradeID,
@@ -93,7 +85,6 @@ func (r *matchingRepositoryImpl) GetLatestTrades(ctx context.Context, symbol str
 	return r.GetTradeHistory(ctx, symbol, limit)
 }
 
-// OrderBookRepository methods
 func (r *matchingRepositoryImpl) SaveSnapshot(ctx context.Context, s *domain.OrderBookSnapshot) error {
 	bids, err := json.Marshal(s.Bids)
 	if err != nil {
@@ -126,6 +117,13 @@ func (r *matchingRepositoryImpl) GetLatestOrderBook(ctx context.Context, symbol 
 		return nil, err
 	}
 	return r.snapshotToDomain(&m)
+}
+
+func (r *matchingRepositoryImpl) getDB(ctx context.Context) *gorm.DB {
+	if tx, ok := ctx.Value("tx_db").(*gorm.DB); ok {
+		return tx.WithContext(ctx)
+	}
+	return r.db.WithContext(ctx)
 }
 
 func (r *matchingRepositoryImpl) tradeToAlgorithm(m *TradeModel) (*algorithm.Trade, error) {

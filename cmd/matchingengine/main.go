@@ -126,35 +126,34 @@ func registerGin(e *gin.Engine, svc any) {
 	}
 }
 
-// initService 初始化服务依赖 (数据库、缓存、客户端、领域层)
+// initService 执行复杂的服务依赖注入与资源初始化。
 func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	c := cfg.(*Config)
 	bootLog := slog.With("module", "bootstrap")
-	logger := logging.Default() // 获取全局 Logger
+	logger := logging.Default()
 
-	// 打印脱敏配置
 	configpkg.PrintWithMask(c)
 
-	// 1. 初始化数据库 (MySQL)
+	// 1. 初始化持久化层
 	db, err := database.NewDB(c.Data.Database, c.CircuitBreaker, logger, m)
 	if err != nil {
 		return nil, nil, fmt.Errorf("database init error: %w", err)
 	}
 
-	// 2. 初始化缓存 (Redis)
+	// 2. 初始化缓存层
 	redisCache, err := cache.NewRedisCache(c.Data.Redis, c.CircuitBreaker, logger, m)
 	if err != nil {
 		if sqlDB, err := db.RawDB().DB(); err == nil {
-			sqlDB.Close()
+			_ = sqlDB.Close()
 		}
 		return nil, nil, fmt.Errorf("redis init error: %w", err)
 	}
 
-	// 3. 初始化治理组件 (限流器、幂等管理器)
+	// 3. 初始化限流与幂等治理组件
 	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
 	idemManager := idempotency.NewRedisManager(redisCache.GetClient(), IdempotencyPrefix)
 
-	// 4. 初始化消息队列与 Outbox
+	// 4. 初始化异步通信组件 (Kafka + Outbox)
 	producer := kafka.NewProducer(c.MessageQueue.Kafka, logger, m)
 
 	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
@@ -166,37 +165,31 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	}, 100, 5*time.Second)
 	outboxProcessor.Start()
 
-	// 5. 初始化下游微服务客户端
+	// 5. 组装下游微服务客户端
 	clients := &ServiceClients{}
 	clientCleanup, err := grpcclient.InitClients(c.Services, m, c.CircuitBreaker, clients)
 	if err != nil {
-		redisCache.Close()
+		_ = redisCache.Close()
 		if sqlDB, err := db.RawDB().DB(); err == nil {
-			sqlDB.Close()
+			_ = sqlDB.Close()
 		}
 		return nil, nil, fmt.Errorf("grpc clients init error: %w", err)
 	}
-	// 显式转换 gRPC 客户端
 	if clients.ClearingConn != nil {
 		clients.Clearing = clearingv1.NewClearingServiceClient(clients.ClearingConn)
 	}
 
-	// 6. DDD 分层装配
-	bootLog.Info("assembling services with full dependency injection...")
+	// 6. 核心业务 DDD 装配
+	bootLog.Info("assembling matching engine with ddd layers...")
 
-	// 6.1 Infrastructure (Persistence)
 	tradeRepo, orderBookRepo := mysql.NewMatchingRepository(db.RawDB())
 
-	// 6.2 Application (Service)
-	// 顶级架构：撮合引擎通常是单实例单交易对，此处可以从配置加载，例如 "BTC/USDT"
 	defaultSymbol := "BTC/USDT"
 	matchingService, err := application.NewMatchingEngineService(defaultSymbol, tradeRepo, orderBookRepo, db.RawDB(), outboxMgr, logger.Logger)
 	if err != nil {
-		redisCache.Close()
+		_ = redisCache.Close()
 		if sqlDB, err := db.RawDB().DB(); err == nil {
-			if cerr := sqlDB.Close(); cerr != nil {
-				bootLog.Error("failed to close sql database", "error", cerr)
-			}
+			_ = sqlDB.Close()
 		}
 		return nil, nil, fmt.Errorf("matching service init error: %w", err)
 	}
@@ -207,16 +200,15 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		matchingService.SetOrderClient(orderv1.NewOrderServiceClient(clients.OrderConn))
 	}
 
-	// 6.3 Interface (HTTP Handlers)
 	handler := matchinghttp.NewMatchingHandler(matchingService)
 
-	// 定义资源清理函数
+	// 定义优雅关停时的资源释放回调
 	cleanup := func() {
-		bootLog.Info("shutting down, releasing resources...")
+		bootLog.Info("shutting down and releasing system resources...")
 		outboxProcessor.Stop()
 		clientCleanup()
 		if producer != nil {
-			producer.Close()
+			_ = producer.Close()
 		}
 		if redisCache != nil {
 			if err := redisCache.Close(); err != nil {
@@ -230,7 +222,6 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		}
 	}
 
-	// 返回应用上下文与清理函数
 	return &AppContext{
 		Config:      c,
 		Matching:    matchingService,
@@ -242,3 +233,4 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		Outbox:      outboxProcessor,
 	}, cleanup, nil
 }
+

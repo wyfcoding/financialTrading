@@ -31,46 +31,48 @@ func (h *MatchingHandler) RegisterRoutes(router *gin.RouterGroup) {
 	}
 }
 
+// SubmitOrder 处理订单提交请求并压入撮合引擎定序队列。
 func (h *MatchingHandler) SubmitOrder(c *gin.Context) {
 	var req application.SubmitOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid request data", err.Error())
 		return
 	}
 
 	result, err := h.matchingService.SubmitOrder(c.Request.Context(), &req)
 	if err != nil {
-		logging.Error(c.Request.Context(), "Failed to submit order", "error", err)
-		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
+		logging.Error(c.Request.Context(), "failed to submit order", "error", err)
+		response.Error(c, err)
 		return
 	}
 
 	response.Success(c, result)
 }
 
+// GetOrderBook 获取当前内存订单簿的快照（包含买卖盘档位）。
 func (h *MatchingHandler) GetOrderBook(c *gin.Context) {
 	depthStr := c.DefaultQuery("depth", "20")
 	depth, err := strconv.Atoi(depthStr)
 	if err != nil {
-		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid depth", "")
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid depth parameter", "")
 		return
 	}
 
-	// 修正：GetOrderBook 不再需要 symbol
 	snapshot, err := h.matchingService.GetOrderBook(c.Request.Context(), depth)
 	if err != nil {
-		logging.Error(c.Request.Context(), "Failed to get order book", "error", err)
-		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
+		logging.Error(c.Request.Context(), "failed to get order book snapshot", "error", err)
+		response.Error(c, err)
 		return
 	}
 
 	response.Success(c, snapshot)
 }
 
+// GetTrades 获取指定交易对的最近成交历史。
 func (h *MatchingHandler) GetTrades(c *gin.Context) {
 	symbol := c.Query("symbol")
 	if symbol == "" {
-		response.ErrorWithStatus(c, http.StatusBadRequest, "symbol is required", "")
+		response.ErrorWithStatus(c, http.StatusBadRequest, "symbol parameter is required", "")
 		return
 	}
 
@@ -83,8 +85,8 @@ func (h *MatchingHandler) GetTrades(c *gin.Context) {
 
 	trades, err := h.matchingService.GetTrades(c.Request.Context(), symbol, limit)
 	if err != nil {
-		logging.Error(c.Request.Context(), "Failed to get trades", "symbol", symbol, "error", err)
-		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
+		logging.Error(c.Request.Context(), "failed to get trade history", "symbol", symbol, "error", err)
+		response.Error(c, err)
 		return
 	}
 

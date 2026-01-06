@@ -1,3 +1,4 @@
+// Package mysql 提供了风险管理模块各领域实体的 MySQL GORM 持久化实现。
 package mysql
 
 import (
@@ -9,20 +10,20 @@ import (
 	"gorm.io/gorm"
 )
 
-// RiskAssessmentModel 风险评估数据库模型
+// RiskAssessmentModel 风险评估记录数据库模型。
 type RiskAssessmentModel struct {
 	gorm.Model
-	ID                string `gorm:"column:id;type:varchar(36);primaryKey"`
-	UserID            string `gorm:"column:user_id;type:varchar(36);index;not null"`
-	Symbol            string `gorm:"column:symbol;type:varchar(20);not null"`
-	Side              string `gorm:"column:side;type:varchar(10);not null"`
-	Quantity          string `gorm:"column:quantity;type:decimal(20,8);not null"`
-	Price             string `gorm:"column:price;type:decimal(20,8);not null"`
-	RiskLevel         string `gorm:"column:risk_level;type:varchar(20);not null"`
-	RiskScore         string `gorm:"column:risk_score;type:decimal(5,2);not null"`
-	MarginRequirement string `gorm:"column:margin_requirement;type:decimal(20,8);not null"`
-	IsAllowed         bool   `gorm:"column:is_allowed;type:boolean;not null"`
-	Reason            string `gorm:"column:reason;type:text"`
+	ID                string `gorm:"column:id;type:varchar(36);primaryKey;comment:评估唯一ID"`
+	UserID            string `gorm:"column:user_id;type:varchar(36);index;not null;comment:用户ID"`
+	Symbol            string `gorm:"column:symbol;type:varchar(20);not null;comment:交易对"`
+	Side              string `gorm:"column:side;type:varchar(10);not null;comment:交易方向"`
+	Quantity          string `gorm:"column:quantity;type:decimal(20,8);not null;comment:交易数量"`
+	Price             string `gorm:"column:price;type:decimal(20,8);not null;comment:交易价格"`
+	RiskLevel         string `gorm:"column:risk_level;type:varchar(20);not null;comment:风险等级"`
+	RiskScore         string `gorm:"column:risk_score;type:decimal(5,2);not null;comment:量化风险分"`
+	MarginRequirement string `gorm:"column:margin_requirement;type:decimal(20,8);not null;comment:保证金要求"`
+	IsAllowed         bool   `gorm:"column:is_allowed;type:boolean;not null;comment:是否允许交易"`
+	Reason            string `gorm:"column:reason;type:text;comment:判定原因"`
 }
 
 func (RiskAssessmentModel) TableName() string {
@@ -79,15 +80,15 @@ func FromAssessmentDomain(d *domain.RiskAssessment) *RiskAssessmentModel {
 	}
 }
 
-// RiskMetricsModel 风险指标数据库模型
+// RiskMetricsModel 用户量化风险指标数据库模型。
 type RiskMetricsModel struct {
 	gorm.Model
-	UserID      string `gorm:"column:user_id;type:varchar(36);uniqueIndex;not null"`
-	VaR95       string `gorm:"column:var_95;type:decimal(20,8);not null"`
-	VaR99       string `gorm:"column:var_99;type:decimal(20,8);not null"`
-	MaxDrawdown string `gorm:"column:max_drawdown;type:decimal(20,8);not null"`
-	SharpeRatio string `gorm:"column:sharpe_ratio;type:decimal(20,8);not null"`
-	Correlation string `gorm:"column:correlation;type:decimal(20,8);not null"`
+	UserID      string `gorm:"column:user_id;type:varchar(36);uniqueIndex;not null;comment:用户ID"`
+	VaR95       string `gorm:"column:var_95;type:decimal(20,8);not null;comment:95置信度VaR"`
+	VaR99       string `gorm:"column:var_99;type:decimal(20,8);not null;comment:99置信度VaR"`
+	MaxDrawdown string `gorm:"column:max_drawdown;type:decimal(20,8);not null;comment:历史最大回撤"`
+	SharpeRatio string `gorm:"column:sharpe_ratio;type:decimal(20,8);not null;comment:夏普比率"`
+	Correlation string `gorm:"column:correlation;type:decimal(20,8);not null;comment:组合相关性"`
 }
 
 func (RiskMetricsModel) TableName() string {
@@ -138,15 +139,15 @@ func FromMetricsDomain(d *domain.RiskMetrics) *RiskMetricsModel {
 	}
 }
 
-// RiskLimitModel 风险限额数据库模型
+// RiskLimitModel 风险限额配置数据库模型。
 type RiskLimitModel struct {
 	gorm.Model
 	ID           string `gorm:"column:id;type:varchar(36);primaryKey"`
-	UserID       string `gorm:"column:user_id;type:varchar(36);index;not null"`
-	LimitType    string `gorm:"column:limit_type;type:varchar(50);not null"`
-	LimitValue   string `gorm:"column:limit_value;type:decimal(20,8);not null"`
-	CurrentValue string `gorm:"column:current_value;type:decimal(20,8);not null"`
-	IsExceeded   bool   `gorm:"column:is_exceeded;type:boolean;not null"`
+	UserID       string `gorm:"column:user_id;type:varchar(36);index;not null;comment:用户ID"`
+	LimitType    string `gorm:"column:limit_type;type:varchar(50);not null;comment:限额类型"`
+	LimitValue   string `gorm:"column:limit_value;type:decimal(20,8);not null;comment:限定阈值"`
+	CurrentValue string `gorm:"column:current_value;type:decimal(20,8);not null;comment:当前已用额度"`
+	IsExceeded   bool   `gorm:"column:is_exceeded;type:boolean;not null;comment:是否已超限"`
 }
 
 func (RiskLimitModel) TableName() string {
@@ -185,14 +186,14 @@ func FromLimitDomain(d *domain.RiskLimit) *RiskLimitModel {
 	}
 }
 
-// RiskAlertModel 风险告警数据库模型
+// RiskAlertModel 风险告警记录数据库模型。
 type RiskAlertModel struct {
 	gorm.Model
 	ID        string `gorm:"column:id;type:varchar(36);primaryKey"`
-	UserID    string `gorm:"column:user_id;type:varchar(36);index;not null"`
-	AlertType string `gorm:"column:alert_type;type:varchar(50);not null"`
-	Severity  string `gorm:"column:severity;type:varchar(20);not null"`
-	Message   string `gorm:"column:message;type:text;not null"`
+	UserID    string `gorm:"column:user_id;type:varchar(36);index;not null;comment:受影响用户"`
+	AlertType string `gorm:"column:alert_type;type:varchar(50);not null;comment:告警类型"`
+	Severity  string `gorm:"column:severity;type:varchar(20);not null;comment:严重程度"`
+	Message   string `gorm:"column:message;type:text;not null;comment:告警描述"`
 }
 
 func (RiskAlertModel) TableName() string {
@@ -221,14 +222,14 @@ func FromAlertDomain(d *domain.RiskAlert) *RiskAlertModel {
 	}
 }
 
-// CircuitBreakerModel 风险熔断数据库模型
+// CircuitBreakerModel 风险熔断状态数据库模型。
 type CircuitBreakerModel struct {
 	gorm.Model
-	UserID        string     `gorm:"column:user_id;type:varchar(36);uniqueIndex;not null"`
-	IsFired       bool       `gorm:"column:is_fired;type:boolean;not null"`
-	TriggerReason string     `gorm:"column:trigger_reason;type:text"`
-	FiredAt       *time.Time `gorm:"column:fired_at;type:datetime"`
-	AutoResetAt   *time.Time `gorm:"column:auto_reset_at;type:datetime"`
+	UserID        string     `gorm:"column:user_id;type:varchar(36);uniqueIndex;not null;comment:用户ID"`
+	IsFired       bool       `gorm:"column:is_fired;type:boolean;not null;comment:熔断器是否触发"`
+	TriggerReason string     `gorm:"column:trigger_reason;type:text;comment:触发原因"`
+	FiredAt       *time.Time `gorm:"column:fired_at;type:datetime;comment:触发时间"`
+	AutoResetAt   *time.Time `gorm:"column:auto_reset_at;type:datetime;comment:预期的自动恢复时间"`
 }
 
 func (CircuitBreakerModel) TableName() string {
@@ -257,6 +258,7 @@ func FromCircuitBreakerDomain(d *domain.CircuitBreaker) *CircuitBreakerModel {
 	}
 }
 
+// assessmentRepository 实现了评估记录仓储接口。
 type assessmentRepository struct {
 	db *gorm.DB
 }
@@ -296,6 +298,7 @@ func (r *assessmentRepository) GetLatestByUser(ctx context.Context, userID strin
 	return model.ToDomain(), nil
 }
 
+// metricsRepository 实现了风险指标仓储接口。
 type metricsRepository struct {
 	db *gorm.DB
 }
@@ -324,6 +327,7 @@ func (r *metricsRepository) Get(ctx context.Context, userID string) (*domain.Ris
 	return model.ToDomain(), nil
 }
 
+// limitRepository 实现了限额配置仓储接口。
 type limitRepository struct {
 	db *gorm.DB
 }
@@ -363,6 +367,7 @@ func (r *limitRepository) GetByUser(ctx context.Context, userID string, limitTyp
 	return model.ToDomain(), nil
 }
 
+// alertRepository 实现了告警历史仓储接口。
 type alertRepository struct {
 	db *gorm.DB
 }
@@ -396,6 +401,7 @@ func (r *alertRepository) DeleteByID(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Delete(&RiskAlertModel{}, "id = ?", id).Error
 }
 
+// circuitBreakerRepository 实现了熔断状态仓储接口。
 type circuitBreakerRepository struct {
 	db *gorm.DB
 }

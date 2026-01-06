@@ -1,4 +1,4 @@
-// 包  gRPC 处理器实现
+// Package grpc 提供了持仓服务的 gRPC 接口实现。
 package grpc
 
 import (
@@ -14,28 +14,24 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// GRPCHandler gRPC 处理器
-// 负责处理与持仓管理相关的 gRPC 请求
+// GRPCHandler 实现了 PositionService 的 gRPC 服务端接口，负责处理用户的交易头寸相关请求。
 type GRPCHandler struct {
 	pb.UnimplementedPositionServiceServer
-	service *application.PositionService // 持仓应用服务
+	service *application.PositionService // 关联的持仓应用服务
 }
 
-// NewGRPCHandler 创建 gRPC 处理器实例
-// service: 注入的持仓应用服务
+// NewGRPCHandler 构造一个新的持仓 gRPC 处理器实例。
 func NewGRPCHandler(service *application.PositionService) *GRPCHandler {
 	return &GRPCHandler{
 		service: service,
 	}
 }
 
-// GetPositions 获取持仓列表
-// 处理 gRPC GetPositions 请求
+// GetPositions 处理查询用户全量持仓列表的请求。
 func (h *GRPCHandler) GetPositions(ctx context.Context, req *pb.GetPositionsRequest) (*pb.GetPositionsResponse, error) {
 	start := time.Now()
-	slog.Debug("gRPC GetPositions received", "user_id", req.UserId, "page", req.Page, "page_size", req.PageSize)
+	slog.DebugContext(ctx, "grpc get_positions received", "user_id", req.UserId, "page", req.Page)
 
-	// 解析分页参数
 	limit := int(req.PageSize)
 	if limit <= 0 {
 		limit = 20
@@ -44,7 +40,7 @@ func (h *GRPCHandler) GetPositions(ctx context.Context, req *pb.GetPositionsRequ
 
 	dtos, total, err := h.service.GetPositions(ctx, req.UserId, limit, offset)
 	if err != nil {
-		slog.Error("gRPC GetPositions failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
+		slog.ErrorContext(ctx, "grpc get_positions failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get positions: %v", err)
 	}
 
@@ -53,63 +49,60 @@ func (h *GRPCHandler) GetPositions(ctx context.Context, req *pb.GetPositionsRequ
 		pbPositions = append(pbPositions, h.toProtoPosition(dto))
 	}
 
-	slog.Debug("gRPC GetPositions successful", "user_id", req.UserId, "count", len(pbPositions), "duration", time.Since(start))
+	slog.DebugContext(ctx, "grpc get_positions successful", "user_id", req.UserId, "count", len(pbPositions), "duration", time.Since(start))
 	return &pb.GetPositionsResponse{
 		Positions: pbPositions,
 		Total:     total,
 	}, nil
 }
 
-// GetPosition 获取持仓详情
-// 处理 gRPC GetPosition 请求
+// GetPosition 获取特定持仓单的详细数据快照。
 func (h *GRPCHandler) GetPosition(ctx context.Context, req *pb.GetPositionRequest) (*pb.GetPositionResponse, error) {
 	start := time.Now()
-	slog.Debug("gRPC GetPosition received", "position_id", req.PositionId)
+	slog.DebugContext(ctx, "grpc get_position received", "position_id", req.PositionId)
 
 	dto, err := h.service.GetPosition(ctx, req.PositionId)
 	if err != nil {
-		slog.Error("gRPC GetPosition failed", "position_id", req.PositionId, "error", err, "duration", time.Since(start))
+		slog.ErrorContext(ctx, "grpc get_position failed", "position_id", req.PositionId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get position: %v", err)
 	}
 
-	slog.Debug("gRPC GetPosition successful", "position_id", req.PositionId, "duration", time.Since(start))
+	slog.DebugContext(ctx, "grpc get_position successful", "position_id", req.PositionId, "duration", time.Since(start))
 	return &pb.GetPositionResponse{
 		Position: h.toProtoPosition(dto),
 	}, nil
 }
 
-// ClosePosition 平仓
-// 处理 gRPC ClosePosition 请求
+// ClosePosition 显式执行平仓指令。
 func (h *GRPCHandler) ClosePosition(ctx context.Context, req *pb.ClosePositionRequest) (*pb.ClosePositionResponse, error) {
 	start := time.Now()
-	slog.Info("gRPC ClosePosition received", "position_id", req.PositionId, "close_price", req.ClosePrice)
+	slog.InfoContext(ctx, "grpc close_position received", "position_id", req.PositionId, "close_price", req.ClosePrice)
 
 	closePrice, err := decimal.NewFromString(req.ClosePrice)
 	if err != nil {
-		slog.Warn("gRPC ClosePosition invalid price", "position_id", req.PositionId, "price", req.ClosePrice, "error", err)
+		slog.WarnContext(ctx, "grpc close_position invalid price format", "position_id", req.PositionId, "price", req.ClosePrice, "error", err)
 		return nil, status.Errorf(codes.InvalidArgument, "invalid close price: %v", err)
 	}
 
 	err = h.service.ClosePosition(ctx, req.PositionId, closePrice)
 	if err != nil {
-		slog.Error("gRPC ClosePosition failed", "position_id", req.PositionId, "error", err, "duration", time.Since(start))
+		slog.ErrorContext(ctx, "grpc close_position failed", "position_id", req.PositionId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to close position: %v", err)
 	}
 
-	// 获取更新后的头寸以返回
 	dto, err := h.service.GetPosition(ctx, req.PositionId)
 	if err != nil {
-		slog.Error("gRPC GetPosition after close failed", "position_id", req.PositionId, "error", err)
+		slog.ErrorContext(ctx, "grpc get_position after close failed", "position_id", req.PositionId, "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to get updated position: %v", err)
 	}
 
-	slog.Info("gRPC ClosePosition successful", "position_id", req.PositionId, "duration", time.Since(start))
+	slog.InfoContext(ctx, "grpc close_position successful", "position_id", req.PositionId, "duration", time.Since(start))
 	return &pb.ClosePositionResponse{
 		Position: h.toProtoPosition(dto),
 	}, nil
 }
 
-// TccTryFreeze TCC Try: 预冻结持仓
+// TccTryFreeze 执行 TCC 第一阶段：预冻结持仓。
 func (h *GRPCHandler) TccTryFreeze(ctx context.Context, req *pb.TccPositionRequest) (*pb.TccPositionResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
@@ -118,96 +111,122 @@ func (h *GRPCHandler) TccTryFreeze(ctx context.Context, req *pb.TccPositionReque
 
 	quantity, err := decimal.NewFromString(req.Quantity)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid quantity: %v", err)
+		return nil, status.Errorf(codes.InvalidArgument, "invalid quantity format: %v", err)
 	}
 
 	if err := h.service.TccTryFreeze(ctx, barrier, req.UserId, req.Symbol, quantity); err != nil {
-		slog.Error("TccTryFreeze failed", "user_id", req.UserId, "symbol", req.Symbol, "error", err)
+		slog.ErrorContext(ctx, "tcc_try_freeze failed", "user_id", req.UserId, "symbol", req.Symbol, "error", err)
 		return nil, status.Errorf(codes.Aborted, "TccTryFreeze failed: %v", err)
 	}
 
 	return &pb.TccPositionResponse{Success: true}, nil
 }
 
-// TccConfirmFreeze TCC Confirm: 确认冻结
+// TccConfirmFreeze 执行 TCC 第二阶段：确认。
 func (h *GRPCHandler) TccConfirmFreeze(ctx context.Context, req *pb.TccPositionRequest) (*pb.TccPositionResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
 	}
-
-	quantity, _ := decimal.NewFromString(req.Quantity)
+	quantity, err := decimal.NewFromString(req.Quantity)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid quantity: %v", err)
+	}
 	if err := h.service.TccConfirmFreeze(ctx, barrier, req.UserId, req.Symbol, quantity); err != nil {
+		slog.ErrorContext(ctx, "tcc_confirm_freeze failed", "error", err)
 		return nil, status.Errorf(codes.Internal, "TccConfirmFreeze failed: %v", err)
 	}
-
 	return &pb.TccPositionResponse{Success: true}, nil
 }
 
-// TccCancelFreeze TCC Cancel: 取消冻结
+// TccCancelFreeze 执行 TCC 第三阶段：取消。
 func (h *GRPCHandler) TccCancelFreeze(ctx context.Context, req *pb.TccPositionRequest) (*pb.TccPositionResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
 	}
-
-	quantity, _ := decimal.NewFromString(req.Quantity)
+	quantity, err := decimal.NewFromString(req.Quantity)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid quantity: %v", err)
+	}
 	if err := h.service.TccCancelFreeze(ctx, barrier, req.UserId, req.Symbol, quantity); err != nil {
+		slog.ErrorContext(ctx, "tcc_cancel_freeze failed", "error", err)
 		return nil, status.Errorf(codes.Internal, "TccCancelFreeze failed: %v", err)
 	}
-
 	return &pb.TccPositionResponse{Success: true}, nil
 }
 
-// SagaDeductFrozen Saga 正向: 扣除冻结持仓
+// SagaDeductFrozen Saga：扣除冻结持仓。
 func (h *GRPCHandler) SagaDeductFrozen(ctx context.Context, req *pb.SagaPositionRequest) (*pb.SagaPositionResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "barrier error: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
 	}
-	qty, _ := decimal.NewFromString(req.Quantity)
-	price, _ := decimal.NewFromString(req.Price)
+	qty, err := decimal.NewFromString(req.Quantity)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid quantity: %v", err)
+	}
+	price, err := decimal.NewFromString(req.Price)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid price: %v", err)
+	}
 	if err := h.service.SagaDeductFrozen(ctx, barrier, req.UserId, req.Symbol, qty, price); err != nil {
+		slog.ErrorContext(ctx, "saga_deduct_frozen failed", "error", err)
 		return nil, status.Errorf(codes.Aborted, "SagaDeductFrozen failed: %v", err)
 	}
 	return &pb.SagaPositionResponse{Success: true}, nil
 }
 
-// SagaRefundFrozen Saga 补偿: 恢复冻结持仓
+// SagaRefundFrozen Saga：恢复冻结持仓。
 func (h *GRPCHandler) SagaRefundFrozen(ctx context.Context, req *pb.SagaPositionRequest) (*pb.SagaPositionResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "barrier error: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
 	}
-	qty, _ := decimal.NewFromString(req.Quantity)
+	qty, err := decimal.NewFromString(req.Quantity)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid quantity: %v", err)
+	}
 	if err := h.service.SagaRefundFrozen(ctx, barrier, req.UserId, req.Symbol, qty); err != nil {
+		slog.ErrorContext(ctx, "saga_refund_frozen failed", "error", err)
 		return nil, status.Errorf(codes.Internal, "SagaRefundFrozen failed: %v", err)
 	}
 	return &pb.SagaPositionResponse{Success: true}, nil
 }
 
-// SagaAddPosition Saga 正向: 增加持仓
+// SagaAddPosition Saga：增加持仓。
 func (h *GRPCHandler) SagaAddPosition(ctx context.Context, req *pb.SagaPositionRequest) (*pb.SagaPositionResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "barrier error: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
 	}
-	qty, _ := decimal.NewFromString(req.Quantity)
-	price, _ := decimal.NewFromString(req.Price)
+	qty, err := decimal.NewFromString(req.Quantity)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid quantity: %v", err)
+	}
+	price, err := decimal.NewFromString(req.Price)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid price: %v", err)
+	}
 	if err := h.service.SagaAddPosition(ctx, barrier, req.UserId, req.Symbol, qty, price); err != nil {
+		slog.ErrorContext(ctx, "saga_add_position failed", "error", err)
 		return nil, status.Errorf(codes.Aborted, "SagaAddPosition failed: %v", err)
 	}
 	return &pb.SagaPositionResponse{Success: true}, nil
 }
 
-// SagaSubPosition Saga 补偿: 扣除持仓
+// SagaSubPosition Saga：扣除持仓。
 func (h *GRPCHandler) SagaSubPosition(ctx context.Context, req *pb.SagaPositionRequest) (*pb.SagaPositionResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "barrier error: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
 	}
-	qty, _ := decimal.NewFromString(req.Quantity)
+	qty, err := decimal.NewFromString(req.Quantity)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid quantity: %v", err)
+	}
 	if err := h.service.SagaSubPosition(ctx, barrier, req.UserId, req.Symbol, qty); err != nil {
+		slog.ErrorContext(ctx, "saga_sub_position failed", "error", err)
 		return nil, status.Errorf(codes.Internal, "SagaSubPosition failed: %v", err)
 	}
 	return &pb.SagaPositionResponse{Success: true}, nil
