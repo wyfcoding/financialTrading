@@ -58,7 +58,7 @@ func (m *PositionManager) UpdatePositionPrice(ctx context.Context, positionID st
 // --- TCC Distributed Transaction Support ---
 
 // TccTryFreeze 执行 TCC 第一阶段：预冻结持仓资产（减少可用持仓）。
-func (m *PositionManager) TccTryFreeze(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+func (m *PositionManager) TccTryFreeze(ctx context.Context, barrier any, userID, symbol string, quantity decimal.Decimal) error {
 	err := m.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		positions, _, err := m.repo.GetByUser(ctx, userID, 100, 0)
 		if err != nil {
@@ -98,14 +98,14 @@ func (m *PositionManager) TccTryFreeze(ctx context.Context, barrier interface{},
 }
 
 // TccConfirmFreeze 执行 TCC 第二阶段：确认冻结。
-func (m *PositionManager) TccConfirmFreeze(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+func (m *PositionManager) TccConfirmFreeze(ctx context.Context, barrier any, userID, symbol string, quantity decimal.Decimal) error {
 	return m.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		return nil
 	})
 }
 
 // TccCancelFreeze 执行 TCC 取消阶段：恢复之前预冻结的持仓资产。
-func (m *PositionManager) TccCancelFreeze(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+func (m *PositionManager) TccCancelFreeze(ctx context.Context, barrier any, userID, symbol string, quantity decimal.Decimal) error {
 	err := m.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		positions, _, err := m.repo.GetByUser(ctx, userID, 100, 0)
 		if err != nil {
@@ -138,7 +138,7 @@ func (m *PositionManager) TccCancelFreeze(ctx context.Context, barrier interface
 // --- Saga Distributed Transaction Support ---
 
 // SagaDeductFrozen 执行 Saga 正向流程：扣除已冻结持仓并结转盈亏。
-func (m *PositionManager) SagaDeductFrozen(ctx context.Context, barrier interface{}, userID, symbol string, quantity, price decimal.Decimal) error {
+func (m *PositionManager) SagaDeductFrozen(ctx context.Context, barrier any, userID, symbol string, quantity, price decimal.Decimal) error {
 	err := m.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		positions, _, err := m.repo.GetByUser(ctx, userID, 100, 0)
 		if err != nil {
@@ -170,7 +170,7 @@ func (m *PositionManager) SagaDeductFrozen(ctx context.Context, barrier interfac
 }
 
 // SagaRefundFrozen 执行 Saga 补偿流程：恢复已扣除的冻结持仓。
-func (m *PositionManager) SagaRefundFrozen(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+func (m *PositionManager) SagaRefundFrozen(ctx context.Context, barrier any, userID, symbol string, quantity decimal.Decimal) error {
 	err := m.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		return m.TccCancelFreeze(ctx, barrier, userID, symbol, quantity)
 	})
@@ -184,7 +184,7 @@ func (m *PositionManager) SagaRefundFrozen(ctx context.Context, barrier interfac
 }
 
 // SagaAddPosition 执行 Saga 正向流程：买入资产成功，入账并重新计算成本均价。
-func (m *PositionManager) SagaAddPosition(ctx context.Context, barrier interface{}, userID, symbol string, quantity, price decimal.Decimal) error {
+func (m *PositionManager) SagaAddPosition(ctx context.Context, barrier any, userID, symbol string, quantity, price decimal.Decimal) error {
 	err := m.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		positions, _, err := m.repo.GetByUser(ctx, userID, 100, 0)
 		if err != nil {
@@ -227,7 +227,7 @@ func (m *PositionManager) SagaAddPosition(ctx context.Context, barrier interface
 }
 
 // SagaSubPosition 执行 Saga 补偿流程：扣除已增加的持仓。
-func (m *PositionManager) SagaSubPosition(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+func (m *PositionManager) SagaSubPosition(ctx context.Context, barrier any, userID, symbol string, quantity decimal.Decimal) error {
 	err := m.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		positions, _, err := m.repo.GetByUser(ctx, userID, 100, 0)
 		if err != nil {

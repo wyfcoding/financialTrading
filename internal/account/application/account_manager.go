@@ -194,7 +194,7 @@ func (m *AccountManager) DeductFrozenBalance(ctx context.Context, accountID stri
 }
 
 // TccTryFreeze 执行 TCC 事务的第一阶段：尝试冻结资金。
-func (m *AccountManager) TccTryFreeze(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+func (m *AccountManager) TccTryFreeze(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
 	err := m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		account, err := m.getAccount(ctx, userID, currency)
 		if err != nil {
@@ -219,12 +219,12 @@ func (m *AccountManager) TccTryFreeze(ctx context.Context, barrier interface{}, 
 
 // TccConfirmFreeze 执行 TCC 事务的第二阶段：确认冻结。
 // 对于冻结操作，Confirm 阶段通常为幂等占位，因为资金已在 Try 阶段锁定。
-func (m *AccountManager) TccConfirmFreeze(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+func (m *AccountManager) TccConfirmFreeze(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
 	return m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error { return nil })
 }
 
 // TccCancelFreeze 执行 TCC 事务的取消阶段：释放已冻结的资金。
-func (m *AccountManager) TccCancelFreeze(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+func (m *AccountManager) TccCancelFreeze(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
 	err := m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		account, err := m.getAccount(ctx, userID, currency)
 		if err != nil {
@@ -250,7 +250,7 @@ func (m *AccountManager) TccCancelFreeze(ctx context.Context, barrier interface{
 // --- Saga Distributed Transaction Support ---
 
 // SagaDeductFrozen 执行 Saga 事务中的正向扣款逻辑（针对已冻结资金）。
-func (m *AccountManager) SagaDeductFrozen(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+func (m *AccountManager) SagaDeductFrozen(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
 	err := m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		account, err := m.getAccount(ctx, userID, currency)
 		if err != nil {
@@ -282,7 +282,7 @@ func (m *AccountManager) SagaDeductFrozen(ctx context.Context, barrier interface
 }
 
 // SagaRefundFrozen 执行 Saga 事务的补偿逻辑：将之前尝试扣除的金额退回冻结余额。
-func (m *AccountManager) SagaRefundFrozen(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+func (m *AccountManager) SagaRefundFrozen(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
 	err := m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		account, err := m.getAccount(ctx, userID, currency)
 		if err != nil {
@@ -302,7 +302,7 @@ func (m *AccountManager) SagaRefundFrozen(ctx context.Context, barrier interface
 }
 
 // SagaAddBalance 执行 Saga 事务中的正向加钱逻辑（增加总余额和可用余额）。
-func (m *AccountManager) SagaAddBalance(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+func (m *AccountManager) SagaAddBalance(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
 	err := m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		account, err := m.getAccount(ctx, userID, currency)
 		if err != nil {
@@ -329,7 +329,7 @@ func (m *AccountManager) SagaAddBalance(ctx context.Context, barrier interface{}
 }
 
 // SagaSubBalance 执行 Saga 事务的补偿逻辑：扣除之前增加的余额。
-func (m *AccountManager) SagaSubBalance(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+func (m *AccountManager) SagaSubBalance(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
 	err := m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		account, err := m.getAccount(ctx, userID, currency)
 		if err != nil {

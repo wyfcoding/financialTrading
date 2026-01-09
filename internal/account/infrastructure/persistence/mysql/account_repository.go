@@ -104,7 +104,7 @@ func (r *accountRepositoryImpl) GetByUser(ctx context.Context, userID string) ([
 func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, accountID string, balance, available, frozen decimal.Decimal, currentVersion int64) error {
 	result := r.getDB(ctx).Model(&AccountModel{}).
 		Where("account_id = ? AND version = ?", accountID, currentVersion).
-		Updates(map[string]interface{}{
+		Updates(map[string]any{
 			"balance":           balance.String(),
 			"available_balance": available.String(),
 			"frozen_balance":    frozen.String(),
@@ -124,7 +124,7 @@ func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, accountID str
 }
 
 // ExecWithBarrier 实现 DTM 子事务屏障封装。
-func (r *accountRepositoryImpl) ExecWithBarrier(ctx context.Context, barrier interface{}, fn func(ctx context.Context) error) error {
+func (r *accountRepositoryImpl) ExecWithBarrier(ctx context.Context, barrier any, fn func(ctx context.Context) error) error {
 	return dtm.CallWithGorm(ctx, barrier, r.db, func(tx *gorm.DB) error {
 		txCtx := context.WithValue(ctx, "tx_db", tx)
 		return fn(txCtx)

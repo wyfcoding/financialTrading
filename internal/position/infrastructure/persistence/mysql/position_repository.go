@@ -134,7 +134,7 @@ func (r *positionRepositoryImpl) Update(ctx context.Context, position *domain.Po
 	model := r.fromDomain(position)
 	result := r.getDB(ctx).Model(&PositionModel{}).
 		Where("position_id = ? AND version = ?", position.PositionID, position.Version).
-		Updates(map[string]interface{}{
+		Updates(map[string]any{
 			"quantity":       model.Quantity,
 			"entry_price":    model.EntryPrice,
 			"current_price":  model.CurrentPrice,
@@ -160,7 +160,7 @@ func (r *positionRepositoryImpl) Update(ctx context.Context, position *domain.Po
 // Close 实现 domain.PositionRepository.Close
 func (r *positionRepositoryImpl) Close(ctx context.Context, positionID string, closePrice decimal.Decimal) error {
 	now := time.Now()
-	err := r.getDB(ctx).Model(&PositionModel{}).Where("position_id = ?", positionID).Updates(map[string]interface{}{
+	err := r.getDB(ctx).Model(&PositionModel{}).Where("position_id = ?", positionID).Updates(map[string]any{
 		"status":        "CLOSED",
 		"closed_at":     &now,
 		"current_price": closePrice.String(),
@@ -174,7 +174,7 @@ func (r *positionRepositoryImpl) Close(ctx context.Context, positionID string, c
 }
 
 // ExecWithBarrier 在分布式事务屏障下执行业务逻辑
-func (r *positionRepositoryImpl) ExecWithBarrier(ctx context.Context, barrier interface{}, fn func(ctx context.Context) error) error {
+func (r *positionRepositoryImpl) ExecWithBarrier(ctx context.Context, barrier any, fn func(ctx context.Context) error) error {
 	return dtm.CallWithGorm(ctx, barrier, r.db, func(tx *gorm.DB) error {
 		txCtx := context.WithValue(ctx, "tx_db", tx)
 		return fn(txCtx)

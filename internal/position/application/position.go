@@ -29,33 +29,33 @@ func (s *PositionService) ClosePosition(ctx context.Context, positionID string, 
 
 // --- TCC Facade ---
 
-func (s *PositionService) TccTryFreeze(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+func (s *PositionService) TccTryFreeze(ctx context.Context, barrier any, userID, symbol string, quantity decimal.Decimal) error {
 	return s.manager.TccTryFreeze(ctx, barrier, userID, symbol, quantity)
 }
 
-func (s *PositionService) TccConfirmFreeze(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+func (s *PositionService) TccConfirmFreeze(ctx context.Context, barrier any, userID, symbol string, quantity decimal.Decimal) error {
 	return s.manager.TccConfirmFreeze(ctx, barrier, userID, symbol, quantity)
 }
 
-func (s *PositionService) TccCancelFreeze(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+func (s *PositionService) TccCancelFreeze(ctx context.Context, barrier any, userID, symbol string, quantity decimal.Decimal) error {
 	return s.manager.TccCancelFreeze(ctx, barrier, userID, symbol, quantity)
 }
 
 // --- Saga Facade ---
 
-func (s *PositionService) SagaDeductFrozen(ctx context.Context, barrier interface{}, userID, symbol string, quantity, price decimal.Decimal) error {
+func (s *PositionService) SagaDeductFrozen(ctx context.Context, barrier any, userID, symbol string, quantity, price decimal.Decimal) error {
 	return s.manager.SagaDeductFrozen(ctx, barrier, userID, symbol, quantity, price)
 }
 
-func (s *PositionService) SagaRefundFrozen(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+func (s *PositionService) SagaRefundFrozen(ctx context.Context, barrier any, userID, symbol string, quantity decimal.Decimal) error {
 	return s.manager.SagaRefundFrozen(ctx, barrier, userID, symbol, quantity)
 }
 
-func (s *PositionService) SagaAddPosition(ctx context.Context, barrier interface{}, userID, symbol string, quantity, price decimal.Decimal) error {
+func (s *PositionService) SagaAddPosition(ctx context.Context, barrier any, userID, symbol string, quantity, price decimal.Decimal) error {
 	return s.manager.SagaAddPosition(ctx, barrier, userID, symbol, quantity, price)
 }
 
-func (s *PositionService) SagaSubPosition(ctx context.Context, barrier interface{}, userID, symbol string, quantity decimal.Decimal) error {
+func (s *PositionService) SagaSubPosition(ctx context.Context, barrier any, userID, symbol string, quantity decimal.Decimal) error {
 	return s.manager.SagaSubPosition(ctx, barrier, userID, symbol, quantity)
 }
 

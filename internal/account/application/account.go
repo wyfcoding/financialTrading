@@ -48,33 +48,33 @@ func (s *AccountService) UnfreezeBalance(ctx context.Context, accountID string, 
 
 // --- Saga Facade ---
 
-func (s *AccountService) SagaDeductFrozen(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+func (s *AccountService) SagaDeductFrozen(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
 	return s.manager.SagaDeductFrozen(ctx, barrier, userID, currency, amount)
 }
 
-func (s *AccountService) SagaRefundFrozen(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+func (s *AccountService) SagaRefundFrozen(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
 	return s.manager.SagaRefundFrozen(ctx, barrier, userID, currency, amount)
 }
 
-func (s *AccountService) SagaAddBalance(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+func (s *AccountService) SagaAddBalance(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
 	return s.manager.SagaAddBalance(ctx, barrier, userID, currency, amount)
 }
 
-func (s *AccountService) SagaSubBalance(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+func (s *AccountService) SagaSubBalance(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
 	return s.manager.SagaSubBalance(ctx, barrier, userID, currency, amount)
 }
 
 // --- TCC Facade ---
 
-func (s *AccountService) TccTryFreeze(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+func (s *AccountService) TccTryFreeze(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
 	return s.manager.TccTryFreeze(ctx, barrier, userID, currency, amount)
 }
 
-func (s *AccountService) TccConfirmFreeze(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+func (s *AccountService) TccConfirmFreeze(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
 	return s.manager.TccConfirmFreeze(ctx, barrier, userID, currency, amount)
 }
 
-func (s *AccountService) TccCancelFreeze(ctx context.Context, barrier interface{}, userID, currency string, amount decimal.Decimal) error {
+func (s *AccountService) TccCancelFreeze(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
 	return s.manager.TccCancelFreeze(ctx, barrier, userID, currency, amount)
 }
 

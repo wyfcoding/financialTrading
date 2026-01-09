@@ -23,8 +23,8 @@ type AccountRepository interface {
 	UpdateBalance(ctx context.Context, accountID string, balance, availableBalance, frozenBalance decimal.Decimal, currentVersion int64) error
 
 	// ExecWithBarrier 在分布式事务屏障下执行业务逻辑
-	// barrier 类型应为 *dtmgrpc.BranchBarrier，使用 interface{} 避免领域层强依赖
-	ExecWithBarrier(ctx context.Context, barrier interface{}, fn func(ctx context.Context) error) error
+	// barrier 类型应为 *dtmgrpc.BranchBarrier，使用 any 避免领域层强依赖
+	ExecWithBarrier(ctx context.Context, barrier any, fn func(ctx context.Context) error) error
 }
 
 // TransactionRepository 交易记录仓储接口

@@ -22,7 +22,7 @@ type ClearingManager struct {
 	eodRepo        domain.EODClearingRepository       // 日终清算仓储
 	marginRepo     domain.MarginRequirementRepository // 保证金规则仓储
 	accountCli     accountv1.AccountServiceClient     // 账户服务客户端
-	positionCli    positionv1.PositionServiceClient    // 持仓服务客户端
+	positionCli    positionv1.PositionServiceClient   // 持仓服务客户端
 	logger         *slog.Logger                       // 结构化日志记录器
 	dtmServer      string                             // DTM 服务端地址
 	accountSvcURL  string                             // Account 服务 gRPC 基地址
