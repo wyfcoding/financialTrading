@@ -41,7 +41,7 @@ service PositionService {
 // TCC 持仓操作请求
 message TccPositionRequest {
   string user_id = 1;
-  string symbol = 2;   // 标的，如 "BTC"
+  string symbol = 2; // 标的，如 "BTC"
   string quantity = 3; // 卖出数量
   string order_id = 4; // 关联订单ID
 }

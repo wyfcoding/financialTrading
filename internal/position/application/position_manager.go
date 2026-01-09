@@ -88,7 +88,6 @@ func (m *PositionManager) TccTryFreeze(ctx context.Context, barrier any, userID,
 		targetPos.Quantity = targetPos.Quantity.Sub(quantity)
 		return m.repo.Update(ctx, targetPos)
 	})
-
 	if err != nil {
 		logging.Error(ctx, "tcc_try_freeze failed", "user_id", userID, "symbol", symbol, "error", err)
 		return err
@@ -126,7 +125,6 @@ func (m *PositionManager) TccCancelFreeze(ctx context.Context, barrier any, user
 		}
 		return nil
 	})
-
 	if err != nil {
 		logging.Error(ctx, "tcc_cancel_freeze failed", "user_id", userID, "symbol", symbol, "error", err)
 		return err
@@ -160,7 +158,6 @@ func (m *PositionManager) SagaDeductFrozen(ctx context.Context, barrier any, use
 		targetPos.RealizePnL(quantity, price)
 		return m.repo.Update(ctx, targetPos)
 	})
-
 	if err != nil {
 		logging.Error(ctx, "saga_deduct_frozen failed", "user_id", userID, "symbol", symbol, "error", err)
 		return err
@@ -174,7 +171,6 @@ func (m *PositionManager) SagaRefundFrozen(ctx context.Context, barrier any, use
 	err := m.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		return m.TccCancelFreeze(ctx, barrier, userID, symbol, quantity)
 	})
-
 	if err != nil {
 		logging.Error(ctx, "saga_refund_frozen failed", "user_id", userID, "symbol", symbol, "error", err)
 		return err
@@ -217,7 +213,6 @@ func (m *PositionManager) SagaAddPosition(ctx context.Context, barrier any, user
 		targetPos.AddQuantity(quantity, price)
 		return m.repo.Update(ctx, targetPos)
 	})
-
 	if err != nil {
 		logging.Error(ctx, "saga_add_position failed", "user_id", userID, "symbol", symbol, "error", err)
 		return err
@@ -245,7 +240,6 @@ func (m *PositionManager) SagaSubPosition(ctx context.Context, barrier any, user
 		}
 		return nil
 	})
-
 	if err != nil {
 		logging.Error(ctx, "saga_sub_position failed", "user_id", userID, "symbol", symbol, "error", err)
 		return err

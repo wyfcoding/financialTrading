@@ -34,7 +34,7 @@ type PortfolioRiskResult struct {
 	TotalValue      decimal.Decimal            `json:"total_value"`
 	VaR             decimal.Decimal            `json:"var"`             // Value at Risk
 	ES              decimal.Decimal            `json:"es"`              // Expected Shortfall (CVaR)
-	ComponentVaR    map[string]decimal.Decimal `json:"component_var"`   //各资产对总风险的贡献 (Marginal VaR * Weight)
+	ComponentVaR    map[string]decimal.Decimal `json:"component_var"`   // 各资产对总风险的贡献 (Marginal VaR * Weight)
 	Diversification decimal.Decimal            `json:"diversification"` // 分散化效应带来的风险降低值
 }
 
@@ -51,9 +51,9 @@ func CalculatePortfolioRisk(input PortfolioRiskInput) (*PortfolioRiskResult, err
 	// 1. 构建协方差矩阵 Sigma
 	// Cov(i, j) = Rho(i, j) * Sigma(i) * Sigma(j)
 	covData := make([][]float64, nAssets)
-	for i := 0; i < nAssets; i++ {
+	for i := range nAssets {
 		covData[i] = make([]float64, nAssets)
-		for j := 0; j < nAssets; j++ {
+		for j := range nAssets {
 			vol_i := input.Assets[i].Volatility
 			vol_j := input.Assets[j].Volatility
 			rho := input.CorrelationMatrix[i][j]
@@ -92,7 +92,7 @@ func CalculatePortfolioRisk(input PortfolioRiskInput) (*PortfolioRiskResult, err
 
 	// 漂移项 (Drift) = (mu - 0.5 * sigma^2) * T
 	drifts := make([]float64, nAssets)
-	for i := 0; i < nAssets; i++ {
+	for i := range nAssets {
 		mu := input.Assets[i].ExpectedReturn
 		sig := input.Assets[i].Volatility
 		drifts[i] = (mu - 0.5*sig*sig) * input.TimeHorizon
@@ -101,7 +101,7 @@ func CalculatePortfolioRisk(input PortfolioRiskInput) (*PortfolioRiskResult, err
 	for s := 0; s < input.Simulations; s++ {
 		// 生成 n 个独立标准正态分布随机数
 		z := make([]float64, nAssets)
-		for i := 0; i < nAssets; i++ {
+		for i := range nAssets {
 			z[i] = randSource.NormFloat64()
 		}
 
@@ -110,7 +110,7 @@ func CalculatePortfolioRisk(input PortfolioRiskInput) (*PortfolioRiskResult, err
 
 		// 计算模拟后的资产价格/价值
 		var simPortfolioVal float64
-		for i := 0; i < nAssets; i++ {
+		for i := range nAssets {
 			// S_T = S_0 * exp(drift + x)
 			// 注意：这里 x 已经是 correlated volatility part: sigma * sqrt(T) * epsilon
 			// 因为 Cov 矩阵在构建时已经乘以了 T，所以 L 分解出来的 scale 已经包含了 sqrt(T)
@@ -127,10 +127,7 @@ func CalculatePortfolioRisk(input PortfolioRiskInput) (*PortfolioRiskResult, err
 	slices.Sort(portfolioPnLs)
 
 	// VaR
-	idx := int(math.Floor(float64(input.Simulations) * (1 - input.ConfidenceLevel)))
-	if idx < 0 {
-		idx = 0
-	}
+	idx := max(int(math.Floor(float64(input.Simulations)*(1-input.ConfidenceLevel))), 0)
 	if idx >= input.Simulations {
 		idx = input.Simulations - 1
 	}

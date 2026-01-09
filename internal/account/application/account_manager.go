@@ -104,7 +104,6 @@ func (m *AccountManager) Deposit(ctx context.Context, accountID string, amount d
 			"user_id": account.UserID, "currency": account.Currency, "change": amount.String(), "type": "DEPOSIT",
 		})
 	})
-
 	if err != nil {
 		slog.ErrorContext(ctx, "deposit failed", "account_id", accountID, "amount", amount.String(), "error", err)
 		return err
@@ -183,7 +182,6 @@ func (m *AccountManager) DeductFrozenBalance(ctx context.Context, accountID stri
 			TransactionID: transactionID, AccountID: accountID, Type: "DEDUCT", Amount: amount, Status: "COMPLETED",
 		})
 	})
-
 	if err != nil {
 		slog.ErrorContext(ctx, "deduct frozen balance failed", "account_id", accountID, "amount", amount.String(), "error", err)
 		return err
@@ -208,7 +206,6 @@ func (m *AccountManager) TccTryFreeze(ctx context.Context, barrier any, userID, 
 		newFrozen := account.FrozenBalance.Add(amount)
 		return m.accountRepo.UpdateBalance(ctx, account.AccountID, account.Balance, newAvailable, newFrozen, account.Version)
 	})
-
 	if err != nil {
 		slog.ErrorContext(ctx, "tcc_try_freeze failed", "user_id", userID, "currency", currency, "amount", amount.String(), "error", err)
 		return err
@@ -238,7 +235,6 @@ func (m *AccountManager) TccCancelFreeze(ctx context.Context, barrier any, userI
 		newFrozen := account.FrozenBalance.Sub(amount)
 		return m.accountRepo.UpdateBalance(ctx, account.AccountID, account.Balance, newAvailable, newFrozen, account.Version)
 	})
-
 	if err != nil {
 		slog.ErrorContext(ctx, "tcc_cancel_freeze failed", "user_id", userID, "currency", currency, "amount", amount.String(), "error", err)
 		return err
@@ -272,7 +268,6 @@ func (m *AccountManager) SagaDeductFrozen(ctx context.Context, barrier any, user
 			"user_id": userID, "currency": currency, "change": amount.Neg().String(), "type": "SETTLE_OUT",
 		})
 	})
-
 	if err != nil {
 		slog.ErrorContext(ctx, "saga_deduct_frozen failed", "user_id", userID, "currency", currency, "amount", amount.String(), "error", err)
 		return err
@@ -292,7 +287,6 @@ func (m *AccountManager) SagaRefundFrozen(ctx context.Context, barrier any, user
 		newFrozen := account.FrozenBalance.Add(amount)
 		return m.accountRepo.UpdateBalance(ctx, account.AccountID, newBalance, account.AvailableBalance, newFrozen, account.Version)
 	})
-
 	if err != nil {
 		slog.ErrorContext(ctx, "saga_refund_frozen failed", "user_id", userID, "currency", currency, "amount", amount.String(), "error", err)
 		return err
@@ -319,7 +313,6 @@ func (m *AccountManager) SagaAddBalance(ctx context.Context, barrier any, userID
 			"user_id": userID, "currency": currency, "change": amount.String(), "type": "SETTLE_IN",
 		})
 	})
-
 	if err != nil {
 		slog.ErrorContext(ctx, "saga_add_balance failed", "user_id", userID, "currency", currency, "amount", amount.String(), "error", err)
 		return err
@@ -343,7 +336,6 @@ func (m *AccountManager) SagaSubBalance(ctx context.Context, barrier any, userID
 		newAvailable := account.AvailableBalance.Sub(amount)
 		return m.accountRepo.UpdateBalance(ctx, account.AccountID, newBalance, newAvailable, account.FrozenBalance, account.Version)
 	})
-
 	if err != nil {
 		slog.ErrorContext(ctx, "saga_sub_balance failed", "user_id", userID, "currency", currency, "amount", amount.String(), "error", err)
 		return err

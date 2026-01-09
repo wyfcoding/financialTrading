@@ -178,7 +178,6 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 			}
 			return nil
 		})
-
 		if err != nil {
 			logging.Error(ctx, "tcc transaction failed", "order_id", orderID, "error", err)
 			return nil, fmt.Errorf("order placement failed during transaction: %w", err)

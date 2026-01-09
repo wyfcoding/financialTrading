@@ -7,9 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-var (
-	ErrConcurrentUpdate = errors.New("account record concurrent update detected")
-)
+var ErrConcurrentUpdate = errors.New("account record concurrent update detected")
 
 // AccountRepository 账户仓储接口
 type AccountRepository interface {

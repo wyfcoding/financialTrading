@@ -127,7 +127,6 @@ func (m *AlgoManager) runTWAP(ctx context.Context, algo *domain.AlgoOrder) {
 			Quantity:  slice.Quantity.String(),
 			Price:     "0", // 市价单或根据策略定价
 		})
-
 		if err != nil {
 			logging.Error(ctx, "TWAP: failed to place child order", "algo_id", algo.AlgoID, "slice_id", slice.SliceID, "error", err)
 			// 简单重试或跳过，实际生产需更复杂的错误处理
@@ -218,7 +217,6 @@ func (m *AlgoManager) runVWAP(ctx context.Context, algo *domain.AlgoOrder) {
 			Quantity:  slice.Quantity.String(),
 			Price:     "0",
 		})
-
 		if err != nil {
 			logging.Error(ctx, "VWAP: failed to place child order", "algo_id", algo.AlgoID, "slice_id", slice.SliceID, "error", err)
 			continue

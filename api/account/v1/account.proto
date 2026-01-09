@@ -51,7 +51,7 @@ service AccountService {
 message TccFreezeRequest {
   string user_id = 1;
   string currency = 2; // 币种，如 "USDT", "BTC"
-  string amount = 3;   // 冻结金额
+  string amount = 3; // 冻结金额
   string order_id = 4; // 关联订单ID (用于幂等去重)
 }
 

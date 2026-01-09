@@ -300,7 +300,7 @@ func (e *DisruptionEngine) GetOrderBookSnapshot(depth int) *OrderBookSnapshot {
 func (e *DisruptionEngine) collectLevels(book *algorithm.SkipList[float64, *OrderLevel], depth int) []*OrderBookLevel {
 	levels := make([]*OrderBookLevel, 0, depth)
 	it := book.Iterator()
-	for i := 0; i < depth; i++ {
+	for range depth {
 		_, level, ok := it.Next()
 		if !ok {
 			break
