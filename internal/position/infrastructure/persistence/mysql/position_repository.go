@@ -9,6 +9,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/position/domain"
+	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/dtm"
 	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
@@ -53,7 +54,7 @@ func NewPositionRepository(db *gorm.DB) domain.PositionRepository {
 
 // getDB 尝试从 Context 获取事务 DB，否则返回默认 DB
 func (r *positionRepositoryImpl) getDB(ctx context.Context) *gorm.DB {
-	if tx, ok := ctx.Value("tx_db").(*gorm.DB); ok {
+	if tx, ok := contextx.GetTx(ctx).(*gorm.DB); ok {
 		return tx.WithContext(ctx)
 	}
 	return r.db.WithContext(ctx)
@@ -176,7 +177,7 @@ func (r *positionRepositoryImpl) Close(ctx context.Context, positionID string, c
 // ExecWithBarrier 在分布式事务屏障下执行业务逻辑
 func (r *positionRepositoryImpl) ExecWithBarrier(ctx context.Context, barrier any, fn func(ctx context.Context) error) error {
 	return dtm.CallWithGorm(ctx, barrier, r.db, func(tx *gorm.DB) error {
-		txCtx := context.WithValue(ctx, "tx_db", tx)
+		txCtx := contextx.WithTx(ctx, tx)
 		return fn(txCtx)
 	})
 }

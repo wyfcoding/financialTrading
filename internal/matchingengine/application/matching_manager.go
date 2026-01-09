@@ -11,6 +11,7 @@ import (
 	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
 	"github.com/wyfcoding/pkg/algorithm"
+	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/logging"
 	"github.com/wyfcoding/pkg/messagequeue/outbox"
 	"gorm.io/gorm"
@@ -202,7 +203,7 @@ func (m *MatchingEngineManager) processPostMatching(trades []*algorithm.Trade) {
 	// 使用本地事务确保成交记录与 Outbox 消息的一致性
 	err := m.db.Transaction(func(tx *gorm.DB) error {
 		// 将事务注入 Context，供 Repository 使用
-		ctx := context.WithValue(context.Background(), "tx_db", tx)
+		ctx := contextx.WithTx(context.Background(), tx)
 
 		for _, t := range trades {
 			// 1. 持久化成交记录

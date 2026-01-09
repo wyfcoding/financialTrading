@@ -9,6 +9,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
 	"github.com/wyfcoding/pkg/algorithm"
+	"github.com/wyfcoding/pkg/contextx"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -120,7 +121,7 @@ func (r *matchingRepositoryImpl) GetLatestOrderBook(ctx context.Context, symbol 
 }
 
 func (r *matchingRepositoryImpl) getDB(ctx context.Context) *gorm.DB {
-	if tx, ok := ctx.Value("tx_db").(*gorm.DB); ok {
+	if tx, ok := contextx.GetTx(ctx).(*gorm.DB); ok {
 		return tx.WithContext(ctx)
 	}
 	return r.db.WithContext(ctx)

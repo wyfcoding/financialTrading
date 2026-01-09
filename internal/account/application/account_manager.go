@@ -7,6 +7,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/account/domain"
+	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/messagequeue/outbox"
 	"gorm.io/gorm"
@@ -76,7 +77,7 @@ func (m *AccountManager) CreateAccount(ctx context.Context, req *CreateAccountRe
 // Deposit 执行资产充值，增加可用余额并产生财务流水。
 func (m *AccountManager) Deposit(ctx context.Context, accountID string, amount decimal.Decimal) error {
 	err := m.db.Transaction(func(tx *gorm.DB) error {
-		txCtx := context.WithValue(ctx, "tx_db", tx)
+		txCtx := contextx.WithTx(ctx, tx)
 		account, err := m.accountRepo.Get(txCtx, accountID)
 		if err != nil || account == nil {
 			return fmt.Errorf("account not found")
@@ -162,7 +163,7 @@ func (m *AccountManager) UnfreezeBalance(ctx context.Context, accountID string, 
 // DeductFrozenBalance 从已冻结的金额中执行真实扣除（例如成交后的资金结算）。
 func (m *AccountManager) DeductFrozenBalance(ctx context.Context, accountID string, amount decimal.Decimal) error {
 	err := m.db.Transaction(func(tx *gorm.DB) error {
-		txCtx := context.WithValue(ctx, "tx_db", tx)
+		txCtx := contextx.WithTx(ctx, tx)
 		account, err := m.accountRepo.Get(txCtx, accountID)
 		if err != nil || account == nil {
 			return fmt.Errorf("account not found")
@@ -264,7 +265,8 @@ func (m *AccountManager) SagaDeductFrozen(ctx context.Context, barrier any, user
 		}
 
 		// 发布可靠结算出账事件，用于审计或下游对账
-		return m.outbox.PublishInTx(ctx, ctx.Value("tx_db").(*gorm.DB), "account.balance.changed", fmt.Sprintf("SAGA-DED-%s", userID), map[string]any{
+		tx, _ := contextx.GetTx(ctx).(*gorm.DB)
+		return m.outbox.PublishInTx(ctx, tx, "account.balance.changed", fmt.Sprintf("SAGA-DED-%s", userID), map[string]any{
 			"user_id": userID, "currency": currency, "change": amount.Neg().String(), "type": "SETTLE_OUT",
 		})
 	})
@@ -309,7 +311,8 @@ func (m *AccountManager) SagaAddBalance(ctx context.Context, barrier any, userID
 			return err
 		}
 
-		return m.outbox.PublishInTx(ctx, ctx.Value("tx_db").(*gorm.DB), "account.balance.changed", fmt.Sprintf("SAGA-ADD-%s", userID), map[string]any{
+		tx, _ := contextx.GetTx(ctx).(*gorm.DB)
+		return m.outbox.PublishInTx(ctx, tx, "account.balance.changed", fmt.Sprintf("SAGA-ADD-%s", userID), map[string]any{
 			"user_id": userID, "currency": currency, "change": amount.String(), "type": "SETTLE_IN",
 		})
 	})

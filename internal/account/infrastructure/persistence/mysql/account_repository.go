@@ -8,6 +8,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/account/domain"
+	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/dtm"
 	"github.com/wyfcoding/pkg/logging"
 	"gorm.io/gorm"
@@ -126,13 +127,13 @@ func (r *accountRepositoryImpl) UpdateBalance(ctx context.Context, accountID str
 // ExecWithBarrier 实现 DTM 子事务屏障封装。
 func (r *accountRepositoryImpl) ExecWithBarrier(ctx context.Context, barrier any, fn func(ctx context.Context) error) error {
 	return dtm.CallWithGorm(ctx, barrier, r.db, func(tx *gorm.DB) error {
-		txCtx := context.WithValue(ctx, "tx_db", tx)
+		txCtx := contextx.WithTx(ctx, tx)
 		return fn(txCtx)
 	})
 }
 
 func (r *accountRepositoryImpl) getDB(ctx context.Context) *gorm.DB {
-	if tx, ok := ctx.Value("tx_db").(*gorm.DB); ok {
+	if tx, ok := contextx.GetTx(ctx).(*gorm.DB); ok {
 		return tx.WithContext(ctx)
 	}
 	return r.db.WithContext(ctx)
