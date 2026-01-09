@@ -3,8 +3,8 @@ package domain
 import (
 	"fmt"
 	"math"
-	"math/rand"
-	"sort"
+	"math/rand/v2"
+	"slices"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -76,7 +76,7 @@ func CalculatePortfolioRisk(input PortfolioRiskInput) (*PortfolioRiskResult, err
 	}
 
 	// 3. 蒙特卡洛模拟
-	randSource := rand.New(rand.NewSource(time.Now().UnixNano()))
+	randSource := rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0))
 
 	// 初始组合价值
 	var initialTotalValue decimal.Decimal
@@ -124,7 +124,7 @@ func CalculatePortfolioRisk(input PortfolioRiskInput) (*PortfolioRiskResult, err
 	}
 
 	// 4. 计算统计量
-	sort.Float64s(portfolioPnLs)
+	slices.Sort(portfolioPnLs)
 
 	// VaR
 	idx := int(math.Floor(float64(input.Simulations) * (1 - input.ConfidenceLevel)))

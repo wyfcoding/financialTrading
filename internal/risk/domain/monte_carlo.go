@@ -3,8 +3,8 @@ package domain
 
 import (
 	"math"
-	"math/rand"
-	"sort"
+	"math/rand/v2"
+	"slices"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -37,7 +37,7 @@ func CalculateVaR(input MonteCarloInput) *MonteCarloResult {
 	}
 
 	// 真实化执行：使用更加健壮的随机数生成器
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	r := rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0))
 
 	dt := input.T / float64(input.Steps)
 	drift := (input.Mu - 0.5*input.Sigma*input.Sigma) * dt
@@ -62,7 +62,7 @@ func CalculateVaR(input MonteCarloInput) *MonteCarloResult {
 		pnl[i] = price - input.S
 	}
 
-	sort.Float64s(pnl)
+	slices.Sort(pnl)
 
 	// 提取风险分位数 (Quantile-based VaR)
 	// 例如 95% VaR 是指有 5% 的概率亏损超过此值

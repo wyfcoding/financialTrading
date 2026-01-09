@@ -2,7 +2,7 @@ package domain
 
 import (
 	"errors"
-	"math/rand"
+	"math/rand/v2"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -97,7 +97,7 @@ func (s *TWAPStrategy) GenerateSlices(order *ParentOrder, _ interface{}) ([]*Chi
 	}
 
 	slices := make([]*ChildOrder, 0, numSlices)
-	randSource := rand.New(rand.NewSource(time.Now().UnixNano()))
+	randSource := rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0))
 
 	currentQtySum := decimal.Zero
 
@@ -120,7 +120,7 @@ func (s *TWAPStrategy) GenerateSlices(order *ParentOrder, _ interface{}) ([]*Chi
 		// 目标执行时间也加入轻微随机延迟 (0-30s)
 		delay := time.Duration(0)
 		if s.Randomize {
-			delay = time.Duration(randSource.Int63n(30)) * time.Second
+			delay = time.Duration(randSource.Int64N(30)) * time.Second
 		}
 
 		slices = append(slices, &ChildOrder{

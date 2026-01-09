@@ -3,7 +3,7 @@ package application
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"time"
 
 	"github.com/shopspring/decimal"
