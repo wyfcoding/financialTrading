@@ -114,7 +114,7 @@ func (m *MatchingEngineManager) RecoverState(ctx context.Context) error {
 					m.engine.ReplayOrder(&algorithm.Order{
 						OrderID:   o.OrderId,
 						Symbol:    o.Symbol,
-						Side:      o.Side,
+						Side:      algorithm.Side(o.Side),
 						Price:     price,
 						Quantity:  remQty,
 						UserID:    o.UserId,
@@ -169,7 +169,7 @@ func (m *MatchingEngineManager) SubmitOrder(ctx context.Context, req *SubmitOrde
 	order := &algorithm.Order{
 		OrderID:    req.OrderID,
 		Symbol:     req.Symbol,
-		Side:       req.Side,
+		Side:       algorithm.Side(req.Side),
 		Price:      price,
 		Quantity:   quantity,
 		UserID:     req.UserID,

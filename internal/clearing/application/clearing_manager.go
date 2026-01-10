@@ -179,7 +179,7 @@ func (m *ClearingManager) ProcessTradeExecution(ctx context.Context, event map[s
 
 	saga.Add(clearingSvc+"/SagaMarkSettlementCompleted", "", statusReq)
 
-	if err := saga.Submit(); err != nil {
+	if err := saga.Submit(ctx); err != nil {
 		m.logger.ErrorContext(ctx, "failed to submit settlement saga", "gid", gid, "error", err)
 		return err
 	}

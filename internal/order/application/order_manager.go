@@ -142,9 +142,9 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 		logging.Info(ctx, "initiating tcc transaction for order", "order_id", orderID, "side", order.Side)
 
 		gid := orderID
-		tcc := dtm.NewTcc(ctx, m.dtmServer, gid)
+		tcc := dtm.NewTcc(m.dtmServer, gid)
 
-		err = tcc.Execute(func(t *dtmgrpc.TccGrpc) error {
+		err = tcc.Execute(ctx, func(t *dtmgrpc.TccGrpc) error {
 			switch order.Side {
 			case domain.OrderSideBuy:
 				// 买单：冻结账户 USDT 余额
