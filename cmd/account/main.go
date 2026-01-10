@@ -145,7 +145,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	}
 
 	// 3. 初始化消息队列与 Outbox (可靠事件流架构)
-	producer := kafka.NewProducer(c.MessageQueue.Kafka, logger, m)
+	producer := kafka.NewProducer(&c.MessageQueue.Kafka, logger, m)
 	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
 	outboxProcessor := outbox.NewProcessor(outboxMgr, func(ctx context.Context, topic, key string, payload []byte) error {
 		return producer.PublishToTopic(ctx, topic, []byte(key), payload)

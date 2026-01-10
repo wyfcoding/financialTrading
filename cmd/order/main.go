@@ -223,7 +223,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	}
 
 	// 5.3 启动成交事件消费 (可靠更新订单状态)
-	tradeConsumer := kafka.NewConsumer(c.MessageQueue.Kafka, logger, m)
+	tradeConsumer := kafka.NewConsumer(&c.MessageQueue.Kafka, logger, m)
 	tradeConsumer.Start(context.Background(), 5, func(ctx context.Context, msg kafkago.Message) error {
 		if msg.Topic != "trade.executed" {
 			return nil

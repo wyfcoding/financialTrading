@@ -211,7 +211,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 		}
 		clearingService.SetPositionClient(clients.Position, positionSvcAddr)
 	} // 5.3 启动可靠成交事件消费
-	consumer := kafka.NewConsumer(c.MessageQueue.Kafka, logger, m)
+	consumer := kafka.NewConsumer(&c.MessageQueue.Kafka, logger, m)
 	consumer.Start(context.Background(), 5, func(ctx context.Context, msg kafkago.Message) error {
 		if msg.Topic != "trade.executed" {
 			return nil

@@ -6,9 +6,10 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/wyfcoding/pkg/algorithm/types"
+
 	pb "github.com/wyfcoding/financialtrading/goapi/matchingengine/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/application"
-	"github.com/wyfcoding/pkg/algorithm"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -116,7 +117,7 @@ func (h *Handler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (*pb.
 	}, nil
 }
 
-func (h *Handler) toProtoTrade(trade *algorithm.Trade) *pb.Trade {
+func (h *Handler) toProtoTrade(trade *types.Trade) *pb.Trade {
 	return &pb.Trade{
 		TradeId:     trade.TradeID,
 		BuyOrderId:  trade.BuyOrderID,

@@ -154,7 +154,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	idemManager := idempotency.NewRedisManager(redisCache.GetClient(), IdempotencyPrefix)
 
 	// 4. 初始化异步通信组件 (Kafka + Outbox)
-	producer := kafka.NewProducer(c.MessageQueue.Kafka, logger, m)
+	producer := kafka.NewProducer(&c.MessageQueue.Kafka, logger, m)
 
 	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
 	outboxProcessor := outbox.NewProcessor(outboxMgr, func(ctx context.Context, topic, key string, payload []byte) error {

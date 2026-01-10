@@ -2,7 +2,7 @@ package domain
 
 import (
 	"github.com/shopspring/decimal"
-	"github.com/wyfcoding/pkg/algorithm"
+	algorithm "github.com/wyfcoding/pkg/algorithm/structures"
 )
 
 // GridStrategy 网格交易策略

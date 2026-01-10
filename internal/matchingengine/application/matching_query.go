@@ -3,8 +3,9 @@ package application
 import (
 	"context"
 
+	"github.com/wyfcoding/pkg/algorithm/types"
+
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
-	"github.com/wyfcoding/pkg/algorithm"
 )
 
 // MatchingEngineQuery 处理所有撮合引擎相关的查询操作（Queries）。
@@ -30,7 +31,7 @@ func (q *MatchingEngineQuery) GetOrderBook(ctx context.Context, depth int) (*dom
 }
 
 // GetTrades 获取成交历史
-func (q *MatchingEngineQuery) GetTrades(ctx context.Context, symbol string, limit int) ([]*algorithm.Trade, error) {
+func (q *MatchingEngineQuery) GetTrades(ctx context.Context, symbol string, limit int) ([]*types.Trade, error) {
 	if limit <= 0 {
 		limit = 100
 	}

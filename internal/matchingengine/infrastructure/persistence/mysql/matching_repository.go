@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/wyfcoding/pkg/algorithm/types"
+
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
-	"github.com/wyfcoding/pkg/algorithm"
 	"github.com/wyfcoding/pkg/contextx"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -50,7 +51,7 @@ func NewMatchingRepository(db *gorm.DB) (domain.TradeRepository, domain.OrderBoo
 	return impl, impl
 }
 
-func (r *matchingRepositoryImpl) Save(ctx context.Context, t *algorithm.Trade) error {
+func (r *matchingRepositoryImpl) Save(ctx context.Context, t *types.Trade) error {
 	m := &TradeModel{
 		TradeID:     t.TradeID,
 		Symbol:      t.Symbol,
@@ -66,12 +67,12 @@ func (r *matchingRepositoryImpl) Save(ctx context.Context, t *algorithm.Trade) e
 	}).Create(m).Error
 }
 
-func (r *matchingRepositoryImpl) GetTradeHistory(ctx context.Context, symbol string, limit int) ([]*algorithm.Trade, error) {
+func (r *matchingRepositoryImpl) GetTradeHistory(ctx context.Context, symbol string, limit int) ([]*types.Trade, error) {
 	var models []TradeModel
 	if err := r.getDB(ctx).Where("symbol = ?", symbol).Order("executed_at desc").Limit(limit).Find(&models).Error; err != nil {
 		return nil, err
 	}
-	res := make([]*algorithm.Trade, len(models))
+	res := make([]*types.Trade, len(models))
 	for i, m := range models {
 		t, err := r.tradeToAlgorithm(&m)
 		if err != nil {
@@ -82,7 +83,7 @@ func (r *matchingRepositoryImpl) GetTradeHistory(ctx context.Context, symbol str
 	return res, nil
 }
 
-func (r *matchingRepositoryImpl) GetLatestTrades(ctx context.Context, symbol string, limit int) ([]*algorithm.Trade, error) {
+func (r *matchingRepositoryImpl) GetLatestTrades(ctx context.Context, symbol string, limit int) ([]*types.Trade, error) {
 	return r.GetTradeHistory(ctx, symbol, limit)
 }
 
@@ -127,7 +128,7 @@ func (r *matchingRepositoryImpl) getDB(ctx context.Context) *gorm.DB {
 	return r.db.WithContext(ctx)
 }
 
-func (r *matchingRepositoryImpl) tradeToAlgorithm(m *TradeModel) (*algorithm.Trade, error) {
+func (r *matchingRepositoryImpl) tradeToAlgorithm(m *TradeModel) (*types.Trade, error) {
 	price, err := decimal.NewFromString(m.Price)
 	if err != nil {
 		return nil, err
@@ -136,7 +137,7 @@ func (r *matchingRepositoryImpl) tradeToAlgorithm(m *TradeModel) (*algorithm.Tra
 	if err != nil {
 		return nil, err
 	}
-	return &algorithm.Trade{
+	return &types.Trade{
 		TradeID:     m.TradeID,
 		Symbol:      m.Symbol,
 		BuyOrderID:  m.BuyOrderID,

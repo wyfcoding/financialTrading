@@ -7,7 +7,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/quant/domain"
-	"github.com/wyfcoding/pkg/algorithm"
+	"github.com/wyfcoding/pkg/algorithm/finance"
 	"github.com/wyfcoding/pkg/idgen"
 )
 
@@ -16,7 +16,7 @@ type QuantManager struct {
 	strategyRepo     domain.StrategyRepository
 	backtestRepo     domain.BacktestResultRepository
 	marketDataClient domain.MarketDataClient
-	riskCalc         *algorithm.RiskCalculator
+	riskCalc         *finance.RiskCalculator
 }
 
 // NewQuantManager 构造函数。
@@ -25,7 +25,7 @@ func NewQuantManager(strategyRepo domain.StrategyRepository, backtestRepo domain
 		strategyRepo:     strategyRepo,
 		backtestRepo:     backtestRepo,
 		marketDataClient: marketDataClient,
-		riskCalc:         algorithm.NewRiskCalculator(),
+		riskCalc:         finance.NewRiskCalculator(),
 	}
 }
 

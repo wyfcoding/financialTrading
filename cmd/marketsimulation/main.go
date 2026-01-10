@@ -164,7 +164,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	scenarioRepo := mysql.NewSimulationScenarioRepository(db.RawDB())
 
 	// 初始化真实 Kafka 发布者
-	kafkaProducer := kafka.NewProducer(c.MessageQueue.Kafka, logger, m)
+	kafkaProducer := kafka.NewProducer(&c.MessageQueue.Kafka, logger, m)
 	realPublisher := publisher.NewKafkaMarketDataPublisher(kafkaProducer, "market.quotes")
 
 	// 5.2 Application (Service)

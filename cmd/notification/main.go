@@ -163,7 +163,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	notificationRepo := mysql.NewNotificationRepository(db.RawDB())
 
 	// 初始化真实 Kafka 发送器
-	kafkaProducer := kafka.NewProducer(c.MessageQueue.Kafka, logger, m)
+	kafkaProducer := kafka.NewProducer(&c.MessageQueue.Kafka, logger, m)
 	emailSender := kafka.NewNotificationSender(kafkaProducer, "notification.email")
 	smsSender := kafka.NewNotificationSender(kafkaProducer, "notification.sms")
 

@@ -9,15 +9,17 @@ import (
 	"sync/atomic"
 	"time"
 
+	algorithm "github.com/wyfcoding/pkg/algorithm/structures"
+	"github.com/wyfcoding/pkg/algorithm/types"
+
 	"github.com/shopspring/decimal"
-	"github.com/wyfcoding/pkg/algorithm"
 	"gorm.io/gorm"
 )
 
 // OrderLevel 表示同一价格档位下的订单集合，保证时间优先 (FIFO)
 type OrderLevel struct {
 	Price  decimal.Decimal
-	Orders *list.List // 存储 *algorithm.Order
+	Orders *list.List // 存储 *types.Order
 }
 
 func NewOrderLevel(price decimal.Decimal) *OrderLevel {
@@ -51,7 +53,7 @@ func NewOrderBook(symbol string) *OrderBook {
 
 // MatchTask 定义了定序队列中的任务单元
 type MatchTask struct {
-	Order      *algorithm.Order
+	Order      *types.Order
 	ResultChan chan *MatchingResult // 同步结果返回
 }
 
@@ -139,7 +141,7 @@ func (e *DisruptionEngine) run() {
 }
 
 // SubmitOrder 接收外部提交的订单请求并压入定序队列。
-func (e *DisruptionEngine) SubmitOrder(order *algorithm.Order) (*MatchingResult, error) {
+func (e *DisruptionEngine) SubmitOrder(order *types.Order) (*MatchingResult, error) {
 	// 入口拦截：若引擎已熔断，直接拒绝请求
 	if e.IsHalted() {
 		return nil, fmt.Errorf("engine is halted due to a critical persistence error")
@@ -161,7 +163,7 @@ func (e *DisruptionEngine) SubmitOrder(order *algorithm.Order) (*MatchingResult,
 }
 
 // ReplayOrder 回放订单逻辑：仅用于系统启动恢复阶段，不触发新成交逻辑，仅重建订单簿。
-func (e *DisruptionEngine) ReplayOrder(order *algorithm.Order) {
+func (e *DisruptionEngine) ReplayOrder(order *types.Order) {
 	// 在恢复模式下，由于是单线程初始化，无需通过 RingBuffer，直接操作订单簿。
 	ob := e.orderBook
 	if order.Side == "BUY" {
@@ -173,7 +175,7 @@ func (e *DisruptionEngine) ReplayOrder(order *algorithm.Order) {
 }
 
 // applyOrder 核心内部撮合入口。
-func (e *DisruptionEngine) applyOrder(order *algorithm.Order) *MatchingResult {
+func (e *DisruptionEngine) applyOrder(order *types.Order) *MatchingResult {
 	ob := e.orderBook
 	result := &MatchingResult{
 		OrderID:           order.OrderID,
@@ -210,7 +212,7 @@ func (e *DisruptionEngine) applyOrder(order *algorithm.Order) *MatchingResult {
 	return result
 }
 
-func (e *DisruptionEngine) matchOrder(order *algorithm.Order, opponentBook *algorithm.SkipList[float64, *OrderLevel], result *MatchingResult) {
+func (e *DisruptionEngine) matchOrder(order *types.Order, opponentBook *algorithm.SkipList[float64, *OrderLevel], result *MatchingResult) {
 	it := opponentBook.Iterator()
 	for {
 		oppPriceKey, oppLevel, ok := it.Next()
@@ -232,11 +234,11 @@ func (e *DisruptionEngine) matchOrder(order *algorithm.Order, opponentBook *algo
 		var nextOrder *list.Element
 		for el := oppLevel.Orders.Front(); el != nil; el = nextOrder {
 			nextOrder = el.Next()
-			oppOrder := el.Value.(*algorithm.Order)
+			oppOrder := el.Value.(*types.Order)
 
 			matchQty := decimal.Min(result.RemainingQuantity, oppOrder.Quantity)
 
-			trade := &algorithm.Trade{
+			trade := &types.Trade{
 				TradeID:   generateTradeID(),
 				Symbol:    e.symbol,
 				Price:     realOppPrice,
@@ -273,7 +275,7 @@ func (e *DisruptionEngine) matchOrder(order *algorithm.Order, opponentBook *algo
 	}
 }
 
-func (e *DisruptionEngine) addToOrderBook(order *algorithm.Order, book *algorithm.SkipList[float64, *OrderLevel], key float64) {
+func (e *DisruptionEngine) addToOrderBook(order *types.Order, book *algorithm.SkipList[float64, *OrderLevel], key float64) {
 	level, ok := book.Search(key)
 	if !ok {
 		level = NewOrderLevel(order.Price)
@@ -308,7 +310,7 @@ func (e *DisruptionEngine) collectLevels(book *algorithm.SkipList[float64, *Orde
 
 		var totalQty decimal.Decimal
 		for el := level.Orders.Front(); el != nil; el = el.Next() {
-			totalQty = totalQty.Add(el.Value.(*algorithm.Order).Quantity)
+			totalQty = totalQty.Add(el.Value.(*types.Order).Quantity)
 		}
 
 		levels = append(levels, &OrderBookLevel{
@@ -326,10 +328,10 @@ func generateTradeID() string {
 
 // MatchingResult 描述了订单进入引擎后的撮合最终状态。
 type MatchingResult struct {
-	OrderID           string             // 关联的订单 ID
-	Trades            []*algorithm.Trade // 本次撮合产生的所有成交明细
-	RemainingQuantity decimal.Decimal    // 订单剩余未成交的数量
-	Status            string             // 最终撮合状态 (MATCHED, PARTIALLY_MATCHED 等)
+	OrderID           string          // 关联的订单 ID
+	Trades            []*types.Trade  // 本次撮合产生的所有成交明细
+	RemainingQuantity decimal.Decimal // 订单剩余未成交的数量
+	Status            string          // 最终撮合状态 (MATCHED, PARTIALLY_MATCHED 等)
 }
 
 // OrderBookLevel 描述订单簿中单一价格档位的聚合信息。

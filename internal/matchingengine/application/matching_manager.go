@@ -6,11 +6,12 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/wyfcoding/pkg/algorithm/types"
+
 	"github.com/shopspring/decimal"
 	clearingv1 "github.com/wyfcoding/financialtrading/goapi/clearing/v1"
 	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
-	"github.com/wyfcoding/pkg/algorithm"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/logging"
 	"github.com/wyfcoding/pkg/messagequeue/outbox"
@@ -111,10 +112,10 @@ func (m *MatchingEngineManager) RecoverState(ctx context.Context) error {
 				if remQty.IsPositive() {
 					// 3. 将订单无损注入内存订单簿
 					// 注意：此处调用 ReplayOrder，它只负责重建索引，不会触发成交或发送任何消息
-					m.engine.ReplayOrder(&algorithm.Order{
+					m.engine.ReplayOrder(&types.Order{
 						OrderID:   o.OrderId,
 						Symbol:    o.Symbol,
-						Side:      algorithm.Side(o.Side),
+						Side:      types.Side(o.Side),
 						Price:     price,
 						Quantity:  remQty,
 						UserID:    o.UserId,
@@ -166,10 +167,10 @@ func (m *MatchingEngineManager) SubmitOrder(ctx context.Context, req *SubmitOrde
 	}
 
 	// 封装为算法层订单对象
-	order := &algorithm.Order{
+	order := &types.Order{
 		OrderID:    req.OrderID,
 		Symbol:     req.Symbol,
-		Side:       algorithm.Side(req.Side),
+		Side:       types.Side(req.Side),
 		Price:      price,
 		Quantity:   quantity,
 		UserID:     req.UserID,
@@ -197,7 +198,7 @@ func (m *MatchingEngineManager) SubmitOrder(ctx context.Context, req *SubmitOrde
 	return result, nil
 }
 
-func (m *MatchingEngineManager) processPostMatching(trades []*algorithm.Trade) {
+func (m *MatchingEngineManager) processPostMatching(trades []*types.Trade) {
 	m.logger.Debug("starting reliable post-matching processing", "count", len(trades))
 
 	// 使用本地事务确保成交记录与 Outbox 消息的一致性

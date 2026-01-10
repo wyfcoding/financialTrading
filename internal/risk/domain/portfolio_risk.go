@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"github.com/wyfcoding/pkg/algorithm"
+	algorithm "github.com/wyfcoding/pkg/algorithm/math"
 )
 
 // PortfolioAsset 组合中的单项资产

@@ -1,8 +1,6 @@
 package arbitrage
 
-import (
-	"github.com/wyfcoding/pkg/algorithm"
-)
+import "github.com/wyfcoding/pkg/algorithm/graph"
 
 // MarketLiquidity 代表交易对的深度
 type MarketLiquidity struct {
@@ -39,7 +37,7 @@ func (a *LiquidityAnalyzer) CalculateMaxRouteAmount(source, sink string, markets
 	}
 
 	// 2. 构建 Dinic 图
-	graph := algorithm.NewDinicGraph(nodeID)
+	graph := graph.NewDinicGraph(nodeID)
 	for _, m := range markets {
 		graph.AddEdge(a.assets[m.FromAsset], a.assets[m.ToAsset], m.MaxAmount)
 	}

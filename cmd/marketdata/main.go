@@ -212,7 +212,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	marketDataService.SetBroadcaster(distBroadcaster)
 
 	// 7. 启动成交事件消费
-	consumer := kafka.NewConsumer(c.MessageQueue.Kafka, logger, m)
+	consumer := kafka.NewConsumer(&c.MessageQueue.Kafka, logger, m)
 	consumer.Start(context.Background(), 10, func(ctx context.Context, msg kafkago.Message) error {
 		if msg.Topic != "trade.executed" {
 			return nil
@@ -249,7 +249,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 // distributedBroadcaster 实现跨节点推送
 type distributedBroadcaster struct {
 	local *server.WSManager
-	redis *redis.Client
+	redis redis.Client
 }
 
 func (b *distributedBroadcaster) Broadcast(topic string, payload any) {

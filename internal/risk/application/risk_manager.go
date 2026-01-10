@@ -8,7 +8,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
-	"github.com/wyfcoding/pkg/algorithm"
+	"github.com/wyfcoding/pkg/algorithm/finance"
 	"github.com/wyfcoding/pkg/cache"
 	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/security/risk"
@@ -21,7 +21,7 @@ type RiskManager struct {
 	limitRepo      domain.RiskLimitRepository
 	alertRepo      domain.RiskAlertRepository
 	breakerRepo    domain.CircuitBreakerRepository
-	calculator     *algorithm.RiskCalculator
+	calculator     *finance.RiskCalculator
 	ruleEngine     risk.Evaluator // 动态规则引擎
 	localCache     cache.Cache    // 本地热点缓存
 }
@@ -42,7 +42,7 @@ func NewRiskManager(
 		limitRepo:      limitRepo,
 		alertRepo:      alertRepo,
 		breakerRepo:    breakerRepo,
-		calculator:     algorithm.NewRiskCalculator(),
+		calculator:     finance.NewRiskCalculator(),
 		ruleEngine:     ruleEngine,
 		localCache:     localCache,
 	}

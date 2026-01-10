@@ -3,7 +3,7 @@ package history
 import (
 	"sync"
 
-	"github.com/wyfcoding/pkg/algorithm"
+	algorithm "github.com/wyfcoding/pkg/algorithm/graph"
 )
 
 // PriceDistributionAnalyzer 基于主席树的价格分布历史分析器

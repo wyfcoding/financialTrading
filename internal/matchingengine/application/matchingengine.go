@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/wyfcoding/pkg/algorithm/types"
+
 	clearingv1 "github.com/wyfcoding/financialtrading/goapi/clearing/v1"
 	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
-	"github.com/wyfcoding/pkg/algorithm"
 	"github.com/wyfcoding/pkg/messagequeue/outbox"
 	"gorm.io/gorm"
 )
@@ -67,7 +68,7 @@ func (s *MatchingEngineService) GetOrderBook(ctx context.Context, depth int) (*d
 	return s.query.GetOrderBook(ctx, depth)
 }
 
-func (s *MatchingEngineService) GetTrades(ctx context.Context, symbol string, limit int) ([]*algorithm.Trade, error) {
+func (s *MatchingEngineService) GetTrades(ctx context.Context, symbol string, limit int) ([]*types.Trade, error) {
 	return s.query.GetTrades(ctx, symbol, limit)
 }
 
