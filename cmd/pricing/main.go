@@ -75,7 +75,7 @@ func main() {
 // registerGRPC 注册 gRPC 服务
 func registerGRPC(s *grpc.Server, svc any) {
 	ctx := svc.(*AppContext)
-	pb.RegisterPricingServiceServer(s, pricinggrpc.NewGRPCHandler(ctx.Pricing))
+	pb.RegisterPricingServiceServer(s, pricinggrpc.NewHandler(ctx.Pricing))
 }
 
 // registerGin 注册 HTTP 路由

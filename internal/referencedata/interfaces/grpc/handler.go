@@ -12,24 +12,24 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// GRPCHandler gRPC 处理器
+// Handler gRPC 处理器
 // 负责处理与参考数据相关的 gRPC 请求
-type GRPCHandler struct {
+type Handler struct {
 	pb.UnimplementedReferenceDataServiceServer
 	app *application.ReferenceDataService // 参考数据应用服务
 }
 
-// NewGRPCHandler 创建 gRPC 处理器实例
+// NewHandler 创建 gRPC 处理器实例
 // app: 注入的参考数据应用服务
-func NewGRPCHandler(app *application.ReferenceDataService) *GRPCHandler {
-	return &GRPCHandler{
+func NewHandler(app *application.ReferenceDataService) *Handler {
+	return &Handler{
 		app: app,
 	}
 }
 
 // GetSymbol 获取交易对
 // 处理 gRPC GetSymbol 请求
-func (h *GRPCHandler) GetSymbol(ctx context.Context, req *pb.GetSymbolRequest) (*pb.GetSymbolResponse, error) {
+func (h *Handler) GetSymbol(ctx context.Context, req *pb.GetSymbolRequest) (*pb.GetSymbolResponse, error) {
 	start := time.Now()
 	id := req.Id
 	if id == "" {
@@ -54,7 +54,7 @@ func (h *GRPCHandler) GetSymbol(ctx context.Context, req *pb.GetSymbolRequest) (
 }
 
 // ListSymbols 列出交易对
-func (h *GRPCHandler) ListSymbols(ctx context.Context, req *pb.ListSymbolsRequest) (*pb.ListSymbolsResponse, error) {
+func (h *Handler) ListSymbols(ctx context.Context, req *pb.ListSymbolsRequest) (*pb.ListSymbolsResponse, error) {
 	start := time.Now()
 	slog.Debug("gRPC ListSymbols received", "exchange_id", req.ExchangeId, "status", req.Status)
 
@@ -82,7 +82,7 @@ func (h *GRPCHandler) ListSymbols(ctx context.Context, req *pb.ListSymbolsReques
 }
 
 // GetExchange 获取交易所
-func (h *GRPCHandler) GetExchange(ctx context.Context, req *pb.GetExchangeRequest) (*pb.GetExchangeResponse, error) {
+func (h *Handler) GetExchange(ctx context.Context, req *pb.GetExchangeRequest) (*pb.GetExchangeResponse, error) {
 	start := time.Now()
 	id := req.Id
 	if id == "" {
@@ -107,7 +107,7 @@ func (h *GRPCHandler) GetExchange(ctx context.Context, req *pb.GetExchangeReques
 }
 
 // ListExchanges 列出交易所
-func (h *GRPCHandler) ListExchanges(ctx context.Context, req *pb.ListExchangesRequest) (*pb.ListExchangesResponse, error) {
+func (h *Handler) ListExchanges(ctx context.Context, req *pb.ListExchangesRequest) (*pb.ListExchangesResponse, error) {
 	start := time.Now()
 	slog.Debug("gRPC ListExchanges received")
 

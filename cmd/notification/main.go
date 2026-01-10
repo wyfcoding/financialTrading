@@ -75,7 +75,7 @@ func main() {
 // registerGRPC 注册 gRPC 服务
 func registerGRPC(s *grpc.Server, svc any) {
 	ctx := svc.(*AppContext)
-	pb.RegisterNotificationServiceServer(s, notificationgrpc.NewGRPCHandler(ctx.Notification))
+	pb.RegisterNotificationServiceServer(s, notificationgrpc.NewHandler(ctx.Notification))
 }
 
 // registerGin 注册 HTTP 路由
@@ -164,8 +164,8 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 
 	// 初始化真实 Kafka 发送器
 	kafkaProducer := kafka.NewProducer(c.MessageQueue.Kafka, logger, m)
-	emailSender := kafka.NewKafkaNotificationSender(kafkaProducer, "notification.email")
-	smsSender := kafka.NewKafkaNotificationSender(kafkaProducer, "notification.sms")
+	emailSender := kafka.NewNotificationSender(kafkaProducer, "notification.email")
+	smsSender := kafka.NewNotificationSender(kafkaProducer, "notification.sms")
 
 	// 5.2 Application (Service)
 	notificationService := application.NewNotificationService(notificationRepo, emailSender, smsSender)

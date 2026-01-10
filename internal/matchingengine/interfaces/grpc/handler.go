@@ -13,21 +13,21 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// GRPCHandler 实现了 MatchingEngineService 的 gRPC 服务端接口。
-type GRPCHandler struct {
+// Handler 实现了 MatchingEngineService 的 gRPC 服务端接口。
+type Handler struct {
 	pb.UnimplementedMatchingEngineServiceServer
 	service *application.MatchingEngineService // 关联的撮合应用服务
 }
 
-// NewGRPCHandler 构造一个新的撮合引擎 gRPC 处理器实例。
-func NewGRPCHandler(service *application.MatchingEngineService) *GRPCHandler {
-	return &GRPCHandler{
+// NewHandler 构造一个新的撮合引擎 gRPC 处理器实例。
+func NewHandler(service *application.MatchingEngineService) *Handler {
+	return &Handler{
 		service: service,
 	}
 }
 
 // SubmitOrder 处理通过 gRPC 提交的订单请求。
-func (h *GRPCHandler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderRequest) (*pb.SubmitOrderResponse, error) {
+func (h *Handler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderRequest) (*pb.SubmitOrderResponse, error) {
 	start := time.Now()
 	slog.InfoContext(ctx, "grpc submit_order received", "order_id", req.OrderId, "symbol", req.Symbol)
 
@@ -62,7 +62,7 @@ func (h *GRPCHandler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderReques
 }
 
 // GetOrderBook 返回当前内存订单簿的聚合深度快照。
-func (h *GRPCHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequest) (*pb.GetOrderBookResponse, error) {
+func (h *Handler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequest) (*pb.GetOrderBookResponse, error) {
 	start := time.Now()
 	snapshot, err := h.service.GetOrderBook(ctx, int(req.Depth))
 	if err != nil {
@@ -96,7 +96,7 @@ func (h *GRPCHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequ
 }
 
 // GetTrades 获取指定交易对的最近成交历史记录。
-func (h *GRPCHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (*pb.GetTradesResponse, error) {
+func (h *Handler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (*pb.GetTradesResponse, error) {
 	start := time.Now()
 	trades, err := h.service.GetTrades(ctx, req.Symbol, int(req.Limit))
 	if err != nil {
@@ -116,7 +116,7 @@ func (h *GRPCHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (
 	}, nil
 }
 
-func (h *GRPCHandler) toProtoTrade(trade *algorithm.Trade) *pb.Trade {
+func (h *Handler) toProtoTrade(trade *algorithm.Trade) *pb.Trade {
 	return &pb.Trade{
 		TradeId:     trade.TradeID,
 		BuyOrderId:  trade.BuyOrderID,

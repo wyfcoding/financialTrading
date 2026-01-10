@@ -78,7 +78,7 @@ func (m *ClearingManager) SagaMarkSettlementCompleted(ctx context.Context, settl
 }
 
 // SagaMarkSettlementFailed Saga 补偿阶段：将处于中间态的结算标记为失败。
-func (m *ClearingManager) SagaMarkSettlementFailed(ctx context.Context, settlementID string, reason string) error {
+func (m *ClearingManager) SagaMarkSettlementFailed(ctx context.Context, settlementID string, _ string) error {
 	settlement, err := m.settlementRepo.Get(ctx, settlementID)
 	if err != nil || settlement == nil {
 		return fmt.Errorf("settlement record not found: %s", settlementID)

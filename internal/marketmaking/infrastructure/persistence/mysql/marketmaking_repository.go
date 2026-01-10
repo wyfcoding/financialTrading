@@ -144,13 +144,13 @@ func (r *marketMakingRepositoryImpl) strategyToDomain(m *QuoteStrategyModel) *do
 	if err != nil {
 		spread = decimal.Zero
 	}
-	min, err := decimal.NewFromString(m.MinOrderSize)
+	minSize, err := decimal.NewFromString(m.MinOrderSize)
 	if err != nil {
-		min = decimal.Zero
+		minSize = decimal.Zero
 	}
-	max, err := decimal.NewFromString(m.MaxOrderSize)
+	maxSize, err := decimal.NewFromString(m.MaxOrderSize)
 	if err != nil {
-		max = decimal.Zero
+		maxSize = decimal.Zero
 	}
 	pos, err := decimal.NewFromString(m.MaxPosition)
 	if err != nil {
@@ -160,8 +160,8 @@ func (r *marketMakingRepositoryImpl) strategyToDomain(m *QuoteStrategyModel) *do
 		Model:        m.Model,
 		Symbol:       m.Symbol,
 		Spread:       spread,
-		MinOrderSize: min,
-		MaxOrderSize: max,
+		MinOrderSize: minSize,
+		MaxOrderSize: maxSize,
 		MaxPosition:  pos,
 		Status:       domain.StrategyStatus(m.Status),
 	}

@@ -12,24 +12,24 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// GRPCHandler gRPC 处理器
+// Handler gRPC 处理器
 // 负责处理与市场模拟相关的 gRPC 请求
-type GRPCHandler struct {
+type Handler struct {
 	pb.UnimplementedMarketSimulationServiceServer
 	app *application.MarketSimulationService // 市场模拟应用服务
 }
 
-// NewGRPCHandler 创建 gRPC 处理器实例
+// NewHandler 创建 gRPC 处理器实例
 // app: 注入的市场模拟应用服务
-func NewGRPCHandler(app *application.MarketSimulationService) *GRPCHandler {
-	return &GRPCHandler{
+func NewHandler(app *application.MarketSimulationService) *Handler {
+	return &Handler{
 		app: app,
 	}
 }
 
 // StartSimulation 启动模拟
 // 处理 gRPC StartSimulation 请求
-func (h *GRPCHandler) StartSimulation(ctx context.Context, req *pb.StartSimulationRequest) (*pb.StartSimulationResponse, error) {
+func (h *Handler) StartSimulation(ctx context.Context, req *pb.StartSimulationRequest) (*pb.StartSimulationResponse, error) {
 	start := time.Now()
 	slog.Info("gRPC StartSimulation received", "name", req.Name, "symbol", req.Symbol, "type", req.Type)
 
@@ -47,7 +47,7 @@ func (h *GRPCHandler) StartSimulation(ctx context.Context, req *pb.StartSimulati
 }
 
 // StopSimulation 停止模拟
-func (h *GRPCHandler) StopSimulation(ctx context.Context, req *pb.StopSimulationRequest) (*pb.StopSimulationResponse, error) {
+func (h *Handler) StopSimulation(ctx context.Context, req *pb.StopSimulationRequest) (*pb.StopSimulationResponse, error) {
 	start := time.Now()
 	slog.Info("gRPC StopSimulation received", "simulation_id", req.SimulationId)
 
@@ -64,7 +64,7 @@ func (h *GRPCHandler) StopSimulation(ctx context.Context, req *pb.StopSimulation
 }
 
 // GetSimulationStatus 获取模拟状态
-func (h *GRPCHandler) GetSimulationStatus(ctx context.Context, req *pb.GetSimulationStatusRequest) (*pb.GetSimulationStatusResponse, error) {
+func (h *Handler) GetSimulationStatus(ctx context.Context, req *pb.GetSimulationStatusRequest) (*pb.GetSimulationStatusResponse, error) {
 	start := time.Now()
 	slog.Debug("gRPC GetSimulationStatus received", "simulation_id", req.SimulationId)
 

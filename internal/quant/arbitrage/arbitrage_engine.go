@@ -9,8 +9,8 @@ import (
 	marketdatav1 "github.com/wyfcoding/financialtrading/goapi/marketdata/v1"
 )
 
-// ArbitrageOpportunity 发现的套利机会
-type ArbitrageOpportunity struct {
+// Opportunity 发现的套利机会
+type Opportunity struct {
 	Symbol      string
 	BuyVenue    string
 	SellVenue   string
@@ -18,23 +18,23 @@ type ArbitrageOpportunity struct {
 	MaxQuantity int64
 }
 
-// ArbitrageEngine 跨市场套利引擎
-type ArbitrageEngine struct {
+// Engine 跨市场套利引擎
+type Engine struct {
 	marketCli marketdatav1.MarketDataServiceClient
 	analyzer  *LiquidityAnalyzer
 }
 
-func NewArbitrageEngine(marketCli marketdatav1.MarketDataServiceClient) *ArbitrageEngine {
-	return &ArbitrageEngine{
+func NewEngine(marketCli marketdatav1.MarketDataServiceClient) *Engine {
+	return &Engine{
 		marketCli: marketCli,
 		analyzer:  NewLiquidityAnalyzer(),
 	}
 }
 
 // FindOpportunities 在多个场所间寻找指定交易对的套利机会
-func (e *ArbitrageEngine) FindOpportunities(ctx context.Context, symbol string, venues []string) ([]ArbitrageOpportunity, error) {
+func (e *Engine) FindOpportunities(ctx context.Context, symbol string, venues []string) ([]Opportunity, error) {
 	var mu sync.Mutex
-	var opportunities []ArbitrageOpportunity
+	var opportunities []Opportunity
 	var wg sync.WaitGroup
 
 	type venueQuote struct {
@@ -89,7 +89,7 @@ func (e *ArbitrageEngine) FindOpportunities(ctx context.Context, symbol string, 
 
 				maxQty := e.analyzer.CalculateMaxRouteAmount(quotes[i].venue, quotes[j].venue, liquidity)
 
-				opportunities = append(opportunities, ArbitrageOpportunity{
+				opportunities = append(opportunities, Opportunity{
 					Symbol:      symbol,
 					BuyVenue:    quotes[i].venue,
 					SellVenue:   quotes[j].venue,

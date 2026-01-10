@@ -14,21 +14,21 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// GRPCHandler 实现了 AccountService 的 gRPC 服务端接口，负责处理资金账户相关的远程调用。
-type GRPCHandler struct {
+// Handler 实现了 AccountService 的 gRPC 服务端接口，负责处理资金账户相关的远程调用。
+type Handler struct {
 	pb.UnimplementedAccountServiceServer
 	service *application.AccountService // 关联的账户应用服务
 }
 
-// NewGRPCHandler 构造一个新的账户 gRPC 处理器实例。
-func NewGRPCHandler(service *application.AccountService) *GRPCHandler {
-	return &GRPCHandler{
+// NewHandler 构造一个新的账户 gRPC 处理器实例。
+func NewHandler(service *application.AccountService) *Handler {
+	return &Handler{
 		service: service,
 	}
 }
 
 // CreateAccount 处理创建新账户的请求。
-func (h *GRPCHandler) CreateAccount(ctx context.Context, req *pb.CreateAccountRequest) (*pb.CreateAccountResponse, error) {
+func (h *Handler) CreateAccount(ctx context.Context, req *pb.CreateAccountRequest) (*pb.CreateAccountResponse, error) {
 	start := time.Now()
 	slog.InfoContext(ctx, "grpc create_account received", "user_id", req.UserId, "currency", req.Currency)
 
@@ -58,7 +58,7 @@ func (h *GRPCHandler) CreateAccount(ctx context.Context, req *pb.CreateAccountRe
 }
 
 // GetAccount 获取指定账户的详细信息。
-func (h *GRPCHandler) GetAccount(ctx context.Context, req *pb.GetAccountRequest) (*pb.GetAccountResponse, error) {
+func (h *Handler) GetAccount(ctx context.Context, req *pb.GetAccountRequest) (*pb.GetAccountResponse, error) {
 	start := time.Now()
 	slog.DebugContext(ctx, "grpc get_account received", "account_id", req.AccountId)
 
@@ -84,7 +84,7 @@ func (h *GRPCHandler) GetAccount(ctx context.Context, req *pb.GetAccountRequest)
 }
 
 // Deposit 执行账户资金充值操作。
-func (h *GRPCHandler) Deposit(ctx context.Context, req *pb.DepositRequest) (*pb.DepositResponse, error) {
+func (h *Handler) Deposit(ctx context.Context, req *pb.DepositRequest) (*pb.DepositResponse, error) {
 	start := time.Now()
 	slog.InfoContext(ctx, "grpc deposit received", "account_id", req.AccountId, "amount", req.Amount)
 
@@ -110,7 +110,7 @@ func (h *GRPCHandler) Deposit(ctx context.Context, req *pb.DepositRequest) (*pb.
 }
 
 // GetBalance 获取指定账户的余额详情快照。
-func (h *GRPCHandler) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb.GetBalanceResponse, error) {
+func (h *Handler) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb.GetBalanceResponse, error) {
 	start := time.Now()
 	slog.DebugContext(ctx, "grpc get_balance received", "account_id", req.AccountId)
 
@@ -131,7 +131,7 @@ func (h *GRPCHandler) GetBalance(ctx context.Context, req *pb.GetBalanceRequest)
 }
 
 // SagaDeductFrozen 执行 Saga 正向阶段：从冻结余额中真实扣除款项。
-func (h *GRPCHandler) SagaDeductFrozen(ctx context.Context, req *pb.SagaAccountRequest) (*pb.SagaAccountResponse, error) {
+func (h *Handler) SagaDeductFrozen(ctx context.Context, req *pb.SagaAccountRequest) (*pb.SagaAccountResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
@@ -148,7 +148,7 @@ func (h *GRPCHandler) SagaDeductFrozen(ctx context.Context, req *pb.SagaAccountR
 }
 
 // SagaRefundFrozen 执行 Saga 补偿阶段：将之前扣除的资金退回。
-func (h *GRPCHandler) SagaRefundFrozen(ctx context.Context, req *pb.SagaAccountRequest) (*pb.SagaAccountResponse, error) {
+func (h *Handler) SagaRefundFrozen(ctx context.Context, req *pb.SagaAccountRequest) (*pb.SagaAccountResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
@@ -165,7 +165,7 @@ func (h *GRPCHandler) SagaRefundFrozen(ctx context.Context, req *pb.SagaAccountR
 }
 
 // SagaAddBalance 执行 Saga 正向阶段：直接增加用户的可用余额。
-func (h *GRPCHandler) SagaAddBalance(ctx context.Context, req *pb.SagaAccountRequest) (*pb.SagaAccountResponse, error) {
+func (h *Handler) SagaAddBalance(ctx context.Context, req *pb.SagaAccountRequest) (*pb.SagaAccountResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
@@ -182,7 +182,7 @@ func (h *GRPCHandler) SagaAddBalance(ctx context.Context, req *pb.SagaAccountReq
 }
 
 // SagaSubBalance 执行 Saga 补偿阶段：扣除之前通过正向操作增加的余额。
-func (h *GRPCHandler) SagaSubBalance(ctx context.Context, req *pb.SagaAccountRequest) (*pb.SagaAccountResponse, error) {
+func (h *Handler) SagaSubBalance(ctx context.Context, req *pb.SagaAccountRequest) (*pb.SagaAccountResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
@@ -199,7 +199,7 @@ func (h *GRPCHandler) SagaSubBalance(ctx context.Context, req *pb.SagaAccountReq
 }
 
 // TccTryFreeze 执行 TCC 模式第一阶段：尝试预冻结资金。
-func (h *GRPCHandler) TccTryFreeze(ctx context.Context, req *pb.TccFreezeRequest) (*pb.TccFreezeResponse, error) {
+func (h *Handler) TccTryFreeze(ctx context.Context, req *pb.TccFreezeRequest) (*pb.TccFreezeResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
@@ -219,7 +219,7 @@ func (h *GRPCHandler) TccTryFreeze(ctx context.Context, req *pb.TccFreezeRequest
 }
 
 // TccConfirmFreeze 执行 TCC 模式第二阶段：确认冻结完成。
-func (h *GRPCHandler) TccConfirmFreeze(ctx context.Context, req *pb.TccFreezeRequest) (*pb.TccFreezeResponse, error) {
+func (h *Handler) TccConfirmFreeze(ctx context.Context, req *pb.TccFreezeRequest) (*pb.TccFreezeResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
@@ -239,7 +239,7 @@ func (h *GRPCHandler) TccConfirmFreeze(ctx context.Context, req *pb.TccFreezeReq
 }
 
 // TccCancelFreeze 执行 TCC 模式第三阶段：取消并释放冻结资金。
-func (h *GRPCHandler) TccCancelFreeze(ctx context.Context, req *pb.TccFreezeRequest) (*pb.TccFreezeResponse, error) {
+func (h *Handler) TccCancelFreeze(ctx context.Context, req *pb.TccFreezeRequest) (*pb.TccFreezeResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)

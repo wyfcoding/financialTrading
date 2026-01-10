@@ -181,11 +181,11 @@ func (s *IndicatorService) CalculateATR(highs, lows, closes []decimal.Decimal, p
 	trSeries := make([]decimal.Decimal, len(highs)-1)
 	for i := 1; i < len(highs); i++ {
 		// TR = max(high-low, abs(high-prev_close), abs(low-prev_close))
-		h_l := highs[i].Sub(lows[i])
-		h_pc := highs[i].Sub(closes[i-1]).Abs()
-		l_pc := lows[i].Sub(closes[i-1]).Abs()
+		hL := highs[i].Sub(lows[i])
+		hPc := highs[i].Sub(closes[i-1]).Abs()
+		lPc := lows[i].Sub(closes[i-1]).Abs()
 
-		tr := decimal.Max(h_l, h_pc, l_pc)
+		tr := decimal.Max(hL, hPc, lPc)
 		trSeries[i-1] = tr
 	}
 

@@ -54,14 +54,14 @@ func CalculatePortfolioRisk(input PortfolioRiskInput) (*PortfolioRiskResult, err
 	for i := range nAssets {
 		covData[i] = make([]float64, nAssets)
 		for j := range nAssets {
-			vol_i := input.Assets[i].Volatility
-			vol_j := input.Assets[j].Volatility
+			volI := input.Assets[i].Volatility
+			volJ := input.Assets[j].Volatility
 			rho := input.CorrelationMatrix[i][j]
 			// 调整为时间跨度内的协方差: Cov * T
 			// 注意：通常模拟是基于收益率，这里直接对数收益率模拟
 			// sigma_scaled = sigma * sqrt(T)
 			// cov_scaled = rho * (sigma_i * sqrt(T)) * (sigma_j * sqrt(T)) = rho * sigma_i * sigma_j * T
-			covData[i][j] = rho * vol_i * vol_j * input.TimeHorizon
+			covData[i][j] = rho * volI * volJ * input.TimeHorizon
 		}
 	}
 

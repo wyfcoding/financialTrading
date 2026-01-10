@@ -12,24 +12,24 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// GRPCHandler gRPC 处理器
+// Handler gRPC 处理器
 // 负责处理与风险管理相关的 gRPC 请求
-type GRPCHandler struct {
+type Handler struct {
 	pb.UnimplementedRiskServiceServer
 	service *application.RiskService // 风险应用服务
 }
 
-// NewGRPCHandler 创建 gRPC 处理器实例
+// NewHandler 创建 gRPC 处理器实例
 // service: 注入的风险应用服务
-func NewGRPCHandler(service *application.RiskService) *GRPCHandler {
-	return &GRPCHandler{
+func NewHandler(service *application.RiskService) *Handler {
+	return &Handler{
 		service: service,
 	}
 }
 
 // AssessRisk 评估交易风险
 // 处理 gRPC AssessRisk 请求
-func (h *GRPCHandler) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest) (*pb.AssessRiskResponse, error) {
+func (h *Handler) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest) (*pb.AssessRiskResponse, error) {
 	start := time.Now()
 	slog.Info("gRPC AssessRisk received", "user_id", req.UserId, "symbol", req.Symbol, "side", req.Side)
 
@@ -58,7 +58,7 @@ func (h *GRPCHandler) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest)
 
 // GetRiskMetrics 获取风险指标
 // 处理 gRPC GetRiskMetrics 请求
-func (h *GRPCHandler) GetRiskMetrics(ctx context.Context, req *pb.GetRiskMetricsRequest) (*pb.GetRiskMetricsResponse, error) {
+func (h *Handler) GetRiskMetrics(ctx context.Context, req *pb.GetRiskMetricsRequest) (*pb.GetRiskMetricsResponse, error) {
 	start := time.Now()
 	slog.Debug("gRPC GetRiskMetrics received", "user_id", req.UserId)
 
@@ -82,7 +82,7 @@ func (h *GRPCHandler) GetRiskMetrics(ctx context.Context, req *pb.GetRiskMetrics
 
 // CheckRiskLimit 检查风险限额
 // 处理 gRPC CheckRiskLimit 请求
-func (h *GRPCHandler) CheckRiskLimit(ctx context.Context, req *pb.CheckRiskLimitRequest) (*pb.CheckRiskLimitResponse, error) {
+func (h *Handler) CheckRiskLimit(ctx context.Context, req *pb.CheckRiskLimitRequest) (*pb.CheckRiskLimitResponse, error) {
 	start := time.Now()
 	slog.Debug("gRPC CheckRiskLimit received", "user_id", req.UserId, "limit_type", req.LimitType)
 
@@ -106,7 +106,7 @@ func (h *GRPCHandler) CheckRiskLimit(ctx context.Context, req *pb.CheckRiskLimit
 
 // GetRiskAlerts 获取风险告警
 // 处理 gRPC GetRiskAlerts 请求
-func (h *GRPCHandler) GetRiskAlerts(ctx context.Context, req *pb.GetRiskAlertsRequest) (*pb.GetRiskAlertsResponse, error) {
+func (h *Handler) GetRiskAlerts(ctx context.Context, req *pb.GetRiskAlertsRequest) (*pb.GetRiskAlertsResponse, error) {
 	start := time.Now()
 	slog.Debug("gRPC GetRiskAlerts received", "user_id", req.UserId)
 

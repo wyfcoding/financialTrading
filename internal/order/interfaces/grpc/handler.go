@@ -13,26 +13,26 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// GRPCHandler gRPC 处理器
+// Handler gRPC 处理器
 // 负责处理与订单相关的 gRPC 请求
-type GRPCHandler struct {
+type Handler struct {
 	// 嵌入 UnimplementedOrderServiceServer 以实现向前兼容
 	pb.UnimplementedOrderServiceServer
 	// 订单应用服务，处理业务逻辑
 	service *application.OrderService
 }
 
-// NewGRPCHandler 创建 gRPC 处理器实例
+// NewHandler 创建 gRPC 处理器实例
 // service: 注入的订单应用服务
-func NewGRPCHandler(service *application.OrderService) *GRPCHandler {
-	return &GRPCHandler{
+func NewHandler(service *application.OrderService) *Handler {
+	return &Handler{
 		service: service,
 	}
 }
 
 // CreateOrder 创建订单
 // 处理 gRPC CreateOrder 请求
-func (h *GRPCHandler) CreateOrder(ctx context.Context, req *pb.CreateOrderRequest) (*pb.CreateOrderResponse, error) {
+func (h *Handler) CreateOrder(ctx context.Context, req *pb.CreateOrderRequest) (*pb.CreateOrderResponse, error) {
 	start := time.Now()
 	slog.Info("gRPC CreateOrder received", "user_id", req.UserId, "symbol", req.Symbol, "side", req.Side, "price", req.Price, "quantity", req.Quantity)
 
@@ -61,7 +61,7 @@ func (h *GRPCHandler) CreateOrder(ctx context.Context, req *pb.CreateOrderReques
 
 // CancelOrder 取消订单
 // 处理 gRPC CancelOrder 请求
-func (h *GRPCHandler) CancelOrder(ctx context.Context, req *pb.CancelOrderRequest) (*pb.CancelOrderResponse, error) {
+func (h *Handler) CancelOrder(ctx context.Context, req *pb.CancelOrderRequest) (*pb.CancelOrderResponse, error) {
 	start := time.Now()
 	slog.Info("gRPC CancelOrder received", "order_id", req.OrderId, "user_id", req.UserId)
 
@@ -80,7 +80,7 @@ func (h *GRPCHandler) CancelOrder(ctx context.Context, req *pb.CancelOrderReques
 
 // GetOrder 获取订单详情
 // 处理 gRPC GetOrder 请求
-func (h *GRPCHandler) GetOrder(ctx context.Context, req *pb.GetOrderRequest) (*pb.GetOrderResponse, error) {
+func (h *Handler) GetOrder(ctx context.Context, req *pb.GetOrderRequest) (*pb.GetOrderResponse, error) {
 	dto, err := h.service.GetOrder(ctx, req.OrderId, req.UserId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get order: %v", err)
@@ -92,7 +92,7 @@ func (h *GRPCHandler) GetOrder(ctx context.Context, req *pb.GetOrderRequest) (*p
 }
 
 // ListOrders 分页检索订单列表
-func (h *GRPCHandler) ListOrders(ctx context.Context, req *pb.ListOrdersRequest) (*pb.ListOrdersResponse, error) {
+func (h *Handler) ListOrders(ctx context.Context, req *pb.ListOrdersRequest) (*pb.ListOrdersResponse, error) {
 	limit := int(req.PageSize)
 	if limit <= 0 {
 		limit = 100 // 恢复模式下可能需要更大量拉取
@@ -117,7 +117,7 @@ func (h *GRPCHandler) ListOrders(ctx context.Context, req *pb.ListOrdersRequest)
 	}, nil
 }
 
-func (h *GRPCHandler) toProtoOrder(dto *application.OrderDTO) *pb.Order {
+func (h *Handler) toProtoOrder(dto *application.OrderDTO) *pb.Order {
 	return &pb.Order{
 		OrderId:        dto.OrderID,
 		UserId:         dto.UserID,

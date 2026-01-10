@@ -217,7 +217,7 @@ func (m *AccountManager) TccTryFreeze(ctx context.Context, barrier any, userID, 
 
 // TccConfirmFreeze 执行 TCC 事务的第二阶段：确认冻结。
 // 对于冻结操作，Confirm 阶段通常为幂等占位，因为资金已在 Try 阶段锁定。
-func (m *AccountManager) TccConfirmFreeze(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
+func (m *AccountManager) TccConfirmFreeze(ctx context.Context, barrier any, _, currency string, amount decimal.Decimal) error {
 	return m.accountRepo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error { return nil })
 }
 

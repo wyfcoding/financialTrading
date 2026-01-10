@@ -14,21 +14,21 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// GRPCHandler 实现了 PositionService 的 gRPC 服务端接口，负责处理用户的交易头寸相关请求。
-type GRPCHandler struct {
+// Handler 实现了 PositionService 的 gRPC 服务端接口，负责处理用户的交易头寸相关请求。
+type Handler struct {
 	pb.UnimplementedPositionServiceServer
 	service *application.PositionService // 关联的持仓应用服务
 }
 
-// NewGRPCHandler 构造一个新的持仓 gRPC 处理器实例。
-func NewGRPCHandler(service *application.PositionService) *GRPCHandler {
-	return &GRPCHandler{
+// NewHandler 构造一个新的持仓 gRPC 处理器实例。
+func NewHandler(service *application.PositionService) *Handler {
+	return &Handler{
 		service: service,
 	}
 }
 
 // GetPositions 处理查询用户全量持仓列表的请求。
-func (h *GRPCHandler) GetPositions(ctx context.Context, req *pb.GetPositionsRequest) (*pb.GetPositionsResponse, error) {
+func (h *Handler) GetPositions(ctx context.Context, req *pb.GetPositionsRequest) (*pb.GetPositionsResponse, error) {
 	start := time.Now()
 	slog.DebugContext(ctx, "grpc get_positions received", "user_id", req.UserId, "page", req.Page)
 
@@ -57,7 +57,7 @@ func (h *GRPCHandler) GetPositions(ctx context.Context, req *pb.GetPositionsRequ
 }
 
 // GetPosition 获取特定持仓单的详细数据快照。
-func (h *GRPCHandler) GetPosition(ctx context.Context, req *pb.GetPositionRequest) (*pb.GetPositionResponse, error) {
+func (h *Handler) GetPosition(ctx context.Context, req *pb.GetPositionRequest) (*pb.GetPositionResponse, error) {
 	start := time.Now()
 	slog.DebugContext(ctx, "grpc get_position received", "position_id", req.PositionId)
 
@@ -74,7 +74,7 @@ func (h *GRPCHandler) GetPosition(ctx context.Context, req *pb.GetPositionReques
 }
 
 // ClosePosition 显式执行平仓指令。
-func (h *GRPCHandler) ClosePosition(ctx context.Context, req *pb.ClosePositionRequest) (*pb.ClosePositionResponse, error) {
+func (h *Handler) ClosePosition(ctx context.Context, req *pb.ClosePositionRequest) (*pb.ClosePositionResponse, error) {
 	start := time.Now()
 	slog.InfoContext(ctx, "grpc close_position received", "position_id", req.PositionId, "close_price", req.ClosePrice)
 
@@ -103,7 +103,7 @@ func (h *GRPCHandler) ClosePosition(ctx context.Context, req *pb.ClosePositionRe
 }
 
 // TccTryFreeze 执行 TCC 第一阶段：预冻结持仓。
-func (h *GRPCHandler) TccTryFreeze(ctx context.Context, req *pb.TccPositionRequest) (*pb.TccPositionResponse, error) {
+func (h *Handler) TccTryFreeze(ctx context.Context, req *pb.TccPositionRequest) (*pb.TccPositionResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
@@ -123,7 +123,7 @@ func (h *GRPCHandler) TccTryFreeze(ctx context.Context, req *pb.TccPositionReque
 }
 
 // TccConfirmFreeze 执行 TCC 第二阶段：确认。
-func (h *GRPCHandler) TccConfirmFreeze(ctx context.Context, req *pb.TccPositionRequest) (*pb.TccPositionResponse, error) {
+func (h *Handler) TccConfirmFreeze(ctx context.Context, req *pb.TccPositionRequest) (*pb.TccPositionResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
@@ -140,7 +140,7 @@ func (h *GRPCHandler) TccConfirmFreeze(ctx context.Context, req *pb.TccPositionR
 }
 
 // TccCancelFreeze 执行 TCC 第三阶段：取消。
-func (h *GRPCHandler) TccCancelFreeze(ctx context.Context, req *pb.TccPositionRequest) (*pb.TccPositionResponse, error) {
+func (h *Handler) TccCancelFreeze(ctx context.Context, req *pb.TccPositionRequest) (*pb.TccPositionResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
@@ -157,7 +157,7 @@ func (h *GRPCHandler) TccCancelFreeze(ctx context.Context, req *pb.TccPositionRe
 }
 
 // SagaDeductFrozen Saga：扣除冻结持仓。
-func (h *GRPCHandler) SagaDeductFrozen(ctx context.Context, req *pb.SagaPositionRequest) (*pb.SagaPositionResponse, error) {
+func (h *Handler) SagaDeductFrozen(ctx context.Context, req *pb.SagaPositionRequest) (*pb.SagaPositionResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
@@ -178,7 +178,7 @@ func (h *GRPCHandler) SagaDeductFrozen(ctx context.Context, req *pb.SagaPosition
 }
 
 // SagaRefundFrozen Saga：恢复冻结持仓。
-func (h *GRPCHandler) SagaRefundFrozen(ctx context.Context, req *pb.SagaPositionRequest) (*pb.SagaPositionResponse, error) {
+func (h *Handler) SagaRefundFrozen(ctx context.Context, req *pb.SagaPositionRequest) (*pb.SagaPositionResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
@@ -195,7 +195,7 @@ func (h *GRPCHandler) SagaRefundFrozen(ctx context.Context, req *pb.SagaPosition
 }
 
 // SagaAddPosition Saga：增加持仓。
-func (h *GRPCHandler) SagaAddPosition(ctx context.Context, req *pb.SagaPositionRequest) (*pb.SagaPositionResponse, error) {
+func (h *Handler) SagaAddPosition(ctx context.Context, req *pb.SagaPositionRequest) (*pb.SagaPositionResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
@@ -216,7 +216,7 @@ func (h *GRPCHandler) SagaAddPosition(ctx context.Context, req *pb.SagaPositionR
 }
 
 // SagaSubPosition Saga：扣除持仓。
-func (h *GRPCHandler) SagaSubPosition(ctx context.Context, req *pb.SagaPositionRequest) (*pb.SagaPositionResponse, error) {
+func (h *Handler) SagaSubPosition(ctx context.Context, req *pb.SagaPositionRequest) (*pb.SagaPositionResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get dtm barrier: %v", err)
@@ -232,7 +232,7 @@ func (h *GRPCHandler) SagaSubPosition(ctx context.Context, req *pb.SagaPositionR
 	return &pb.SagaPositionResponse{Success: true}, nil
 }
 
-func (h *GRPCHandler) toProtoPosition(dto *application.PositionDTO) *pb.Position {
+func (h *Handler) toProtoPosition(dto *application.PositionDTO) *pb.Position {
 	var closedAt int64
 	if dto.ClosedAt != nil {
 		closedAt = *dto.ClosedAt

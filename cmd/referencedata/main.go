@@ -74,7 +74,7 @@ func main() {
 // registerGRPC 注册 gRPC 服务
 func registerGRPC(s *grpc.Server, svc any) {
 	ctx := svc.(*AppContext)
-	pb.RegisterReferenceDataServiceServer(s, referencedatagrpc.NewGRPCHandler(ctx.ReferenceData))
+	pb.RegisterReferenceDataServiceServer(s, referencedatagrpc.NewHandler(ctx.ReferenceData))
 }
 
 // registerGin 注册 HTTP 路由

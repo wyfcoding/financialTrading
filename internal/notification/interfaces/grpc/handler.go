@@ -12,24 +12,24 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// GRPCHandler gRPC 处理器
+// Handler gRPC 处理器
 // 负责处理与通知相关的 gRPC 请求
-type GRPCHandler struct {
+type Handler struct {
 	pb.UnimplementedNotificationServiceServer
 	app *application.NotificationService // 通知应用服务
 }
 
-// NewGRPCHandler 创建 gRPC 处理器实例
+// NewHandler 创建 gRPC 处理器实例
 // app: 注入的通知应用服务
-func NewGRPCHandler(app *application.NotificationService) *GRPCHandler {
-	return &GRPCHandler{
+func NewHandler(app *application.NotificationService) *Handler {
+	return &Handler{
 		app: app,
 	}
 }
 
 // SendNotification 发送通知
 // 处理 gRPC SendNotification 请求
-func (h *GRPCHandler) SendNotification(ctx context.Context, req *pb.SendNotificationRequest) (*pb.SendNotificationResponse, error) {
+func (h *Handler) SendNotification(ctx context.Context, req *pb.SendNotificationRequest) (*pb.SendNotificationResponse, error) {
 	start := time.Now()
 	slog.Info("gRPC SendNotification received", "user_id", req.UserId, "type", req.Type, "subject", req.Subject)
 
@@ -48,7 +48,7 @@ func (h *GRPCHandler) SendNotification(ctx context.Context, req *pb.SendNotifica
 }
 
 // GetNotificationHistory 获取通知历史
-func (h *GRPCHandler) GetNotificationHistory(ctx context.Context, req *pb.GetNotificationHistoryRequest) (*pb.GetNotificationHistoryResponse, error) {
+func (h *Handler) GetNotificationHistory(ctx context.Context, req *pb.GetNotificationHistoryRequest) (*pb.GetNotificationHistoryResponse, error) {
 	start := time.Now()
 	slog.Debug("gRPC GetNotificationHistory received", "user_id", req.UserId)
 

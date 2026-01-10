@@ -90,7 +90,7 @@ func main() {
 // registerGRPC 注册 gRPC 服务
 func registerGRPC(s *grpc.Server, svc any) {
 	ctx := svc.(*AppContext)
-	pb.RegisterOrderServiceServer(s, ordergrpc.NewGRPCHandler(ctx.Order))
+	pb.RegisterOrderServiceServer(s, ordergrpc.NewHandler(ctx.Order))
 }
 
 // registerGin 注册 HTTP 路由
@@ -159,7 +159,10 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	// 3. 初始化治理组件 (限流器、幂等管理器、风控引擎)
 	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
 	idemManager := idempotency.NewRedisManager(redisCache.GetClient(), IdempotencyPrefix)
-	riskEvaluator := risk.NewDynamicRiskEngine(logger.Logger)
+	riskEvaluator, err := risk.NewDynamicRiskEngine(logger.Logger)
+	if err != nil {
+		panic(fmt.Sprintf("failed to initialize risk evaluator: %v", err))
+	}
 
 	// 4. 初始化下游微服务客户端
 	clients := &ServiceClients{}

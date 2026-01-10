@@ -14,10 +14,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// GRPCHandler 是清算服务的 gRPC 处理器。
+// Handler 是清算服务的 gRPC 处理器。
 // 它实现了由 apoch 生成的 `ClearingServiceServer` 接口。
 // 其核心职责是作为 gRPC 协议与内部应用逻辑之间的桥梁。
-type GRPCHandler struct {
+type Handler struct {
 	pb.UnimplementedClearingServiceServer                              // 嵌入未实现的 apoch 服务，确保向前兼容
 	service                               *application.ClearingService // 依赖注入的应用服务实例
 }
@@ -25,16 +25,16 @@ type GRPCHandler struct {
 // 创建 gRPC 处理器实例。
 //
 // @param service 注入的清算应用服务实例。
-// @return *GRPCHandler 返回一个新的 gRPC 处理器实例。
-func NewGRPCHandler(service *application.ClearingService) *GRPCHandler {
-	return &GRPCHandler{
+// @return *Handler 返回一个新的 gRPC 处理器实例。
+func NewHandler(service *application.ClearingService) *Handler {
+	return &Handler{
 		service: service,
 	}
 }
 
 // SettleTrade 实现了 gRPC 的 SettleTrade 方法。
 // 它接收 gRPC 请求，将其转换为应用层的 DTO，然后调用应用服务来处理。
-func (h *GRPCHandler) SettleTrade(ctx context.Context, req *pb.SettleTradeRequest) (*pb.SettleTradeResponse, error) {
+func (h *Handler) SettleTrade(ctx context.Context, req *pb.SettleTradeRequest) (*pb.SettleTradeResponse, error) {
 	start := time.Now()
 	slog.Info("gRPC SettleTrade received", "trade_id", req.TradeId, "buy_user_id", req.BuyUserId, "sell_user_id", req.SellUserId, "symbol", req.Symbol)
 
@@ -66,7 +66,7 @@ func (h *GRPCHandler) SettleTrade(ctx context.Context, req *pb.SettleTradeReques
 }
 
 // ExecuteEODClearing 实现了 gRPC 的 ExecuteEODClearing 方法。
-func (h *GRPCHandler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEODClearingRequest) (*pb.ExecuteEODClearingResponse, error) {
+func (h *Handler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEODClearingRequest) (*pb.ExecuteEODClearingResponse, error) {
 	start := time.Now()
 	slog.Info("gRPC ExecuteEODClearing received", "clearing_date", req.ClearingDate)
 
@@ -86,7 +86,7 @@ func (h *GRPCHandler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEOD
 	}, nil
 }
 
-func (h *GRPCHandler) GetClearingStatus(ctx context.Context, req *pb.GetClearingStatusRequest) (*pb.GetClearingStatusResponse, error) {
+func (h *Handler) GetClearingStatus(ctx context.Context, req *pb.GetClearingStatusRequest) (*pb.GetClearingStatusResponse, error) {
 	slog.Debug("gRPC GetClearingStatus received", "clearing_id", req.ClearingId)
 
 	// 调用应用服务获取清算任务状态。
@@ -118,7 +118,7 @@ func (h *GRPCHandler) GetClearingStatus(ctx context.Context, req *pb.GetClearing
 	}, nil
 }
 
-func (h *GRPCHandler) GetMarginRequirement(ctx context.Context, req *pb.GetMarginRequirementRequest) (*pb.GetMarginRequirementResponse, error) {
+func (h *Handler) GetMarginRequirement(ctx context.Context, req *pb.GetMarginRequirementRequest) (*pb.GetMarginRequirementResponse, error) {
 	start := time.Now()
 	slog.Debug("gRPC GetMarginRequirement received", "symbol", req.Symbol)
 
@@ -138,7 +138,7 @@ func (h *GRPCHandler) GetMarginRequirement(ctx context.Context, req *pb.GetMargi
 }
 
 // SagaMarkSettlementCompleted Saga 正向: 确认结算成功
-func (h *GRPCHandler) SagaMarkSettlementCompleted(ctx context.Context, req *pb.SagaSettlementRequest) (*pb.SagaSettlementResponse, error) {
+func (h *Handler) SagaMarkSettlementCompleted(ctx context.Context, req *pb.SagaSettlementRequest) (*pb.SagaSettlementResponse, error) {
 	if err := h.service.SagaMarkSettlementCompleted(ctx, req.SettlementId); err != nil {
 		return nil, status.Errorf(codes.Internal, "SagaMarkSettlementCompleted failed: %v", err)
 	}
@@ -146,7 +146,7 @@ func (h *GRPCHandler) SagaMarkSettlementCompleted(ctx context.Context, req *pb.S
 }
 
 // SagaMarkSettlementFailed Saga 补偿: 标记结算失败
-func (h *GRPCHandler) SagaMarkSettlementFailed(ctx context.Context, req *pb.SagaSettlementRequest) (*pb.SagaSettlementResponse, error) {
+func (h *Handler) SagaMarkSettlementFailed(ctx context.Context, req *pb.SagaSettlementRequest) (*pb.SagaSettlementResponse, error) {
 	if err := h.service.SagaMarkSettlementFailed(ctx, req.SettlementId, req.Reason); err != nil {
 		return nil, status.Errorf(codes.Internal, "SagaMarkSettlementFailed failed: %v", err)
 	}

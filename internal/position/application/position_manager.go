@@ -97,7 +97,7 @@ func (m *PositionManager) TccTryFreeze(ctx context.Context, barrier any, userID,
 }
 
 // TccConfirmFreeze 执行 TCC 第二阶段：确认冻结。
-func (m *PositionManager) TccConfirmFreeze(ctx context.Context, barrier any, userID, symbol string, quantity decimal.Decimal) error {
+func (m *PositionManager) TccConfirmFreeze(ctx context.Context, barrier any, _, symbol string, quantity decimal.Decimal) error {
 	return m.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		return nil
 	})

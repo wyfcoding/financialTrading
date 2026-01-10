@@ -12,21 +12,21 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// GRPCHandler 实现了 ExecutionService 的 gRPC 服务端接口，负责实时订单执行与复杂算法单的接收。
-type GRPCHandler struct {
+// Handler 实现了 ExecutionService 的 gRPC 服务端接口，负责实时订单执行与复杂算法单的接收。
+type Handler struct {
 	pb.UnimplementedExecutionServiceServer
 	service *application.ExecutionService // 关联的执行应用服务
 }
 
-// NewGRPCHandler 构造一个新的执行 gRPC 处理器实例。
-func NewGRPCHandler(service *application.ExecutionService) *GRPCHandler {
-	return &GRPCHandler{
+// NewHandler 构造一个新的执行 gRPC 处理器实例。
+func NewHandler(service *application.ExecutionService) *Handler {
+	return &Handler{
 		service: service,
 	}
 }
 
 // ExecuteOrder 处理实时普通限价或市价单的执行请求。
-func (h *GRPCHandler) ExecuteOrder(ctx context.Context, req *pb.ExecuteOrderRequest) (*pb.ExecuteOrderResponse, error) {
+func (h *Handler) ExecuteOrder(ctx context.Context, req *pb.ExecuteOrderRequest) (*pb.ExecuteOrderResponse, error) {
 	start := time.Now()
 	slog.InfoContext(ctx, "grpc execute_order received", "order_id", req.OrderId, "user_id", req.UserId, "symbol", req.Symbol)
 
@@ -55,7 +55,7 @@ func (h *GRPCHandler) ExecuteOrder(ctx context.Context, req *pb.ExecuteOrderRequ
 }
 
 // GetExecutionHistory 分页查询用户的历史执行记录。
-func (h *GRPCHandler) GetExecutionHistory(ctx context.Context, req *pb.GetExecutionHistoryRequest) (*pb.GetExecutionHistoryResponse, error) {
+func (h *Handler) GetExecutionHistory(ctx context.Context, req *pb.GetExecutionHistoryRequest) (*pb.GetExecutionHistoryResponse, error) {
 	start := time.Now()
 	slog.DebugContext(ctx, "grpc get_execution_history received", "user_id", req.UserId)
 
@@ -89,7 +89,7 @@ func (h *GRPCHandler) GetExecutionHistory(ctx context.Context, req *pb.GetExecut
 }
 
 // SubmitAlgoOrder 提交高级算法订单（如 VWAP）。
-func (h *GRPCHandler) SubmitAlgoOrder(ctx context.Context, req *pb.SubmitAlgoOrderRequest) (*pb.SubmitAlgoOrderResponse, error) {
+func (h *Handler) SubmitAlgoOrder(ctx context.Context, req *pb.SubmitAlgoOrderRequest) (*pb.SubmitAlgoOrderResponse, error) {
 	if req.UserId == "" || req.Symbol == "" || req.TotalQuantity == "" {
 		return nil, status.Error(codes.InvalidArgument, "missing required fields")
 	}
@@ -104,7 +104,7 @@ func (h *GRPCHandler) SubmitAlgoOrder(ctx context.Context, req *pb.SubmitAlgoOrd
 }
 
 // SubmitSOROrder 提交智能路由订单。
-func (h *GRPCHandler) SubmitSOROrder(ctx context.Context, req *pb.SubmitSOROrderRequest) (*pb.SubmitSOROrderResponse, error) {
+func (h *Handler) SubmitSOROrder(ctx context.Context, req *pb.SubmitSOROrderRequest) (*pb.SubmitSOROrderResponse, error) {
 	if req.UserId == "" || req.Symbol == "" || req.TotalQuantity == "" {
 		return nil, status.Error(codes.InvalidArgument, "missing required fields")
 	}

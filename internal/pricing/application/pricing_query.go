@@ -23,7 +23,7 @@ func NewPricingQuery(marketDataClient domain.MarketDataClient, pricingRepo domai
 }
 
 // GetGreeks 计算希腊字母
-func (q *PricingQuery) GetGreeks(ctx context.Context, contract domain.OptionContract, underlyingPrice decimal.Decimal, volatility, riskFreeRate float64) (*domain.Greeks, error) {
+func (q *PricingQuery) GetGreeks(_ context.Context, contract domain.OptionContract, underlyingPrice decimal.Decimal, volatility, riskFreeRate float64) (*domain.Greeks, error) {
 	timeToExpiry := float64(contract.ExpiryDate-time.Now().UnixMilli()) / 1000 / 24 / 3600 / 365
 	if timeToExpiry < 0 {
 		return &domain.Greeks{
@@ -35,12 +35,12 @@ func (q *PricingQuery) GetGreeks(ctx context.Context, contract domain.OptionCont
 		}, nil
 	}
 
-	s_val, _ := underlyingPrice.Float64()
-	k_val, _ := contract.StrikePrice.Float64()
+	sVal, _ := underlyingPrice.Float64()
+	kVal, _ := contract.StrikePrice.Float64()
 
 	result := domain.CalculateBlackScholes(contract.Type, domain.BlackScholesInput{
-		S: s_val,
-		K: k_val,
+		S: sVal,
+		K: kVal,
 		T: timeToExpiry,
 		R: riskFreeRate,
 		V: volatility,

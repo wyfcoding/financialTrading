@@ -12,21 +12,21 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// GRPCHandler gRPC 处理器
+// Handler gRPC 处理器
 // 负责处理与监控分析相关的 gRPC 请求
-type GRPCHandler struct {
+type Handler struct {
 	pb.UnimplementedMonitoringAnalyticsServiceServer
 	app *application.MonitoringAnalyticsService // 监控分析应用服务
 }
 
-// NewGRPCHandler 创建 gRPC 处理器实例
+// NewHandler 创建 gRPC 处理器实例
 // app: 注入的监控分析应用服务
-func NewGRPCHandler(app *application.MonitoringAnalyticsService) *GRPCHandler {
-	return &GRPCHandler{app: app}
+func NewHandler(app *application.MonitoringAnalyticsService) *Handler {
+	return &Handler{app: app}
 }
 
 // RecordMetric 记录指标
-func (h *GRPCHandler) RecordMetric(ctx context.Context, req *pb.RecordMetricRequest) (*pb.RecordMetricResponse, error) {
+func (h *Handler) RecordMetric(ctx context.Context, req *pb.RecordMetricRequest) (*pb.RecordMetricResponse, error) {
 	val := decimal.NewFromFloat(req.Metric.Value)
 	ts := req.Metric.Timestamp.AsTime().UnixMilli()
 	err := h.app.RecordMetric(ctx, req.Metric.Name, val, req.Metric.Tags, ts)
@@ -41,7 +41,7 @@ func (h *GRPCHandler) RecordMetric(ctx context.Context, req *pb.RecordMetricRequ
 }
 
 // GetMetrics 获取指标
-func (h *GRPCHandler) GetMetrics(ctx context.Context, req *pb.GetMetricsRequest) (*pb.GetMetricsResponse, error) {
+func (h *Handler) GetMetrics(ctx context.Context, req *pb.GetMetricsRequest) (*pb.GetMetricsResponse, error) {
 	start := req.StartTime.AsTime().UnixMilli()
 	end := req.EndTime.AsTime().UnixMilli()
 	metrics, err := h.app.GetMetrics(ctx, req.Name, start, end)
@@ -70,7 +70,7 @@ func (h *GRPCHandler) GetMetrics(ctx context.Context, req *pb.GetMetricsRequest)
 }
 
 // GetSystemHealth 获取系统健康状态
-func (h *GRPCHandler) GetSystemHealth(ctx context.Context, req *pb.GetSystemHealthRequest) (*pb.GetSystemHealthResponse, error) {
+func (h *Handler) GetSystemHealth(ctx context.Context, req *pb.GetSystemHealthRequest) (*pb.GetSystemHealthResponse, error) {
 	healths, err := h.app.GetSystemHealth(ctx, req.ServiceName)
 	if err != nil {
 		slog.Error("Failed to get system health", "service", req.ServiceName, "error", err)

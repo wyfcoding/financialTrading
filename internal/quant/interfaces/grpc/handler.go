@@ -12,22 +12,22 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// GRPCHandler gRPC 处理器
+// Handler gRPC 处理器
 // 负责处理与量化策略和回测相关的 gRPC 请求
-type GRPCHandler struct {
+type Handler struct {
 	pb.UnimplementedQuantServiceServer
 	app *application.QuantService // 量化应用服务
 }
 
-// NewGRPCHandler 创建 gRPC 处理器实例
+// NewHandler 创建 gRPC 处理器实例
 // app: 注入的量化应用服务
-func NewGRPCHandler(app *application.QuantService) *GRPCHandler {
-	return &GRPCHandler{app: app}
+func NewHandler(app *application.QuantService) *Handler {
+	return &Handler{app: app}
 }
 
 // CreateStrategy 创建策略
 // 处理 gRPC CreateStrategy 请求
-func (h *GRPCHandler) CreateStrategy(ctx context.Context, req *pb.CreateStrategyRequest) (*pb.CreateStrategyResponse, error) {
+func (h *Handler) CreateStrategy(ctx context.Context, req *pb.CreateStrategyRequest) (*pb.CreateStrategyResponse, error) {
 	// 调用应用服务创建策略
 	id, err := h.app.CreateStrategy(ctx, req.Name, req.Description, req.Script)
 	if err != nil {
@@ -41,7 +41,7 @@ func (h *GRPCHandler) CreateStrategy(ctx context.Context, req *pb.CreateStrategy
 }
 
 // GetStrategy 获取策略
-func (h *GRPCHandler) GetStrategy(ctx context.Context, req *pb.GetStrategyRequest) (*pb.GetStrategyResponse, error) {
+func (h *Handler) GetStrategy(ctx context.Context, req *pb.GetStrategyRequest) (*pb.GetStrategyResponse, error) {
 	strategy, err := h.app.GetStrategy(ctx, req.Id)
 	if err != nil {
 		slog.Error("Failed to get strategy", "id", req.Id, "error", err)
@@ -57,7 +57,7 @@ func (h *GRPCHandler) GetStrategy(ctx context.Context, req *pb.GetStrategyReques
 }
 
 // RunBacktest 运行回测
-func (h *GRPCHandler) RunBacktest(ctx context.Context, req *pb.RunBacktestRequest) (*pb.RunBacktestResponse, error) {
+func (h *Handler) RunBacktest(ctx context.Context, req *pb.RunBacktestRequest) (*pb.RunBacktestResponse, error) {
 	id, err := h.app.RunBacktest(ctx, req.StrategyId, req.Symbol, req.StartTime.AsTime(), req.EndTime.AsTime(), req.InitialCapital)
 	if err != nil {
 		slog.Error("Failed to run backtest", "strategy_id", req.StrategyId, "symbol", req.Symbol, "error", err)
@@ -70,7 +70,7 @@ func (h *GRPCHandler) RunBacktest(ctx context.Context, req *pb.RunBacktestReques
 }
 
 // GetBacktestResult 获取回测结果
-func (h *GRPCHandler) GetBacktestResult(ctx context.Context, req *pb.GetBacktestResultRequest) (*pb.GetBacktestResultResponse, error) {
+func (h *Handler) GetBacktestResult(ctx context.Context, req *pb.GetBacktestResultRequest) (*pb.GetBacktestResultResponse, error) {
 	result, err := h.app.GetBacktestResult(ctx, req.Id)
 	if err != nil {
 		slog.Error("Failed to get backtest result", "id", req.Id, "error", err)

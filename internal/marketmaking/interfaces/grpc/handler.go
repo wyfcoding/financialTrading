@@ -13,24 +13,24 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// GRPCHandler gRPC 处理器
+// Handler gRPC 处理器
 // 负责处理与做市相关的 gRPC 请求
-type GRPCHandler struct {
+type Handler struct {
 	pb.UnimplementedMarketMakingServiceServer
 	app *application.MarketMakingService // 做市应用服务
 }
 
-// NewGRPCHandler 创建 gRPC 处理器实例
+// NewHandler 创建 gRPC 处理器实例
 // app: 注入的做市应用服务
-func NewGRPCHandler(app *application.MarketMakingService) *GRPCHandler {
-	return &GRPCHandler{
+func NewHandler(app *application.MarketMakingService) *Handler {
+	return &Handler{
 		app: app,
 	}
 }
 
 // SetStrategy 设置做市策略
 // 处理 gRPC SetStrategy 请求
-func (h *GRPCHandler) SetStrategy(ctx context.Context, req *pb.SetStrategyRequest) (*pb.SetStrategyResponse, error) {
+func (h *Handler) SetStrategy(ctx context.Context, req *pb.SetStrategyRequest) (*pb.SetStrategyResponse, error) {
 	start := time.Now()
 	slog.Info("gRPC SetStrategy received", "symbol", req.Symbol, "spread", req.Spread, "status", req.Status)
 
@@ -53,7 +53,7 @@ func (h *GRPCHandler) SetStrategy(ctx context.Context, req *pb.SetStrategyReques
 }
 
 // GetStrategy 获取做市策略
-func (h *GRPCHandler) GetStrategy(ctx context.Context, req *pb.GetStrategyRequest) (*pb.GetStrategyResponse, error) {
+func (h *Handler) GetStrategy(ctx context.Context, req *pb.GetStrategyRequest) (*pb.GetStrategyResponse, error) {
 	start := time.Now()
 	slog.Debug("gRPC GetStrategy received", "symbol", req.Symbol)
 
@@ -74,7 +74,7 @@ func (h *GRPCHandler) GetStrategy(ctx context.Context, req *pb.GetStrategyReques
 }
 
 // GetPerformance 获取做市绩效
-func (h *GRPCHandler) GetPerformance(ctx context.Context, req *pb.GetPerformanceRequest) (*pb.GetPerformanceResponse, error) {
+func (h *Handler) GetPerformance(ctx context.Context, req *pb.GetPerformanceRequest) (*pb.GetPerformanceResponse, error) {
 	start := time.Now()
 	slog.Debug("gRPC GetPerformance received", "symbol", req.Symbol)
 
