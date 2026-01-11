@@ -150,7 +150,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	}
 
 	// 3. 初始化限流与幂等治理组件
-	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
+	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, c.RateLimit.Burst)
 	idemManager := idempotency.NewRedisManager(redisCache.GetClient(), IdempotencyPrefix)
 
 	// 4. 初始化异步通信组件 (Kafka + Outbox)

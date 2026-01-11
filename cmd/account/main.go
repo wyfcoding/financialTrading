@@ -153,7 +153,7 @@ func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
 	outboxProcessor.Start()
 
 	// 4. 初始化治理组件 (限流器、幂等管理器)
-	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, time.Second)
+	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, c.RateLimit.Burst)
 	idemManager := idempotency.NewRedisManager(redisCache.GetClient(), IdempotencyPrefix)
 
 	// 5. 初始化下游微服务客户端
