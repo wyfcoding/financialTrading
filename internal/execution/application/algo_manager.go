@@ -98,7 +98,7 @@ func (m *AlgoManager) runTWAP(ctx context.Context, algo *domain.AlgoOrder) {
 	}
 
 	// 生成切片计划
-	slices, err := strategy.GenerateSlices(parentOrder, nil)
+	slices, err := strategy.GenerateSlices(parentOrder)
 	if err != nil {
 		m.failAlgo(ctx, algo, fmt.Sprintf("failed to generate slices: %v", err))
 		return
@@ -180,7 +180,7 @@ func (m *AlgoManager) runVWAP(ctx context.Context, algo *domain.AlgoOrder) {
 	}
 
 	// 生成基于历史分布的切片计划
-	slices, err := strategy.GenerateSlices(parentOrder, nil)
+	slices, err := strategy.GenerateSlices(parentOrder)
 	if err != nil {
 		m.failAlgo(ctx, algo, fmt.Sprintf("failed to generate VWAP slices: %v", err))
 		return

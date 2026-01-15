@@ -46,7 +46,7 @@ type ChildOrder struct {
 // ExecutionStrategy 定义拆单算法接口
 type ExecutionStrategy interface {
 	// GenerateSlices 根据母单参数和市场状态生成剩余的子单计划
-	GenerateSlices(order *ParentOrder, marketData any) ([]*ChildOrder, error)
+	GenerateSlices(order *ParentOrder) ([]*ChildOrder, error)
 }
 
 // TWAPStrategy 时间加权平均价格策略
@@ -56,7 +56,7 @@ type TWAPStrategy struct {
 	Randomize    bool            // 是否添加随机噪音
 }
 
-func (s *TWAPStrategy) GenerateSlices(order *ParentOrder, _ any) ([]*ChildOrder, error) {
+func (s *TWAPStrategy) GenerateSlices(order *ParentOrder) ([]*ChildOrder, error) {
 	now := time.Now()
 	if now.After(order.EndTime) {
 		return nil, errors.New("order execution window passed")
@@ -147,7 +147,7 @@ type VWAPStrategy struct {
 	Profile []VolumeProfileItem
 }
 
-func (s *VWAPStrategy) GenerateSlices(order *ParentOrder, _ any) ([]*ChildOrder, error) {
+func (s *VWAPStrategy) GenerateSlices(order *ParentOrder) ([]*ChildOrder, error) {
 	// 简化实现：假设 Profile 覆盖了订单的整个执行窗口
 	// 实际应用需匹配 TimeSlot 和当前时间
 

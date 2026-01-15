@@ -61,7 +61,7 @@ type ServiceClients struct {
 
 func main() {
 	// 构建并运行服务
-	if err := app.NewBuilder(BootstrapName).
+	if err := app.NewBuilder[*Config, *AppContext](BootstrapName).
 		WithConfig(&Config{}).
 		WithService(initService).
 		WithGRPC(registerGRPC).
@@ -77,14 +77,12 @@ func main() {
 }
 
 // registerGRPC 注册 gRPC 服务
-func registerGRPC(s *grpc.Server, svc any) {
-	ctx := svc.(*AppContext)
+func registerGRPC(s *grpc.Server, ctx *AppContext) {
 	pb.RegisterExecutionServiceServer(s, executiongrpc.NewHandler(ctx.Execution))
 }
 
 // registerGin 注册 HTTP 路由
-func registerGin(e *gin.Engine, svc any) {
-	ctx := svc.(*AppContext)
+func registerGin(e *gin.Engine, ctx *AppContext) {
 
 	// 根据环境设置 Gin 模式
 	if ctx.Config.Server.Environment == "prod" {
@@ -122,8 +120,8 @@ func registerGin(e *gin.Engine, svc any) {
 }
 
 // initService 初始化服务依赖 (数据库、缓存、客户端、领域层)
-func initService(cfg any, m *metrics.Metrics) (any, func(), error) {
-	c := cfg.(*Config)
+func initService(cfg *Config, m *metrics.Metrics) (*AppContext, func(), error) {
+	c := cfg
 	bootLog := slog.With("module", "bootstrap")
 	logger := logging.Default() // 获取全局 Logger
 

@@ -57,7 +57,7 @@ func (m *QuantManager) RunBacktest(ctx context.Context, strategyID string, symbo
 	endMilli := endTime.UnixMilli()
 
 	// 1. 获取真实历史行情
-	prices, err := m.marketDataClient.GetHistoricalData(ctx, symbol, startMilli, endMilli)
+	prices, err := m.marketDataClient.GetHistoricalData(ctx, symbol)
 	if err != nil {
 		return "", err
 	}

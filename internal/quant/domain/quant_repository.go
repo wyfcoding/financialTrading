@@ -20,5 +20,5 @@ type BacktestResultRepository interface {
 
 // MarketDataClient 市场数据客户端接口
 type MarketDataClient interface {
-	GetHistoricalData(ctx context.Context, symbol string, start, end int64) ([]decimal.Decimal, error)
+	GetHistoricalData(ctx context.Context, symbol string) ([]decimal.Decimal, error)
 }

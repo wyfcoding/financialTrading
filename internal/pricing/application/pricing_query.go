@@ -23,7 +23,10 @@ func NewPricingQuery(marketDataClient domain.MarketDataClient, pricingRepo domai
 }
 
 // GetGreeks 计算希腊字母
-func (q *PricingQuery) GetGreeks(_ context.Context, contract domain.OptionContract, underlyingPrice decimal.Decimal, volatility, riskFreeRate float64) (*domain.Greeks, error) {
+func (q *PricingQuery) GetGreeks(ctx context.Context, contract domain.OptionContract, underlyingPrice decimal.Decimal, volatility, riskFreeRate float64) (*domain.Greeks, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 	timeToExpiry := float64(contract.ExpiryDate-time.Now().UnixMilli()) / 1000 / 24 / 3600 / 365
 	if timeToExpiry < 0 {
 		return &domain.Greeks{

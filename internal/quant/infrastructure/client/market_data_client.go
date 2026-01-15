@@ -39,7 +39,7 @@ func NewMarketDataClientFromConn(conn *grpc.ClientConn) domain.MarketDataClient 
 }
 
 // GetHistoricalData 获取历史价格数据
-func (c *MarketDataClientImpl) GetHistoricalData(ctx context.Context, symbol string, _, _ int64) ([]decimal.Decimal, error) {
+func (c *MarketDataClientImpl) GetHistoricalData(ctx context.Context, symbol string) ([]decimal.Decimal, error) {
 	req := &market_data.GetKlinesRequest{
 		Symbol:   symbol,
 		Interval: "1d",
