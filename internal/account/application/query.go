@@ -50,6 +50,7 @@ func (q *AccountQueryService) toDTO(a *domain.Account) *AccountDTO {
 		Balance:          a.Balance.String(),
 		AvailableBalance: a.AvailableBalance.String(),
 		FrozenBalance:    a.FrozenBalance.String(),
+		CreatedAt:        a.CreatedAt.Unix(),
 		UpdatedAt:        a.UpdatedAt.Unix(),
 		Version:          a.Version,
 	}

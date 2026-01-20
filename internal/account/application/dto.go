@@ -33,6 +33,7 @@ type AccountDTO struct {
 	Balance          string
 	AvailableBalance string
 	FrozenBalance    string
+	CreatedAt        int64
 	UpdatedAt        int64
 	Version          int64
 }

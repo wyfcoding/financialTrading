@@ -15,6 +15,7 @@ type CreateSimulationCommand struct {
 // SimulationDTO represents the exposed simulation data
 type SimulationDTO struct {
 	ID           uint      `json:"id"`
+	ScenarioID   string    `json:"scenario_id"`
 	Name         string    `json:"name"`
 	Symbol       string    `json:"symbol"`
 	InitialPrice float64   `json:"initial_price"`

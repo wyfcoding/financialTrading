@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/shopspring/decimal"
 	pb "github.com/wyfcoding/financialtrading/go-api/clearing/v1"
 	"github.com/wyfcoding/financialtrading/internal/clearing/application"
 	"google.golang.org/grpc/codes"
@@ -38,29 +39,32 @@ func (h *Handler) SettleTrade(ctx context.Context, req *pb.SettleTradeRequest) (
 	start := time.Now()
 	slog.Info("gRPC SettleTrade received", "trade_id", req.TradeId, "buy_user_id", req.BuyUserId, "sell_user_id", req.SellUserId, "symbol", req.Symbol)
 
+	quantity, _ := decimal.NewFromString(req.Quantity)
+	price, _ := decimal.NewFromString(req.Price)
+
 	// 1. 将 gRPC 请求对象 (*pb.SettleTradeRequest) 转换为应用层 DTO (*application.SettleTradeRequest)。
 	appReq := &application.SettleTradeRequest{
 		TradeID:    req.TradeId,
 		BuyUserID:  req.BuyUserId,
 		SellUserID: req.SellUserId,
 		Symbol:     req.Symbol,
-		Quantity:   req.Quantity,
-		Price:      req.Price,
+		Quantity:   quantity,
+		Price:      price,
 	}
 
 	// 2. 调用应用服务来执行核心业务逻辑,接收返回的 settlementID。
-	settlementID, err := h.service.SettleTrade(ctx, appReq)
+	settlementDTO, err := h.service.SettleTrade(ctx, appReq)
 	if err != nil {
 		slog.Error("gRPC SettleTrade failed", "trade_id", req.TradeId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to settle trade: %v", err)
 	}
 
-	slog.Info("gRPC SettleTrade successful", "trade_id", req.TradeId, "settlement_id", settlementID, "duration", time.Since(start))
+	slog.Info("gRPC SettleTrade successful", "trade_id", req.TradeId, "settlement_id", settlementDTO.SettlementID, "duration", time.Since(start))
 	// 4. 构建并返回 gRPC 响应,填充从应用服务返回的 settlementID。
 	return &pb.SettleTradeResponse{
 		TradeId:        req.TradeId,
 		Status:         "COMPLETED", // 假设状态为已完成
-		SettlementId:   settlementID,
+		SettlementId:   settlementDTO.SettlementID,
 		SettlementTime: time.Now().Unix(),
 	}, nil
 }
@@ -110,7 +114,7 @@ func (h *Handler) GetClearingStatus(ctx context.Context, req *pb.GetClearingStat
 	slog.Debug("gRPC GetClearingStatus successful", "clearing_id", req.ClearingId, "status", clearing.Status)
 	// 将从应用层获取的领域对象转换为 gRPC 响应对象。
 	return &pb.GetClearingStatusResponse{
-		ClearingId:         clearing.ClearingID,
+		ClearingId:         clearing.SettlementID,
 		Status:             clearing.Status,
 		TradesProcessed:    clearing.TradesSettled,
 		TradesTotal:        clearing.TotalTrades,

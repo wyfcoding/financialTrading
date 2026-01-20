@@ -16,3 +16,8 @@ type TradeRepository interface {
 	Save(ctx context.Context, trade *Trade) error
 	GetTrades(ctx context.Context, symbol string, limit int) ([]*Trade, error)
 }
+
+type OrderBookRepository interface {
+	Save(ctx context.Context, ob *OrderBook) error
+	Get(ctx context.Context, symbol string) (*OrderBook, error)
+}

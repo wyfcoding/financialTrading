@@ -25,10 +25,10 @@ func NewMarketMakingGrpcServer(app *application.MarketMakingApplicationService) 
 func (s *MarketMakingGrpcServer) SetStrategy(ctx context.Context, req *marketmakingv1.SetStrategyRequest) (*marketmakingv1.SetStrategyResponse, error) {
 	cmd := application.SetStrategyCommand{
 		Symbol:       req.Symbol,
-		Spread:       floatToString(req.Spread),
-		MinOrderSize: floatToString(req.MinOrderSize),
-		MaxOrderSize: floatToString(req.MaxOrderSize),
-		MaxPosition:  floatToString(req.MaxPosition),
+		Spread:       fmt.Sprintf("%f", req.Spread),
+		MinOrderSize: fmt.Sprintf("%f", req.MinOrderSize),
+		MaxOrderSize: fmt.Sprintf("%f", req.MaxOrderSize),
+		MaxPosition:  fmt.Sprintf("%f", req.MaxPosition),
 		Status:       req.Status,
 	}
 
@@ -57,8 +57,8 @@ func (s *MarketMakingGrpcServer) GetStrategy(ctx context.Context, req *marketmak
 			MaxOrderSize: parseToFloat(dto.MaxOrderSize),
 			MaxPosition:  parseToFloat(dto.MaxPosition),
 			Status:       dto.Status,
-			CreatedAt:    timestamppb.New(parseToTime(dto.CreatedAt)),
-			UpdatedAt:    timestamppb.New(parseToTime(dto.UpdatedAt)),
+			CreatedAt:    timestamppb.New(time.UnixMilli(dto.CreatedAt)),
+			UpdatedAt:    timestamppb.New(time.UnixMilli(dto.UpdatedAt)),
 		},
 	}, nil
 }
@@ -74,23 +74,13 @@ func (s *MarketMakingGrpcServer) GetPerformance(ctx context.Context, req *market
 			Symbol:      dto.Symbol,
 			TotalPnl:    dto.TotalPnL,
 			TotalVolume: dto.TotalVolume,
-			TotalTrades: dto.TotalTrades,
+			TotalTrades: dto.TotalTrades, // DTO is int32
 			SharpeRatio: dto.SharpeRatio,
 		},
 	}, nil
 }
 
-// Helpers
-
-func floatToString(f float64) string {
-	return fmt.Sprintf("%f", f)
-}
-
 func parseToFloat(s string) float64 {
 	f, _ := strconv.ParseFloat(s, 64)
 	return f
-}
-
-func parseToTime(ms int64) time.Time {
-	return time.UnixMilli(ms)
 }

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/shopspring/decimal"
 	pb "github.com/wyfcoding/financialtrading/go-api/execution/v1"
 	"github.com/wyfcoding/financialtrading/internal/execution/application"
 	"google.golang.org/grpc/codes"
@@ -15,11 +16,11 @@ import (
 // Handler 实现了 ExecutionService 的 gRPC 服务端接口，负责实时订单执行与复杂算法单的接收。
 type Handler struct {
 	pb.UnimplementedExecutionServiceServer
-	service *application.ExecutionService // 关联的执行应用服务
+	service *application.ExecutionApplicationService // 关联的执行应用服务
 }
 
 // NewHandler 构造一个新的执行 gRPC 处理器实例。
-func NewHandler(service *application.ExecutionService) *Handler {
+func NewHandler(service *application.ExecutionApplicationService) *Handler {
 	return &Handler{
 		service: service,
 	}
@@ -30,13 +31,16 @@ func (h *Handler) ExecuteOrder(ctx context.Context, req *pb.ExecuteOrderRequest)
 	start := time.Now()
 	slog.InfoContext(ctx, "grpc execute_order received", "order_id", req.OrderId, "user_id", req.UserId, "symbol", req.Symbol)
 
-	dto, err := h.service.ExecuteOrder(ctx, &application.ExecuteOrderRequest{
+	price, _ := decimal.NewFromString(req.Price)
+	qty, _ := decimal.NewFromString(req.Quantity)
+
+	dto, err := h.service.ExecuteOrder(ctx, application.ExecuteOrderCommand{
 		OrderID:  req.OrderId,
 		UserID:   req.UserId,
 		Symbol:   req.Symbol,
 		Side:     req.Side,
-		Price:    req.Price,
-		Quantity: req.Quantity,
+		Price:    price,
+		Quantity: qty,
 	})
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc execute_order failed", "order_id", req.OrderId, "error", err, "duration", time.Since(start))
@@ -48,9 +52,9 @@ func (h *Handler) ExecuteOrder(ctx context.Context, req *pb.ExecuteOrderRequest)
 		ExecutionId:      dto.ExecutionID,
 		OrderId:          dto.OrderID,
 		Status:           dto.Status,
-		ExecutedQuantity: dto.ExecutedQuantity,
-		ExecutedPrice:    dto.ExecutedPrice,
-		Timestamp:        dto.CreatedAt,
+		ExecutedQuantity: dto.ExecutedQty,
+		ExecutedPrice:    dto.ExecutedPx,
+		Timestamp:        dto.Timestamp,
 	}, nil
 }
 
@@ -76,9 +80,9 @@ func (h *Handler) GetExecutionHistory(ctx context.Context, req *pb.GetExecutionH
 			ExecutionId:      dto.ExecutionID,
 			OrderId:          dto.OrderID,
 			Symbol:           dto.Symbol,
-			ExecutedQuantity: dto.ExecutedQuantity,
-			ExecutedPrice:    dto.ExecutedPrice,
-			Timestamp:        dto.CreatedAt,
+			ExecutedQuantity: dto.ExecutedQty,
+			ExecutedPrice:    dto.ExecutedPx,
+			Timestamp:        dto.Timestamp,
 		})
 	}
 
@@ -94,13 +98,26 @@ func (h *Handler) SubmitAlgoOrder(ctx context.Context, req *pb.SubmitAlgoOrderRe
 		return nil, status.Error(codes.InvalidArgument, "missing required fields")
 	}
 
-	resp, err := h.service.SubmitAlgoOrder(ctx, req)
+	qty, _ := decimal.NewFromString(req.TotalQuantity)
+	algoID, err := h.service.SubmitAlgoOrder(ctx, application.SubmitAlgoCommand{
+		UserID:    req.UserId,
+		Symbol:    req.Symbol,
+		Side:      req.Side,
+		TotalQty:  qty,
+		AlgoType:  req.AlgoType,
+		StartTime: req.StartTime,
+		EndTime:   req.EndTime,
+		Params:    req.ParticipationRate, // Map participation_rate to Params for now
+	})
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc submit_algo_order failed", "user_id", req.UserId, "symbol", req.Symbol, "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to submit algo order: %v", err)
 	}
 
-	return resp, nil
+	return &pb.SubmitAlgoOrderResponse{
+		AlgoId: algoID,
+		Status: "ACCEPTED",
+	}, nil
 }
 
 // SubmitSOROrder 提交智能路由订单。
@@ -109,11 +126,24 @@ func (h *Handler) SubmitSOROrder(ctx context.Context, req *pb.SubmitSOROrderRequ
 		return nil, status.Error(codes.InvalidArgument, "missing required fields")
 	}
 
-	resp, err := h.service.SubmitSOROrder(ctx, req)
+	qty, _ := decimal.NewFromString(req.TotalQuantity)
+	sorID, err := h.service.SubmitSOROrder(ctx, application.SubmitAlgoCommand{
+		UserID:    req.UserId,
+		Symbol:    req.Symbol,
+		Side:      req.Side,
+		TotalQty:  qty,
+		AlgoType:  "SOR",
+		Params:    req.Strategy,
+		StartTime: time.Now().Unix(),
+		EndTime:   time.Now().Add(time.Hour).Unix(),
+	})
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc submit_sor_order failed", "user_id", req.UserId, "symbol", req.Symbol, "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to submit SOR order: %v", err)
 	}
 
-	return resp, nil
+	return &pb.SubmitSOROrderResponse{
+		SorId:  sorID,
+		Status: "ACCEPTED",
+	}, nil
 }

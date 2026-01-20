@@ -124,12 +124,93 @@ func (s *AccountGrpcServer) Deposit(ctx context.Context, req *accountv1.DepositR
 
 // SagaDeductFrozen Saga 扣款
 func (s *AccountGrpcServer) SagaDeductFrozen(ctx context.Context, req *accountv1.SagaAccountRequest) (*accountv1.SagaAccountResponse, error) {
-	// Barrier usually comes from metadata or request. Here assuming none for demo.
-	err := s.appService.SagaDeductFrozen(ctx, nil, req.UserId, req.Currency, req.Amount)
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid amount")
+	}
+	err = s.appService.SagaDeductFrozen(ctx, nil, req.UserId, req.Currency, amount)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &accountv1.SagaAccountResponse{Success: true}, nil
+}
+
+// SagaRefundFrozen Saga 补偿
+func (s *AccountGrpcServer) SagaRefundFrozen(ctx context.Context, req *accountv1.SagaAccountRequest) (*accountv1.SagaAccountResponse, error) {
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid amount")
+	}
+	err = s.appService.SagaRefundFrozen(ctx, nil, req.UserId, req.Currency, amount)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &accountv1.SagaAccountResponse{Success: true}, nil
+}
+
+// SagaAddBalance Saga 增加余额
+func (s *AccountGrpcServer) SagaAddBalance(ctx context.Context, req *accountv1.SagaAccountRequest) (*accountv1.SagaAccountResponse, error) {
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid amount")
+	}
+	err = s.appService.SagaAddBalance(ctx, nil, req.UserId, req.Currency, amount)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &accountv1.SagaAccountResponse{Success: true}, nil
+}
+
+// SagaSubBalance Saga 扣减余额
+func (s *AccountGrpcServer) SagaSubBalance(ctx context.Context, req *accountv1.SagaAccountRequest) (*accountv1.SagaAccountResponse, error) {
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid amount")
+	}
+	err = s.appService.SagaSubBalance(ctx, nil, req.UserId, req.Currency, amount)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &accountv1.SagaAccountResponse{Success: true}, nil
+}
+
+// TccTryFreeze TCC Try
+func (s *AccountGrpcServer) TccTryFreeze(ctx context.Context, req *accountv1.TccFreezeRequest) (*accountv1.TccFreezeResponse, error) {
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid amount")
+	}
+	err = s.appService.TccTryFreeze(ctx, nil, req.UserId, req.Currency, amount)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &accountv1.TccFreezeResponse{Success: true}, nil
+}
+
+// TccConfirmFreeze TCC Confirm
+func (s *AccountGrpcServer) TccConfirmFreeze(ctx context.Context, req *accountv1.TccFreezeRequest) (*accountv1.TccFreezeResponse, error) {
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid amount")
+	}
+	err = s.appService.TccConfirmFreeze(ctx, nil, req.UserId, req.Currency, amount)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &accountv1.TccFreezeResponse{Success: true}, nil
+}
+
+// TccCancelFreeze TCC Cancel
+func (s *AccountGrpcServer) TccCancelFreeze(ctx context.Context, req *accountv1.TccFreezeRequest) (*accountv1.TccFreezeResponse, error) {
+	amount, err := decimal.NewFromString(req.Amount)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid amount")
+	}
+	err = s.appService.TccCancelFreeze(ctx, nil, req.UserId, req.Currency, amount)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &accountv1.TccFreezeResponse{Success: true}, nil
 }
 
 // Other methods unimplemented for brevity in this step, but skeleton exists.
@@ -145,7 +226,7 @@ func (s *AccountGrpcServer) toProto(dto *application.AccountDTO) *accountv1.Acco
 		Currency:         dto.Currency,
 		Balance:          dto.Balance,
 		AvailableBalance: dto.AvailableBalance,
-		CreatedAt:        0, // DTO needs field
+		CreatedAt:        dto.CreatedAt,
 		UpdatedAt:        dto.UpdatedAt,
 	}
 }

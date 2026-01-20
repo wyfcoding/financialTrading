@@ -73,7 +73,7 @@ func main() {
 		}
 	}
 
-	outboxMgr := outbox.NewManager(db.RawDB(), nil)
+	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
 
 	// 5. Downstream Clients
 	// Account Service Client
@@ -90,12 +90,12 @@ func main() {
 
 	// 6. Application
 	repo := mysql.NewSettlementRepository(db.RawDB())
-	appService := application.NewClearingApplicationService(repo, outboxMgr, db.RawDB(), accountClient)
+	appService := application.NewClearingService(repo, outboxMgr, db.RawDB(), accountClient)
 	queryService := application.NewClearingQueryService(repo)
 
 	// 7. Interfaces
 	grpcSrv := grpc.NewServer()
-	clearingSrv := grpcserver.NewClearingGrpcServer(appService, queryService)
+	clearingSrv := grpcserver.NewHandler(appService)
 	clearingv1.RegisterClearingServiceServer(grpcSrv, clearingSrv)
 	reflection.Register(grpcSrv)
 

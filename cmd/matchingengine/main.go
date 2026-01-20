@@ -11,7 +11,6 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/application"
-	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
 	match_mem "github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/persistence/memory"
 	match_mysql "github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/matchingengine/interfaces/grpc"
@@ -44,49 +43,32 @@ func main() {
 		panic(fmt.Sprintf("connect db failed: %v", err))
 	}
 
-	// Auto Migrate is risky for Matching Engine if high load, but okay for dev
-	// Assuming Trade table exists
-
 	// 4. Infrastructure
-	// OrderBookRepo: In-Memory (Redis in real prod, but Memory correct for LMAX style)
 	orderBookRepo := match_mem.NewInMemoryRepository()
-	// TradeRepo: MySQL
 	tradeRepo := match_mysql.NewTradeRepository(db)
-	// Outbox
-	// outboxMgr := outbox.NewOutboxManager(db, logger)
 
-	// 5. Domain Engine
+	// 5. Domain Engine Configuration
 	symbol := viper.GetString("matching.symbol")
 	if symbol == "" {
-		symbol = "BTC-USDT" // Default
+		symbol = "BTC-USDT"
 	}
-	// DisruptionEngine usage: NewDisruptionEngine(symbol, bufferSize, logger)
-	bufferSize := uint64(1024 * 1024)
-	disruptionEngine, err := domain.NewDisruptionEngine(symbol, bufferSize, logger)
-	if err != nil {
-		panic(fmt.Sprintf("failed to init disruption engine: %v", err))
-	}
-	if err := disruptionEngine.Start(); err != nil {
-		panic(fmt.Sprintf("failed to start disruption engine: %v", err))
-	}
-	defer disruptionEngine.Shutdown()
 
-	// 6. Application Manager
-	// NewMatchingEngineManager(symbol, engine, tradeRepo, orderBookRepo, db, outboxMgr, logger)
-	manager := application.NewMatchingEngineManager(
+	// 6. Application Service
+	service, err := application.NewMatchingEngineService(
 		symbol,
-		disruptionEngine,
 		tradeRepo,
 		orderBookRepo,
 		db,
-		nil, // outboxMgr (temporarily disabled due to pkg missing)
+		nil, // outboxMgr (ignored if not used)
 		logger,
 	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to init matching engine service: %v", err))
+	}
 
 	// 7. Interfaces (gRPC)
 	grpcSrv := grpc.NewServer()
-	// NewServer needs Manager, not Service (we updated server.go in previous steps)
-	grpc_server.NewServer(grpcSrv, manager)
+	grpc_server.NewHandler(service)
 	reflection.Register(grpcSrv)
 
 	port := viper.GetString("server.grpc_port")

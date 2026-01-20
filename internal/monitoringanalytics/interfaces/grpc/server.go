@@ -61,10 +61,10 @@ func (s *Server) GetAlerts(ctx context.Context, req *v1.GetAlertsRequest) (*v1.G
 
 	for i, d := range dtos {
 		resp.Alerts[i] = &v1.Alert{
-			Id:        string(d.ID),
+			Id:        d.AlertID,
 			Severity:  d.Severity,
 			Message:   d.Message,
-			Timestamp: timestamppb.New(d.Timestamp),
+			Timestamp: timestamppb.New(time.Unix(d.Timestamp(), 0)),
 		}
 	}
 	return resp, nil

@@ -14,12 +14,12 @@ import (
 // HTTP 处理器
 // 负责处理与通知相关的 HTTP 请求
 type NotificationHandler struct {
-	app *application.NotificationService // 通知应用服务
+	app *application.NotificationManager // 通知应用服务
 }
 
 // 创建 HTTP 处理器实例
 // app: 注入的通知应用服务
-func NewNotificationHandler(app *application.NotificationService) *NotificationHandler {
+func NewNotificationHandler(app *application.NotificationManager) *NotificationHandler {
 	return &NotificationHandler{app: app}
 }
 
@@ -50,7 +50,13 @@ func (h *NotificationHandler) SendNotification(c *gin.Context) {
 		return
 	}
 
-	id, err := h.app.SendNotification(c.Request.Context(), req.UserID, req.Type, req.Subject, req.Content, req.Target)
+	id, err := h.app.SendNotification(c.Request.Context(), application.SendNotificationCommand{
+		UserID:    req.UserID,
+		Channel:   req.Type,
+		Subject:   req.Subject,
+		Content:   req.Content,
+		Recipient: req.Target,
+	})
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to send notification", "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -75,14 +81,7 @@ func (h *NotificationHandler) GetNotificationHistory(c *gin.Context) {
 		return
 	}
 
-	offsetStr := c.DefaultQuery("offset", "0")
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid offset", "")
-		return
-	}
-
-	notifications, total, err := h.app.GetNotificationHistory(c.Request.Context(), userID, limit, offset)
+	notifications, err := h.app.GetHistory(c.Request.Context(), userID, limit)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get notification history", "user_id", userID, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -91,6 +90,5 @@ func (h *NotificationHandler) GetNotificationHistory(c *gin.Context) {
 
 	response.Success(c, gin.H{
 		"notifications": notifications,
-		"total":         total,
 	})
 }

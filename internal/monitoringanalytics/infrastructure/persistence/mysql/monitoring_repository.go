@@ -161,9 +161,12 @@ func (r *systemHealthRepositoryImpl) healthToDomain(m *SystemHealthModel) *domai
 // AlertModel 告警数据库模型
 type AlertModel struct {
 	gorm.Model
+	AlertID   string `gorm:"column:alert_id;type:varchar(32);uniqueIndex;not null"`
+	RuleName  string `gorm:"column:rule_name;type:varchar(100);not null"`
 	Severity  string `gorm:"column:severity;type:varchar(20)"`
 	Message   string `gorm:"column:message;type:text"`
 	Source    string `gorm:"column:source;type:varchar(50)"`
+	Status    string `gorm:"column:status;type:varchar(20)"`
 	Timestamp int64  `gorm:"column:timestamp;type:bigint;index"`
 }
 
@@ -180,12 +183,15 @@ func NewAlertRepository(db *gorm.DB) domain.AlertRepository {
 func (r *alertRepositoryImpl) Save(ctx context.Context, a *domain.Alert) error {
 	m := &AlertModel{
 		Model:     a.Model,
+		AlertID:   a.AlertID,
+		RuleName:  a.RuleName,
 		Severity:  a.Severity,
 		Message:   a.Message,
 		Source:    a.Source,
-		Timestamp: time.Now().Unix(),
+		Status:    a.Status,
+		Timestamp: a.GeneratedAt,
 	}
-	err := r.db.WithContext(ctx).Create(m).Error
+	err := r.db.WithContext(ctx).Save(m).Error
 	if err == nil {
 		a.Model = m.Model
 	}
@@ -200,10 +206,14 @@ func (r *alertRepositoryImpl) GetAlerts(ctx context.Context, limit int) ([]*doma
 	res := make([]*domain.Alert, len(models))
 	for i, m := range models {
 		res[i] = &domain.Alert{
-			Model:    m.Model,
-			Severity: m.Severity,
-			Message:  m.Message,
-			Source:   m.Source,
+			Model:       m.Model,
+			AlertID:     m.AlertID,
+			RuleName:    m.RuleName,
+			Severity:    m.Severity,
+			Message:     m.Message,
+			Source:      m.Source,
+			Status:      m.Status,
+			GeneratedAt: m.Timestamp,
 		}
 	}
 	return res, nil

@@ -71,9 +71,7 @@ func (h *ExecutionHandler) SubmitAlgoOrder(c *gin.Context) {
 		AlgoType:  req.AlgoType,
 		StartTime: req.StartTime,
 		EndTime:   req.EndTime,
-		Params: map[string]string{
-			"participation_rate": req.ParticipationRate,
-		},
+		Params:    req.ParticipationRate,
 	}
 
 	algoID, err := h.app.SubmitAlgoOrder(c.Request.Context(), cmd)

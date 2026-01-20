@@ -162,6 +162,7 @@ func (s *MarketSimulationApplicationService) runWorker(ctx context.Context, sim 
 func (s *MarketSimulationApplicationService) toDTO(sim *domain.Simulation) *SimulationDTO {
 	return &SimulationDTO{
 		ID:           sim.ID,
+		ScenarioID:   sim.ScenarioID,
 		Name:         sim.Name,
 		Symbol:       sim.Symbol,
 		InitialPrice: sim.InitialPrice,

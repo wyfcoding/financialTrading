@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	executionv1 "github.com/wyfcoding/financialtrading/go-api/execution/v1"
 	"github.com/wyfcoding/financialtrading/internal/execution/application"
+	"github.com/wyfcoding/financialtrading/internal/execution/domain"
 	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/persistence/mysql"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/execution/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/execution/interfaces/http"
@@ -66,12 +67,12 @@ func main() {
 	}
 
 	if cfg.Server.Environment == "dev" {
-		if err := db.RawDB().AutoMigrate(&mysql.TradePO{}, &mysql.AlgoOrderPO{}); err != nil {
+		if err := db.RawDB().AutoMigrate(&domain.Trade{}, &domain.AlgoOrder{}); err != nil {
 			slog.Error("failed to migrate database", "error", err)
 		}
 	}
 
-	outboxMgr := outbox.NewManager(db.RawDB(), nil)
+	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
 
 	// 5. Application
 	tradeRepo := mysql.NewTradeRepository(db.RawDB())
@@ -82,7 +83,7 @@ func main() {
 
 	// 6. Interfaces
 	grpcSrv := grpc.NewServer()
-	executionSrv := grpcserver.NewExecutionGrpcServer(appService, queryService)
+	executionSrv := grpcserver.NewHandler(appService)
 	executionv1.RegisterExecutionServiceServer(grpcSrv, executionSrv)
 	reflection.Register(grpcSrv)
 

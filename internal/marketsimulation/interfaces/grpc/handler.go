@@ -4,7 +4,6 @@ package grpc
 import (
 	"context"
 	"log/slog"
-	"strconv"
 	"time"
 
 	pb "github.com/wyfcoding/financialtrading/go-api/marketsimulation/v1"
@@ -33,14 +32,17 @@ func (h *Handler) StartSimulation(ctx context.Context, req *pb.StartSimulationRe
 	slog.Info("gRPC StartSimulation received", "name", req.Name, "symbol", req.Symbol)
 
 	// Create simulation config first
-	simDTO, err := h.app.CreateSimulationConfig(ctx, application.CreateSimulationCommand{
+	// Note: proto lacks InitialPrice etc, using defaults or parsing from Parameters
+	cmd := application.CreateSimulationCommand{
 		Name:         req.Name,
 		Symbol:       req.Symbol,
-		InitialPrice: req.InitialPrice,
-		Volatility:   req.Volatility,
-		Drift:        req.Drift,
-		IntervalMs:   req.IntervalMs,
-	})
+		InitialPrice: 100.0, // Default
+		Volatility:   0.2,   // Default
+		Drift:        0.05,  // Default
+		IntervalMs:   1000,  // Default
+	}
+
+	simDTO, err := h.app.CreateSimulationConfig(ctx, cmd)
 	if err != nil {
 		slog.Error("gRPC CreateSimulationConfig failed", "error", err)
 		return nil, err
@@ -56,7 +58,7 @@ func (h *Handler) StartSimulation(ctx context.Context, req *pb.StartSimulationRe
 	// Since SDK returns DTO with uint ID, we likely need to store ScenarioID in DTO.
 	// Will update DTO. But for now, let's just use the ID converted to string.
 
-	scenarioID := strconv.FormatUint(uint64(simDTO.ID), 10)
+	scenarioID := simDTO.ScenarioID
 
 	// Then start it
 	err = h.app.StartSimulation(ctx, scenarioID)
@@ -102,7 +104,7 @@ func (h *Handler) GetSimulationStatus(ctx context.Context, req *pb.GetSimulation
 
 	return &pb.GetSimulationStatusResponse{
 		Scenario: &pb.SimulationScenario{
-			Id:     strconv.FormatUint(uint64(simDTO.ID), 10),
+			Id:     simDTO.ScenarioID,
 			Name:   simDTO.Name,
 			Symbol: simDTO.Symbol,
 			Status: simDTO.Status,

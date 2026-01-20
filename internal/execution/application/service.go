@@ -101,3 +101,31 @@ func (s *ExecutionApplicationService) SubmitAlgoOrder(ctx context.Context, cmd S
 
 	return algoID, nil
 }
+
+// SubmitSOROrder 提交智能路由订单
+func (s *ExecutionApplicationService) SubmitSOROrder(ctx context.Context, cmd SubmitAlgoCommand) (string, error) {
+	// 简化实现: 智能路由在演示中退化为普通聚合执行
+	return s.SubmitAlgoOrder(ctx, cmd)
+}
+
+// GetExecutionHistory 获取执行历史
+func (s *ExecutionApplicationService) GetExecutionHistory(ctx context.Context, userID string, limit, offset int) ([]*ExecutionDTO, int64, error) {
+	trades, err := s.tradeRepo.List(ctx, userID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	dtos := make([]*ExecutionDTO, 0, len(trades))
+	for _, t := range trades {
+		dtos = append(dtos, &ExecutionDTO{
+			ExecutionID: t.ID,
+			OrderID:     t.OrderID,
+			Symbol:      t.Symbol,
+			Status:      "FILLED",
+			ExecutedQty: t.ExecutedQuantity.String(),
+			ExecutedPx:  t.ExecutedPrice.String(),
+			Timestamp:   t.ExecutedAt.Unix(),
+		})
+	}
+	return dtos, int64(len(dtos)), nil
+}

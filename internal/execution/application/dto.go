@@ -28,6 +28,7 @@ type SubmitAlgoCommand struct {
 type ExecutionDTO struct {
 	ExecutionID string
 	OrderID     string
+	Symbol      string
 	Status      string
 	ExecutedQty string
 	ExecutedPx  string

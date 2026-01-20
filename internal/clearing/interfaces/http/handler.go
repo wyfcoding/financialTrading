@@ -51,7 +51,7 @@ func (h *ClearingHandler) SettleTrade(c *gin.Context) {
 		Price:      price,
 	}
 
-	dto, err := h.appService.SettleTrade(c.Request.Context(), cmd)
+	dto, err := h.appService.SettleTrade(c.Request.Context(), &cmd)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

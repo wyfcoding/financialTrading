@@ -15,12 +15,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/application"
+	"github.com/wyfcoding/financialtrading/internal/marketsimulation/domain"
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/marketsimulation/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/marketsimulation/interfaces/http"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"gorm.io/driver/mysql"
+	gormmysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
@@ -42,13 +43,13 @@ func main() {
 
 	// 3. Database
 	dsn := viper.GetString("database.source")
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(gormmysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic(fmt.Sprintf("connect db failed: %v", err))
 	}
 
 	// Auto Migrate
-	if err := db.AutoMigrate(&mysql.SimulationPO{}); err != nil {
+	if err := db.AutoMigrate(&domain.Simulation{}); err != nil {
 		panic(fmt.Sprintf("migrate db failed: %v", err))
 	}
 
@@ -88,7 +89,7 @@ func main() {
 
 	// gRPC
 	grpcSrv := grpc.NewServer()
-	grpc_server.NewServer(grpcSrv, appService)
+	grpc_server.NewHandler(appService)
 	reflection.Register(grpcSrv)
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", viper.GetString("server.grpc_port")))
 	if err != nil {

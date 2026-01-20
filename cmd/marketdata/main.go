@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 	marketdatav1 "github.com/wyfcoding/financialtrading/go-api/marketdata/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/application"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/persistence/mysql"
@@ -74,14 +75,15 @@ func main() {
 	quoteRepo := mysql.NewQuoteRepository(db.RawDB())
 	klineRepo := mysql.NewKlineRepository(db.RawDB())
 	tradeRepo := mysql.NewTradeRepository(db.RawDB())
+	orderBookRepo := mysql.NewOrderBookRepository(db.RawDB())
 
-	appService := application.NewMarketDataApplicationService(quoteRepo, tradeRepo)
 	queryService := application.NewMarketDataQueryService(quoteRepo, klineRepo, tradeRepo)
+	serviceFacade := application.NewMarketDataService(quoteRepo, klineRepo, tradeRepo, orderBookRepo, slog.Default())
 
 	// 6. Interfaces
 	grpcSrv := grpc.NewServer()
-	mdSrv := grpcserver.NewMarketDataGrpcServer(queryService)
-	marketdatav1.RegisterMarketDataServiceServer(grpcSrv, mdSrv)
+	mdHandler := grpcserver.NewMarketDataHandler(serviceFacade)
+	marketdatav1.RegisterMarketDataServiceServer(grpcSrv, mdHandler)
 	reflection.Register(grpcSrv)
 
 	gin.SetMode(gin.ReleaseMode)
@@ -101,7 +103,7 @@ func main() {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		if err := appService.IngestQuote(c.Request.Context(), cmd); err != nil {
+		if err := serviceFacade.SaveQuote(c.Request.Context(), cmd.Symbol, decimal.Zero, decimal.Zero, decimal.Zero, decimal.Zero, decimal.Zero, decimal.Zero, 0, ""); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}

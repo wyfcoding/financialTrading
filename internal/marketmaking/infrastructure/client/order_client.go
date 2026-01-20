@@ -44,38 +44,38 @@ func NewOrderClientFromConn(conn *grpc.ClientConn) domain.OrderClient {
 
 // PlaceOrder 下单
 func (c *OrderClientImpl) PlaceOrder(ctx context.Context, symbol string, side string, price, quantity decimal.Decimal) (string, error) {
+	var orderSide orderv1.OrderSide
+	switch side {
+	case "BUY":
+		orderSide = orderv1.OrderSide_BUY
+	case "SELL":
+		orderSide = orderv1.OrderSide_SELL
+	}
+
 	req := &orderv1.CreateOrderRequest{
-		Symbol:    symbol,
-		Side:      side,
-		Price:     price.String(),
-		Quantity:  quantity.String(),
-		OrderType: "LIMIT",
+		UserId:   "MARKET_MAKER", // Placeholder
+		Symbol:   symbol,
+		Side:     orderSide,
+		Price:    price.InexactFloat64(),
+		Quantity: quantity.InexactFloat64(),
+		Type:     orderv1.OrderType_LIMIT,
 	}
 
 	resp, err := c.orderCli.CreateOrder(ctx, req)
 	if err != nil {
-		logging.Error(ctx, "Failed to place order",
-			"symbol", symbol,
-			"side", side,
-			"price", price,
-			"quantity", quantity,
-			"error", err,
-		)
 		return "", err
 	}
 
-	if resp.Order == nil {
-		return "", fmt.Errorf("order response is nil")
-	}
-
-	return resp.Order.OrderId, nil
+	return resp.OrderId, nil
 }
 
 // GetPosition 获取持仓
 func (c *OrderClientImpl) GetPosition(ctx context.Context, symbol string) (decimal.Decimal, error) {
-	// 获取该交易对的所有持仓
+	// 获取该用户（做市商）的所有持仓
 	resp, err := c.positionCli.GetPositions(ctx, &positionv1.GetPositionsRequest{
-		Symbol: symbol,
+		UserId:   "MARKET_MAKER",
+		PageSize: 100,
+		Page:     1,
 	})
 	if err != nil {
 		return decimal.Zero, err
@@ -83,12 +83,15 @@ func (c *OrderClientImpl) GetPosition(ctx context.Context, symbol string) (decim
 
 	total := decimal.Zero
 	for _, p := range resp.Positions {
+		if p.Symbol != symbol {
+			continue
+		}
 		qty, err := decimal.NewFromString(p.Quantity)
 		if err != nil {
 			continue
 		}
 		// 多头为正，空头为负
-		if p.Side == "LONG" {
+		if p.Side == "LONG" || p.Side == "BUY" {
 			total = total.Add(qty)
 		} else {
 			total = total.Sub(qty)

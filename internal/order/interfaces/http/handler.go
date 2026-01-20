@@ -13,14 +13,16 @@ import (
 // HTTP 处理器
 // 负责处理与订单相关的 HTTP 请求
 type OrderHandler struct {
-	orderService *application.OrderService // 订单应用服务
+	app   *application.OrderManager
+	query *application.OrderQuery
 }
 
 // 创建 HTTP 处理器实例
 // orderService: 注入的订单应用服务
-func NewOrderHandler(orderService *application.OrderService) *OrderHandler {
+func NewOrderHandler(app *application.OrderManager, query *application.OrderQuery) *OrderHandler {
 	return &OrderHandler{
-		orderService: orderService,
+		app:   app,
+		query: query,
 	}
 }
 
@@ -43,7 +45,7 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	dto, err := h.orderService.CreateOrder(c.Request.Context(), &req)
+	dto, err := h.app.CreateOrder(c.Request.Context(), &req)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to create order", "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -69,7 +71,7 @@ func (h *OrderHandler) CancelOrder(c *gin.Context) {
 		return
 	}
 
-	dto, err := h.orderService.CancelOrder(c.Request.Context(), orderID, userID)
+	dto, err := h.app.CancelOrder(c.Request.Context(), orderID, userID)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to cancel order", "order_id", orderID, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -93,7 +95,7 @@ func (h *OrderHandler) GetOrder(c *gin.Context) {
 		return
 	}
 
-	dto, err := h.orderService.GetOrder(c.Request.Context(), orderID, userID)
+	dto, err := h.query.GetOrder(c.Request.Context(), orderID) // query typically doesn't need userID if it's broad
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get order", "order_id", orderID, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")

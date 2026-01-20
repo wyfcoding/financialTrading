@@ -94,7 +94,10 @@ func (h *Handler) Deposit(ctx context.Context, req *pb.DepositRequest) (*pb.Depo
 		return nil, status.Errorf(codes.InvalidArgument, "invalid amount: %v", err)
 	}
 
-	err = h.service.Deposit(ctx, req.AccountId, amount)
+	err = h.service.Deposit(ctx, application.DepositCommand{
+		AccountID: req.AccountId,
+		Amount:    amount,
+	})
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc deposit failed", "account_id", req.AccountId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to deposit: %v", err)

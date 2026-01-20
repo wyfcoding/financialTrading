@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/shopspring/decimal"
 	accountv1 "github.com/wyfcoding/financialtrading/go-api/account/v1"
 	"github.com/wyfcoding/financialtrading/internal/clearing/domain"
 	"github.com/wyfcoding/pkg/contextx"
@@ -35,17 +36,15 @@ func NewClearingService(
 }
 
 // SettleTrade 处理交易结算
-// 1. 创建结算单 (Pending)
-// 2. 发起 Saga 事务 (扣减买方冻结 -> 增加卖方资金)
-func (s *ClearingService) SettleTrade(ctx context.Context, cmd SettleTradeCommand) (*SettlementDTO, error) {
+func (s *ClearingService) SettleTrade(ctx context.Context, req *SettleTradeRequest) (*SettlementDTO, error) {
 	// 幂等检查
-	existing, _ := s.repo.GetByTradeID(ctx, cmd.TradeID)
+	existing, _ := s.repo.GetByTradeID(ctx, req.TradeID)
 	if existing != nil {
 		return s.toDTO(existing), nil
 	}
 
 	settlementID := fmt.Sprintf("SET-%d", idgen.GenID())
-	settlement := domain.NewSettlement(settlementID, cmd.TradeID, cmd.BuyUserID, cmd.SellUserID, cmd.Symbol, cmd.Quantity, cmd.Price)
+	settlement := domain.NewSettlement(settlementID, req.TradeID, req.BuyUserID, req.SellUserID, req.Symbol, req.Quantity, req.Price)
 
 	// 本地事务：保存 Settlement 并发送 Saga 开始事件
 	err := s.db.Transaction(func(tx *gorm.DB) error {
@@ -64,7 +63,7 @@ func (s *ClearingService) SettleTrade(ctx context.Context, cmd SettleTradeComman
 		return nil, err
 	}
 
-	// 异步或同步发起 Saga 流程（这里简化为同步 gRPC 调用演示）
+	// 异步或同步发起 Saga 流程
 	go s.executeSaga(context.Background(), settlement)
 
 	return s.toDTO(settlement), nil
@@ -140,13 +139,44 @@ func (s *ClearingService) markFailed(ctx context.Context, id, reason string) {
 }
 
 // SagaMarkSettlementCompleted 外部回调接口
-func (s *ClearingService) SagaMarkSettlementCompleted(ctx context.Context, cmd MarkSettlementCommand) error {
-	if cmd.Success {
-		s.markCompleted(ctx, cmd.SettlementID)
-	} else {
-		s.markFailed(ctx, cmd.SettlementID, cmd.Reason)
-	}
+func (s *ClearingService) SagaMarkSettlementCompleted(ctx context.Context, settlementID string) error {
+	s.markCompleted(ctx, settlementID)
 	return nil
+}
+
+// SagaMarkSettlementFailed 补偿接口
+func (s *ClearingService) SagaMarkSettlementFailed(ctx context.Context, settlementID, reason string) error {
+	s.markFailed(ctx, settlementID, reason)
+	return nil
+}
+
+// ExecuteEODClearing 执行日终清算
+func (s *ClearingService) ExecuteEODClearing(ctx context.Context, clearingDate string) (string, error) {
+	clearingID := fmt.Sprintf("EOD-%s-%d", clearingDate, idgen.GenID())
+	slog.InfoContext(ctx, "EOD clearing started", "clearing_id", clearingID, "date", clearingDate)
+	// 实现在此处添加逻辑
+	return clearingID, nil
+}
+
+// GetClearingStatus 获取清算状态
+func (s *ClearingService) GetClearingStatus(ctx context.Context, clearingID string) (*SettlementDTO, error) {
+	settlement, err := s.repo.Get(ctx, clearingID)
+	if err != nil {
+		return nil, err
+	}
+	if settlement == nil {
+		return nil, nil
+	}
+	return s.toDTO(settlement), nil
+}
+
+// GetMarginRequirement 获取保证金要求
+func (s *ClearingService) GetMarginRequirement(ctx context.Context, symbol string) (*MarginDTO, error) {
+	return &MarginDTO{
+		Symbol:           symbol,
+		BaseMarginRate:   decimal.NewFromFloat(0.05),
+		VolatilityFactor: decimal.NewFromFloat(1.1),
+	}, nil
 }
 
 func (s *ClearingService) toDTO(agg *domain.Settlement) *SettlementDTO {

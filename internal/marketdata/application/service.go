@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"time"
 
 	"github.com/wyfcoding/financialtrading/internal/marketdata/domain"
 )
@@ -33,12 +34,12 @@ func (s *MarketDataApplicationService) IngestQuote(ctx context.Context, cmd Inge
 
 func (s *MarketDataApplicationService) IngestTrade(ctx context.Context, cmd IngestTradeCommand) error {
 	trade := &domain.Trade{
-		ID:       cmd.TradeID,
-		Symbol:   cmd.Symbol,
-		Price:    cmd.Price,
-		Quantity: cmd.Quantity,
-		Side:     cmd.Side,
-		// Assuming timestamp is generated or passed, simplied to Now if missing
+		ID:        cmd.TradeID,
+		Symbol:    cmd.Symbol,
+		Price:     cmd.Price,
+		Quantity:  cmd.Quantity,
+		Side:      cmd.Side,
+		Timestamp: time.Now(),
 	}
 	return s.tradeRepo.Save(ctx, trade)
 }

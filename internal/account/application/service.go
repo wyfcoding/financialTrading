@@ -94,7 +94,7 @@ func (s *AccountService) Deposit(ctx context.Context, cmd DepositCommand) error 
 			return err
 		}
 		if account == nil {
-			return fmt.Errorf("account not found")
+			return fmt.Errorf("account not found: %s", cmd.AccountID)
 		}
 
 		// 2. Do Domain Logic
@@ -121,6 +121,18 @@ func (s *AccountService) Deposit(ctx context.Context, cmd DepositCommand) error 
 			"account_id": account.ID, "amount": cmd.Amount.String(), "balance": account.Balance.String(),
 		})
 	})
+}
+
+// GetAccount 获取账户信息
+func (s *AccountService) GetAccount(ctx context.Context, accountID string) (*AccountDTO, error) {
+	account, err := s.repo.Get(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if account == nil {
+		return nil, fmt.Errorf("account not found: %s", accountID)
+	}
+	return s.toDTO(account), nil
 }
 
 // Freeze 处理冻结
@@ -155,9 +167,7 @@ func (s *AccountService) Freeze(ctx context.Context, cmd FreezeCommand) error {
 }
 
 // SagaDeductFrozen Saga 接口: 从冻结金额中扣除
-func (s *AccountService) SagaDeductFrozen(ctx context.Context, barrier any, userID, currency string, amountString string) error {
-	amount, _ := decimal.NewFromString(amountString)
-
+func (s *AccountService) SagaDeductFrozen(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
 	// 使用 Repo 的 Barrier 支持
 	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		accounts, err := s.repo.GetByUserID(ctx, userID)
@@ -190,8 +200,147 @@ func (s *AccountService) SagaDeductFrozen(ctx context.Context, barrier any, user
 		// Outbox Event inside barrier transaction
 		tx, _ := contextx.GetTx(ctx).(*gorm.DB)
 		return s.outbox.PublishInTx(ctx, tx, "account.deducted", fmt.Sprintf("SAGA-DED-%s", userID), map[string]any{
-			"type": "SAGA_DEDUCT", "user_id": userID, "amount": amountString,
+			"type": "SAGA_DEDUCT", "user_id": userID, "amount": amount.String(),
 		})
+	})
+}
+
+// SagaRefundFrozen Saga 补偿接口: 退回冻结金额
+func (s *AccountService) SagaRefundFrozen(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
+	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
+		accounts, err := s.repo.GetByUserID(ctx, userID)
+		if err != nil {
+			return err
+		}
+
+		var targetAccount *domain.Account
+		for _, acc := range accounts {
+			if acc.Currency == currency {
+				targetAccount = acc
+				break
+			}
+		}
+		if targetAccount == nil {
+			return fmt.Errorf("account not found for user %s currency %s", userID, currency)
+		}
+
+		// Domain Logic: Refund = Unfreeze
+		if success := targetAccount.Unfreeze(amount); !success {
+			return fmt.Errorf("failed to unfreeze for refund")
+		}
+
+		return s.repo.Save(ctx, targetAccount)
+	})
+}
+
+// SagaAddBalance Saga 接口: 增加余额
+func (s *AccountService) SagaAddBalance(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
+	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
+		accounts, err := s.repo.GetByUserID(ctx, userID)
+		if err != nil {
+			return err
+		}
+
+		var targetAccount *domain.Account
+		for _, acc := range accounts {
+			if acc.Currency == currency {
+				targetAccount = acc
+				break
+			}
+		}
+		if targetAccount == nil {
+			return fmt.Errorf("account not found for user %s currency %s", userID, currency)
+		}
+
+		targetAccount.Deposit(amount)
+		return s.repo.Save(ctx, targetAccount)
+	})
+}
+
+// SagaSubBalance Saga 补偿接口: 扣减余额
+func (s *AccountService) SagaSubBalance(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
+	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
+		accounts, err := s.repo.GetByUserID(ctx, userID)
+		if err != nil {
+			return err
+		}
+
+		var targetAccount *domain.Account
+		for _, acc := range accounts {
+			if acc.Currency == currency {
+				targetAccount = acc
+				break
+			}
+		}
+		if targetAccount == nil {
+			return fmt.Errorf("account not found for user %s currency %s", userID, currency)
+		}
+
+		if success := targetAccount.Withdraw(amount); !success {
+			return fmt.Errorf("insufficient balance for compensation")
+		}
+		return s.repo.Save(ctx, targetAccount)
+	})
+}
+
+// TccTryFreeze TCC Try: 尝试冻结
+func (s *AccountService) TccTryFreeze(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
+	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
+		accounts, err := s.repo.GetByUserID(ctx, userID)
+		if err != nil {
+			return err
+		}
+
+		var targetAccount *domain.Account
+		for _, acc := range accounts {
+			if acc.Currency == currency {
+				targetAccount = acc
+				break
+			}
+		}
+		if targetAccount == nil {
+			return fmt.Errorf("account not found for user %s currency %s", userID, currency)
+		}
+
+		if success := targetAccount.Freeze(amount); !success {
+			return fmt.Errorf("insufficient balance for TCC freeze")
+		}
+		return s.repo.Save(ctx, targetAccount)
+	})
+}
+
+// TccConfirmFreeze TCC Confirm: 确认冻结
+func (s *AccountService) TccConfirmFreeze(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
+	// Confirm in TCC usually doesn't need to do much if Try already froze it,
+	// unless we want to move from frozen to somewhere else or just log.
+	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
+		return nil
+	})
+}
+
+// TccCancelFreeze TCC Cancel: 取消冻结
+func (s *AccountService) TccCancelFreeze(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
+	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
+		accounts, err := s.repo.GetByUserID(ctx, userID)
+		if err != nil {
+			return err
+		}
+
+		var targetAccount *domain.Account
+		for _, acc := range accounts {
+			if acc.Currency == currency {
+				targetAccount = acc
+				break
+			}
+		}
+		if targetAccount == nil {
+			return fmt.Errorf("account not found for user %s currency %s", userID, currency)
+		}
+
+		if success := targetAccount.Unfreeze(amount); !success {
+			return fmt.Errorf("failed to unfreeze for TCC cancel")
+		}
+		return s.repo.Save(ctx, targetAccount)
 	})
 }
 
@@ -204,6 +353,7 @@ func (s *AccountService) toDTO(a *domain.Account) *AccountDTO {
 		Balance:          a.Balance.String(),
 		AvailableBalance: a.AvailableBalance.String(),
 		FrozenBalance:    a.FrozenBalance.String(),
+		CreatedAt:        a.CreatedAt.Unix(),
 		UpdatedAt:        a.UpdatedAt.Unix(),
 		Version:          a.Version,
 	}
