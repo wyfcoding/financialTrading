@@ -8,7 +8,16 @@ type CreateOrderRequest struct {
 	Price         string
 	Quantity      string
 	TimeInForce   string
+	StopPrice     string
 	ClientOrderID string
+
+	// Bracket support
+	TakeProfitPrice string
+	StopLossPrice   string
+
+	// OCO support
+	IsOCO         bool
+	LinkedOrderID string
 }
 
 type OrderDTO struct {

@@ -18,7 +18,7 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/ClickHouse/ch-go v0.69.0 // indirect
-	github.com/ClickHouse/clickhouse-go/v2 v2.42.0 // indirect
+	github.com/ClickHouse/clickhouse-go/v2 v2.17.1
 	github.com/allegro/bigcache/v3 v3.1.0 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -82,7 +82,7 @@ require (
 	github.com/redis/go-redis/v9 v9.17.2 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
-	github.com/segmentio/kafka-go v0.4.49 // indirect
+	github.com/segmentio/kafka-go v0.4.47
 	github.com/sony/gobreaker v1.0.0 // indirect
 	github.com/sony/sonyflake v1.3.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
@@ -103,7 +103,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.39.0 // indirect
 	go.opentelemetry.io/otel/metric v1.39.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.39.0 // indirect
-	go.opentelemetry.io/otel/trace v1.39.0 // indirect
+	go.opentelemetry.io/otel/trace v1.21.0
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
 	go.uber.org/mock v0.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect

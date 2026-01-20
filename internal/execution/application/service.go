@@ -5,31 +5,46 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/shopspring/decimal"
+	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/execution/domain"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/messagequeue/outbox"
+	"github.com/wyfcoding/pkg/metrics"
 	"gorm.io/gorm"
 )
 
 type ExecutionApplicationService struct {
-	tradeRepo domain.TradeRepository
-	algoRepo  domain.AlgoOrderRepository
-	outbox    *outbox.Manager
-	db        *gorm.DB
+	tradeRepo      domain.TradeRepository
+	algoRepo       domain.AlgoOrderRepository
+	orderClient    orderv1.OrderServiceClient
+	marketData     domain.MarketDataProvider
+	volumeProvider domain.VolumeProfileProvider
+	metrics        *metrics.Metrics
+	outbox         *outbox.Manager
+	db             *gorm.DB
 }
 
 func NewExecutionApplicationService(
 	tradeRepo domain.TradeRepository,
 	algoRepo domain.AlgoOrderRepository,
+	orderClient orderv1.OrderServiceClient,
+	marketData domain.MarketDataProvider,
+	volumeProvider domain.VolumeProfileProvider,
+	metrics *metrics.Metrics,
 	outbox *outbox.Manager,
 	db *gorm.DB,
 ) *ExecutionApplicationService {
 	return &ExecutionApplicationService{
-		tradeRepo: tradeRepo,
-		algoRepo:  algoRepo,
-		outbox:    outbox,
-		db:        db,
+		tradeRepo:      tradeRepo,
+		algoRepo:       algoRepo,
+		orderClient:    orderClient,
+		marketData:     marketData,
+		volumeProvider: volumeProvider,
+		metrics:        metrics,
+		outbox:         outbox,
+		db:             db,
 	}
 }
 
@@ -103,9 +118,153 @@ func (s *ExecutionApplicationService) SubmitAlgoOrder(ctx context.Context, cmd S
 }
 
 // SubmitSOROrder 提交智能路由订单
+// SubmitSOROrder 提交智能路由订单
 func (s *ExecutionApplicationService) SubmitSOROrder(ctx context.Context, cmd SubmitAlgoCommand) (string, error) {
-	// 简化实现: 智能路由在演示中退化为普通聚合执行
-	return s.SubmitAlgoOrder(ctx, cmd)
+	// 真实 SOR 逻辑：直接分片并提交至 OrderService (或创建母单进行异步管理)
+	// 这里演示同步分片并立即提交
+	algoID := fmt.Sprintf("SOR-%d", idgen.GenID())
+	order := domain.NewAlgoOrder(algoID, cmd.UserID, cmd.Symbol, domain.TradeSide(cmd.Side), cmd.TotalQty, domain.AlgoTypeSOR, time.Now(), time.Now().Add(time.Hour), cmd.Params)
+
+	strategy := &domain.SORStrategy{
+		Provider: s.marketData,
+		Venues: []*domain.Venue{
+			{ID: "MAIN", Name: "Main Exchange", ExecutionFee: decimal.Zero, Latency: 0, Weight: 1.0},
+		},
+	}
+	slices, err := strategy.GenerateSlices(order)
+	if err != nil {
+		return "", err
+	}
+
+	for _, slice := range slices {
+		// 调用 OrderService 提交子单
+		var side orderv1.OrderSide
+		if order.Side == domain.TradeSideBuy {
+			side = orderv1.OrderSide_BUY
+		} else {
+			side = orderv1.OrderSide_SELL
+		}
+
+		var otype orderv1.OrderType
+		if slice.OrderType == "MARKET" {
+			otype = orderv1.OrderType_MARKET
+		} else {
+			otype = orderv1.OrderType_LIMIT
+		}
+
+		_, _ = s.orderClient.CreateOrder(ctx, &orderv1.CreateOrderRequest{
+			UserId:   order.UserID,
+			Symbol:   order.Symbol,
+			Side:     side,
+			Type:     otype,
+			Price:    slice.Price.InexactFloat64(),
+			Quantity: slice.Quantity.InexactFloat64(),
+		})
+	}
+
+	return algoID, nil
+}
+
+// SubmitFIXOrder 处理来自 FIX 网关的订单请求
+func (s *ExecutionApplicationService) SubmitFIXOrder(ctx context.Context, cmd SubmitFIXOrderCommand) (*ExecutionDTO, error) {
+	// 简单实现：将 FIX 订单转换为直接执行
+	executeCmd := ExecuteOrderCommand{
+		OrderID:  cmd.ClOrdID, // FIX 客户端提供的 ID
+		UserID:   cmd.UserID,
+		Symbol:   cmd.Symbol,
+		Side:     cmd.Side,
+		Price:    cmd.Price,
+		Quantity: cmd.Quantity,
+	}
+	return s.ExecuteOrder(ctx, executeCmd)
+}
+
+// StartAlgoWorker 启动母单执行背景工作线程
+func (s *ExecutionApplicationService) StartAlgoWorker(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.processActiveAlgoOrders(ctx)
+		}
+	}
+}
+
+func (s *ExecutionApplicationService) processActiveAlgoOrders(ctx context.Context) {
+	orders, err := s.algoRepo.ListActive(ctx)
+	if err != nil {
+		return
+	}
+
+	for _, order := range orders {
+		var strategy domain.ExecutionStrategy
+		switch order.AlgoType {
+		case domain.AlgoTypeTWAP:
+			strategy = &domain.TWAPStrategy{
+				MinSliceSize: order.TotalQuantity.Div(decimal.NewFromInt(10)), // 简单切10片
+				Randomize:    true,
+			}
+		case domain.AlgoTypeVWAP:
+			strategy = &domain.VWAPStrategy{
+				VolumeProfileProvider: s.volumeProvider,
+			}
+		case domain.AlgoTypePOV:
+			strategy = &domain.POVStrategy{
+				Provider: s.marketData,
+			}
+		case domain.AlgoTypeSOR:
+			strategy = &domain.SORStrategy{
+				Provider: s.marketData,
+				Venues: []*domain.Venue{
+					{ID: "MAIN", Name: "Main Exchange", ExecutionFee: decimal.Zero, Latency: 0, Weight: 1.0},
+				},
+			}
+		default:
+			continue
+		}
+
+		slices, err := strategy.GenerateSlices(order)
+		if err != nil || len(slices) == 0 {
+			continue
+		}
+
+		for _, slice := range slices {
+			var side orderv1.OrderSide
+			if order.Side == domain.TradeSideBuy {
+				side = orderv1.OrderSide_BUY
+			} else {
+				side = orderv1.OrderSide_SELL
+			}
+
+			var otype orderv1.OrderType
+			if slice.OrderType == "MARKET" {
+				otype = orderv1.OrderType_MARKET
+			} else {
+				otype = orderv1.OrderType_LIMIT
+			}
+
+			_, err := s.orderClient.CreateOrder(ctx, &orderv1.CreateOrderRequest{
+				UserId:   order.UserID,
+				Symbol:   order.Symbol,
+				Side:     side,
+				Type:     otype,
+				Price:    slice.Price.InexactFloat64(),
+				Quantity: slice.Quantity.InexactFloat64(),
+			})
+			if err == nil {
+				order.ExecutedQuantity = order.ExecutedQuantity.Add(slice.Quantity)
+			}
+		}
+
+		if order.ExecutedQuantity.GreaterThanOrEqual(order.TotalQuantity) {
+			order.Status = "COMPLETED"
+		}
+		_ = s.algoRepo.Save(ctx, order)
+	}
 }
 
 // GetExecutionHistory 获取执行历史

@@ -61,6 +61,18 @@ func (r *SettlementRepository) GetByTradeID(ctx context.Context, tradeID string)
 	return po.ToDomain(), nil
 }
 
+func (r *SettlementRepository) List(ctx context.Context, limit int) ([]*domain.Settlement, error) {
+	var pos []SettlementPO
+	if err := r.getDB(ctx).Limit(limit).Order("id desc").Find(&pos).Error; err != nil {
+		return nil, err
+	}
+	res := make([]*domain.Settlement, len(pos))
+	for i, po := range pos {
+		res[i] = po.ToDomain()
+	}
+	return res, nil
+}
+
 func (r *SettlementRepository) getDB(ctx context.Context) *gorm.DB {
 	if tx, ok := contextx.GetTx(ctx).(*gorm.DB); ok {
 		return tx

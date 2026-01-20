@@ -32,3 +32,15 @@ func NewKline(symbol, interval string, openTime, closeTime time.Time, o, h, l, c
 		Volume:    v,
 	}
 }
+
+// Update 根据新成交价格更新 K 线
+func (k *Kline) Update(price, qty decimal.Decimal) {
+	if price.GreaterThan(k.High) {
+		k.High = price
+	}
+	if price.LessThan(k.Low) {
+		k.Low = price
+	}
+	k.Close = price
+	k.Volume = k.Volume.Add(qty)
+}

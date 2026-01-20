@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	marketmakingv1 "github.com/wyfcoding/financialtrading/go-api/marketmaking/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/application"
+	"github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/client"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/persistence/mysql"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/marketmaking/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/marketmaking/interfaces/http"
@@ -72,8 +73,23 @@ func main() {
 
 	strategyRepo, _ := mysql.NewMarketMakingRepository(db.RawDB())
 
+	// Clients
+	orderAddr := cfg.GetGRPCAddr("order")
+	orderCli, err := client.NewOrderClient(orderAddr, metricsImpl, cfg.CircuitBreaker)
+	if err != nil {
+		slog.Error("failed to create order client", "error", err)
+		os.Exit(1)
+	}
+
+	marketAddr := cfg.GetGRPCAddr("marketdata")
+	marketCli, err := client.NewMarketDataClient(marketAddr, metricsImpl, cfg.CircuitBreaker)
+	if err != nil {
+		slog.Error("failed to create market data client", "error", err)
+		os.Exit(1)
+	}
+
 	// 5. Application
-	appService := application.NewMarketMakingApplicationService(strategyRepo)
+	appService := application.NewMarketMakingApplicationService(strategyRepo, orderCli, marketCli)
 
 	// 6. Interfaces
 	grpcSrv := grpc.NewServer()

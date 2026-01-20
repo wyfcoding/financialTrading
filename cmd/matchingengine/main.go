@@ -1,19 +1,26 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
+	"net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/spf13/viper"
+	pb "github.com/wyfcoding/financialtrading/go-api/matchingengine/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/application"
 	match_mem "github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/persistence/memory"
 	match_mysql "github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/matchingengine/interfaces/grpc"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	gorm_mysql "gorm.io/driver/mysql"
@@ -68,32 +75,78 @@ func main() {
 
 	// 7. Interfaces (gRPC)
 	grpcSrv := grpc.NewServer()
-	grpc_server.NewHandler(service)
+	handler := grpc_server.NewHandler(service)
+	pb.RegisterMatchingEngineServiceServer(grpcSrv, handler)
 	reflection.Register(grpcSrv)
+
+	// HTTP Support for Probes, Metrics, Pprof
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.Recovery())
+
+	sys := r.Group("/sys")
+	{
+		sys.GET("/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "UP"}) })
+		sys.GET("/ready", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "READY"}) })
+	}
+	r.GET("/metrics", func(c *gin.Context) {
+		c.String(http.StatusOK, "# HELP matching_engine_running Status of matching engine\n# TYPE matching_engine_running gauge\nmatching_engine_running 1")
+	})
+	pp := r.Group("/debug/pprof")
+	{
+		pp.GET("/", gin.WrapF(pprof.Index))
+		pp.GET("/cmdline", gin.WrapF(pprof.Cmdline))
+		pp.GET("/profile", gin.WrapF(pprof.Profile))
+		pp.GET("/symbol", gin.WrapF(pprof.Symbol))
+		pp.GET("/trace", gin.WrapF(pprof.Trace))
+	}
+
+	// 8. Start
+	g, ctx := errgroup.WithContext(context.Background())
 
 	port := viper.GetString("server.grpc_port")
 	if port == "" {
 		port = "50055"
 	}
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	if err != nil {
-		panic(err)
-	}
 
-	// 8. Start
-	go func() {
-		slog.Info("Starting gRPC server", "port", port)
-		if err := grpcSrv.Serve(lis); err != nil {
-			panic(err)
+	g.Go(func() error {
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
+		if err != nil {
+			return err
 		}
-	}()
+		slog.Info("Starting gRPC server", "port", port)
+		return grpcSrv.Serve(lis)
+	})
+
+	httpPort := viper.GetString("server.http_port")
+	if httpPort == "" {
+		httpPort = "8085"
+	}
+	g.Go(func() error {
+		addr := fmt.Sprintf(":%s", httpPort)
+		server := &http.Server{Addr: addr, Handler: r}
+		slog.Info("HTTP server starting", "addr", addr)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return err
+		}
+		return nil
+	})
 
 	// 9. Graceful Shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	slog.Info("Shutting down server...")
+	g.Go(func() error {
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		select {
+		case <-quit:
+			slog.Info("shutting down servers...")
+		case <-ctx.Done():
+			slog.Info("context cancelled, shutting down...")
+		}
+		grpcSrv.GracefulStop()
+		return nil
+	})
 
-	grpcSrv.GracefulStop()
-	slog.Info("Server exiting")
+	if err := g.Wait(); err != nil {
+		slog.Error("server exited with error", "error", err)
+	}
 }

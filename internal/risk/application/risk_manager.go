@@ -12,6 +12,8 @@ import (
 	"github.com/wyfcoding/pkg/cache"
 	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/security/risk"
+	"github.com/wyfcoding/pkg/tracing"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // RiskManager 处理所有风险管理相关的写入操作（Commands）。
@@ -22,6 +24,7 @@ type RiskManager struct {
 	alertRepo      domain.RiskAlertRepository
 	breakerRepo    domain.CircuitBreakerRepository
 	calculator     *finance.RiskCalculator
+	marginCalc     domain.MarginCalculator
 	ruleEngine     risk.Evaluator // 动态规则引擎
 	localCache     cache.Cache    // 本地热点缓存
 }
@@ -34,6 +37,7 @@ func NewRiskManager(
 	alertRepo domain.RiskAlertRepository,
 	breakerRepo domain.CircuitBreakerRepository,
 	ruleEngine risk.Evaluator,
+	marginCalc domain.MarginCalculator,
 	localCache cache.Cache,
 ) *RiskManager {
 	return &RiskManager{
@@ -43,6 +47,7 @@ func NewRiskManager(
 		alertRepo:      alertRepo,
 		breakerRepo:    breakerRepo,
 		calculator:     finance.NewRiskCalculator(),
+		marginCalc:     marginCalc,
 		ruleEngine:     ruleEngine,
 		localCache:     localCache,
 	}
@@ -51,6 +56,11 @@ func NewRiskManager(
 // AssessRisk 执行全方位的交易风险评估。
 // 流程：极速熔断自检 -> 账户状态回源 -> 规则引擎判定 -> 组合限额校验 -> 结果持久化与告警。
 func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*RiskAssessmentDTO, error) {
+	ctx, span := tracing.Tracer().Start(ctx, "RiskManager.AssessRisk", trace.WithSpanKind(trace.SpanKindInternal))
+	defer span.End()
+	tracing.AddTag(ctx, "user_id", req.UserID)
+	tracing.AddTag(ctx, "symbol", req.Symbol)
+
 	// 1. 极速熔断检查 (L1 Local Cache)
 	breakerKey := fmt.Sprintf("breaker:%s", req.UserID)
 	var isFired bool
@@ -106,7 +116,12 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 		riskLevel = domain.RiskLevelHigh
 	}
 
-	marginRequirement := orderValue.Mul(decimal.NewFromFloat(0.1))
+	// 动态计算保证金要求 (基于当前波动率)
+	marginRequirement, err := m.marginCalc.CalculateRequiredMargin(ctx, req.Symbol, orderValue)
+	if err != nil {
+		m.internalLogger().WarnContext(ctx, "failed to calculate dynamic margin, using fallback", "error", err)
+		marginRequirement = orderValue.Mul(decimal.NewFromFloat(0.1)) // 10% 兜底
+	}
 
 	assessment := &domain.RiskAssessment{
 		ID:                fmt.Sprintf("RISK-%d", idgen.GenID()),
@@ -122,7 +137,12 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 		Reason:            assessmentResult.Reason,
 	}
 
-	limit, err := m.limitRepo.GetByUserIDAndType(ctx, req.UserID, "MAX_SINGLE_ORDER_VALUE")
+	limitKey := fmt.Sprintf("limit:max_val:%s", req.UserID)
+	var limit *domain.RiskLimit
+	err = m.localCache.GetOrSet(ctx, limitKey, &limit, 5*time.Minute, func() (any, error) {
+		return m.limitRepo.GetByUserIDAndType(ctx, req.UserID, "MAX_SINGLE_ORDER_VALUE")
+	})
+
 	if err == nil && limit != nil {
 		if orderValue.GreaterThan(limit.LimitValue) {
 			assessment.IsAllowed = false
@@ -219,31 +239,29 @@ func (m *RiskManager) CalculatePortfolioRisk(ctx context.Context, req *Calculate
 func (m *RiskManager) PerformGlobalRiskScan(ctx context.Context) error {
 	m.internalLogger().InfoContext(ctx, "starting automated risk scan and stress test")
 
-	activeUsers := []string{"1001", "1002"}
+	// 实际生产中应从 User/Account 服务获取活跃用户列表
+	// 这里我们假设通过仓库查询有持仓或近期活动的 UID
+	uids := []string{"1001", "1002", "1003"} // 依然简化，但逻辑已具备扩展性
 
-	for _, userID := range activeUsers {
-		returns := []decimal.Decimal{
-			decimal.NewFromFloat(0.01), decimal.NewFromFloat(-0.02),
-			decimal.NewFromFloat(0.05), decimal.NewFromFloat(-0.04),
-		}
+	for _, userID := range uids {
+		// 1. 获取用户资产数据 (模拟获取)
+		// 实际应调用 accountCli.GetPortfolio(userID)
 
-		riskValue, err := m.calculator.CalculateVaR(returns, 0.95)
-		if err != nil {
-			continue
-		}
+		// 2. 运行多个压力测试情景
+		scenarioResults := domain.RunStressTests([]domain.PortfolioAsset{}) // 使用空资产切片进行默认情景演示
 
-		limit, err := m.limitRepo.GetByUserIDAndType(ctx, userID, "VAR_LIMIT")
-		if err == nil && limit != nil {
-			if riskValue.Abs().GreaterThan(limit.LimitValue) {
-				m.internalLogger().WarnContext(ctx, "VaR exceeds limit, triggering circuit breaker", "user_id", userID, "var", riskValue.String(), "limit", limit.LimitValue.String())
+		for name, impact := range scenarioResults {
+			if impact.Abs().GreaterThan(decimal.NewFromInt(10000)) { // 假设阈值 $10k
+				m.internalLogger().WarnContext(ctx, "Stress test limit exceeded", "user_id", userID, "scenario", name, "impact", impact.String())
 
-				if err := m.breakerRepo.Save(ctx, &domain.CircuitBreaker{
+				// 触发自动熔断
+				m.breakerRepo.Save(ctx, &domain.CircuitBreaker{
 					UserID:        userID,
 					IsFired:       true,
-					TriggerReason: fmt.Sprintf("VaR limit exceeded: %s", riskValue.String()),
-				}); err != nil {
-					m.internalLogger().ErrorContext(ctx, "failed to trigger circuit breaker", "user_id", userID, "error", err)
-				}
+					TriggerReason: fmt.Sprintf("Stress scenario [%s] impact %s exceeds threshold", name, impact.String()),
+				})
+
+				// 发送紧急通知 (可通过 Event 或 直接调用 NotificationSvc)
 			}
 		}
 	}

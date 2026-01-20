@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-config
+data:
+  config.toml: |
+    [server]
+    name = "connectivity-service"
+    environment = "prod"
+
+    [server.http]
+    port = 8089
+    timeout = "10s"
+
+    [server.grpc]
+    port = 9099
+    timeout = "10s"
+
+    [log]
+    level = "info"
+    format = "json"
+    output = "stdout"
+
+    [data.database]
+    driver = "mysql"
+    dsn = "root:password@tcp(mysql-service:3306)/financial_connectivity?charset=utf8mb4&parseTime=True&loc=Local"
+
+    [services]
+    execution = "execution-service:9091"
+    marketdata = "marketdata-service:9092"
+
+    [fix]
+    port = 9800
+    sender_comp_id = "TRANS_GATEWAY"
+    target_comp_id = "INST_CLIENT"

@@ -49,4 +49,20 @@ func (a *Alert) Timestamp() int64 {
 	return a.GeneratedAt
 }
 
+// ExecutionAudit 审计流水实体 (ClickHouse 优化)
+type ExecutionAudit struct {
+	ID        string          `gorm:"primaryKey;type:varchar(32)" json:"id"`
+	TradeID   string          `gorm:"index;type:varchar(32)" json:"trade_id"`
+	OrderID   string          `gorm:"index;type:varchar(32)" json:"order_id"`
+	UserID    string          `gorm:"index;type:varchar(64)" json:"user_id"`
+	Symbol    string          `gorm:"index;type:varchar(20)" json:"symbol"`
+	Side      string          `gorm:"type:varchar(10)" json:"side"`
+	Price     decimal.Decimal `gorm:"type:decimal(32,18)" json:"price"`
+	Quantity  decimal.Decimal `gorm:"type:decimal(32,18)" json:"quantity"`
+	Fee       decimal.Decimal `gorm:"type:decimal(32,18)" json:"fee"`
+	Venue     string          `gorm:"type:varchar(20)" json:"venue"`
+	AlgoType  string          `gorm:"type:varchar(20)" json:"algo_type"`
+	Timestamp int64           `gorm:"index;type:bigint" json:"timestamp"`
+}
+
 // End of domain file

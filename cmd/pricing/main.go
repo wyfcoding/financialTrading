@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -15,6 +16,8 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
 	"github.com/wyfcoding/financialtrading/internal/pricing/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/pricing/interfaces/grpc"
+	"github.com/wyfcoding/pkg/logging"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	gorm_mysql "gorm.io/driver/mysql"
@@ -34,8 +37,8 @@ func main() {
 	}
 
 	// 2. Logger
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	logger := logging.NewLogger("pricing", "main", viper.GetString("log.level"))
+	slog.SetDefault(logger.Logger)
 
 	// 3. Database
 	dsn := viper.GetString("database.source")
@@ -52,39 +55,45 @@ func main() {
 	// 4. Infrastructure & Domain
 	priceRepo := mysql.NewPriceRepository(db)
 	pricingRepo := mysql.NewPricingRepository(db)
-	// Need a mock MarketDataClient for now or a real one if available
-	// marketDataClient := ...
 
 	// 5. Application
 	appService := application.NewPricingService(nil, pricingRepo, priceRepo)
 
-	// TODO: Kafka Consumer feeding OnQuoteReceived
-
 	// 6. Interfaces
+	// gRPC
 	grpcSrv := grpc.NewServer()
 	pricingHandler := grpc_server.NewHandler(appService)
 	pricing_pb.RegisterPricingServiceServer(grpcSrv, pricingHandler)
 	reflection.Register(grpcSrv)
-	port := viper.GetString("server.grpc_port")
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	if err != nil {
-		panic(err)
-	}
 
 	// 7. Start
-	go func() {
-		slog.Info("Starting gRPC server", "port", port)
-		if err := grpcSrv.Serve(lis); err != nil {
-			panic(err)
+	g, ctx := errgroup.WithContext(context.Background())
+
+	grpcPort := viper.GetString("server.grpc_port")
+	g.Go(func() error {
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+		if err != nil {
+			return err
 		}
-	}()
+		slog.Info("Starting gRPC server", "port", grpcPort)
+		return grpcSrv.Serve(lis)
+	})
 
 	// 8. Graceful Shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	slog.Info("Shutting down server...")
+	g.Go(func() error {
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		select {
+		case <-quit:
+			slog.Info("shutting down servers...")
+		case <-ctx.Done():
+			slog.Info("context cancelled, shutting down...")
+		}
+		grpcSrv.GracefulStop()
+		return nil
+	})
 
-	grpcSrv.GracefulStop()
-	slog.Info("Server exiting")
+	if err := g.Wait(); err != nil {
+		slog.Error("server exited with error", "error", err)
+	}
 }

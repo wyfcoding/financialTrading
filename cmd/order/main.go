@@ -1,21 +1,28 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"net/http/pprof"
+
+	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/application"
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
 	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/order/interfaces/grpc"
+	http_server "github.com/wyfcoding/financialtrading/internal/order/interfaces/http"
 	"github.com/wyfcoding/pkg/security/risk"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	gorm_mysql "gorm.io/driver/mysql"
@@ -71,31 +78,84 @@ func main() {
 	// TODO: SetRiskClient, SetAccountClient, SetPositionClient using gRPC connection pools
 
 	// 6. Interfaces
+	// gRPC
 	grpcSrv := grpc.NewServer()
 	handler := grpc_server.NewHandler(orderManager, orderQuery)
 	orderv1.RegisterOrderServiceServer(grpcSrv, handler)
 	reflection.Register(grpcSrv)
 
-	port := viper.GetString("server.grpc_port")
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	if err != nil {
-		panic(err)
+	// HTTP
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.Recovery())
+	hHandler := http_server.NewOrderHandler(orderManager, orderQuery)
+	hHandler.RegisterRoutes(r.Group("/api"))
+
+	// System Endpoints (Health, Metrics, Pprof)
+	sys := r.Group("/sys")
+	{
+		sys.GET("/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "UP"}) })
+		sys.GET("/ready", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "READY"}) })
+	}
+
+	// Metrics
+	r.GET("/metrics", func(c *gin.Context) {
+		// In a real app, this should expose Prometheus stats
+		c.String(http.StatusOK, "# HELP order_service_running Status of order service\n# TYPE order_service_running gauge\norder_service_running 1")
+	})
+
+	// Pprof
+	pp := r.Group("/debug/pprof")
+	{
+		pp.GET("/", gin.WrapF(pprof.Index))
+		pp.GET("/cmdline", gin.WrapF(pprof.Cmdline))
+		pp.GET("/profile", gin.WrapF(pprof.Profile))
+		pp.GET("/symbol", gin.WrapF(pprof.Symbol))
+		pp.GET("/trace", gin.WrapF(pprof.Trace))
 	}
 
 	// 7. Start
-	go func() {
-		slog.Info("Starting gRPC server", "port", port)
-		if err := grpcSrv.Serve(lis); err != nil {
-			panic(err)
+	g, ctx := errgroup.WithContext(context.Background())
+
+	grpcPort := viper.GetString("server.grpc_port")
+	g.Go(func() error {
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+		if err != nil {
+			return err
 		}
-	}()
+		slog.Info("Starting gRPC server", "port", grpcPort)
+		return grpcSrv.Serve(lis)
+	})
+
+	httpPort := viper.GetString("server.http_port")
+	if httpPort == "" {
+		httpPort = "8081" // Default for order?
+	}
+	g.Go(func() error {
+		addr := fmt.Sprintf(":%s", httpPort)
+		server := &http.Server{Addr: addr, Handler: r}
+		slog.Info("HTTP server starting", "addr", addr)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return err
+		}
+		return nil
+	})
 
 	// 8. Graceful Shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	slog.Info("Shutting down server...")
+	g.Go(func() error {
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		select {
+		case <-quit:
+			slog.Info("shutting down servers...")
+		case <-ctx.Done():
+			slog.Info("context cancelled, shutting down...")
+		}
+		grpcSrv.GracefulStop()
+		return nil
+	})
 
-	grpcSrv.GracefulStop()
-	slog.Info("Server exiting")
+	if err := g.Wait(); err != nil {
+		slog.Error("server exited with error", "error", err)
+	}
 }

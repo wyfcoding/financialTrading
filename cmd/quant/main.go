@@ -1,20 +1,25 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	quant_pb "github.com/wyfcoding/financialtrading/go-api/quant/v1"
 	"github.com/wyfcoding/financialtrading/internal/quant/application"
 	"github.com/wyfcoding/financialtrading/internal/quant/domain"
 	"github.com/wyfcoding/financialtrading/internal/quant/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/quant/interfaces/grpc"
+	http_server "github.com/wyfcoding/financialtrading/internal/quant/interfaces/http"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	gorm_mysql "gorm.io/driver/mysql"
@@ -45,7 +50,7 @@ func main() {
 	}
 
 	// Auto Migrate
-	if err := db.AutoMigrate(&domain.Signal{}); err != nil {
+	if err := db.AutoMigrate(&domain.Strategy{}, &domain.BacktestResult{}, &domain.Signal{}); err != nil {
 		panic(fmt.Sprintf("migrate db failed: %v", err))
 	}
 
@@ -53,36 +58,66 @@ func main() {
 	signalRepo := mysql.NewSignalRepository(db)
 	strategyRepo := mysql.NewStrategyRepository(db)
 	backtestRepo := mysql.NewBacktestResultRepository(db)
-	// marketDataClient := ...
 
 	// 5. Application
 	appService := application.NewQuantService(strategyRepo, backtestRepo, signalRepo, nil)
 
 	// 6. Interfaces
+	// gRPC
 	grpcSrv := grpc.NewServer()
 	quantHandler := grpc_server.NewHandler(appService)
 	quant_pb.RegisterQuantServiceServer(grpcSrv, quantHandler)
 	reflection.Register(grpcSrv)
-	port := viper.GetString("server.grpc_port")
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	if err != nil {
-		panic(err)
-	}
+
+	// HTTP
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.Recovery())
+	hHandler := http_server.NewQuantHandler(appService)
+	hHandler.RegisterRoutes(r.Group("/api"))
 
 	// 7. Start
-	go func() {
-		slog.Info("Starting gRPC server", "port", port)
-		if err := grpcSrv.Serve(lis); err != nil {
-			panic(err)
+	g, ctx := errgroup.WithContext(context.Background())
+
+	grpcPort := viper.GetString("server.grpc_port")
+	g.Go(func() error {
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+		if err != nil {
+			return err
 		}
-	}()
+		slog.Info("Starting gRPC server", "port", grpcPort)
+		return grpcSrv.Serve(lis)
+	})
+
+	httpPort := viper.GetString("server.http_port")
+	if httpPort == "" {
+		httpPort = "8083" // Default for quant?
+	}
+	g.Go(func() error {
+		addr := fmt.Sprintf(":%s", httpPort)
+		server := &http.Server{Addr: addr, Handler: r}
+		slog.Info("HTTP server starting", "addr", addr)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return err
+		}
+		return nil
+	})
 
 	// 8. Graceful Shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	slog.Info("Shutting down server...")
+	g.Go(func() error {
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		select {
+		case <-quit:
+			slog.Info("shutting down servers...")
+		case <-ctx.Done():
+			slog.Info("context cancelled, shutting down...")
+		}
+		grpcSrv.GracefulStop()
+		return nil
+	})
 
-	grpcSrv.GracefulStop()
-	slog.Info("Server exiting")
+	if err := g.Wait(); err != nil {
+		slog.Error("server exited with error", "error", err)
+	}
 }

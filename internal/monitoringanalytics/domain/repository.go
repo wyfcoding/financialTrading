@@ -22,3 +22,9 @@ type AlertRepository interface {
 	Save(ctx context.Context, alert *Alert) error
 	GetAlerts(ctx context.Context, limit int) ([]*Alert, error)
 }
+
+// ExecutionAuditRepository 定义 ClickHouse 审计流水存储接口
+type ExecutionAuditRepository interface {
+	BatchSave(ctx context.Context, audits []*ExecutionAudit) error
+	Query(ctx context.Context, userID, symbol string, startTime, endTime int64) ([]*ExecutionAudit, error)
+}

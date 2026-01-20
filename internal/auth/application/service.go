@@ -9,11 +9,17 @@ import (
 )
 
 type AuthApplicationService struct {
-	repo domain.UserRepository
+	repo       domain.UserRepository
+	apiKeyRepo domain.APIKeyRepository
+	keySvc     *APIKeyService
 }
 
-func NewAuthApplicationService(repo domain.UserRepository) *AuthApplicationService {
-	return &AuthApplicationService{repo: repo}
+func NewAuthApplicationService(repo domain.UserRepository, apiKeyRepo domain.APIKeyRepository, keySvc *APIKeyService) *AuthApplicationService {
+	return &AuthApplicationService{
+		repo:       repo,
+		apiKeyRepo: apiKeyRepo,
+		keySvc:     keySvc,
+	}
 }
 
 func (s *AuthApplicationService) Register(ctx context.Context, email, password string) (uint, error) {
@@ -39,4 +45,12 @@ func (s *AuthApplicationService) Login(ctx context.Context, email, password stri
 	}
 	exp := time.Now().Add(24 * time.Hour).Unix()
 	return "mock_jwt_" + email, exp, nil
+}
+
+func (s *AuthApplicationService) ValidateAPIKey(ctx context.Context, apiKey string) (*domain.APIKey, error) {
+	return s.apiKeyRepo.GetByKey(ctx, apiKey)
+}
+
+func (s *AuthApplicationService) VerifyAPIKey(ctx context.Context, key, secret string) (*domain.APIKey, error) {
+	return s.keySvc.ValidateKey(ctx, key, secret)
 }

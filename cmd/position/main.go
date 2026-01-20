@@ -1,20 +1,25 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	pb "github.com/wyfcoding/financialtrading/go-api/position/v1"
 	"github.com/wyfcoding/financialtrading/internal/position/application"
 	"github.com/wyfcoding/financialtrading/internal/position/domain"
 	"github.com/wyfcoding/financialtrading/internal/position/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/position/interfaces/grpc"
+	http_server "github.com/wyfcoding/financialtrading/internal/position/interfaces/http"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	gorm_mysql "gorm.io/driver/mysql"
@@ -66,6 +71,7 @@ func main() {
 	// Let's modify Handler to take Query service too.
 
 	// 6. Interfaces
+	// gRPC
 	grpcSrv := grpc.NewServer()
 
 	// FIX: Handler logic update required (see Step 2337 view).
@@ -77,26 +83,55 @@ func main() {
 	pb.RegisterPositionServiceServer(grpcSrv, handler)
 	reflection.Register(grpcSrv)
 
-	port := viper.GetString("server.grpc_port")
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	if err != nil {
-		panic(err)
-	}
+	// HTTP
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.Recovery())
+	hHandler := http_server.NewPositionHandler(appService)
+	hHandler.RegisterRoutes(r.Group("/api"))
 
 	// 7. Start
-	go func() {
-		slog.Info("Starting gRPC server", "port", port)
-		if err := grpcSrv.Serve(lis); err != nil {
-			panic(err)
+	g, ctx := errgroup.WithContext(context.Background())
+
+	grpcPort := viper.GetString("server.grpc_port")
+	g.Go(func() error {
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+		if err != nil {
+			return err
 		}
-	}()
+		slog.Info("Starting gRPC server", "port", grpcPort)
+		return grpcSrv.Serve(lis)
+	})
+
+	httpPort := viper.GetString("server.http_port")
+	if httpPort == "" {
+		httpPort = "8082" // Default for position?
+	}
+	g.Go(func() error {
+		addr := fmt.Sprintf(":%s", httpPort)
+		server := &http.Server{Addr: addr, Handler: r}
+		slog.Info("HTTP server starting", "addr", addr)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return err
+		}
+		return nil
+	})
 
 	// 8. Graceful Shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	slog.Info("Shutting down server...")
+	g.Go(func() error {
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		select {
+		case <-quit:
+			slog.Info("shutting down servers...")
+		case <-ctx.Done():
+			slog.Info("context cancelled, shutting down...")
+		}
+		grpcSrv.GracefulStop()
+		return nil
+	})
 
-	grpcSrv.GracefulStop()
-	slog.Info("Server exiting")
+	if err := g.Wait(); err != nil {
+		slog.Error("server exited with error", "error", err)
+	}
 }

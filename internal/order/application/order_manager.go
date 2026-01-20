@@ -15,6 +15,9 @@ import (
 	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/logging"
 	"github.com/wyfcoding/pkg/security/risk"
+	"github.com/wyfcoding/pkg/tracing"
+	"github.com/wyfcoding/pkg/transaction"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // OrderManager 处理所有订单相关的写入操作（Commands）。
@@ -59,6 +62,11 @@ func (m *OrderManager) SetDTMServer(addr string) {
 
 // CreateOrder 创建新订单，包含风控、同步风控调用及 DTM TCC 事务控制。
 func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest) (*OrderDTO, error) {
+	ctx, span := tracing.Tracer().Start(ctx, "OrderManager.CreateOrder", trace.WithSpanKind(trace.SpanKindInternal))
+	defer span.End()
+	tracing.AddTag(ctx, "user_id", req.UserID)
+	tracing.AddTag(ctx, "symbol", req.Symbol)
+
 	// 性能监控埋点
 	defer logging.LogDuration(ctx, "order creation completed",
 		"user_id", req.UserID,
@@ -134,6 +142,12 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 		price.InexactFloat64(),
 		quantity.InexactFloat64(),
 	)
+	order.TimeInForce = domain.TimeInForce(req.TimeInForce)
+	if sp, err := decimal.NewFromString(req.StopPrice); err == nil {
+		order.StopPrice = sp.InexactFloat64()
+	}
+	order.IsOCO = req.IsOCO
+	order.ParentOrderID = req.LinkedOrderID
 
 	// --- 3. 开启分布式 TCC 事务控制资产冻结 ---
 	if m.dtmServer != "" {
@@ -241,6 +255,12 @@ func (m *OrderManager) updateFillStatus(ctx context.Context, orderID string, qty
 		return err
 	}
 
+	// OCO 联动：如果订单成交/取消，发送联动订单的取消请求
+	if order.IsOCO && order.ParentOrderID != "" && (order.Status == domain.StatusFilled || order.Status == domain.StatusCancelled) {
+		m.logger.InfoContext(ctx, "OCO trigger: cancelling linked order", "order_id", orderID, "linked_id", order.ParentOrderID)
+		go m.CancelOrder(context.Background(), order.ParentOrderID, order.UserID)
+	}
+
 	m.logger.InfoContext(ctx, "order fill status updated", "order_id", orderID, "status", order.Status)
 	return nil
 }
@@ -317,5 +337,41 @@ func (m *OrderManager) CancelOrder(ctx context.Context, orderID, userID string) 
 		Status:         string(order.Status),
 		CreatedAt:      order.CreatedAt.Unix(),
 		UpdatedAt:      order.UpdatedAt.Unix(),
+	}, nil
+}
+
+// CreateOrderSaga 使用自定义 Saga 协调器执行订单创建流程
+func (m *OrderManager) CreateOrderSaga(ctx context.Context, req *CreateOrderRequest) (*OrderDTO, error) {
+	price, _ := decimal.NewFromString(req.Price)
+	quantity, _ := decimal.NewFromString(req.Quantity)
+	orderID := fmt.Sprintf("ORD-%d", idgen.GenID())
+
+	order := domain.NewOrder(orderID, req.UserID, req.Symbol, domain.OrderSide(req.Side), domain.OrderType(req.OrderType), price.InexactFloat64(), quantity.InexactFloat64())
+
+	saga := transaction.NewSagaCoordinator()
+	saga.AddStep(&OrderCreateStep{
+		BaseStep: transaction.BaseStep{StepName: "OrderCreate"},
+		repo:     m.repo,
+		order:    order,
+	}).AddStep(&RiskCheckStep{
+		BaseStep: transaction.BaseStep{StepName: "RiskCheck"},
+		riskCli:  m.riskCli,
+		order:    order,
+	}).AddStep(&AccountBalanceStep{
+		BaseStep:   transaction.BaseStep{StepName: "AccountBalance"},
+		accountCli: m.accountCli,
+		order:      order,
+		amount:     price.Mul(quantity).String(),
+	})
+
+	if err := saga.Execute(ctx); err != nil {
+		return nil, err
+	}
+
+	return &OrderDTO{
+		OrderID:   order.ID,
+		UserID:    order.UserID,
+		Status:    string(order.Status),
+		CreatedAt: order.CreatedAt.Unix(),
 	}, nil
 }

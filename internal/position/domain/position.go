@@ -1,17 +1,38 @@
 package domain
 
 import (
+	"math"
+
 	"gorm.io/gorm"
 )
+
+// CostBasisMethod 成本计算方法
+type CostBasisMethod string
+
+const (
+	CostBasisFIFO    CostBasisMethod = "FIFO"
+	CostBasisLIFO    CostBasisMethod = "LIFO"
+	CostBasisAverage CostBasisMethod = "AVERAGE"
+)
+
+// PositionLot 仓位头寸记录 (用于 FIFO/LIFO)
+type PositionLot struct {
+	gorm.Model
+	PositionID uint    `gorm:"index"`
+	Quantity   float64 `gorm:"column:quantity;type:decimal(20,8)"`
+	Price      float64 `gorm:"column:price;type:decimal(20,8)"`
+}
 
 // Position represents a user's holding in a symbol
 type Position struct {
 	gorm.Model
-	UserID            string  `gorm:"column:user_id;type:varchar(50);index;uniqueIndex:idx_user_symbol"`
-	Symbol            string  `gorm:"column:symbol;type:varchar(20);index;uniqueIndex:idx_user_symbol"`
-	Quantity          float64 `gorm:"column:quantity;type:decimal(20,8)"`
-	AverageEntryPrice float64 `gorm:"column:average_entry_price;type:decimal(20,8)"`
-	RealizedPnL       float64 `gorm:"column:realized_pnl;type:decimal(20,8);default:0"`
+	UserID            string          `gorm:"column:user_id;type:varchar(50);index;uniqueIndex:idx_user_symbol"`
+	Symbol            string          `gorm:"column:symbol;type:varchar(20);index;uniqueIndex:idx_user_symbol"`
+	Quantity          float64         `gorm:"column:quantity;type:decimal(20,8)"`
+	AverageEntryPrice float64         `gorm:"column:average_entry_price;type:decimal(20,8)"`
+	RealizedPnL       float64         `gorm:"column:realized_pnl;type:decimal(20,8);default:0"`
+	Method            CostBasisMethod `gorm:"column:cost_method;type:varchar(20);default:'AVERAGE'"`
+	Lots              []PositionLot   `gorm:"foreignKey:PositionID"`
 }
 
 func (p *Position) TableName() string {
@@ -29,81 +50,94 @@ func NewPosition(userID, symbol string) *Position {
 }
 
 // UpdatePosition updates the position based on a trade execution
-// This is a simplified Average Cost Basis implementation
-func (p *Position) UpdatePosition(side string, qty, price float64) {
-	if side == "buy" {
-		if p.Quantity >= 0 {
-			// Long + Buy -> Add to position, update avg price
-			totalValue := (p.Quantity * p.AverageEntryPrice) + (qty * price)
-			p.Quantity += qty
-			p.AverageEntryPrice = totalValue / p.Quantity
-		} else {
-			// Short + Buy -> Reducing position (Covering)
-			// e.g. Short 10 @ 100. Buy 5 @ 90.
-			// Realized PnL on 5 units = (Entry 100 - Exit 90) * 5 = 50
-			// Remaining Short 5 @ 100.
+func (p *Position) UpdatePosition(side string, qty, price float64) ([]PositionLot, []uint) {
+	var created []PositionLot
+	var deleted []uint
 
-			// If covering more than open, flip to Long
-			remainingQty := p.Quantity + qty
+	isBuy := (side == "buy" || side == "BUY")
 
-			if remainingQty > 0 {
-				// Flip short to long
-				// 1. Cover entire short
-				coverQty := -p.Quantity
-				pnl := (p.AverageEntryPrice - price) * coverQty
-				p.RealizedPnL += pnl
+	// 1. 如果是增加现有头寸方向 (或开新仓)
+	if (isBuy && p.Quantity >= 0) || (!isBuy && p.Quantity <= 0) {
+		// 计算平均价 (始终维护平均价作为参考)
+		absQty := math.Abs(p.Quantity)
+		totalValue := (absQty * p.AverageEntryPrice) + (qty * price)
+		p.Quantity = p.Quantity + (func() float64 {
+			if isBuy {
+				return qty
+			}
+			return -qty
+		}())
+		p.AverageEntryPrice = totalValue / math.Abs(p.Quantity)
 
-				// 2. Open new long
-				newLongQty := remainingQty
-				p.Quantity = newLongQty
-				p.AverageEntryPrice = price
+		// 记录 Lot
+		lot := PositionLot{
+			PositionID: p.ID,
+			Quantity:   qty,
+			Price:      price,
+		}
+		p.Lots = append(p.Lots, lot)
+		created = append(created, lot)
+	} else {
+		// 2. 减少现有头寸方向 (平仓/反手)
+		remQty := qty
+		for remQty > 0 && len(p.Lots) > 0 {
+			var idx int
+			if p.Method == CostBasisLIFO {
+				idx = len(p.Lots) - 1
 			} else {
-				// Reduce short
-				// qty is positive (buy), p.Quantity is negative
-				// covered amount is `qty`
-				pnl := (p.AverageEntryPrice - price) * qty
-				p.RealizedPnL += pnl
-				p.Quantity += qty // approaches 0
-				if p.Quantity == 0 {
-					p.AverageEntryPrice = 0
+				idx = 0
+			}
+
+			lot := &p.Lots[idx]
+			matchQty := math.Min(remQty, lot.Quantity)
+
+			// 计算盈亏
+			var pnl float64
+			if isBuy { // 正在平空头
+				pnl = (lot.Price - price) * matchQty
+			} else { // 正在平多头
+				pnl = (price - lot.Price) * matchQty
+			}
+			p.RealizedPnL += pnl
+
+			remQty -= matchQty
+			lot.Quantity -= matchQty
+			p.Quantity += (func() float64 {
+				if isBuy {
+					return matchQty
 				}
+				return -matchQty
+			}())
+
+			if lot.Quantity <= 0 {
+				if lot.ID != 0 {
+					deleted = append(deleted, lot.ID)
+				}
+				p.Lots = append(p.Lots[:idx], p.Lots[idx+1:]...)
 			}
 		}
-	} else { // SELL
-		if p.Quantity <= 0 {
-			// Short + Sell -> Add to short position, update avg price
-			// Use abs values for calculation logic
-			absQty := -p.Quantity
-			totalValue := (absQty * p.AverageEntryPrice) + (qty * price)
-			p.Quantity -= qty // becomes more negative
-			p.AverageEntryPrice = totalValue / (-p.Quantity)
-		} else {
-			// Long + Sell -> Reducing position
-			// e.g. Long 10 @ 100. Sell 5 @ 110.
-			// PnL = (110 - 100) * 5 = 50.
 
-			remainingQty := p.Quantity - qty
-
-			if remainingQty < 0 {
-				// Flip long to short
-				// 1. Close entire long
-				closeQty := p.Quantity
-				pnl := (price - p.AverageEntryPrice) * closeQty
-				p.RealizedPnL += pnl
-
-				// 2. Open new short
-				newShortQty := remainingQty // negative
-				p.Quantity = newShortQty
-				p.AverageEntryPrice = price
-			} else {
-				// Reduce long
-				pnl := (price - p.AverageEntryPrice) * qty
-				p.RealizedPnL += pnl
-				p.Quantity -= qty
-				if p.Quantity == 0 {
-					p.AverageEntryPrice = 0
+		// 如果还有剩余 qty，说明发生了反手 (Flip)
+		if remQty > 0 {
+			p.AverageEntryPrice = price
+			p.Quantity = (func() float64 {
+				if isBuy {
+					return remQty
 				}
+				return -remQty
+			}())
+			lot := PositionLot{
+				PositionID: p.ID,
+				Quantity:   remQty,
+				Price:      price,
 			}
+			p.Lots = append(p.Lots, lot)
+			created = append(created, lot)
+		}
+
+		if p.Quantity == 0 {
+			p.AverageEntryPrice = 0
 		}
 	}
+	return created, deleted
 }

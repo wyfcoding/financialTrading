@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -16,6 +17,8 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/notification/infrastructure/persistence/mysql"
 	"github.com/wyfcoding/financialtrading/internal/notification/infrastructure/sender/mock"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/notification/interfaces/grpc"
+	"github.com/wyfcoding/pkg/logging"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	gorm_mysql "gorm.io/driver/mysql"
@@ -35,8 +38,8 @@ func main() {
 	}
 
 	// 2. Logger
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	logger := logging.NewLogger("notification", "main", viper.GetString("log.level"))
+	slog.SetDefault(logger.Logger)
 
 	// 3. Database
 	dsn := viper.GetString("database.source")
@@ -58,33 +61,41 @@ func main() {
 	// 5. Application
 	appService := application.NewNotificationManager(repo, emailSender, smsSender)
 
-	// TODO: Kafka Consumer for async events
-
 	// 6. Interfaces
+	// gRPC
 	grpcSrv := grpc.NewServer()
 	notifHandler := grpc_server.NewHandler(appService)
 	v1.RegisterNotificationServer(grpcSrv, notifHandler)
 	reflection.Register(grpcSrv)
-	port := viper.GetString("server.grpc_port")
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	if err != nil {
-		panic(err)
-	}
 
 	// 7. Start
-	go func() {
-		slog.Info("Starting gRPC server", "port", port)
-		if err := grpcSrv.Serve(lis); err != nil {
-			panic(err)
+	g, ctx := errgroup.WithContext(context.Background())
+
+	grpcPort := viper.GetString("server.grpc_port")
+	g.Go(func() error {
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+		if err != nil {
+			return err
 		}
-	}()
+		slog.Info("Starting gRPC server", "port", grpcPort)
+		return grpcSrv.Serve(lis)
+	})
 
 	// 8. Graceful Shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	slog.Info("Shutting down server...")
+	g.Go(func() error {
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		select {
+		case <-quit:
+			slog.Info("shutting down servers...")
+		case <-ctx.Done():
+			slog.Info("context cancelled, shutting down...")
+		}
+		grpcSrv.GracefulStop()
+		return nil
+	})
 
-	grpcSrv.GracefulStop()
-	slog.Info("Server exiting")
+	if err := g.Wait(); err != nil {
+		slog.Error("server exited with error", "error", err)
+	}
 }

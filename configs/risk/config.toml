@@ -8,3 +8,14 @@ source = "root:root@tcp(127.0.0.1:3306)/financial_trading?charset=utf8mb4&parseT
 [log]
 level = "info"
 format = "json"
+
+[services]
+marketdata = "127.0.0.1:9092"
+
+[tracing]
+sampler_type = "ratio"
+sampler_fraction = 0.01
+
+[message_queue]
+batch_size = 1000000
+linger_ms = 10

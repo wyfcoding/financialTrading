@@ -6,19 +6,22 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
+	pb "github.com/wyfcoding/financialtrading/go-api/marketsimulation/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/application"
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/domain"
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/infrastructure/persistence/mysql"
-	grpc_server "github.com/wyfcoding/financialtrading/internal/marketsimulation/interfaces/grpc"
-	http_server "github.com/wyfcoding/financialtrading/internal/marketsimulation/interfaces/http"
+	"github.com/wyfcoding/financialtrading/internal/marketsimulation/infrastructure/publisher"
+	grpc_handler "github.com/wyfcoding/financialtrading/internal/marketsimulation/interfaces/grpc"
+	"github.com/wyfcoding/pkg/config"
+	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
+	"github.com/wyfcoding/pkg/metrics"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	gormmysql "gorm.io/driver/mysql"
@@ -56,8 +59,18 @@ func main() {
 	// 4. Infrastructure & Domain
 	repo := mysql.NewSimulationRepository(db)
 
+	// Kafka Producer
+	kafkaCfg := &config.KafkaConfig{
+		Brokers: viper.GetStringSlice("kafka.brokers"),
+		Topic:   "market.simulation",
+	}
+	pkgLogger := logging.NewLogger("marketsimulation", "main")
+	metricsImpl := metrics.NewMetrics("marketsimulation")
+	producer := kafka.NewProducer(kafkaCfg, pkgLogger, metricsImpl)
+	kafkaPublisher := publisher.NewKafkaMarketDataPublisher(producer)
+
 	// 5. Application
-	appService := application.NewMarketSimulationApplicationService(repo)
+	appService := application.NewMarketSimulationApplicationService(repo, kafkaPublisher)
 
 	// Resume running simulations
 	ctx := context.Background()
@@ -78,52 +91,40 @@ func main() {
 	// I will skip auto-resume for now to keep it simple, or I should have added `Resume` in app service.
 
 	// 6. Interfaces
-	// HTTP
-	gin.SetMode(gin.ReleaseMode)
-	r := gin.Default()
-	http_server.NewHandler(r, appService)
-	httpSrv := &http.Server{
-		Addr:    fmt.Sprintf(":%s", viper.GetString("server.http_port")),
-		Handler: r,
-	}
-
 	// gRPC
 	grpcSrv := grpc.NewServer()
-	grpc_server.NewHandler(appService)
+	handler := grpc_handler.NewHandler(appService)
+	pb.RegisterMarketSimulationServiceServer(grpcSrv, handler)
 	reflection.Register(grpcSrv)
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", viper.GetString("server.grpc_port")))
-	if err != nil {
-		panic(err)
-	}
 
 	// 7. Start
-	go func() {
-		slog.Info("Starting HTTP server", "port", viper.GetString("server.http_port"))
-		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			panic(err)
-		}
-	}()
+	g, ctx := errgroup.WithContext(context.Background())
 
-	go func() {
-		slog.Info("Starting gRPC server", "port", viper.GetString("server.grpc_port"))
-		if err := grpcSrv.Serve(lis); err != nil {
-			panic(err)
+	grpcPort := viper.GetString("server.grpc_port")
+	g.Go(func() error {
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+		if err != nil {
+			return err
 		}
-	}()
+		slog.Info("Starting gRPC server", "port", grpcPort)
+		return grpcSrv.Serve(lis)
+	})
 
 	// 8. Graceful Shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	slog.Info("Shutting down server...")
+	g.Go(func() error {
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		select {
+		case <-quit:
+			slog.Info("shutting down servers...")
+		case <-ctx.Done():
+			slog.Info("context cancelled, shutting down...")
+		}
+		grpcSrv.GracefulStop()
+		return nil
+	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := httpSrv.Shutdown(ctx); err != nil {
-		slog.Error("Server forced to shutdown", "error", err)
+	if err := g.Wait(); err != nil {
+		slog.Error("server exited with error", "error", err)
 	}
-	grpcSrv.GracefulStop()
-
-	slog.Info("Server exiting")
 }

@@ -30,3 +30,9 @@ topic = "financial.marketmaking.events"
 enabled = false
 service_name = "marketmaking-service"
 otlp_endpoint = "localhost:4317"
+
+[services.order]
+grpc_addr = "localhost:9088"
+
+[services.marketdata]
+grpc_addr = "localhost:9092"

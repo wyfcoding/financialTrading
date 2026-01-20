@@ -6,6 +6,7 @@ image:
 service:
   type: ClusterIP
   grpcPort: 9088
+  httpPort: 8088
 
 config:
   server:
@@ -19,6 +20,21 @@ config:
   kafka:
     brokers: ["kafka:9092"]
     topic_order: "execution.order"
+  server:
+    http_port: 8088
+
+canary:
+  enabled: false
+  version: v2
+  trafficWeight: 10
+  headerMatch:
+    key: "x-canary"
+    value: "always"
+
+observability:
+  tracing:
+    provider: jaeger
+    samplingRate: 100
 
 resources:
   limits:

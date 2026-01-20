@@ -37,3 +37,30 @@ func (s *Server) Login(ctx context.Context, req *v1.LoginRequest) (*v1.LoginResp
 	}
 	return &v1.LoginResponse{Token: token, Type: "Bearer", ExpiresAt: exp}, nil
 }
+
+func (s *Server) ValidateAPIKey(ctx context.Context, req *v1.ValidateAPIKeyRequest) (*v1.ValidateAPIKeyResponse, error) {
+	ak, err := s.app.ValidateAPIKey(ctx, req.ApiKey)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "invalid api key")
+	}
+	if ak == nil {
+		return nil, status.Error(codes.NotFound, "api key not found")
+	}
+	return &v1.ValidateAPIKeyResponse{
+		Secret:  "", // 我们不再向外暴露 Secret
+		UserId:  ak.UserID,
+		Enabled: ak.Enabled,
+	}, nil
+}
+
+func (s *Server) VerifyAPIKey(ctx context.Context, req *v1.VerifyAPIKeyRequest) (*v1.VerifyAPIKeyResponse, error) {
+	ak, err := s.app.VerifyAPIKey(ctx, req.ApiKey, req.Secret)
+	if err != nil {
+		return &v1.VerifyAPIKeyResponse{Valid: false}, nil
+	}
+	return &v1.VerifyAPIKeyResponse{
+		Valid:  true,
+		UserId: ak.UserID,
+		Scopes: ak.Scopes,
+	}, nil
+}

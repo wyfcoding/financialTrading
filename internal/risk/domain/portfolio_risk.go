@@ -35,7 +35,17 @@ type PortfolioRiskResult struct {
 	VaR             decimal.Decimal            `json:"var"`             // Value at Risk
 	ES              decimal.Decimal            `json:"es"`              // Expected Shortfall (CVaR)
 	ComponentVaR    map[string]decimal.Decimal `json:"component_var"`   // 各资产对总风险的贡献 (Marginal VaR * Weight)
+	MarginalVaR     map[string]decimal.Decimal `json:"marginal_var"`    // 各资产单位变动对总 VaR 的影响
+	Greeks          map[string]PortfolioGreeks `json:"greeks"`          // 组合希腊字母敏感度
 	Diversification decimal.Decimal            `json:"diversification"` // 分散化效应带来的风险降低值
+	StressTests     map[string]decimal.Decimal `json:"stress_tests"`    // 压力测试情况下的 PnL
+}
+
+type PortfolioGreeks struct {
+	Delta decimal.Decimal `json:"delta"`
+	Gamma decimal.Decimal `json:"gamma"`
+	Vega  decimal.Decimal `json:"vega"`
+	Theta decimal.Decimal `json:"theta"`
 }
 
 // CalculatePortfolioRisk 执行多资产关联蒙特卡洛模拟

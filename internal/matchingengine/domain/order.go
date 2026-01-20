@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"sync"
 	"time"
 )
 
@@ -39,7 +40,7 @@ func (o *Order) RemainingQty() float64 {
 
 // IsFilled checks if the order is completely filled
 func (o *Order) IsFilled() bool {
-	return o.RemainingQty() <= 0 // Float epsilon check might be needed in real prod
+	return o.RemainingQty() <= 0
 }
 
 // Trade represents a successful match
@@ -52,15 +53,37 @@ type Trade struct {
 	Timestamp    time.Time
 }
 
-// NewOrder creates a new order instance
+var orderPool = sync.Pool{
+	New: func() interface{} {
+		return &Order{}
+	},
+}
+
+// NewOrder creates or acquires an order instance from the pool
 func NewOrder(id, symbol string, side OrderSide, typ OrderType, price, qty float64) *Order {
-	return &Order{
-		ID:        id,
-		Symbol:    symbol,
-		Side:      side,
-		Type:      typ,
-		Price:     price,
-		Quantity:  qty,
-		Timestamp: time.Now(),
+	o := orderPool.Get().(*Order)
+	o.ID = id
+	o.Symbol = symbol
+	o.Side = side
+	o.Type = typ
+	o.Price = price
+	o.Quantity = qty
+	o.FilledQty = 0
+	o.Timestamp = time.Now()
+	return o
+}
+
+// ReleaseOrder returns an order instance back to the pool
+func ReleaseOrder(o *Order) {
+	if o == nil {
+		return
 	}
+	o.ID = ""
+	o.Symbol = ""
+	o.Side = 0
+	o.Type = 0
+	o.Price = 0
+	o.Quantity = 0
+	o.FilledQty = 0
+	orderPool.Put(o)
 }

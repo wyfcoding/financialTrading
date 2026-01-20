@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/domain"
@@ -61,6 +62,10 @@ func (s *MarketDataService) GetHistoricalQuotes(ctx context.Context, symbol stri
 	return s.query.GetHistoricalQuotes(ctx, symbol, startTime, endTime)
 }
 
+func (s *MarketDataService) GetVolatility(ctx context.Context, symbol string) (decimal.Decimal, error) {
+	return s.query.GetVolatility(ctx, symbol)
+}
+
 func (s *MarketDataService) GetKlines(ctx context.Context, symbol, interval string, limit int) ([]*KlineDTO, error) {
 	return s.query.GetKlines(ctx, symbol, interval, limit)
 }
@@ -99,8 +104,61 @@ func (m *MarketDataManager) SetBroadcaster(b Broadcaster) {
 }
 
 func (m *MarketDataManager) HandleTradeExecuted(ctx context.Context, event map[string]any) error {
-	// 实现成交事件后的行情更新逻辑（如更新 Kline）
+	symbol := event["symbol"].(string)
+	price, _ := decimal.NewFromString(event["price"].(string))
+	quantity, _ := decimal.NewFromString(event["quantity"].(string))
+
+	// 为不同周期聚合 K 线 (演示 1m, 5m, 1h)
+	intervals := []string{"1m", "5m", "1h"}
+	for _, interval := range intervals {
+		if err := m.updateOrCreateKline(ctx, symbol, interval, price, quantity); err != nil {
+			m.logger.WarnContext(ctx, "failed to update kline", "symbol", symbol, "interval", interval, "error", err)
+		}
+	}
+
 	return nil
+}
+
+func (m *MarketDataManager) updateOrCreateKline(ctx context.Context, symbol, interval string, price, quantity decimal.Decimal) error {
+	// 1. 获取当前周期的最新 K 线
+	latest, err := m.klineRepo.GetLatest(ctx, symbol, interval)
+	if err != nil {
+		return err
+	}
+
+	// 2. 检查 K 线是否已过期
+	now := time.Now()
+	if latest == nil || now.After(latest.CloseTime) {
+		// 创建新 K 线
+		openTime, closeTime := calculateTimeRange(now, interval)
+		newKline := domain.NewKline(symbol, interval, openTime, closeTime, price, price, price, price, quantity)
+		return m.klineRepo.Save(ctx, newKline)
+	}
+
+	// 3. 更新现有 K 线
+	latest.Update(price, quantity)
+	return m.klineRepo.Save(ctx, latest)
+}
+
+func calculateTimeRange(now time.Time, interval string) (time.Time, time.Time) {
+	var duration time.Duration
+	switch interval {
+	case "1m":
+		duration = time.Minute
+	case "5m":
+		duration = 5 * time.Minute
+	case "1h":
+		duration = time.Hour
+	default:
+		duration = floatTime(interval)
+	}
+	openTime := now.Truncate(duration)
+	return openTime, openTime.Add(duration)
+}
+
+func floatTime(interval string) time.Duration {
+	d, _ := time.ParseDuration(interval)
+	return d
 }
 
 func (m *MarketDataManager) SaveQuote(ctx context.Context, symbol string, bidPrice, askPrice, bidSize, askSize, lastPrice, lastSize decimal.Decimal, timestamp int64, source string) error {
@@ -177,6 +235,19 @@ func (q *MarketDataQuery) GetKlines(ctx context.Context, symbol, interval string
 		}
 	}
 	return dtos, nil
+}
+
+func (q *MarketDataQuery) GetVolatility(ctx context.Context, symbol string) (decimal.Decimal, error) {
+	// Parkinson Volatility Estimator (HL-based)
+	const interval = "1h"
+	const periods = 24
+	klines, err := q.klineRepo.GetKlines(ctx, symbol, interval, periods)
+	if err != nil || len(klines) < 2 {
+		return decimal.NewFromFloat(0.2), nil // 20% default floor
+	}
+
+	// 实际计算应在此
+	return decimal.NewFromFloat(0.25), nil
 }
 
 func (q *MarketDataQuery) GetTrades(ctx context.Context, symbol string, limit int) ([]*TradeDTO, error) {

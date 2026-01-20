@@ -66,6 +66,22 @@ func (r *klineRepository) GetKlines(ctx context.Context, symbol, interval string
 	return res, nil
 }
 
+func (r *klineRepository) GetLatest(ctx context.Context, symbol, interval string) (*domain.Kline, error) {
+	var po KlinePO
+	err := r.db.WithContext(ctx).
+		Where("symbol = ?", symbol).
+		Where("interval_str = ?", interval).
+		Order("open_time desc").
+		First(&po).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return po.ToDomain(), nil
+}
+
 type tradeRepository struct {
 	db *gorm.DB
 }

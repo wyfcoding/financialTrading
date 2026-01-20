@@ -12,9 +12,22 @@ type OrderSide string
 type OrderStatus string
 
 const (
-	TypeLimit  OrderType = "limit"
-	TypeMarket OrderType = "market"
+	TypeLimit      OrderType = "limit"
+	TypeMarket     OrderType = "market"
+	TypeStopLimit  OrderType = "stop_limit"
+	TypeStopMarket OrderType = "stop_market"
+	TypeTrailing   OrderType = "trailing_stop"
+)
 
+type TimeInForce string
+
+const (
+	GTC TimeInForce = "GTC" // Good 'Til Cancelled
+	IOC TimeInForce = "IOC" // Immediate Or Cancel
+	FOK TimeInForce = "FOK" // Fill Or Kill
+)
+
+const (
 	SideBuy  OrderSide = "buy"
 	SideSell OrderSide = "sell"
 
@@ -24,6 +37,7 @@ const (
 	StatusPartiallyFilled OrderStatus = "partially_filled"
 	StatusFilled          OrderStatus = "filled"
 	StatusCancelled       OrderStatus = "cancelled"
+	StatusExpired         OrderStatus = "expired"
 )
 
 // Order represents an OMS order
@@ -32,12 +46,18 @@ type Order struct {
 	UserID         string      `gorm:"column:user_id;type:varchar(50);index;not null" json:"user_id"`
 	Symbol         string      `gorm:"column:symbol;type:varchar(20);not null" json:"symbol"`
 	Side           OrderSide   `gorm:"column:side;type:varchar(10);not null" json:"side"`
-	Type           OrderType   `gorm:"column:type;type:varchar(10);not null" json:"type"`
+	Type           OrderType   `gorm:"column:type;type:varchar(20);not null" json:"type"`
 	Price          float64     `gorm:"column:price;type:decimal(20,8)" json:"price"`
+	StopPrice      float64     `gorm:"column:stop_price;type:decimal(20,8)" json:"stop_price"`
 	Quantity       float64     `gorm:"column:quantity;type:decimal(20,8);not null" json:"quantity"`
 	FilledQuantity float64     `gorm:"column:filled_quantity;type:decimal(20,8);default:0" json:"filled_quantity"`
 	AveragePrice   float64     `gorm:"column:average_price;type:decimal(20,8);default:0" json:"average_price"`
 	Status         OrderStatus `gorm:"column:status;type:varchar(20);index;not null;default:'pending'" json:"status"`
+	TimeInForce    TimeInForce `gorm:"column:tif;type:varchar(10);default:'GTC'" json:"tif"`
+
+	// Complex Order Support
+	ParentOrderID string `gorm:"column:parent_id;type:varchar(36);index" json:"parent_id"` // For Bracket/OCO
+	IsOCO         bool   `gorm:"column:is_oco" json:"is_oco"`
 
 	CreatedAt time.Time `gorm:"column:created_at" json:"created_at"`
 	UpdatedAt time.Time `gorm:"column:updated_at" json:"updated_at"`

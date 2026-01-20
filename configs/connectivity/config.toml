@@ -1,0 +1,32 @@
+[server]
+name = "connectivity-service"
+environment = "dev"
+
+[server.http]
+port = 8089
+timeout = "10s"
+
+[server.grpc]
+port = 9099
+timeout = "10s"
+
+[log]
+level = "info"
+format = "json"
+output = "stdout"
+
+[data.database]
+driver = "mysql"
+dsn = "root:password@tcp(localhost:3306)/financial_connectivity?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 10
+max_open_conns = 100
+conn_max_lifetime = "1h"
+
+[services]
+execution = "localhost:9081"
+marketdata = "localhost:9082"
+
+[fix]
+port = 9800
+sender_comp_id = "TRANS_GATEWAY"
+target_comp_id = "INST_CLIENT"

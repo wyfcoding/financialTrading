@@ -7,21 +7,24 @@ import (
 	"sync"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/domain"
 )
 
 // MarketSimulationApplicationService handles simulation lifecycle
 type MarketSimulationApplicationService struct {
-	repo domain.SimulationRepository
+	repo      domain.SimulationRepository
+	publisher domain.MarketDataPublisher
 	// In-memory map to keep track of running simulations (cancellation functions)
 	runningSims map[string]context.CancelFunc
 	mu          sync.Mutex
 }
 
 // NewMarketSimulationApplicationService creates a new service instance
-func NewMarketSimulationApplicationService(repo domain.SimulationRepository) *MarketSimulationApplicationService {
+func NewMarketSimulationApplicationService(repo domain.SimulationRepository, publisher domain.MarketDataPublisher) *MarketSimulationApplicationService {
 	return &MarketSimulationApplicationService{
 		repo:        repo,
+		publisher:   publisher,
 		runningSims: make(map[string]context.CancelFunc),
 	}
 }
@@ -29,6 +32,15 @@ func NewMarketSimulationApplicationService(repo domain.SimulationRepository) *Ma
 // CreateSimulationConfig creates a new simulation configuration
 func (s *MarketSimulationApplicationService) CreateSimulationConfig(ctx context.Context, cmd CreateSimulationCommand) (*SimulationDTO, error) {
 	sim := domain.NewSimulation(cmd.Name, cmd.Symbol, cmd.InitialPrice, cmd.Volatility, cmd.Drift, cmd.IntervalMs)
+	sim.Type = domain.SimulationType(cmd.Type)
+	sim.Kappa = cmd.Kappa
+	sim.Theta = cmd.Theta
+	sim.VolOfVol = cmd.VolOfVol
+	sim.Rho = cmd.Rho
+	sim.JumpLambda = cmd.JumpLambda
+	sim.JumpMu = cmd.JumpMu
+	sim.JumpSigma = cmd.JumpSigma
+
 	if err := s.repo.Save(ctx, sim); err != nil {
 		return nil, err
 	}
@@ -126,35 +138,43 @@ func (s *MarketSimulationApplicationService) ListSimulations(ctx context.Context
 }
 
 // runWorker is the background loop for generating prices
-func (s *MarketSimulationApplicationService) runWorker(ctx context.Context, sim *domain.Simulation) {
+func (s *MarketSimulationApplicationService) runWorker(ctx context.Context, simEntity *domain.Simulation) {
 	// TODO: Inject a proper event publisher (kafka)
-	// For now, we just log the prices
-	ticker := time.NewTicker(time.Duration(sim.IntervalMs) * time.Millisecond)
+	ticker := time.NewTicker(time.Duration(simEntity.IntervalMs) * time.Millisecond)
 	defer ticker.Stop()
 
-	gbm := domain.NewGBM(sim.Drift, sim.Volatility, time.Now().UnixNano())
-	currentPrice := sim.InitialPrice
+	var gen domain.PriceGenerator
+	switch simEntity.Type {
+	case domain.SimulationTypeHeston:
+		gen = domain.NewHestonGenerator(simEntity.InitialPrice, simEntity.Volatility, simEntity.Kappa, simEntity.Theta, simEntity.VolOfVol, simEntity.Rho)
+	case domain.SimulationTypeJumpDiff:
+		gen = domain.NewJumpDiffusionGenerator(simEntity.InitialPrice, simEntity.Drift, simEntity.Volatility, simEntity.JumpLambda, simEntity.JumpMu, simEntity.JumpSigma)
+	default:
+		gen = domain.NewGBM(simEntity.Drift, simEntity.Volatility, time.Now().UnixNano())
+	}
 
-	slog.Info("Worker started", "symbol", sim.Symbol, "initial_price", currentPrice)
+	currentPrice := simEntity.InitialPrice
+	slog.Info("Worker started", "symbol", simEntity.Symbol, "type", simEntity.Type, "initial_price", currentPrice)
 
 	for {
 		select {
 		case <-ctx.Done():
-			slog.Info("Worker stopped", "symbol", sim.Symbol)
+			slog.Info("Worker stopped", "symbol", simEntity.Symbol)
 			return
 		case <-ticker.C:
-			// Calculate dt in years (IntervalMs / 1000 / 365 / 24 / 60 / 60 approx, or just relative time)
-			// Generally Black-Scholes dt is in years.
-			dt := float64(sim.IntervalMs) / 1000.0 / (252.0 * 24.0 * 60.0 * 60.0) // simplified trading year seconds
-			// Actually let's just use seconds for simplicity if params are per-second, but usually drift/vol are annualized.
-			// Assuming user provides Annualized Volatility and Drift.
+			// dt in years. 252 trading days, 24h/day (assuming continuous for crypto or standard for equity).
+			// Adjusting to a more standard 1 year = 252 * 24 * 3600 seconds.
+			dt := float64(simEntity.IntervalMs) / 1000.0 / (252.0 * 24.0 * 3600.0)
 
-			currentPrice = gbm.Next(currentPrice, dt)
+			currentPrice = gen.Next(currentPrice, dt)
 
-			// In a real implementation: Publish to Kafka
-			// topic: marketdata.quote
-			// payload: QuoteDTO
-			slog.Info("Tick", "symbol", sim.Symbol, "price", currentPrice)
+			// Publish to Kafka
+			priceDec := decimal.NewFromFloat(currentPrice)
+			if err := s.publisher.Publish(ctx, simEntity.Symbol, priceDec); err != nil {
+				slog.Error("Failed to publish price", "symbol", simEntity.Symbol, "error", err)
+			}
+
+			slog.Info("Tick", "symbol", simEntity.Symbol, "price", currentPrice)
 		}
 	}
 }
@@ -165,11 +185,19 @@ func (s *MarketSimulationApplicationService) toDTO(sim *domain.Simulation) *Simu
 		ScenarioID:   sim.ScenarioID,
 		Name:         sim.Name,
 		Symbol:       sim.Symbol,
+		Type:         string(sim.Type),
 		InitialPrice: sim.InitialPrice,
 		Volatility:   sim.Volatility,
 		Drift:        sim.Drift,
 		IntervalMs:   sim.IntervalMs,
 		Status:       string(sim.Status),
 		CreatedAt:    sim.CreatedAt,
+		Kappa:        sim.Kappa,
+		Theta:        sim.Theta,
+		VolOfVol:     sim.VolOfVol,
+		Rho:          sim.Rho,
+		JumpLambda:   sim.JumpLambda,
+		JumpMu:       sim.JumpMu,
+		JumpSigma:    sim.JumpSigma,
 	}
 }

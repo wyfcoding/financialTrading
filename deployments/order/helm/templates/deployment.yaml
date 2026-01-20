@@ -22,6 +22,21 @@ spec:
             - name: grpc
               containerPort: {{ .Values.service.grpcPort }}
               protocol: TCP
+            - name: http
+              containerPort: {{ .Values.service.httpPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /sys/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /sys/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
           volumeMounts:
             - name: config
               mountPath: /app/configs/order/

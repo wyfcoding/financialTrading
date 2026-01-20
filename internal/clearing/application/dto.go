@@ -39,3 +39,12 @@ type MarginDTO struct {
 func (m *MarginDTO) CurrentMarginRate() decimal.Decimal {
 	return m.BaseMarginRate.Mul(m.VolatilityFactor)
 }
+
+type LiquidationDTO struct {
+	UserID    string `json:"user_id"`
+	Symbol    string `json:"symbol"`
+	Side      string `json:"side"`
+	Quantity  string `json:"quantity"`
+	Reason    string `json:"reason"`
+	Timestamp int64  `json:"timestamp"`
+}

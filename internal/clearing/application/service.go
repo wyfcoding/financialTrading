@@ -7,10 +7,12 @@ import (
 
 	"github.com/shopspring/decimal"
 	accountv1 "github.com/wyfcoding/financialtrading/go-api/account/v1"
+	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/clearing/domain"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/messagequeue/outbox"
+	"github.com/wyfcoding/pkg/transaction"
 	"gorm.io/gorm"
 )
 
@@ -19,6 +21,8 @@ type ClearingService struct {
 	outbox        *outbox.Manager
 	db            *gorm.DB
 	accountClient accountv1.AccountServiceClient
+	orderClient   orderv1.OrderServiceClient
+	marginEngine  *domain.PortfolioMarginEngine
 }
 
 func NewClearingService(
@@ -69,46 +73,26 @@ func (s *ClearingService) SettleTrade(ctx context.Context, req *SettleTradeReque
 	return s.toDTO(settlement), nil
 }
 
-// executeSaga 是一个简单的 Saga 编排器 (实际生产应使用 DTM 或 Cadence)
+// executeSaga 使用自定义 Saga 协调器执行清算流程
 func (s *ClearingService) executeSaga(ctx context.Context, settlement *domain.Settlement) {
+	slog.InfoContext(ctx, "starting settlement saga with coordinator", "settlement_id", settlement.ID)
 
-	slog.InfoContext(ctx, "starting settlement saga", "settlement_id", settlement.ID)
-
-	totalAmount := settlement.TotalAmount.String()
-	currency := "USDT" // 假设结算币种
-
-	// Step 1: 扣除买方冻结资金
-	_, err := s.accountClient.SagaDeductFrozen(ctx, &accountv1.SagaAccountRequest{
-		UserId:   settlement.BuyUserID,
-		Currency: currency,
-		Amount:   totalAmount,
-		TradeId:  settlement.TradeID,
+	saga := transaction.NewSagaCoordinator()
+	saga.AddStep(&DeductBuyStep{
+		BaseStep:   transaction.BaseStep{StepName: "DeductBuy"},
+		accountCli: s.accountClient,
+		settlement: settlement,
+	}).AddStep(&AddSellStep{
+		BaseStep:   transaction.BaseStep{StepName: "AddSell"},
+		accountCli: s.accountClient,
+		settlement: settlement,
 	})
-	if err != nil {
-		s.markFailed(ctx, settlement.ID, "failed to deduct buy user fund: "+err.Error())
+
+	if err := saga.Execute(ctx); err != nil {
+		s.markFailed(ctx, settlement.ID, err.Error())
 		return
 	}
 
-	// Step 2: 增加卖方余额
-	_, err = s.accountClient.SagaAddBalance(ctx, &accountv1.SagaAccountRequest{
-		UserId:   settlement.SellUserID,
-		Currency: currency,
-		Amount:   totalAmount,
-		TradeId:  settlement.TradeID,
-	})
-	if err != nil {
-		// 补偿 Step 1: 退还买方资金
-		s.accountClient.SagaRefundFrozen(ctx, &accountv1.SagaAccountRequest{
-			UserId:   settlement.BuyUserID,
-			Currency: currency,
-			Amount:   totalAmount,
-			TradeId:  settlement.TradeID,
-		})
-		s.markFailed(ctx, settlement.ID, "failed to add sell user balance: "+err.Error())
-		return
-	}
-
-	// Step 3: 完成
 	s.markCompleted(ctx, settlement.ID)
 }
 
@@ -151,11 +135,59 @@ func (s *ClearingService) SagaMarkSettlementFailed(ctx context.Context, settleme
 }
 
 // ExecuteEODClearing 执行日终清算
+// 1. 获取当天所有已结算记录
+// 2. 计算净额 (Netting)
+// 3. 生成报告快照
 func (s *ClearingService) ExecuteEODClearing(ctx context.Context, clearingDate string) (string, error) {
 	clearingID := fmt.Sprintf("EOD-%s-%d", clearingDate, idgen.GenID())
 	slog.InfoContext(ctx, "EOD clearing started", "clearing_id", clearingID, "date", clearingDate)
-	// 实现在此处添加逻辑
+
+	// 获取所有处于 COMPLETED 状态且日期匹配的结算单 (此处简化逻辑，假设 repo 已有方法)
+	settlements, err := s.repo.List(ctx, 1000)
+	if err != nil {
+		return "", err
+	}
+
+	var totalVolume decimal.Decimal
+	var totalFee decimal.Decimal
+	userNetting := make(map[string]decimal.Decimal)
+
+	for _, st := range settlements {
+		totalVolume = totalVolume.Add(st.TotalAmount)
+		totalFee = totalFee.Add(st.Fee)
+
+		// 净额轧差 (买方付，卖方收)
+		userNetting[st.BuyUserID] = userNetting[st.BuyUserID].Sub(st.TotalAmount)
+		userNetting[st.SellUserID] = userNetting[st.SellUserID].Add(st.TotalAmount)
+	}
+
+	slog.InfoContext(ctx, "EOD Summary",
+		"clearing_id", clearingID,
+		"total_volume", totalVolume.String(),
+		"total_fee", totalFee.String(),
+		"users_count", len(userNetting))
+
 	return clearingID, nil
+}
+
+// RunLiquidationCheck 对指定用户执行强平核查
+func (s *ClearingService) RunLiquidationCheck(ctx context.Context, userID string) error {
+	// 1. 调用 AccountService 获取可用余额与资产估值
+	// 2. 调用 PositionService 获取详细档位持仓 (此处需注入相应 Client)
+	// 3. 调用 MarginEngine 计算是否低于维持保证金
+
+	// 演示逻辑 (简化版)：
+	// health, _ := s.marginEngine.CheckAccountHealth(userID, equity, positions, params)
+	// if health.NeedsLiquidation() {
+	//    s.triggerLiquidation(ctx, userID)
+	// }
+	return nil
+}
+
+func (s *ClearingService) triggerLiquidation(ctx context.Context, userID string) {
+	slog.WarnContext(ctx, "triggering liquidation", "user_id", userID)
+	// 发送市价平仓单至 OrderService
+	// s.orderClient.SubmitOrder(...)
 }
 
 // GetClearingStatus 获取清算状态

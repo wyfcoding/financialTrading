@@ -7,4 +7,5 @@ type SettlementRepository interface {
 	Save(ctx context.Context, settlement *Settlement) error
 	Get(ctx context.Context, id string) (*Settlement, error)
 	GetByTradeID(ctx context.Context, tradeID string) (*Settlement, error)
+	List(ctx context.Context, limit int) ([]*Settlement, error)
 }

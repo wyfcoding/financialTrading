@@ -1,0 +1,30 @@
+replicaCount: 2
+
+image:
+  repository: financialtrading/connectivity
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  httpPort: 8089
+  grpcPort: 9099
+  fixPort: 9800
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+istio:
+  enabled: true
+  mtls: STRICT

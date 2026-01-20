@@ -73,10 +73,11 @@ func NewRiskService(
 	alertRepo domain.RiskAlertRepository,
 	breakerRepo domain.CircuitBreakerRepository,
 	ruleEngine risk.Evaluator,
+	marginCalc domain.MarginCalculator,
 	localCache cache.Cache,
 ) *RiskService {
 	return &RiskService{
-		manager: NewRiskManager(assessmentRepo, metricsRepo, limitRepo, alertRepo, breakerRepo, ruleEngine, localCache),
+		manager: NewRiskManager(assessmentRepo, metricsRepo, limitRepo, alertRepo, breakerRepo, ruleEngine, marginCalc, localCache),
 		query:   NewRiskQuery(assessmentRepo, metricsRepo, limitRepo, alertRepo),
 	}
 }

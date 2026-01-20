@@ -34,3 +34,13 @@ type ExecutionDTO struct {
 	ExecutedPx  string
 	Timestamp   int64
 }
+
+// SubmitFIXOrderCommand来自 FIX 网关的订单请求
+type SubmitFIXOrderCommand struct {
+	UserID   string
+	ClOrdID  string
+	Symbol   string
+	Side     string
+	Price    decimal.Decimal
+	Quantity decimal.Decimal
+}

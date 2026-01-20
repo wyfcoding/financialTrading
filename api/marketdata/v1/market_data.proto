@@ -20,6 +20,9 @@ service MarketDataService {
 
   // 获取成交历史。
   rpc GetTrades(GetTradesRequest) returns (GetTradesResponse);
+
+  // 获取实时波动率。
+  rpc GetVolatility(GetVolatilityRequest) returns (GetVolatilityResponse);
 }
 
 // K 线单元。
@@ -170,4 +173,20 @@ message GetTradesResponse {
   string symbol = 1;
   // 历史序列。
   repeated TradeRecord trades = 2;
+}
+
+// 波动率请求。
+message GetVolatilityRequest {
+  // 品种。
+  string symbol = 1;
+}
+
+// 波动率结果。
+message GetVolatilityResponse {
+  // 品种。
+  string symbol = 1;
+  // 波动率值 (e.g. 0.15 for 15% annual vol).
+  double volatility = 2;
+  // 计算时间。
+  int64 timestamp = 3;
 }

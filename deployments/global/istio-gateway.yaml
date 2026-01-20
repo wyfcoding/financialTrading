@@ -1,0 +1,55 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: institutional-gateway
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: institutional-cert
+    hosts:
+    - "api.trading.com"
+  - port:
+      number: 9800
+      name: fix
+      protocol: TLS
+    tls:
+      mode: SIMPLE
+      credentialName: fix-cert
+    hosts:
+    - "fix.trading.com"
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: institutional-ingress
+spec:
+  hosts:
+  - "api.trading.com"
+  - "fix.trading.com"
+  gateways:
+  - institutional-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /api/auth
+    route:
+    - destination:
+        host: auth
+        port:
+          number: 8080
+  tcp:
+  - match:
+    - port: 9800
+    route:
+    - destination:
+        host: connectivity
+        port:
+          number: 9800

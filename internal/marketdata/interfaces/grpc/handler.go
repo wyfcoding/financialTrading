@@ -144,6 +144,24 @@ func (h *MarketDataHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequ
 	return &pb.GetTradesResponse{Symbol: req.Symbol, Trades: trades}, nil
 }
 
+// GetVolatility 获取实时波动率
+func (h *MarketDataHandler) GetVolatility(ctx context.Context, req *pb.GetVolatilityRequest) (*pb.GetVolatilityResponse, error) {
+	if req.Symbol == "" {
+		return nil, status.Error(codes.InvalidArgument, "symbol is required")
+	}
+
+	vol, err := h.service.GetVolatility(ctx, req.Symbol)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &pb.GetVolatilityResponse{
+		Symbol:     req.Symbol,
+		Volatility: vol.InexactFloat64(),
+		Timestamp:  0, // 可以在 DTO 中增加
+	}, nil
+}
+
 func parseFloat(s string) float64 {
 	f, _ := strconv.ParseFloat(s, 64)
 	return f

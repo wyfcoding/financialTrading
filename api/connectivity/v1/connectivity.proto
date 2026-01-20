@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package connectivity.v1;
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/connectivity/v1;v1";
+
+service ConnectivityService {
+  // GetSessionStatus 获取指定会话的连接状态与统计信息
+  rpc GetSessionStatus(GetSessionStatusRequest) returns (GetSessionStatusResponse) {}
+  
+  // ListActiveSessions 列出当前所有活动的 FIX 会话
+  rpc ListActiveSessions(ListActiveSessionsRequest) returns (ListActiveSessionsResponse) {}
+}
+
+message GetSessionStatusRequest {
+  string session_id = 1;
+}
+
+message GetSessionStatusResponse {
+  string session_id = 1;
+  string status = 2; // CONNECTED, DISCONNECTED, LOGGED_IN
+  int64 sender_seq_num = 3;
+  int64 target_seq_num = 4;
+  int64 last_heartbeat = 5;
+}
+
+message ListActiveSessionsRequest {}
+
+message ListActiveSessionsResponse {
+  repeated GetSessionStatusResponse sessions = 1;
+}

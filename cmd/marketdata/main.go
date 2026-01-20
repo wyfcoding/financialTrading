@@ -16,11 +16,13 @@ import (
 	marketdatav1 "github.com/wyfcoding/financialtrading/go-api/marketdata/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/application"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/persistence/mysql"
+	"github.com/wyfcoding/financialtrading/internal/marketdata/interfaces/events"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/marketdata/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/marketdata/interfaces/http"
 	"github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/database"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
 	"github.com/wyfcoding/pkg/metrics"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -79,6 +81,15 @@ func main() {
 
 	queryService := application.NewMarketDataQueryService(quoteRepo, klineRepo, tradeRepo)
 	serviceFacade := application.NewMarketDataService(quoteRepo, klineRepo, tradeRepo, orderBookRepo, slog.Default())
+
+	// Kafka Consumer
+	kafkaCfg := &cfg.MessageQueue.Kafka
+	kafkaCfg.GroupID = "marketdata-group"
+	kafkaCfg.Topic = "market.price"
+
+	consumer := kafka.NewConsumer(kafkaCfg, logger, metricsImpl)
+	eventHandler := events.NewMarketDataEventHandler(serviceFacade)
+	eventHandler.Subscribe(context.Background(), consumer)
 
 	// 6. Interfaces
 	grpcSrv := grpc.NewServer()

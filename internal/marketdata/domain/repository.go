@@ -10,6 +10,7 @@ type QuoteRepository interface {
 type KlineRepository interface {
 	Save(ctx context.Context, kline *Kline) error
 	GetKlines(ctx context.Context, symbol, interval string, limit int) ([]*Kline, error)
+	GetLatest(ctx context.Context, symbol, interval string) (*Kline, error)
 }
 
 type TradeRepository interface {

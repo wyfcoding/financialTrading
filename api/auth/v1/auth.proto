@@ -6,8 +6,30 @@ package auth.v1;
 option go_package = "github.com/wyfcoding/financialtrading/go-api/auth/v1;v1";
 
 service AuthService {
-  rpc Register(RegisterRequest) returns (RegisterResponse) {
-  }
+  rpc Register(RegisterRequest) returns (RegisterResponse) {}
+  rpc ValidateAPIKey(ValidateAPIKeyRequest) returns (ValidateAPIKeyResponse) {}
+  rpc VerifyAPIKey(VerifyAPIKeyRequest) returns (VerifyAPIKeyResponse) {}
+}
+
+message VerifyAPIKeyRequest {
+  string api_key = 1;
+  string secret = 2;
+}
+
+message VerifyAPIKeyResponse {
+  bool valid = 1;
+  string user_id = 2;
+  string scopes = 3;
+}
+
+message ValidateAPIKeyRequest {
+  string api_key = 1;
+}
+
+message ValidateAPIKeyResponse {
+  string secret = 1;
+  string user_id = 2;
+  bool enabled = 3;
 }
 
 message RegisterRequest {

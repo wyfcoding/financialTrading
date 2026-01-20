@@ -10,13 +10,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"github.com/wyfcoding/financialtrading/internal/auth/application"
 	"github.com/wyfcoding/financialtrading/internal/auth/domain"
 	"github.com/wyfcoding/financialtrading/internal/auth/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/auth/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/auth/interfaces/http"
-	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	gorm_mysql "gorm.io/driver/mysql"
@@ -42,12 +42,14 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("connect db failed: %v", err))
 	}
-	if err := db.AutoMigrate(&domain.User{}); err != nil {
+	if err := db.AutoMigrate(&domain.User{}, &domain.APIKey{}); err != nil {
 		panic(fmt.Sprintf("migrate db failed: %v", err))
 	}
 
 	repo := mysql.NewUserRepository(db)
-	appService := application.NewAuthApplicationService(repo)
+	apiKeyRepo := mysql.NewAPIKeyRepository(db)
+	keySvc := application.NewAPIKeyService(apiKeyRepo)
+	appService := application.NewAuthApplicationService(repo, apiKeyRepo, keySvc)
 
 	grpcSrv := grpc.NewServer()
 	grpc_server.NewServer(grpcSrv, appService)

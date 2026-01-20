@@ -13,8 +13,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	executionv1 "github.com/wyfcoding/financialtrading/go-api/execution/v1"
+	marketdatav1 "github.com/wyfcoding/financialtrading/go-api/marketdata/v1"
+	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/execution/application"
 	"github.com/wyfcoding/financialtrading/internal/execution/domain"
+	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure"
+	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/client"
 	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/persistence/mysql"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/execution/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/execution/interfaces/http"
@@ -78,7 +82,32 @@ func main() {
 	tradeRepo := mysql.NewTradeRepository(db.RawDB())
 	algoRepo := mysql.NewAlgoOrderRepository(db.RawDB())
 
-	appService := application.NewExecutionApplicationService(tradeRepo, algoRepo, outboxMgr, db.RawDB())
+	// Init Order Client
+	orderAddr := cfg.GetGRPCAddr("order")
+	if orderAddr == "" {
+		orderAddr = "localhost:50051" // Fallback
+	}
+	orderConn, err := grpc.Dial(orderAddr, grpc.WithInsecure())
+	if err != nil {
+		slog.Error("failed to connect to order service", "error", err)
+		os.Exit(1)
+	}
+	orderCli := orderv1.NewOrderServiceClient(orderConn)
+
+	// Init MarketData Client
+	mdAddr := cfg.GetGRPCAddr("marketdata")
+	if mdAddr == "" {
+		mdAddr = "localhost:50052"
+	}
+	mdConn, err := grpc.Dial(mdAddr, grpc.WithInsecure())
+	if err != nil {
+		slog.Error("failed to connect to marketdata service", "error", err)
+	}
+	mdCli := marketdatav1.NewMarketDataServiceClient(mdConn)
+	mdProvider := client.NewGRPCMarketDataProvider(mdCli)
+	volumeProvider := infrastructure.NewMockVolumeProfileProvider()
+
+	appService := application.NewExecutionApplicationService(tradeRepo, algoRepo, orderCli, mdProvider, volumeProvider, metricsImpl, outboxMgr, db.RawDB())
 	queryService := application.NewExecutionQueryService(tradeRepo)
 
 	// 6. Interfaces
@@ -117,6 +146,12 @@ func main() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			return err
 		}
+		return nil
+	})
+
+	g.Go(func() error {
+		slog.Info("Execution algorithm worker starting")
+		appService.StartAlgoWorker(ctx)
 		return nil
 	})
 

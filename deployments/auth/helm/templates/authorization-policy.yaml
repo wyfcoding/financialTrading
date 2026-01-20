@@ -1,0 +1,23 @@
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: auth-policy
+spec:
+  selector:
+    matchLabels:
+      app: auth
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/default/sa/envoy-ingress"] # 仅允许网关
+    to:
+    - operation:
+        methods: ["POST"]
+        paths: ["/api/v1/user/login", "/api/v1/user/register"]
+  - from:
+    - source:
+        namespaces: ["default"] # 允许内部服务验证 API Key
+    to:
+    - operation:
+        methods: ["POST"]
+        paths: ["/api/v1/verify-key"]

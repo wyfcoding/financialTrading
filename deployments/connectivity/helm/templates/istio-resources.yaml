@@ -1,0 +1,45 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: {{ .Chart.Name }}
+spec:
+  hosts:
+  - {{ .Chart.Name }}
+  http:
+  - match:
+    - port: {{ .Values.service.httpPort }}
+    route:
+    - destination:
+        host: {{ .Chart.Name }}
+        port:
+          number: {{ .Values.service.httpPort }}
+  tcp:
+  - match:
+    - port: {{ .Values.service.fixPort }}
+    route:
+    - destination:
+        host: {{ .Chart.Name }}
+        port:
+          number: {{ .Values.service.fixPort }}
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: {{ .Chart.Name }}
+spec:
+  host: {{ .Chart.Name }}
+  trafficPolicy:
+    tls:
+      mode: {{ .Values.istio.mtls | default "ISTIO_MUTUAL" }}
+    connectionPool:
+      tcp:
+        maxConnections: 1000
+      http:
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 10
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 100

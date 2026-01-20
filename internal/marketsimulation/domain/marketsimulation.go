@@ -14,7 +14,9 @@ import (
 type SimulationType string
 
 const (
-	SimulationTypeRandomWalk SimulationType = "RANDOM_WALK" // 随机漫步
+	SimulationTypeRandomWalk SimulationType = "RANDOM_WALK" // 随机漫步 (GBM)
+	SimulationTypeHeston     SimulationType = "HESTON"      // 赫斯顿 (Stochastic Vol)
+	SimulationTypeJumpDiff   SimulationType = "JUMP_DIFF"   // 默顿跳跃扩散
 	SimulationTypeReplay     SimulationType = "REPLAY"      // 历史回放
 	SimulationTypeShock      SimulationType = "SHOCK"       // 市场冲击
 )
@@ -54,6 +56,15 @@ type Simulation struct {
 	Volatility   float64 `gorm:"column:volatility;type:decimal(10,4)" json:"volatility"`
 	Drift        float64 `gorm:"column:drift;type:decimal(10,4)" json:"drift"`
 	IntervalMs   int64   `gorm:"column:interval_ms;type:bigint" json:"interval_ms"`
+
+	// Heston & Jump specific
+	Kappa      float64 `gorm:"column:kappa;type:decimal(10,4)" json:"kappa"`
+	Theta      float64 `gorm:"column:theta;type:decimal(10,4)" json:"theta"`
+	VolOfVol   float64 `gorm:"column:vol_of_vol;type:decimal(10,4)" json:"vol_of_vol"`
+	Rho        float64 `gorm:"column:rho;type:decimal(10,4)" json:"rho"`
+	JumpLambda float64 `gorm:"column:jump_lambda;type:decimal(10,4)" json:"jump_lambda"`
+	JumpMu     float64 `gorm:"column:jump_mu;type:decimal(10,4)" json:"jump_mu"`
+	JumpSigma  float64 `gorm:"column:jump_sigma;type:decimal(10,4)" json:"jump_sigma"`
 }
 
 func NewSimulation(name, symbol string, initialPrice, volatility, drift float64, intervalMs int64) *Simulation {
