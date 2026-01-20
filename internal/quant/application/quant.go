@@ -14,10 +14,10 @@ type QuantService struct {
 }
 
 // NewQuantService 构造函数。
-func NewQuantService(strategyRepo domain.StrategyRepository, backtestRepo domain.BacktestResultRepository, marketDataClient domain.MarketDataClient) *QuantService {
+func NewQuantService(strategyRepo domain.StrategyRepository, backtestRepo domain.BacktestResultRepository, signalRepo domain.SignalRepository, marketDataClient domain.MarketDataClient) *QuantService {
 	return &QuantService{
-		manager: NewQuantManager(strategyRepo, backtestRepo, marketDataClient),
-		query:   NewQuantQuery(strategyRepo, backtestRepo),
+		manager: NewQuantManager(strategyRepo, backtestRepo, signalRepo, marketDataClient),
+		query:   NewQuantQuery(strategyRepo, backtestRepo, signalRepo),
 	}
 }
 
@@ -39,4 +39,8 @@ func (s *QuantService) GetStrategy(ctx context.Context, id string) (*domain.Stra
 
 func (s *QuantService) GetBacktestResult(ctx context.Context, id string) (*domain.BacktestResult, error) {
 	return s.query.GetBacktestResult(ctx, id)
+}
+
+func (s *QuantService) GetSignal(ctx context.Context, symbol string, indicator string, period int) (*SignalDTO, error) {
+	return s.query.GetSignal(ctx, symbol, indicator, period)
 }

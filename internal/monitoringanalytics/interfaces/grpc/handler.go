@@ -6,29 +6,26 @@ import (
 
 	v1 "github.com/wyfcoding/financialtrading/go-api/monitoringanalytics/v1"
 	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/application"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type Server struct {
+type Handler struct {
 	v1.UnimplementedMonitoringAnalyticsServer
 	app *application.MonitoringAnalyticsService
 }
 
-func NewServer(s *grpc.Server, app *application.MonitoringAnalyticsService) *Server {
-	srv := &Server{app: app}
-	v1.RegisterMonitoringAnalyticsServer(s, srv)
-	return srv
+func NewHandler(app *application.MonitoringAnalyticsService) *Handler {
+	return &Handler{app: app}
 }
 
-func (s *Server) GetMetrics(ctx context.Context, req *v1.GetMetricsRequest) (*v1.GetMetricsResponse, error) {
+func (h *Handler) GetMetrics(ctx context.Context, req *v1.GetMetricsRequest) (*v1.GetMetricsResponse, error) {
 	// Default time range: last 24h
 	endTime := time.Now()
 	startTime := endTime.Add(-24 * time.Hour)
 
-	dtos, err := s.app.GetTradeMetrics(ctx, req.Symbol, startTime, endTime)
+	dtos, err := h.app.GetTradeMetrics(ctx, req.Symbol, startTime, endTime)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -49,8 +46,8 @@ func (s *Server) GetMetrics(ctx context.Context, req *v1.GetMetricsRequest) (*v1
 	return resp, nil
 }
 
-func (s *Server) GetAlerts(ctx context.Context, req *v1.GetAlertsRequest) (*v1.GetAlertsResponse, error) {
-	dtos, err := s.app.GetAlerts(ctx, int(req.Limit))
+func (h *Handler) GetAlerts(ctx context.Context, req *v1.GetAlertsRequest) (*v1.GetAlertsResponse, error) {
+	dtos, err := h.app.GetAlerts(ctx, int(req.Limit))
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

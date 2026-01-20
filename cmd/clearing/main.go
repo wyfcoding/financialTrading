@@ -95,7 +95,7 @@ func main() {
 
 	// 7. Interfaces
 	grpcSrv := grpc.NewServer()
-	clearingSrv := grpcserver.NewHandler(appService)
+	clearingSrv := grpcserver.NewHandler(appService, queryService)
 	clearingv1.RegisterClearingServiceServer(grpcSrv, clearingSrv)
 	reflection.Register(grpcSrv)
 

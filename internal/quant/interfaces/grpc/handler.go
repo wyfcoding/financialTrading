@@ -3,12 +3,12 @@ package grpc
 
 import (
 	"context"
-	"log/slog"
-	"time"
 
 	pb "github.com/wyfcoding/financialtrading/go-api/quant/v1"
 	"github.com/wyfcoding/financialtrading/internal/quant/application"
 	"github.com/wyfcoding/financialtrading/internal/quant/domain"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -25,32 +25,41 @@ func NewHandler(app *application.QuantService) *Handler {
 	return &Handler{app: app}
 }
 
-// CreateStrategy 创建策略
-// 处理 gRPC CreateStrategy 请求
-func (h *Handler) CreateStrategy(ctx context.Context, req *pb.CreateStrategyRequest) (*pb.CreateStrategyResponse, error) {
-	// 调用应用服务创建策略
-	id, err := h.app.CreateStrategy(ctx, req.Name, req.Description, req.Script)
+// GetSignal 获取信号 (Legacy)
+func (h *Handler) GetSignal(ctx context.Context, req *pb.GetSignalRequest) (*pb.GetSignalResponse, error) {
+	dto, err := h.app.GetSignal(ctx, req.Symbol, mapIndicator(req.Indicator), int(req.Period))
 	if err != nil {
-		slog.Error("Failed to create strategy", "name", req.Name, "error", err)
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return &pb.CreateStrategyResponse{
-		StrategyId: id,
+	return &pb.GetSignalResponse{
+		Signal: &pb.Signal{
+			Symbol:    dto.Symbol,
+			Indicator: req.Indicator,
+			Value:     dto.Value,
+			Period:    int32(dto.Period),
+		},
 	}, nil
+}
+
+// CreateStrategy 创建策略
+func (h *Handler) CreateStrategy(ctx context.Context, req *pb.CreateStrategyRequest) (*pb.CreateStrategyResponse, error) {
+	id, err := h.app.CreateStrategy(ctx, req.Name, req.Description, req.Script)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create strategy: %v", err)
+	}
+	return &pb.CreateStrategyResponse{StrategyId: id}, nil
 }
 
 // GetStrategy 获取策略
 func (h *Handler) GetStrategy(ctx context.Context, req *pb.GetStrategyRequest) (*pb.GetStrategyResponse, error) {
 	strategy, err := h.app.GetStrategy(ctx, req.Id)
 	if err != nil {
-		slog.Error("Failed to get strategy", "id", req.Id, "error", err)
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "failed to get strategy: %v", err)
 	}
 	if strategy == nil {
 		return &pb.GetStrategyResponse{}, nil
 	}
-
 	return &pb.GetStrategyResponse{
 		Strategy: toProtoStrategy(strategy),
 	}, nil
@@ -60,29 +69,36 @@ func (h *Handler) GetStrategy(ctx context.Context, req *pb.GetStrategyRequest) (
 func (h *Handler) RunBacktest(ctx context.Context, req *pb.RunBacktestRequest) (*pb.RunBacktestResponse, error) {
 	id, err := h.app.RunBacktest(ctx, req.StrategyId, req.Symbol, req.StartTime.AsTime(), req.EndTime.AsTime(), req.InitialCapital)
 	if err != nil {
-		slog.Error("Failed to run backtest", "strategy_id", req.StrategyId, "symbol", req.Symbol, "error", err)
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "failed to run backtest: %v", err)
 	}
-
-	return &pb.RunBacktestResponse{
-		BacktestId: id,
-	}, nil
+	return &pb.RunBacktestResponse{BacktestId: id}, nil
 }
 
 // GetBacktestResult 获取回测结果
 func (h *Handler) GetBacktestResult(ctx context.Context, req *pb.GetBacktestResultRequest) (*pb.GetBacktestResultResponse, error) {
 	result, err := h.app.GetBacktestResult(ctx, req.Id)
 	if err != nil {
-		slog.Error("Failed to get backtest result", "id", req.Id, "error", err)
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "failed to get backtest result: %v", err)
 	}
 	if result == nil {
 		return &pb.GetBacktestResultResponse{}, nil
 	}
-
 	return &pb.GetBacktestResultResponse{
 		Result: toProtoBacktestResult(result),
 	}, nil
+}
+
+func mapIndicator(i pb.IndicatorType) string {
+	switch i {
+	case pb.IndicatorType_RSI:
+		return "RSI"
+	case pb.IndicatorType_SMA:
+		return "SMA"
+	case pb.IndicatorType_EMA:
+		return "EMA"
+	default:
+		return "UNKNOWN"
+	}
 }
 
 func toProtoStrategy(s *domain.Strategy) *pb.Strategy {
@@ -98,21 +114,16 @@ func toProtoStrategy(s *domain.Strategy) *pb.Strategy {
 }
 
 func toProtoBacktestResult(r *domain.BacktestResult) *pb.BacktestResult {
-	// 统一处理 ok，虽然这里因为 protobuf 定义为 float 只能接收 float
-	// 但避免使用 _ 处理返回值。
-	tr, ok1 := r.TotalReturn.Float64()
-	md, ok2 := r.MaxDrawdown.Float64()
-	sr, ok3 := r.SharpeRatio.Float64()
-	if !ok1 || !ok2 || !ok3 {
-		slog.Warn("Failed to convert some backtest metrics to float64", "backtest_id", r.ID, "ok1", ok1, "ok2", ok2, "ok3", ok3)
-	}
+	tr, _ := r.TotalReturn.Float64()
+	md, _ := r.MaxDrawdown.Float64()
+	sr, _ := r.SharpeRatio.Float64()
 
 	return &pb.BacktestResult{
 		Id:          r.ID,
 		StrategyId:  r.StrategyID,
 		Symbol:      r.Symbol,
-		StartTime:   timestamppb.New(time.UnixMilli(r.StartTime)),
-		EndTime:     timestamppb.New(time.UnixMilli(r.EndTime)),
+		StartTime:   timestamppb.New(domain.MilliToTime(r.StartTime)),
+		EndTime:     timestamppb.New(domain.MilliToTime(r.EndTime)),
 		TotalReturn: tr,
 		MaxDrawdown: md,
 		SharpeRatio: sr,

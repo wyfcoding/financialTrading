@@ -266,3 +266,30 @@ func (m *RiskManager) SaveRiskMetrics(ctx context.Context, metrics *domain.RiskM
 	m.internalLogger().DebugContext(ctx, "risk metrics saved", "user_id", metrics.UserID)
 	return nil
 }
+
+func (m *RiskManager) CheckRisk(ctx context.Context, userID string, symbol string, quantity, price float64) (bool, string) {
+	limit, err := m.limitRepo.GetByUserIDAndType(ctx, userID, "ORDER_SIZE")
+	if err != nil {
+		return false, "No risk profile found"
+	}
+	if limit == nil {
+		return true, ""
+	}
+
+	limitVal, _ := limit.LimitValue.Float64()
+	if quantity > limitVal {
+		return false, "Max order size exceeded"
+	}
+
+	return true, ""
+}
+
+func (m *RiskManager) SetRiskLimit(ctx context.Context, userID string, maxOrderSize, maxDailyLoss float64) error {
+	limit := &domain.RiskLimit{
+		UserID:       userID,
+		LimitType:    "ORDER_SIZE",
+		LimitValue:   decimal.NewFromFloat(maxOrderSize),
+		CurrentValue: decimal.Zero,
+	}
+	return m.limitRepo.Save(ctx, limit)
+}

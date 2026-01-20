@@ -3,12 +3,12 @@ package grpc
 
 import (
 	"context"
-	"log/slog"
-	"time"
 
 	pb "github.com/wyfcoding/financialtrading/go-api/referencedata/v1"
 	"github.com/wyfcoding/financialtrading/internal/referencedata/application"
 	"github.com/wyfcoding/financialtrading/internal/referencedata/domain"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -16,7 +16,7 @@ import (
 // 负责处理与参考数据相关的 gRPC 请求
 type Handler struct {
 	pb.UnimplementedReferenceDataServiceServer
-	app *application.ReferenceDataService // 参考数据应用服务
+	app *application.ReferenceDataService // 参考数据应用服务门面
 }
 
 // NewHandler 创建 gRPC 处理器实例
@@ -27,27 +27,41 @@ func NewHandler(app *application.ReferenceDataService) *Handler {
 	}
 }
 
-// GetSymbol 获取交易对
-// 处理 gRPC GetSymbol 请求
+// GetInstrument 获取合约详情 (Legacy)
+func (h *Handler) GetInstrument(ctx context.Context, req *pb.GetInstrumentRequest) (*pb.GetInstrumentResponse, error) {
+	dto, err := h.app.GetInstrument(ctx, req.Symbol)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &pb.GetInstrumentResponse{Instrument: h.toProtoInstrument(dto)}, nil
+}
+
+// ListInstruments 列出合约详情 (Legacy)
+func (h *Handler) ListInstruments(ctx context.Context, req *pb.ListInstrumentsRequest) (*pb.ListInstrumentsResponse, error) {
+	dtos, err := h.app.ListInstruments(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	var instruments []*pb.Instrument
+	for _, d := range dtos {
+		instruments = append(instruments, h.toProtoInstrument(d))
+	}
+	return &pb.ListInstrumentsResponse{Instruments: instruments}, nil
+}
+
+// GetSymbol 获取交易对详情
 func (h *Handler) GetSymbol(ctx context.Context, req *pb.GetSymbolRequest) (*pb.GetSymbolResponse, error) {
-	start := time.Now()
 	id := req.Id
 	if id == "" {
 		id = req.SymbolCode
 	}
-	slog.Debug("gRPC GetSymbol received", "id", id)
-
 	symbol, err := h.app.GetSymbol(ctx, id)
 	if err != nil {
-		slog.Error("gRPC GetSymbol failed", "id", id, "error", err, "duration", time.Since(start))
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if symbol == nil {
-		slog.Debug("gRPC GetSymbol successful (not found)", "id", id, "duration", time.Since(start))
 		return &pb.GetSymbolResponse{}, nil
 	}
-
-	slog.Debug("gRPC GetSymbol successful", "id", id, "duration", time.Since(start))
 	return &pb.GetSymbolResponse{
 		Symbol: toProtoSymbol(symbol),
 	}, nil
@@ -55,52 +69,35 @@ func (h *Handler) GetSymbol(ctx context.Context, req *pb.GetSymbolRequest) (*pb.
 
 // ListSymbols 列出交易对
 func (h *Handler) ListSymbols(ctx context.Context, req *pb.ListSymbolsRequest) (*pb.ListSymbolsResponse, error) {
-	start := time.Now()
-	slog.Debug("gRPC ListSymbols received", "exchange_id", req.ExchangeId, "status", req.Status)
-
 	limit := int(req.PageSize)
 	if limit <= 0 {
 		limit = 10
 	}
-	offset := 0 // 简单分页，实际应解析 page_token
-
-	symbols, err := h.app.ListSymbols(ctx, req.ExchangeId, req.Status, limit, offset)
+	symbols, err := h.app.ListSymbols(ctx, req.ExchangeId, req.Status, limit, 0)
 	if err != nil {
-		slog.Error("gRPC ListSymbols failed", "exchange_id", req.ExchangeId, "error", err, "duration", time.Since(start))
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	protoSymbols := make([]*pb.Symbol, len(symbols))
 	for i, s := range symbols {
 		protoSymbols[i] = toProtoSymbol(s)
 	}
-
-	slog.Debug("gRPC ListSymbols successful", "exchange_id", req.ExchangeId, "count", len(protoSymbols), "duration", time.Since(start))
-	return &pb.ListSymbolsResponse{
-		Symbols: protoSymbols,
-	}, nil
+	return &pb.ListSymbolsResponse{Symbols: protoSymbols}, nil
 }
 
-// GetExchange 获取交易所
+// GetExchange 获取交易所信息
 func (h *Handler) GetExchange(ctx context.Context, req *pb.GetExchangeRequest) (*pb.GetExchangeResponse, error) {
-	start := time.Now()
 	id := req.Id
 	if id == "" {
 		id = req.Name
 	}
-	slog.Debug("gRPC GetExchange received", "id", id)
-
 	exchange, err := h.app.GetExchange(ctx, id)
 	if err != nil {
-		slog.Error("gRPC GetExchange failed", "id", id, "error", err, "duration", time.Since(start))
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if exchange == nil {
-		slog.Debug("gRPC GetExchange successful (not found)", "id", id, "duration", time.Since(start))
 		return &pb.GetExchangeResponse{}, nil
 	}
-
-	slog.Debug("gRPC GetExchange successful", "id", id, "duration", time.Since(start))
 	return &pb.GetExchangeResponse{
 		Exchange: toProtoExchange(exchange),
 	}, nil
@@ -108,30 +105,48 @@ func (h *Handler) GetExchange(ctx context.Context, req *pb.GetExchangeRequest) (
 
 // ListExchanges 列出交易所
 func (h *Handler) ListExchanges(ctx context.Context, req *pb.ListExchangesRequest) (*pb.ListExchangesResponse, error) {
-	start := time.Now()
-	slog.Debug("gRPC ListExchanges received")
-
 	limit := int(req.PageSize)
 	if limit <= 0 {
 		limit = 10
 	}
-	offset := 0 // 简单分页
-
-	exchanges, err := h.app.ListExchanges(ctx, limit, offset)
+	exchanges, err := h.app.ListExchanges(ctx, limit, 0)
 	if err != nil {
-		slog.Error("gRPC ListExchanges failed", "error", err, "duration", time.Since(start))
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	protoExchanges := make([]*pb.Exchange, len(exchanges))
 	for i, e := range exchanges {
 		protoExchanges[i] = toProtoExchange(e)
 	}
+	return &pb.ListExchangesResponse{Exchanges: protoExchanges}, nil
+}
 
-	slog.Debug("gRPC ListExchanges successful", "count", len(protoExchanges), "duration", time.Since(start))
-	return &pb.ListExchangesResponse{
-		Exchanges: protoExchanges,
-	}, nil
+func (h *Handler) toProtoInstrument(d *application.InstrumentDTO) *pb.Instrument {
+	if d == nil {
+		return nil
+	}
+	return &pb.Instrument{
+		Symbol:        d.Symbol,
+		BaseCurrency:  d.BaseCurrency,
+		QuoteCurrency: d.QuoteCurrency,
+		TickSize:      d.TickSize,
+		LotSize:       d.LotSize,
+		Type:          mapInstrumentType(d.Type),
+		MaxLeverage:   int32(d.MaxLeverage),
+	}
+}
+
+func mapInstrumentType(t string) pb.InstrumentType {
+	switch t {
+	case "SPOT":
+		return pb.InstrumentType_SPOT
+	case "FUTURE":
+		return pb.InstrumentType_FUTURE
+	case "OPTION":
+		return pb.InstrumentType_OPTION
+	default:
+		return pb.InstrumentType_INSTRUMENT_TYPE_UNSPECIFIED
+	}
 }
 
 func toProtoSymbol(s *domain.Symbol) *pb.Symbol {

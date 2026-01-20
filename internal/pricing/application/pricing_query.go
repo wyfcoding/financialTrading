@@ -11,14 +11,16 @@ import (
 // PricingQuery 处理所有定价相关的查询操作（Queries）。
 type PricingQuery struct {
 	pricingRepo      domain.PricingRepository
+	priceRepo        domain.PriceRepository
 	marketDataClient domain.MarketDataClient
 }
 
 // NewPricingQuery 构造函数。
-func NewPricingQuery(marketDataClient domain.MarketDataClient, pricingRepo domain.PricingRepository) *PricingQuery {
+func NewPricingQuery(marketDataClient domain.MarketDataClient, pricingRepo domain.PricingRepository, priceRepo domain.PriceRepository) *PricingQuery {
 	return &PricingQuery{
 		marketDataClient: marketDataClient,
 		pricingRepo:      pricingRepo,
+		priceRepo:        priceRepo,
 	}
 }
 
@@ -61,4 +63,38 @@ func (q *PricingQuery) GetGreeks(ctx context.Context, contract domain.OptionCont
 // GetLatestResult 获取最新定价结果
 func (q *PricingQuery) GetLatestResult(ctx context.Context, symbol string) (*domain.PricingResult, error) {
 	return q.pricingRepo.GetLatest(ctx, symbol)
+}
+
+func (q *PricingQuery) GetPrice(ctx context.Context, symbol string) (*PriceDTO, error) {
+	price, err := q.priceRepo.GetLatest(ctx, symbol)
+	if err != nil {
+		return nil, err
+	}
+	return q.toDTO(price), nil
+}
+
+func (q *PricingQuery) ListPrices(ctx context.Context, symbols []string) ([]*PriceDTO, error) {
+	prices, err := q.priceRepo.ListLatest(ctx, symbols)
+	if err != nil {
+		return nil, err
+	}
+	var dtos []*PriceDTO
+	for _, p := range prices {
+		dtos = append(dtos, q.toDTO(p))
+	}
+	return dtos, nil
+}
+
+func (q *PricingQuery) toDTO(p *domain.Price) *PriceDTO {
+	if p == nil {
+		return nil
+	}
+	return &PriceDTO{
+		Symbol:    p.Symbol,
+		Bid:       p.Bid,
+		Ask:       p.Ask,
+		Mid:       p.Mid,
+		Timestamp: p.Timestamp,
+		Source:    p.Source,
+	}
 }

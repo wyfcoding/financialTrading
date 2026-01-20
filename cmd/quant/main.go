@@ -9,11 +9,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/spf13/viper"
+	quant_pb "github.com/wyfcoding/financialtrading/go-api/quant/v1"
 	"github.com/wyfcoding/financialtrading/internal/quant/application"
 	"github.com/wyfcoding/financialtrading/internal/quant/domain"
 	"github.com/wyfcoding/financialtrading/internal/quant/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/quant/interfaces/grpc"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	gorm_mysql "gorm.io/driver/mysql"
@@ -49,14 +50,18 @@ func main() {
 	}
 
 	// 4. Infrastructure & Domain
-	repo := mysql.NewSignalRepository(db)
+	signalRepo := mysql.NewSignalRepository(db)
+	strategyRepo := mysql.NewStrategyRepository(db)
+	backtestRepo := mysql.NewBacktestResultRepository(db)
+	// marketDataClient := ...
 
 	// 5. Application
-	appService := application.NewQuantApplicationService(repo)
+	appService := application.NewQuantService(strategyRepo, backtestRepo, signalRepo, nil)
 
 	// 6. Interfaces
 	grpcSrv := grpc.NewServer()
-	grpc_server.NewServer(grpcSrv, appService)
+	quantHandler := grpc_server.NewHandler(appService)
+	quant_pb.RegisterQuantServiceServer(grpcSrv, quantHandler)
 	reflection.Register(grpcSrv)
 	port := viper.GetString("server.grpc_port")
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))

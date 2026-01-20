@@ -95,6 +95,16 @@ func (s *RiskService) PerformGlobalRiskScan(ctx context.Context) error {
 	return s.manager.PerformGlobalRiskScan(ctx)
 }
 
+func (s *RiskService) CheckRisk(ctx context.Context, userID string, symbol string, quantity, price float64) (bool, string) {
+	// Delegating to manager if it has it, or just a simple implementation here.
+	// For now, let's assume Manager has it or we add it to Manager.
+	return s.manager.CheckRisk(ctx, userID, symbol, quantity, price)
+}
+
+func (s *RiskService) SetRiskLimit(ctx context.Context, userID string, maxOrderSize, maxDailyLoss float64) error {
+	return s.manager.SetRiskLimit(ctx, userID, maxOrderSize, maxDailyLoss)
+}
+
 // --- Query (Reads) ---
 
 func (s *RiskService) GetRiskMetrics(ctx context.Context, userID string) (*domain.RiskMetrics, error) {

@@ -3,7 +3,6 @@ package grpc
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	pb "github.com/wyfcoding/financialtrading/go-api/marketdata/v1"
@@ -17,12 +16,12 @@ import (
 // 负责处理与市场数据相关的 gRPC 请求
 type MarketDataHandler struct {
 	pb.UnimplementedMarketDataServiceServer
-	service *application.MarketDataService // 市场数据应用服务
+	service *application.MarketDataService // 市场数据应用服务门面
 }
 
 // NewMarketDataHandler 创建 gRPC 处理器实例
 // service: 注入的市场数据应用服务
-func NewMarketDataHandler(service *application.MarketDataService) *MarketDataHandler {
+func NewHandler(service *application.MarketDataService) *MarketDataHandler {
 	return &MarketDataHandler{
 		service: service,
 	}
@@ -36,7 +35,6 @@ func (h *MarketDataHandler) GetLatestQuote(ctx context.Context, req *pb.GetLates
 		return nil, status.Error(codes.InvalidArgument, "symbol is required")
 	}
 
-	// 调用应用服务
 	appReq := &application.GetLatestQuoteRequest{
 		Symbol: req.Symbol,
 	}
@@ -50,8 +48,7 @@ func (h *MarketDataHandler) GetLatestQuote(ctx context.Context, req *pb.GetLates
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	// 转换为 protobuf 响应
-	resp := &pb.GetLatestQuoteResponse{
+	return &pb.GetLatestQuoteResponse{
 		Symbol:    quoteDTO.Symbol,
 		BidPrice:  parseFloat(quoteDTO.BidPrice),
 		AskPrice:  parseFloat(quoteDTO.AskPrice),
@@ -60,38 +57,41 @@ func (h *MarketDataHandler) GetLatestQuote(ctx context.Context, req *pb.GetLates
 		LastPrice: parseFloat(quoteDTO.LastPrice),
 		LastSize:  parseFloat(quoteDTO.LastSize),
 		Timestamp: quoteDTO.Timestamp,
-	}
-
-	return resp, nil
+	}, nil
 }
 
 // GetKlines 获取 K 线数据
 func (h *MarketDataHandler) GetKlines(ctx context.Context, req *pb.GetKlinesRequest) (*pb.GetKlinesResponse, error) {
-	// 验证输入
 	if req.Symbol == "" {
 		return nil, status.Error(codes.InvalidArgument, "symbol is required")
 	}
-	if req.Interval == "" {
-		return nil, status.Error(codes.InvalidArgument, "interval is required")
+
+	dtos, err := h.service.GetKlines(ctx, req.Symbol, req.Interval, int(req.Limit))
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	logging.Debug(ctx, "GetKlines called",
-		"symbol", req.Symbol,
-		"interval", req.Interval,
-		"limit", req.Limit,
-	)
-
-	// 返回空响应（实现待补充）
+	klines := make([]*pb.Kline, len(dtos))
+	for i, d := range dtos {
+		klines[i] = &pb.Kline{
+			OpenTime:  d.OpenTime,
+			Open:      parseFloat(d.Open),
+			High:      parseFloat(d.High),
+			Low:       parseFloat(d.Low),
+			Close:     parseFloat(d.Close),
+			Volume:    parseFloat(d.Volume),
+			CloseTime: d.CloseTime,
+		}
+	}
 	return &pb.GetKlinesResponse{
 		Symbol:   req.Symbol,
 		Interval: req.Interval,
-		Klines:   make([]*pb.Kline, 0),
+		Klines:   klines,
 	}, nil
 }
 
 // GetOrderBook 获取订单簿
 func (h *MarketDataHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequest) (*pb.GetOrderBookResponse, error) {
-	// 验证输入
 	if req.Symbol == "" {
 		return nil, status.Error(codes.InvalidArgument, "symbol is required")
 	}
@@ -101,12 +101,7 @@ func (h *MarketDataHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBo
 		depth = 20
 	}
 
-	logging.Debug(ctx, "GetOrderBook called",
-		"symbol", req.Symbol,
-		"depth", depth,
-	)
-
-	// 返回空响应（实现待补充）
+	// 实现待补充（查询 Repository）
 	return &pb.GetOrderBookResponse{
 		Symbol:    req.Symbol,
 		Bids:      make([]*pb.OrderBookLevel, 0),
@@ -117,51 +112,39 @@ func (h *MarketDataHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBo
 
 // SubscribeQuotes 订阅行情更新（流式）
 func (h *MarketDataHandler) SubscribeQuotes(req *pb.SubscribeQuotesRequest, stream pb.MarketDataService_SubscribeQuotesServer) error {
-	// 验证输入
 	if len(req.Symbols) == 0 {
 		return status.Error(codes.InvalidArgument, "symbols is required")
 	}
-
-	// 注意：stream.Context() 可用
-	ctx := stream.Context()
-	logging.Debug(ctx, "SubscribeQuotes called",
-		"symbols", fmt.Sprintf("%v", req.Symbols),
-	)
-
-	// 实现待补充（需要实现实时推送机制）
+	// 实现待补充（需要实时推送机制）
 	return nil
 }
 
 // GetTrades 获取交易历史
 func (h *MarketDataHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (*pb.GetTradesResponse, error) {
-	// 验证输入
 	if req.Symbol == "" {
 		return nil, status.Error(codes.InvalidArgument, "symbol is required")
 	}
 
-	limit := req.Limit
-	if limit <= 0 {
-		limit = 100
+	dtos, err := h.service.GetTrades(ctx, req.Symbol, int(req.Limit))
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	logging.Debug(ctx, "GetTrades called",
-		"symbol", req.Symbol,
-		"limit", limit,
-	)
-
-	// 返回空响应（实现待补充）
-	return &pb.GetTradesResponse{
-		Symbol: req.Symbol,
-		Trades: make([]*pb.TradeRecord, 0),
-	}, nil
+	trades := make([]*pb.TradeRecord, len(dtos))
+	for i, d := range dtos {
+		trades[i] = &pb.TradeRecord{
+			TradeId:   d.TradeID,
+			Symbol:    d.Symbol,
+			Price:     parseFloat(d.Price),
+			Quantity:  parseFloat(d.Quantity),
+			Side:      d.Side,
+			Timestamp: d.Timestamp,
+		}
+	}
+	return &pb.GetTradesResponse{Symbol: req.Symbol, Trades: trades}, nil
 }
 
-// parseFloat 解析浮点数
 func parseFloat(s string) float64 {
-	f, err := strconv.ParseFloat(s, 64)
-	if err != nil {
-		// Log error if needed, although 0 might be acceptable default
-		return 0
-	}
+	f, _ := strconv.ParseFloat(s, 64)
 	return f
 }

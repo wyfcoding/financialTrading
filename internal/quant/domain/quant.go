@@ -2,6 +2,8 @@
 package domain
 
 import (
+	"time"
+
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -47,6 +49,11 @@ type BacktestResult struct {
 	SharpeRatio decimal.Decimal `gorm:"column:sharpe_ratio;type:decimal(32,18)"`
 	TotalTrades int             `gorm:"column:total_trades;type:int"`
 	Status      BacktestStatus  `gorm:"column:status;type:varchar(20);default:'RUNNING'"`
+}
+
+// MilliToTime 将毫秒转换为 time.Time
+func MilliToTime(milli int64) time.Time {
+	return time.UnixMilli(milli)
 }
 
 // End of domain file

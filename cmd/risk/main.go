@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -9,13 +8,17 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
-	"github.com/shopspring/decimal"
 	"github.com/spf13/viper"
+	risk_pb "github.com/wyfcoding/financialtrading/go-api/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/risk/application"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
 	"github.com/wyfcoding/financialtrading/internal/risk/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/risk/interfaces/grpc"
+	"github.com/wyfcoding/pkg/cache"
+	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/security/risk"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	gorm_mysql "gorm.io/driver/mysql"
@@ -35,8 +38,8 @@ func main() {
 	}
 
 	// 2. Logger
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	logger := logging.NewLogger("risk", "main", viper.GetString("log.level"))
+	slog.SetDefault(logger.Logger)
 
 	// 3. Database
 	dsn := viper.GetString("database.source")
@@ -46,34 +49,27 @@ func main() {
 	}
 
 	// Auto Migrate
-	if err := db.AutoMigrate(&domain.RiskLimit{}); err != nil {
+	if err := db.AutoMigrate(&domain.RiskLimit{}, &domain.RiskAssessment{}, &domain.RiskMetrics{}, &domain.RiskAlert{}, &domain.CircuitBreaker{}); err != nil {
 		panic(fmt.Sprintf("migrate db failed: %v", err))
 	}
 
 	// 4. Infrastructure & Domain
-	repo := mysql.NewRiskLimitRepository(db)
+	limitRepo := mysql.NewRiskLimitRepository(db)
+	assessmentRepo := mysql.NewRiskAssessmentRepository(db)
+	metricsRepo := mysql.NewRiskMetricsRepository(db)
+	alertRepo := mysql.NewRiskAlertRepository(db)
+	breakerRepo := mysql.NewCircuitBreakerRepository(db)
 
-	// Seed Default Risk Limit for Test User
-	ctx := context.Background()
-	testUserID := "user-123" // Example User
-	_, err = repo.GetByUserID(ctx, testUserID)
-	if err != nil { // Not found or error
-		slog.Info("Seeding limits for test user", "user_id", testUserID)
-		repo.Save(ctx, &domain.RiskLimit{
-			UserID:       testUserID,
-			LimitType:    "ORDER_SIZE",
-			LimitValue:   decimal.NewFromFloat(1000.0),
-			CurrentValue: decimal.Zero,
-			IsExceeded:   false,
-		})
-	}
+	ruleEngine := risk.NewBaseEvaluator(logger.Logger)
+	localCache, _ := cache.NewBigCache(time.Minute, 100, logger)
 
 	// 5. Application
-	appService := application.NewRiskApplicationService(repo)
+	appService := application.NewRiskService(assessmentRepo, metricsRepo, limitRepo, alertRepo, breakerRepo, ruleEngine, localCache)
 
 	// 6. Interfaces
 	grpcSrv := grpc.NewServer()
-	grpc_server.NewServer(grpcSrv, appService)
+	riskHandler := grpc_server.NewHandler(appService)
+	risk_pb.RegisterRiskServiceServer(grpcSrv, riskHandler)
 	reflection.Register(grpcSrv)
 	port := viper.GetString("server.grpc_port")
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))

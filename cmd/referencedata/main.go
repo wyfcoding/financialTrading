@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -10,11 +9,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/spf13/viper"
+	ref_pb "github.com/wyfcoding/financialtrading/go-api/referencedata/v1"
 	"github.com/wyfcoding/financialtrading/internal/referencedata/application"
 	"github.com/wyfcoding/financialtrading/internal/referencedata/domain"
 	"github.com/wyfcoding/financialtrading/internal/referencedata/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/referencedata/interfaces/grpc"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	gorm_mysql "gorm.io/driver/mysql"
@@ -50,28 +50,17 @@ func main() {
 	}
 
 	// 4. Infrastructure & Domain
-	repo := mysql.NewReferenceRepository(db)
-
-	// Seed Data (if empty)
-	ctx := context.Background()
-	instr, _ := repo.GetInstrument(ctx, "BTCUSD")
-	if instr.Symbol == "" {
-		slog.Info("Seeding BTCUSD")
-		repo.Save(ctx, domain.NewInstrument("BTCUSD", "BTC", "USD", 0.01, 0.001, domain.Spot))
-	}
-
-	instr2, _ := repo.GetInstrument(ctx, "ETHUSD")
-	if instr2.Symbol == "" {
-		slog.Info("Seeding ETHUSD")
-		repo.Save(ctx, domain.NewInstrument("ETHUSD", "ETH", "USD", 0.01, 0.001, domain.Spot))
-	}
+	refRepo := mysql.NewReferenceRepository(db)
+	symbolRepo := mysql.NewSymbolRepository(db)
+	exchangeRepo := mysql.NewExchangeRepository(db)
 
 	// 5. Application
-	appService := application.NewReferenceDataApplicationService(repo)
+	appService := application.NewReferenceDataService(symbolRepo, exchangeRepo, refRepo)
 
 	// 6. Interfaces
 	grpcSrv := grpc.NewServer()
-	grpc_server.NewServer(grpcSrv, appService)
+	refDataHandler := grpc_server.NewHandler(appService)
+	ref_pb.RegisterReferenceDataServiceServer(grpcSrv, refDataHandler)
 	reflection.Register(grpcSrv)
 	port := viper.GetString("server.grpc_port")
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))

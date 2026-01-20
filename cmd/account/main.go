@@ -89,7 +89,7 @@ func main() {
 	// 7. 初始化接口层
 	// gRPC
 	grpcSrv := grpc.NewServer()
-	accountSrv := grpcserver.NewAccountGrpcServer(appService, queryService)
+	accountSrv := grpcserver.NewHandler(appService, queryService)
 	accountv1.RegisterAccountServiceServer(grpcSrv, accountSrv)
 	reflection.Register(grpcSrv)
 

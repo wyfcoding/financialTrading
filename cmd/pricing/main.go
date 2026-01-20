@@ -9,11 +9,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/spf13/viper"
+	pricing_pb "github.com/wyfcoding/financialtrading/go-api/pricing/v1"
 	"github.com/wyfcoding/financialtrading/internal/pricing/application"
 	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
 	"github.com/wyfcoding/financialtrading/internal/pricing/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/pricing/interfaces/grpc"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	gorm_mysql "gorm.io/driver/mysql"
@@ -49,16 +50,20 @@ func main() {
 	}
 
 	// 4. Infrastructure & Domain
-	repo := mysql.NewPriceRepository(db)
+	priceRepo := mysql.NewPriceRepository(db)
+	pricingRepo := mysql.NewPricingRepository(db)
+	// Need a mock MarketDataClient for now or a real one if available
+	// marketDataClient := ...
 
 	// 5. Application
-	appService := application.NewPricingApplicationService(repo)
+	appService := application.NewPricingService(nil, pricingRepo, priceRepo)
 
 	// TODO: Kafka Consumer feeding OnQuoteReceived
 
 	// 6. Interfaces
 	grpcSrv := grpc.NewServer()
-	grpc_server.NewServer(grpcSrv, appService)
+	pricingHandler := grpc_server.NewHandler(appService)
+	pricing_pb.RegisterPricingServiceServer(grpcSrv, pricingHandler)
 	reflection.Register(grpcSrv)
 	port := viper.GetString("server.grpc_port")
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))

@@ -13,10 +13,10 @@ type ReferenceDataService struct {
 }
 
 // NewReferenceDataService 构造函数。
-func NewReferenceDataService(symbolRepo domain.SymbolRepository, exchangeRepo domain.ExchangeRepository) *ReferenceDataService {
+func NewReferenceDataService(symbolRepo domain.SymbolRepository, exchangeRepo domain.ExchangeRepository, refRepo domain.ReferenceRepository) *ReferenceDataService {
 	return &ReferenceDataService{
-		manager: NewReferenceDataManager(symbolRepo, exchangeRepo),
-		query:   NewReferenceDataQuery(symbolRepo, exchangeRepo),
+		manager: NewReferenceDataManager(symbolRepo, exchangeRepo, refRepo),
+		query:   NewReferenceDataQuery(symbolRepo, exchangeRepo, refRepo),
 	}
 }
 
@@ -38,6 +38,14 @@ func (s *ReferenceDataService) GetSymbol(ctx context.Context, id string) (*domai
 
 func (s *ReferenceDataService) ListSymbols(ctx context.Context, exchangeID string, status string, limit int, offset int) ([]*domain.Symbol, error) {
 	return s.query.ListSymbols(ctx, exchangeID, status, limit, offset)
+}
+
+func (s *ReferenceDataService) GetInstrument(ctx context.Context, symbol string) (*InstrumentDTO, error) {
+	return s.query.GetInstrument(ctx, symbol)
+}
+
+func (s *ReferenceDataService) ListInstruments(ctx context.Context) ([]*InstrumentDTO, error) {
+	return s.query.ListInstruments(ctx)
 }
 
 func (s *ReferenceDataService) GetExchange(ctx context.Context, id string) (*domain.Exchange, error) {

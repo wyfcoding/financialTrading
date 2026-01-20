@@ -27,13 +27,29 @@ func NewHandler(service *application.RiskService) *Handler {
 	}
 }
 
-// AssessRisk 评估交易风险
-// 处理 gRPC AssessRisk 请求
+// CheckRisk 检查交易风险 (Legacy)
+func (h *Handler) CheckRisk(ctx context.Context, req *pb.CheckRiskRequest) (*pb.CheckRiskResponse, error) {
+	passed, reason := h.service.CheckRisk(ctx, req.UserId, req.Symbol, req.Quantity, req.Price)
+	return &pb.CheckRiskResponse{
+		Passed: passed,
+		Reason: reason,
+	}, nil
+}
+
+// SetRiskLimit 设置风险限额 (Legacy)
+func (h *Handler) SetRiskLimit(ctx context.Context, req *pb.SetRiskLimitRequest) (*pb.SetRiskLimitResponse, error) {
+	err := h.service.SetRiskLimit(ctx, req.UserId, req.MaxOrderSize, req.MaxDailyLoss)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &pb.SetRiskLimitResponse{Success: true}, nil
+}
+
+// AssessRisk 评估交易风险 (Enhanced)
 func (h *Handler) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest) (*pb.AssessRiskResponse, error) {
 	start := time.Now()
 	slog.Info("gRPC AssessRisk received", "user_id", req.UserId, "symbol", req.Symbol, "side", req.Side)
 
-	// 调用应用服务评估风险
 	dto, err := h.service.AssessRisk(ctx, &application.AssessRiskRequest{
 		UserID:   req.UserId,
 		Symbol:   req.Symbol,
@@ -46,7 +62,6 @@ func (h *Handler) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest) (*p
 		return nil, status.Errorf(codes.Internal, "failed to assess risk: %v", err)
 	}
 
-	slog.Info("gRPC AssessRisk successful", "user_id", req.UserId, "risk_level", dto.RiskLevel, "is_allowed", dto.IsAllowed, "duration", time.Since(start))
 	return &pb.AssessRiskResponse{
 		RiskLevel:         dto.RiskLevel,
 		RiskScore:         dto.RiskScore,
@@ -57,18 +72,12 @@ func (h *Handler) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest) (*p
 }
 
 // GetRiskMetrics 获取风险指标
-// 处理 gRPC GetRiskMetrics 请求
 func (h *Handler) GetRiskMetrics(ctx context.Context, req *pb.GetRiskMetricsRequest) (*pb.GetRiskMetricsResponse, error) {
-	start := time.Now()
-	slog.Debug("gRPC GetRiskMetrics received", "user_id", req.UserId)
-
 	metrics, err := h.service.GetRiskMetrics(ctx, req.UserId)
 	if err != nil {
-		slog.Error("gRPC GetRiskMetrics failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get risk metrics: %v", err)
 	}
 
-	slog.Debug("gRPC GetRiskMetrics successful", "user_id", req.UserId, "duration", time.Since(start))
 	return &pb.GetRiskMetricsResponse{
 		Metrics: &pb.RiskMetrics{
 			Var_95:      metrics.VaR95.String(),
@@ -81,20 +90,14 @@ func (h *Handler) GetRiskMetrics(ctx context.Context, req *pb.GetRiskMetricsRequ
 }
 
 // CheckRiskLimit 检查风险限额
-// 处理 gRPC CheckRiskLimit 请求
 func (h *Handler) CheckRiskLimit(ctx context.Context, req *pb.CheckRiskLimitRequest) (*pb.CheckRiskLimitResponse, error) {
-	start := time.Now()
-	slog.Debug("gRPC CheckRiskLimit received", "user_id", req.UserId, "limit_type", req.LimitType)
-
 	limit, err := h.service.CheckRiskLimit(ctx, req.UserId, req.LimitType)
 	if err != nil {
-		slog.Error("gRPC CheckRiskLimit failed", "user_id", req.UserId, "limit_type", req.LimitType, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to check risk limit: %v", err)
 	}
 
 	remaining := limit.LimitValue.Sub(limit.CurrentValue)
 
-	slog.Debug("gRPC CheckRiskLimit successful", "user_id", req.UserId, "limit_type", req.LimitType, "is_exceeded", limit.IsExceeded, "duration", time.Since(start))
 	return &pb.CheckRiskLimitResponse{
 		LimitType:    limit.LimitType,
 		LimitValue:   limit.LimitValue.String(),
@@ -105,14 +108,9 @@ func (h *Handler) CheckRiskLimit(ctx context.Context, req *pb.CheckRiskLimitRequ
 }
 
 // GetRiskAlerts 获取风险告警
-// 处理 gRPC GetRiskAlerts 请求
 func (h *Handler) GetRiskAlerts(ctx context.Context, req *pb.GetRiskAlertsRequest) (*pb.GetRiskAlertsResponse, error) {
-	start := time.Now()
-	slog.Debug("gRPC GetRiskAlerts received", "user_id", req.UserId)
-
-	alerts, err := h.service.GetRiskAlerts(ctx, req.UserId, 100) // Default limit
+	alerts, err := h.service.GetRiskAlerts(ctx, req.UserId, 100)
 	if err != nil {
-		slog.Error("gRPC GetRiskAlerts failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get risk alerts: %v", err)
 	}
 
@@ -127,7 +125,6 @@ func (h *Handler) GetRiskAlerts(ctx context.Context, req *pb.GetRiskAlertsReques
 		})
 	}
 
-	slog.Debug("gRPC GetRiskAlerts successful", "user_id", req.UserId, "alerts_count", len(pbAlerts), "duration", time.Since(start))
 	return &pb.GetRiskAlertsResponse{
 		Alerts: pbAlerts,
 	}, nil

@@ -15,15 +15,17 @@ import (
 type QuantManager struct {
 	strategyRepo     domain.StrategyRepository
 	backtestRepo     domain.BacktestResultRepository
+	signalRepo       domain.SignalRepository
 	marketDataClient domain.MarketDataClient
 	riskCalc         *finance.RiskCalculator
 }
 
 // NewQuantManager 构造函数。
-func NewQuantManager(strategyRepo domain.StrategyRepository, backtestRepo domain.BacktestResultRepository, marketDataClient domain.MarketDataClient) *QuantManager {
+func NewQuantManager(strategyRepo domain.StrategyRepository, backtestRepo domain.BacktestResultRepository, signalRepo domain.SignalRepository, marketDataClient domain.MarketDataClient) *QuantManager {
 	return &QuantManager{
 		strategyRepo:     strategyRepo,
 		backtestRepo:     backtestRepo,
+		signalRepo:       signalRepo,
 		marketDataClient: marketDataClient,
 		riskCalc:         finance.NewRiskCalculator(),
 	}

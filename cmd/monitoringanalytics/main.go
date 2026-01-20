@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/spf13/viper"
+	v1 "github.com/wyfcoding/financialtrading/go-api/monitoringanalytics/v1"
 	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/application"
 	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/domain"
 	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/infrastructure/persistence/mysql"
@@ -46,7 +47,8 @@ func main() {
 	// 6. Interfaces
 	// gRPC
 	grpcSrv := grpc.NewServer()
-	grpc_server.NewServer(grpcSrv, appService)
+	monitoringHandler := grpc_server.NewHandler(appService)
+	v1.RegisterMonitoringAnalyticsServer(grpcSrv, monitoringHandler)
 	reflection.Register(grpcSrv)
 	port := viper.GetString("server.grpc_port")
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))

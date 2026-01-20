@@ -77,8 +77,11 @@ func main() {
 
 	// 6. Interfaces
 	grpcSrv := grpc.NewServer()
-	mmSrv := grpcserver.NewMarketMakingGrpcServer(appService)
-	marketmakingv1.RegisterMarketMakingServiceServer(grpcSrv, mmSrv)
+
+	// MarketMaking Service
+	mmHandler := grpcserver.NewHandler(appService)
+	marketmakingv1.RegisterMarketMakingServiceServer(grpcSrv, mmHandler)
+
 	reflection.Register(grpcSrv)
 
 	gin.SetMode(gin.ReleaseMode)

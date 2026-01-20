@@ -13,13 +13,15 @@ import (
 type PricingManager struct {
 	marketDataClient domain.MarketDataClient
 	pricingRepo      domain.PricingRepository
+	priceRepo        domain.PriceRepository
 }
 
 // NewPricingManager 构造函数。
-func NewPricingManager(marketDataClient domain.MarketDataClient, pricingRepo domain.PricingRepository) *PricingManager {
+func NewPricingManager(marketDataClient domain.MarketDataClient, pricingRepo domain.PricingRepository, priceRepo domain.PriceRepository) *PricingManager {
 	return &PricingManager{
 		marketDataClient: marketDataClient,
 		pricingRepo:      pricingRepo,
+		priceRepo:        priceRepo,
 	}
 }
 
@@ -53,4 +55,9 @@ func (m *PricingManager) GetOptionPrice(ctx context.Context, contract domain.Opt
 	}
 
 	return result.Price, nil
+}
+
+func (m *PricingManager) OnQuoteReceived(ctx context.Context, symbol string, bid, ask float64, source string) error {
+	price := domain.NewPrice(symbol, bid, ask, source)
+	return m.priceRepo.Save(ctx, price)
 }

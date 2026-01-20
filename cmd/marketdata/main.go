@@ -82,7 +82,7 @@ func main() {
 
 	// 6. Interfaces
 	grpcSrv := grpc.NewServer()
-	mdHandler := grpcserver.NewMarketDataHandler(serviceFacade)
+	mdHandler := grpcserver.NewHandler(serviceFacade)
 	marketdatav1.RegisterMarketDataServiceServer(grpcSrv, mdHandler)
 	reflection.Register(grpcSrv)
 

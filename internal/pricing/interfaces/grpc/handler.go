@@ -4,11 +4,14 @@ package grpc
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/shopspring/decimal"
 	pb "github.com/wyfcoding/financialtrading/go-api/pricing/v1"
 	"github.com/wyfcoding/financialtrading/internal/pricing/application"
 	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -25,6 +28,52 @@ func NewHandler(app *application.PricingService) *Handler {
 	return &Handler{app: app}
 }
 
+// GetPrice 获取单品种价格
+func (h *Handler) GetPrice(ctx context.Context, req *pb.GetPriceRequest) (*pb.GetPriceResponse, error) {
+	dto, err := h.app.GetPrice(ctx, req.Symbol)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &pb.GetPriceResponse{Price: h.toProto(dto)}, nil
+}
+
+// ListPrices 批量获取价格
+func (h *Handler) ListPrices(ctx context.Context, req *pb.ListPricesRequest) (*pb.ListPricesResponse, error) {
+	dtos, err := h.app.ListPrices(ctx, req.Symbols)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	pbPrices := make([]*pb.Price, 0, len(dtos))
+	for _, d := range dtos {
+		pbPrices = append(pbPrices, h.toProto(d))
+	}
+	return &pb.ListPricesResponse{Prices: pbPrices}, nil
+}
+
+// SubscribePrices 定价订阅
+func (h *Handler) SubscribePrices(req *pb.SubscribePricesRequest, stream pb.PricingService_SubscribePricesServer) error {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-stream.Context().Done():
+			return nil
+		case <-ticker.C:
+			dtos, err := h.app.ListPrices(context.Background(), req.Symbols)
+			if err != nil {
+				continue
+			}
+			for _, d := range dtos {
+				if err := stream.Send(&pb.PriceUpdate{Price: h.toProto(d)}); err != nil {
+					return err
+				}
+			}
+		}
+	}
+}
+
 // GetOptionPrice 获取期权价格
 func (h *Handler) GetOptionPrice(ctx context.Context, req *pb.GetOptionPriceRequest) (*pb.GetOptionPriceResponse, error) {
 	contract := domain.OptionContract{
@@ -37,13 +86,10 @@ func (h *Handler) GetOptionPrice(ctx context.Context, req *pb.GetOptionPriceRequ
 	price, err := h.app.GetOptionPrice(ctx, contract, decimal.NewFromFloat(req.UnderlyingPrice), req.Volatility, req.RiskFreeRate)
 	if err != nil {
 		slog.Error("Failed to get option price", "symbol", req.Contract.Symbol, "error", err)
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	pVal, ok := price.Float64()
-	if !ok {
-		slog.Warn("Failed to convert price to float64", "symbol", req.Contract.Symbol, "price", price.String())
-	}
+	pVal, _ := price.Float64()
 	return &pb.GetOptionPriceResponse{
 		Price:           pVal,
 		CalculationTime: timestamppb.Now(),
@@ -62,17 +108,14 @@ func (h *Handler) GetGreeks(ctx context.Context, req *pb.GetGreeksRequest) (*pb.
 	greeks, err := h.app.GetGreeks(ctx, contract, decimal.NewFromFloat(req.UnderlyingPrice), req.Volatility, req.RiskFreeRate)
 	if err != nil {
 		slog.Error("Failed to get greeks", "symbol", req.Contract.Symbol, "error", err)
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	dVal, ok1 := greeks.Delta.Float64()
-	gVal, ok2 := greeks.Gamma.Float64()
-	tVal, ok3 := greeks.Theta.Float64()
-	vVal, ok4 := greeks.Vega.Float64()
-	rVal, ok5 := greeks.Rho.Float64()
-	if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 {
-		slog.Warn("Failed to convert some greeks to float64", "symbol", req.Contract.Symbol, "ok1", ok1, "ok2", ok2, "ok3", ok3, "ok4", ok4, "ok5", ok5)
-	}
+	dVal, _ := greeks.Delta.Float64()
+	gVal, _ := greeks.Gamma.Float64()
+	tVal, _ := greeks.Theta.Float64()
+	vVal, _ := greeks.Vega.Float64()
+	rVal, _ := greeks.Rho.Float64()
 
 	return &pb.GetGreeksResponse{
 		Greeks: &pb.Greeks{
@@ -84,4 +127,18 @@ func (h *Handler) GetGreeks(ctx context.Context, req *pb.GetGreeksRequest) (*pb.
 		},
 		CalculationTime: timestamppb.Now(),
 	}, nil
+}
+
+func (h *Handler) toProto(d *application.PriceDTO) *pb.Price {
+	if d == nil {
+		return nil
+	}
+	return &pb.Price{
+		Symbol:    d.Symbol,
+		Bid:       d.Bid,
+		Ask:       d.Ask,
+		Mid:       d.Mid,
+		Source:    d.Source,
+		Timestamp: timestamppb.New(d.Timestamp),
+	}
 }

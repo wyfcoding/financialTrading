@@ -10,13 +10,15 @@ import (
 type ReferenceDataManager struct {
 	symbolRepo   domain.SymbolRepository
 	exchangeRepo domain.ExchangeRepository
+	refRepo      domain.ReferenceRepository
 }
 
 // NewReferenceDataManager 构造函数。
-func NewReferenceDataManager(symbolRepo domain.SymbolRepository, exchangeRepo domain.ExchangeRepository) *ReferenceDataManager {
+func NewReferenceDataManager(symbolRepo domain.SymbolRepository, exchangeRepo domain.ExchangeRepository, refRepo domain.ReferenceRepository) *ReferenceDataManager {
 	return &ReferenceDataManager{
 		symbolRepo:   symbolRepo,
 		exchangeRepo: exchangeRepo,
+		refRepo:      refRepo,
 	}
 }
 

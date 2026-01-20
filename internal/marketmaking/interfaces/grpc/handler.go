@@ -13,16 +13,16 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type MarketMakingGrpcServer struct {
+type Handler struct {
 	marketmakingv1.UnimplementedMarketMakingServiceServer
 	app *application.MarketMakingApplicationService
 }
 
-func NewMarketMakingGrpcServer(app *application.MarketMakingApplicationService) *MarketMakingGrpcServer {
-	return &MarketMakingGrpcServer{app: app}
+func NewHandler(app *application.MarketMakingApplicationService) *Handler {
+	return &Handler{app: app}
 }
 
-func (s *MarketMakingGrpcServer) SetStrategy(ctx context.Context, req *marketmakingv1.SetStrategyRequest) (*marketmakingv1.SetStrategyResponse, error) {
+func (h *Handler) SetStrategy(ctx context.Context, req *marketmakingv1.SetStrategyRequest) (*marketmakingv1.SetStrategyResponse, error) {
 	cmd := application.SetStrategyCommand{
 		Symbol:       req.Symbol,
 		Spread:       fmt.Sprintf("%f", req.Spread),
@@ -32,15 +32,15 @@ func (s *MarketMakingGrpcServer) SetStrategy(ctx context.Context, req *marketmak
 		Status:       req.Status,
 	}
 
-	id, err := s.app.SetStrategy(ctx, cmd)
+	id, err := h.app.SetStrategy(ctx, cmd)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &marketmakingv1.SetStrategyResponse{StrategyId: id}, nil
 }
 
-func (s *MarketMakingGrpcServer) GetStrategy(ctx context.Context, req *marketmakingv1.GetStrategyRequest) (*marketmakingv1.GetStrategyResponse, error) {
-	dto, err := s.app.GetStrategy(ctx, req.Symbol)
+func (h *Handler) GetStrategy(ctx context.Context, req *marketmakingv1.GetStrategyRequest) (*marketmakingv1.GetStrategyResponse, error) {
+	dto, err := h.app.GetStrategy(ctx, req.Symbol)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -63,8 +63,8 @@ func (s *MarketMakingGrpcServer) GetStrategy(ctx context.Context, req *marketmak
 	}, nil
 }
 
-func (s *MarketMakingGrpcServer) GetPerformance(ctx context.Context, req *marketmakingv1.GetPerformanceRequest) (*marketmakingv1.GetPerformanceResponse, error) {
-	dto, err := s.app.GetPerformance(ctx, req.Symbol)
+func (h *Handler) GetPerformance(ctx context.Context, req *marketmakingv1.GetPerformanceRequest) (*marketmakingv1.GetPerformanceResponse, error) {
+	dto, err := h.app.GetPerformance(ctx, req.Symbol)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

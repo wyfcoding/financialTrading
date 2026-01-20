@@ -17,133 +17,61 @@ import (
 
 // Handler 是清算服务的 gRPC 处理器。
 // 它实现了由 apoch 生成的 `ClearingServiceServer` 接口。
-// 其核心职责是作为 gRPC 协议与内部应用逻辑之间的桥梁。
 type Handler struct {
-	pb.UnimplementedClearingServiceServer                              // 嵌入未实现的 apoch 服务，确保向前兼容
-	service                               *application.ClearingService // 依赖注入的应用服务实例
+	pb.UnimplementedClearingServiceServer
+	appService   *application.ClearingService
+	queryService *application.ClearingQueryService
 }
 
-// 创建 gRPC 处理器实例。
-//
-// @param service 注入的清算应用服务实例。
-// @return *Handler 返回一个新的 gRPC 处理器实例。
-func NewHandler(service *application.ClearingService) *Handler {
+// NewHandler 创建 gRPC 处理器实例。
+func NewHandler(appService *application.ClearingService, queryService *application.ClearingQueryService) *Handler {
 	return &Handler{
-		service: service,
+		appService:   appService,
+		queryService: queryService,
 	}
 }
 
-// SettleTrade 实现了 gRPC 的 SettleTrade 方法。
-// 它接收 gRPC 请求，将其转换为应用层的 DTO，然后调用应用服务来处理。
+// SettleTrade 结算单笔交易
 func (h *Handler) SettleTrade(ctx context.Context, req *pb.SettleTradeRequest) (*pb.SettleTradeResponse, error) {
 	start := time.Now()
-	slog.Info("gRPC SettleTrade received", "trade_id", req.TradeId, "buy_user_id", req.BuyUserId, "sell_user_id", req.SellUserId, "symbol", req.Symbol)
+	slog.Info("gRPC SettleTrade received", "trade_id", req.TradeId, "symbol", req.Symbol)
 
-	quantity, _ := decimal.NewFromString(req.Quantity)
+	qty, _ := decimal.NewFromString(req.Quantity)
 	price, _ := decimal.NewFromString(req.Price)
 
-	// 1. 将 gRPC 请求对象 (*pb.SettleTradeRequest) 转换为应用层 DTO (*application.SettleTradeRequest)。
 	appReq := &application.SettleTradeRequest{
 		TradeID:    req.TradeId,
 		BuyUserID:  req.BuyUserId,
 		SellUserID: req.SellUserId,
 		Symbol:     req.Symbol,
-		Quantity:   quantity,
+		Quantity:   qty,
 		Price:      price,
 	}
 
-	// 2. 调用应用服务来执行核心业务逻辑,接收返回的 settlementID。
-	settlementDTO, err := h.service.SettleTrade(ctx, appReq)
+	dto, err := h.appService.SettleTrade(ctx, appReq)
 	if err != nil {
 		slog.Error("gRPC SettleTrade failed", "trade_id", req.TradeId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to settle trade: %v", err)
 	}
 
-	slog.Info("gRPC SettleTrade successful", "trade_id", req.TradeId, "settlement_id", settlementDTO.SettlementID, "duration", time.Since(start))
-	// 4. 构建并返回 gRPC 响应,填充从应用服务返回的 settlementID。
 	return &pb.SettleTradeResponse{
-		TradeId:        req.TradeId,
-		Status:         "COMPLETED", // 假设状态为已完成
-		SettlementId:   settlementDTO.SettlementID,
-		SettlementTime: time.Now().Unix(),
+		SettlementId:   dto.SettlementID,
+		TradeId:        dto.TradeID,
+		Status:         dto.Status,
+		SettlementTime: dto.SettledAt,
+		ErrorMessage:   dto.ErrorMessage,
 	}, nil
 }
 
-// ExecuteEODClearing 实现了 gRPC 的 ExecuteEODClearing 方法。
-func (h *Handler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEODClearingRequest) (*pb.ExecuteEODClearingResponse, error) {
-	start := time.Now()
-	slog.Info("gRPC ExecuteEODClearing received", "clearing_date", req.ClearingDate)
-
-	// 调用应用服务启动日终清算流程,接收返回的 clearingID。
-	clearingID, err := h.service.ExecuteEODClearing(ctx, req.ClearingDate)
-	if err != nil {
-		slog.Error("gRPC ExecuteEODClearing failed", "clearing_date", req.ClearingDate, "error", err, "duration", time.Since(start))
-		return nil, status.Errorf(codes.Internal, "failed to execute EOD clearing: %v", err)
-	}
-
-	slog.Info("gRPC ExecuteEODClearing successful", "clearing_date", req.ClearingDate, "clearing_id", clearingID, "duration", time.Since(start))
-	// 返回包含 clearingID 的响应,表示任务已开始。
-	return &pb.ExecuteEODClearingResponse{
-		Status:     "PROCESSING", // 表示任务已开始处理
-		ClearingId: clearingID,
-		StartTime:  time.Now().Unix(),
-	}, nil
-}
-
-func (h *Handler) GetClearingStatus(ctx context.Context, req *pb.GetClearingStatusRequest) (*pb.GetClearingStatusResponse, error) {
-	slog.Debug("gRPC GetClearingStatus received", "clearing_id", req.ClearingId)
-
-	// 调用应用服务获取清算任务状态。
-	clearing, err := h.service.GetClearingStatus(ctx, req.ClearingId)
-	if err != nil {
-		slog.Error("gRPC GetClearingStatus failed", "clearing_id", req.ClearingId, "error", err)
-		return nil, status.Errorf(codes.Internal, "failed to get clearing status: %v", err)
-	}
-	// 如果应用服务返回 nil（表示未找到），则返回 gRPC 的 NotFound 错误。
-	if clearing == nil {
-		slog.Warn("gRPC GetClearingStatus task not found", "clearing_id", req.ClearingId)
-		return nil, status.Errorf(codes.NotFound, "clearing task with id '%s' not found", req.ClearingId)
-	}
-
-	// 计算完成百分比
-	var completionPercentage float32
-	if clearing.TotalTrades > 0 {
-		completionPercentage = float32(clearing.TradesSettled) / float32(clearing.TotalTrades) * 100
-	}
-
-	slog.Debug("gRPC GetClearingStatus successful", "clearing_id", req.ClearingId, "status", clearing.Status)
-	// 将从应用层获取的领域对象转换为 gRPC 响应对象。
-	return &pb.GetClearingStatusResponse{
-		ClearingId:         clearing.SettlementID,
-		Status:             clearing.Status,
-		TradesProcessed:    clearing.TradesSettled,
-		TradesTotal:        clearing.TotalTrades,
-		ProgressPercentage: int64(completionPercentage),
-	}, nil
-}
-
-func (h *Handler) GetMarginRequirement(ctx context.Context, req *pb.GetMarginRequirementRequest) (*pb.GetMarginRequirementResponse, error) {
-	start := time.Now()
-	slog.Debug("gRPC GetMarginRequirement received", "symbol", req.Symbol)
-
-	margin, err := h.service.GetMarginRequirement(ctx, req.Symbol)
-	if err != nil {
-		slog.Error("gRPC GetMarginRequirement failed", "symbol", req.Symbol, "error", err, "duration", time.Since(start))
-		return nil, status.Errorf(codes.Internal, "failed to get margin requirement: %v", err)
-	}
-
-	slog.Debug("gRPC GetMarginRequirement successful", "symbol", req.Symbol, "duration", time.Since(start))
-	return &pb.GetMarginRequirementResponse{
-		Symbol:               margin.Symbol,
-		BaseMarginRate:       margin.BaseMarginRate.String(),
-		VolatilityMultiplier: margin.VolatilityFactor.String(),
-		CurrentMarginRate:    margin.CurrentMarginRate().String(),
-	}, nil
+// GetSettlements 获取清算记录
+func (h *Handler) GetSettlements(ctx context.Context, req *pb.GetSettlementsRequest) (*pb.GetSettlementsResponse, error) {
+	// 这里演示用途，实际应完善 QueryService.GetByUserID
+	return nil, status.Error(codes.Unimplemented, "list settlements by user_id not implemented yet")
 }
 
 // SagaMarkSettlementCompleted Saga 正向: 确认结算成功
 func (h *Handler) SagaMarkSettlementCompleted(ctx context.Context, req *pb.SagaSettlementRequest) (*pb.SagaSettlementResponse, error) {
-	if err := h.service.SagaMarkSettlementCompleted(ctx, req.SettlementId); err != nil {
+	if err := h.appService.SagaMarkSettlementCompleted(ctx, req.SettlementId); err != nil {
 		return nil, status.Errorf(codes.Internal, "SagaMarkSettlementCompleted failed: %v", err)
 	}
 	return &pb.SagaSettlementResponse{Success: true}, nil
@@ -151,8 +79,55 @@ func (h *Handler) SagaMarkSettlementCompleted(ctx context.Context, req *pb.SagaS
 
 // SagaMarkSettlementFailed Saga 补偿: 标记结算失败
 func (h *Handler) SagaMarkSettlementFailed(ctx context.Context, req *pb.SagaSettlementRequest) (*pb.SagaSettlementResponse, error) {
-	if err := h.service.SagaMarkSettlementFailed(ctx, req.SettlementId, req.Reason); err != nil {
+	if err := h.appService.SagaMarkSettlementFailed(ctx, req.SettlementId, req.Reason); err != nil {
 		return nil, status.Errorf(codes.Internal, "SagaMarkSettlementFailed failed: %v", err)
 	}
 	return &pb.SagaSettlementResponse{Success: true}, nil
+}
+
+// ExecuteEODClearing 执行日终清算
+func (h *Handler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEODClearingRequest) (*pb.ExecuteEODClearingResponse, error) {
+	clearingID, err := h.appService.ExecuteEODClearing(ctx, req.ClearingDate)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to execute EOD clearing: %v", err)
+	}
+
+	return &pb.ExecuteEODClearingResponse{
+		Status:     "PROCESSING",
+		ClearingId: clearingID,
+		StartTime:  time.Now().Unix(),
+	}, nil
+}
+
+// GetClearingStatus 获取状态
+func (h *Handler) GetClearingStatus(ctx context.Context, req *pb.GetClearingStatusRequest) (*pb.GetClearingStatusResponse, error) {
+	dto, err := h.appService.GetClearingStatus(ctx, req.ClearingId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get clearing status: %v", err)
+	}
+	if dto == nil {
+		return nil, status.Errorf(codes.NotFound, "clearing task with id '%s' not found", req.ClearingId)
+	}
+
+	return &pb.GetClearingStatusResponse{
+		ClearingId:      dto.SettlementID,
+		Status:          dto.Status,
+		TradesProcessed: dto.TradesSettled,
+		TradesTotal:     dto.TotalTrades,
+	}, nil
+}
+
+// GetMarginRequirement 获取保证金
+func (h *Handler) GetMarginRequirement(ctx context.Context, req *pb.GetMarginRequirementRequest) (*pb.GetMarginRequirementResponse, error) {
+	margin, err := h.appService.GetMarginRequirement(ctx, req.Symbol)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get margin requirement: %v", err)
+	}
+
+	return &pb.GetMarginRequirementResponse{
+		Symbol:               margin.Symbol,
+		BaseMarginRate:       margin.BaseMarginRate.String(),
+		VolatilityMultiplier: margin.VolatilityFactor.String(),
+		CurrentMarginRate:    margin.CurrentMarginRate().String(),
+	}, nil
 }

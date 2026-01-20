@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/spf13/viper"
+	v1 "github.com/wyfcoding/financialtrading/go-api/notification/v1"
 	"github.com/wyfcoding/financialtrading/internal/notification/application"
 	"github.com/wyfcoding/financialtrading/internal/notification/domain"
 	"github.com/wyfcoding/financialtrading/internal/notification/infrastructure/persistence/mysql"
@@ -61,7 +62,8 @@ func main() {
 
 	// 6. Interfaces
 	grpcSrv := grpc.NewServer()
-	grpc_server.NewServer(grpcSrv, appService)
+	notifHandler := grpc_server.NewHandler(appService)
+	v1.RegisterNotificationServer(grpcSrv, notifHandler)
 	reflection.Register(grpcSrv)
 	port := viper.GetString("server.grpc_port")
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))

@@ -61,6 +61,14 @@ func (s *MarketDataService) GetHistoricalQuotes(ctx context.Context, symbol stri
 	return s.query.GetHistoricalQuotes(ctx, symbol, startTime, endTime)
 }
 
+func (s *MarketDataService) GetKlines(ctx context.Context, symbol, interval string, limit int) ([]*KlineDTO, error) {
+	return s.query.GetKlines(ctx, symbol, interval, limit)
+}
+
+func (s *MarketDataService) GetTrades(ctx context.Context, symbol string, limit int) ([]*TradeDTO, error) {
+	return s.query.GetTrades(ctx, symbol, limit)
+}
+
 // Broadcaster 广播接口
 type Broadcaster interface {
 	Broadcast(topic string, data any) error
@@ -149,6 +157,45 @@ func (q *MarketDataQuery) GetLatestQuote(ctx context.Context, symbol string) (*Q
 func (q *MarketDataQuery) GetHistoricalQuotes(ctx context.Context, symbol string, startTime, endTime int64) ([]*QuoteDTO, error) {
 	// 实现查询历史行情逻辑
 	return nil, nil
+}
+
+func (q *MarketDataQuery) GetKlines(ctx context.Context, symbol, interval string, limit int) ([]*KlineDTO, error) {
+	klines, err := q.klineRepo.GetKlines(ctx, symbol, interval, limit)
+	if err != nil {
+		return nil, err
+	}
+	dtos := make([]*KlineDTO, len(klines))
+	for i, k := range klines {
+		dtos[i] = &KlineDTO{
+			OpenTime:  k.OpenTime.UnixMilli(),
+			Open:      k.Open.String(),
+			High:      k.High.String(),
+			Low:       k.Low.String(),
+			Close:     k.Close.String(),
+			Volume:    k.Volume.String(),
+			CloseTime: k.CloseTime.UnixMilli(),
+		}
+	}
+	return dtos, nil
+}
+
+func (q *MarketDataQuery) GetTrades(ctx context.Context, symbol string, limit int) ([]*TradeDTO, error) {
+	trades, err := q.tradeRepo.GetTrades(ctx, symbol, limit)
+	if err != nil {
+		return nil, err
+	}
+	dtos := make([]*TradeDTO, len(trades))
+	for i, t := range trades {
+		dtos[i] = &TradeDTO{
+			TradeID:   t.ID,
+			Symbol:    t.Symbol,
+			Price:     t.Price.String(),
+			Quantity:  t.Quantity.String(),
+			Side:      t.Side,
+			Timestamp: t.Timestamp.UnixMilli(),
+		}
+	}
+	return dtos, nil
 }
 
 // --- Legacy Compatibility Types ---
