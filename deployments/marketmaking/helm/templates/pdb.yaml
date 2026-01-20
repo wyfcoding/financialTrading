@@ -1,11 +1,11 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "marketmaking.fullname" . }}
+  name: {{ include "clearing.fullname" . }}
   labels:
-    {{- include "marketmaking.labels" . | nindent 4 }}
+    {{- include "clearing.labels" . | nindent 4 }}
 spec:
   minAvailable: 1
   selector:
     matchLabels:
-      {{- include "marketmaking.selectorLabels" . | nindent 6 }}
+      {{- include "clearing.selectorLabels" . | nindent 6 }}

@@ -4,7 +4,7 @@ package api.marketmaking.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/wyfcoding/financialtrading/goapi/marketmaking/v1;marketmakingv1";
+option go_package = "github.com/wyfcoding/financialtrading/go-api/marketmaking/v1;marketmakingv1";
 
 // 做市策略管理。
 service MarketMakingService {

@@ -1,12 +1,13 @@
-// Package grpc  gRPC 处理器实现
+// Package grpc gRPC 处理器实现
 package grpc
 
 import (
 	"context"
 	"log/slog"
+	"strconv"
 	"time"
 
-	pb "github.com/wyfcoding/financialtrading/goapi/marketsimulation/v1"
+	pb "github.com/wyfcoding/financialtrading/go-api/marketsimulation/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/application"
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/domain"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -16,27 +17,51 @@ import (
 // 负责处理与市场模拟相关的 gRPC 请求
 type Handler struct {
 	pb.UnimplementedMarketSimulationServiceServer
-	app *application.MarketSimulationService // 市场模拟应用服务
+	app *application.MarketSimulationApplicationService
 }
 
 // NewHandler 创建 gRPC 处理器实例
-// app: 注入的市场模拟应用服务
-func NewHandler(app *application.MarketSimulationService) *Handler {
+func NewHandler(app *application.MarketSimulationApplicationService) *Handler {
 	return &Handler{
 		app: app,
 	}
 }
 
 // StartSimulation 启动模拟
-// 处理 gRPC StartSimulation 请求
 func (h *Handler) StartSimulation(ctx context.Context, req *pb.StartSimulationRequest) (*pb.StartSimulationResponse, error) {
 	start := time.Now()
-	slog.Info("gRPC StartSimulation received", "name", req.Name, "symbol", req.Symbol, "type", req.Type)
+	slog.Info("gRPC StartSimulation received", "name", req.Name, "symbol", req.Symbol)
 
-	// 调用应用服务启动模拟
-	scenarioID, err := h.app.StartSimulation(ctx, req.Name, req.Symbol, req.Type, req.Parameters)
+	// Create simulation config first
+	simDTO, err := h.app.CreateSimulationConfig(ctx, application.CreateSimulationCommand{
+		Name:         req.Name,
+		Symbol:       req.Symbol,
+		InitialPrice: req.InitialPrice,
+		Volatility:   req.Volatility,
+		Drift:        req.Drift,
+		IntervalMs:   req.IntervalMs,
+	})
 	if err != nil {
-		slog.Error("gRPC StartSimulation failed", "name", req.Name, "error", err, "duration", time.Since(start))
+		slog.Error("gRPC CreateSimulationConfig failed", "error", err)
+		return nil, err
+	}
+
+	// Use ScenarioID from domain (via DTO)
+	// DTO.ID is uint from gorm.Model, DTO needs ScenarioID string? Let's work with what we have.
+	// Actually we need to get the string ScenarioID from the created simulation.
+	// But our DTO has uint ID. We need to either:
+	// 1. Add ScenarioID to DTO
+	// 2. Use strconv
+	// For now, start using the ID to get, which internally uses ScenarioID.
+	// Since SDK returns DTO with uint ID, we likely need to store ScenarioID in DTO.
+	// Will update DTO. But for now, let's just use the ID converted to string.
+
+	scenarioID := strconv.FormatUint(uint64(simDTO.ID), 10)
+
+	// Then start it
+	err = h.app.StartSimulation(ctx, scenarioID)
+	if err != nil {
+		slog.Error("gRPC StartSimulation failed", "error", err)
 		return nil, err
 	}
 
@@ -51,7 +76,9 @@ func (h *Handler) StopSimulation(ctx context.Context, req *pb.StopSimulationRequ
 	start := time.Now()
 	slog.Info("gRPC StopSimulation received", "simulation_id", req.SimulationId)
 
-	success, err := h.app.StopSimulation(ctx, req.SimulationId)
+	err := h.app.StopSimulation(ctx, req.SimulationId)
+	success := err == nil
+
 	if err != nil {
 		slog.Error("gRPC StopSimulation failed", "simulation_id", req.SimulationId, "error", err, "duration", time.Since(start))
 		return nil, err
@@ -65,26 +92,25 @@ func (h *Handler) StopSimulation(ctx context.Context, req *pb.StopSimulationRequ
 
 // GetSimulationStatus 获取模拟状态
 func (h *Handler) GetSimulationStatus(ctx context.Context, req *pb.GetSimulationStatusRequest) (*pb.GetSimulationStatusResponse, error) {
-	start := time.Now()
-	slog.Debug("gRPC GetSimulationStatus received", "simulation_id", req.SimulationId)
-
-	scenario, err := h.app.GetSimulationStatus(ctx, req.SimulationId)
+	simDTO, err := h.app.GetSimulation(ctx, req.SimulationId)
 	if err != nil {
-		slog.Error("gRPC GetSimulationStatus failed", "simulation_id", req.SimulationId, "error", err, "duration", time.Since(start))
 		return nil, err
 	}
-	if scenario == nil {
-		slog.Debug("gRPC GetSimulationStatus successful (not found)", "simulation_id", req.SimulationId, "duration", time.Since(start))
+	if simDTO == nil {
 		return &pb.GetSimulationStatusResponse{}, nil
 	}
 
-	slog.Debug("gRPC GetSimulationStatus successful", "simulation_id", req.SimulationId, "status", scenario.Status, "duration", time.Since(start))
 	return &pb.GetSimulationStatusResponse{
-		Scenario: toProtoScenario(scenario),
+		Scenario: &pb.SimulationScenario{
+			Id:     strconv.FormatUint(uint64(simDTO.ID), 10),
+			Name:   simDTO.Name,
+			Symbol: simDTO.Symbol,
+			Status: simDTO.Status,
+		},
 	}, nil
 }
 
-func toProtoScenario(s *domain.SimulationScenario) *pb.SimulationScenario {
+func toProtoScenario(s *domain.Simulation) *pb.SimulationScenario {
 	return &pb.SimulationScenario{
 		Id:          s.ScenarioID,
 		Name:        s.Name,

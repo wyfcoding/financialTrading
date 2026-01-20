@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	pb "github.com/wyfcoding/financialtrading/goapi/marketmaking/v1"
+	pb "github.com/wyfcoding/financialtrading/go-api/marketmaking/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/application"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
 	"google.golang.org/protobuf/types/known/timestamppb"

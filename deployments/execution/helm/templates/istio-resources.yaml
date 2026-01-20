@@ -1,7 +1,7 @@
 apiVersion: networking.istio.io/v1beta1
 kind: Gateway
 metadata:
-  name: {{ include "execution.fullname" . }}-gateway
+  name: {{ include "clearing.fullname" . }}-gateway
   namespace: {{ .Release.Namespace }}
 spec:
   selector:
@@ -26,14 +26,14 @@ spec:
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
-  name: {{ include "execution.fullname" . }}
+  name: {{ include "clearing.fullname" . }}
   namespace: {{ .Release.Namespace }}
 spec:
   hosts:
   - api.trading.com
-  - {{ include "execution.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+  - {{ include "clearing.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
   gateways:
-  - {{ include "execution.fullname" . }}-gateway
+  - {{ include "clearing.fullname" . }}-gateway
   - mesh
   http:
   {{- if .Values.canary.enabled }}
@@ -43,10 +43,10 @@ spec:
         {{ .Values.canary.headerMatch.key }}:
           exact: {{ .Values.canary.headerMatch.value | quote }}
       uri:
-        prefix: /api/v1/executions
+        prefix: /api/v1/clearings
     route:
     - destination:
-        host: {{ include "execution.fullname" . }}
+        host: {{ include "clearing.fullname" . }}
         subset: {{ .Values.canary.version }}
         port:
           number: {{ .Values.service.httpPort }}
@@ -54,21 +54,21 @@ spec:
   # 2. 流量百分比分发与镜像 (Shadow Traffic)
   - match:
     - uri:
-        prefix: /api/v1/executions
+        prefix: /api/v1/clearings
     mirror:
-      host: {{ include "execution.fullname" . }}
+      host: {{ include "clearing.fullname" . }}
       subset: {{ .Values.canary.version }}
     mirrorPercentage:
       value: 10.0
     route:
     - destination:
-        host: {{ include "execution.fullname" . }}
+        host: {{ include "clearing.fullname" . }}
         subset: v1
         port:
           number: {{ .Values.service.httpPort }}
       weight: {{ sub 100 .Values.canary.trafficWeight }}
     - destination:
-        host: {{ include "execution.fullname" . }}
+        host: {{ include "clearing.fullname" . }}
         subset: {{ .Values.canary.version }}
         port:
           number: {{ .Values.service.httpPort }}
@@ -77,10 +77,10 @@ spec:
   # 默认稳定版本路由
   - match:
     - uri:
-        prefix: /api/v1/executions
+        prefix: /api/v1/clearings
     route:
     - destination:
-        host: {{ include "execution.fullname" . }}
+        host: {{ include "clearing.fullname" . }}
         subset: v1
         port:
           number: {{ .Values.service.httpPort }}
@@ -104,10 +104,10 @@ spec:
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
-  name: {{ include "execution.fullname" . }}
+  name: {{ include "clearing.fullname" . }}
   namespace: {{ .Release.Namespace }}
 spec:
-  host: {{ include "execution.fullname" . }}
+  host: {{ include "clearing.fullname" . }}
   trafficPolicy:
     loadBalancer:
       simple: ROUND_ROBIN
@@ -141,29 +141,32 @@ spec:
 apiVersion: networking.istio.io/v1beta1
 kind: Sidecar
 metadata:
-  name: {{ include "execution.fullname" . }}-sidecar
+  name: {{ include "clearing.fullname" . }}-sidecar
   namespace: {{ .Release.Namespace }}
 spec:
   workloadSelector:
     labels:
-      app.kubernetes.io/name: {{ include "execution.name" . }}
+      app.kubernetes.io/name: {{ include "clearing.name" . }}
   egress:
   - hosts:
     - "istio-system/*"
     - "./*"
     - "default/payment.default.svc.cluster.local"
     - "default/inventory.default.svc.cluster.local"
+    - "default/account.default.svc.cluster.local"
+    - "default/position.default.svc.cluster.local"
+    - "default/dtm.default.svc.cluster.local"
 ---
 ---
 apiVersion: telemetry.istio.io/v1alpha1
 kind: Telemetry
 metadata:
-  name: {{ include "execution.fullname" . }}-telemetry
+  name: {{ include "clearing.fullname" . }}-telemetry
   namespace: {{ .Release.Namespace }}
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "execution.name" . }}
+      app.kubernetes.io/name: {{ include "clearing.name" . }}
   tracing:
   - providers:
     - name: {{ .Values.observability.tracing.provider }}
@@ -173,12 +176,12 @@ spec:
 apiVersion: security.istio.io/v1beta1
 kind: RequestAuthentication
 metadata:
-  name: {{ include "execution.fullname" . }}-jwt
+  name: {{ include "clearing.fullname" . }}-jwt
   namespace: {{ .Release.Namespace }}
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "execution.name" . }}
+      app.kubernetes.io/name: {{ include "clearing.name" . }}
   jwtRules:
   - issuer: "ecommerce-auth-service"
     jwksUri: "http://auth-service.default.svc.cluster.local/v1/jwks" # 内部鉴权服务提供的 JWKS 终结点
@@ -188,12 +191,12 @@ spec:
 apiVersion: telemetry.istio.io/v1alpha1
 kind: Telemetry
 metadata:
-  name: {{ include "execution.fullname" . }}-telemetry
+  name: {{ include "clearing.fullname" . }}-telemetry
   namespace: {{ .Release.Namespace }}
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "execution.name" . }}
+      app.kubernetes.io/name: {{ include "clearing.name" . }}
   tracing:
   - providers:
     - name: {{ .Values.observability.tracing.provider }}
@@ -203,12 +206,12 @@ spec:
 apiVersion: security.istio.io/v1beta1
 kind: AuthorizationPolicy
 metadata:
-  name: {{ include "execution.fullname" . }}-auth
+  name: {{ include "clearing.fullname" . }}-auth
   namespace: {{ .Release.Namespace }}
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "execution.name" . }}
+      app.kubernetes.io/name: {{ include "clearing.name" . }}
   action: ALLOW
   rules:
   # 规则 1: 业务接口必须持有合法 JWT
@@ -218,11 +221,11 @@ spec:
     to:
     - operation:
         methods: ["POST", "PUT", "DELETE"]
-        paths: ["/api/v1/executions*"]
+        paths: ["/api/v1/clearings*"]
   # 规则 2: 服务间调用 (mTLS)
   - from:
     - source:
-        principals: ["cluster.local/ns/{{ .Release.Namespace }}/sa/{{ include "execution.serviceAccountName" . }}"]
+        principals: ["cluster.local/ns/{{ .Release.Namespace }}/sa/{{ include "clearing.serviceAccountName" . }}"]
   # 规则 3: 放行健康检查与指标采集
   - to:
     - operation:

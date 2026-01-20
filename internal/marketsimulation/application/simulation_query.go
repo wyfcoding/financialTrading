@@ -8,17 +8,17 @@ import (
 
 // MarketSimulationQuery 处理所有市场模拟相关的查询操作（Queries）。
 type MarketSimulationQuery struct {
-	repo domain.SimulationScenarioRepository
+	repo domain.SimulationRepository
 }
 
 // NewMarketSimulationQuery 构造函数。
-func NewMarketSimulationQuery(repo domain.SimulationScenarioRepository) *MarketSimulationQuery {
+func NewMarketSimulationQuery(repo domain.SimulationRepository) *MarketSimulationQuery {
 	return &MarketSimulationQuery{
 		repo: repo,
 	}
 }
 
 // GetSimulationStatus 获取模拟状态
-func (q *MarketSimulationQuery) GetSimulationStatus(ctx context.Context, scenarioID string) (*domain.SimulationScenario, error) {
+func (q *MarketSimulationQuery) GetSimulationStatus(ctx context.Context, scenarioID string) (*domain.Simulation, error) {
 	return q.repo.Get(ctx, scenarioID)
 }

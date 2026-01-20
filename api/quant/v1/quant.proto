@@ -1,126 +1,108 @@
 syntax = "proto3";
 
-package api.quant.v1;
+package quant.v1;
 
 import "google/protobuf/timestamp.proto";
+import "quant/v1/error_reason.proto";
 
-option go_package = "github.com/wyfcoding/financialtrading/goapi/quant/v1;quantv1";
+option go_package = "github.com/wyfcoding/financialtrading/go-api/quant/v1;v1";
 
-// 量化研发与策略管理。
 service QuantService {
-  // 定义新策略。
-  rpc CreateStrategy(CreateStrategyRequest) returns (CreateStrategyResponse);
+  rpc GetSignal(GetSignalRequest) returns (GetSignalResponse) {};
+  
+  // Strategy Management
+  rpc CreateStrategy(CreateStrategyRequest) returns (CreateStrategyResponse) {};
+  rpc GetStrategy(GetStrategyRequest) returns (GetStrategyResponse) {};
 
-  // 获取策略详情。
-  rpc GetStrategy(GetStrategyRequest) returns (GetStrategyResponse);
-
-  // 启动回测作业。
-  rpc RunBacktest(RunBacktestRequest) returns (RunBacktestResponse);
-
-  // 查询回测结果报告。
-  rpc GetBacktestResult(GetBacktestResultRequest) returns (GetBacktestResultResponse);
+  // Backtesting
+  rpc RunBacktest(RunBacktestRequest) returns (RunBacktestResponse) {};
+  rpc GetBacktestResult(GetBacktestResultRequest) returns (GetBacktestResultResponse) {};
 }
 
-// 策略逻辑实体。
-message Strategy {
-  // 唯一 ID。
-  string id = 1;
-  // 业务标题。
-  string name = 2;
-  // 详细背景。
-  string description = 3;
-  // 配置/代码。
-  string script = 4;
-  // 运行状态。
-  string status = 5;
-  // 录入时刻。
-  google.protobuf.Timestamp created_at = 6;
-  // 修改时刻。
-  google.protobuf.Timestamp updated_at = 7;
+enum IndicatorType {
+  INDICATOR_UNSPECIFIED = 0;
+  SMA = 1;
+  RSI = 2;
+  EMA = 3;
 }
 
-// 回测报告详情。
-message BacktestResult {
-  // 报告 ID。
-  string id = 1;
-  // 策略标识。
-  string strategy_id = 2;
-  // 代码标识。
-  string symbol = 3;
-  // 起点。
-  google.protobuf.Timestamp start_time = 4;
-  // 终点。
-  google.protobuf.Timestamp end_time = 5;
-  // 综合回报。
-  double total_return = 6;
-  // 峰值回撤。
-  double max_drawdown = 7;
-  // 夏普比率。
-  double sharpe_ratio = 8;
-  // 笔数。
-  int32 total_trades = 9;
-  // 作业状态。
-  string status = 10;
-  // 生成日期。
-  google.protobuf.Timestamp created_at = 11;
+message GetSignalRequest {
+  string symbol = 1;
+  IndicatorType indicator = 2;
+  int32 period = 3;
 }
 
-// 创建载荷详情。
+message Signal {
+  string symbol = 1;
+  IndicatorType indicator = 2;
+  double value = 3;
+  int32 period = 4;
+}
+
+message GetSignalResponse {
+  Signal signal = 1;
+}
+
 message CreateStrategyRequest {
-  // 标题。
   string name = 1;
-  // 简介。
   string description = 2;
-  // 脚本载荷。
   string script = 3;
 }
 
-// 创建回执响应。
 message CreateStrategyResponse {
-  // 策略唯一 ID。
   string strategy_id = 1;
 }
 
-// 单查查询载荷。
 message GetStrategyRequest {
-  // 记录 ID。
   string id = 1;
 }
 
-// 单查详情响应。
+message Strategy {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string script = 4;
+  string status = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
 message GetStrategyResponse {
-  // 逻辑实体档案。
   Strategy strategy = 1;
 }
 
-// 回测请求参数。
 message RunBacktestRequest {
-  // 策略标识。
   string strategy_id = 1;
-  // 品种。
   string symbol = 2;
-  // 开始时刻。
   google.protobuf.Timestamp start_time = 3;
-  // 结束时刻。
   google.protobuf.Timestamp end_time = 4;
-  // 初始化本金。
   double initial_capital = 5;
 }
 
-// 回测启动响应。
 message RunBacktestResponse {
-  // 异步作业 ID。
   string backtest_id = 1;
+  string status = 2;
 }
 
-// 报告查询载荷。
 message GetBacktestResultRequest {
-  // 任务 ID。
   string id = 1;
 }
 
-// 报告详情响应。
+message BacktestResult {
+  string id = 1;
+  string strategy_id = 2;
+  string symbol = 3;
+  google.protobuf.Timestamp start_time = 4;
+  google.protobuf.Timestamp end_time = 5;
+  double total_return = 6;
+  double max_drawdown = 7;
+  double sharpe_ratio = 8;
+  int32 total_trades = 9;
+  int32 winning_trades = 10;
+  string status = 11;
+  google.protobuf.Timestamp created_at = 12;
+}
+
 message GetBacktestResultResponse {
-  // 报告实体档案。
   BacktestResult result = 1;
 }

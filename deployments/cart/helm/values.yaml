@@ -1,0 +1,21 @@
+image:
+  repository: financialtrading/cart
+  pullPolicy: IfNotPresent
+  tag: "latest"
+service:
+  type: ClusterIP
+  grpcPort: 9096
+  httpPort: 8086
+config:
+  server:
+    grpc_port: 9096
+    http_port: 8086
+  database:
+    driver: "mysql"
+    source: "root:root@tcp(mysql:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+  log:
+    level: "info"
+    format: "json"
+resources:
+  limits: { cpu: 100m, memory: 128Mi }
+  requests: { cpu: 100m, memory: 128Mi }

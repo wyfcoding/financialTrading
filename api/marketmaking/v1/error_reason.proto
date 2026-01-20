@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package api.marketmaking.v1;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/marketmaking/v1;marketmakingv1";
+
+enum ErrorReason {
+  // 缺省
+  UNSPECIFIED = 0;
+  // 策略未找到
+  STRATEGY_NOT_FOUND = 1;
+  // 无效的参数
+  INVALID_PARAMETER = 2;
+  // 策略已存在
+  STRATEGY_ALREADY_EXISTS = 3;
+}

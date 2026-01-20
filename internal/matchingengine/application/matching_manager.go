@@ -9,8 +9,8 @@ import (
 	"github.com/wyfcoding/pkg/algorithm/types"
 
 	"github.com/shopspring/decimal"
-	clearingv1 "github.com/wyfcoding/financialtrading/goapi/clearing/v1"
-	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
+	clearingv1 "github.com/wyfcoding/financialtrading/go-api/clearing/v1"
+	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/logging"
@@ -83,10 +83,10 @@ func (m *MatchingEngineManager) RecoverState(ctx context.Context) error {
 			// 通过 gRPC 调用 Order 服务获取活跃订单
 			// 仓库实现中已保证按 CreatedAt 正序排列，确保回放时的时间优先级 (FIFO) 正确
 			resp, err := m.orderCli.ListOrders(ctx, &orderv1.ListOrdersRequest{
-				Symbol:   m.engine.Symbol(),
-				Status:   status,
-				Page:     page,
-				PageSize: pageSize,
+				Symbol: m.engine.Symbol(),
+				Status: status,
+				Offset: (page - 1) * pageSize,
+				Limit:  pageSize,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to fetch orders from OrderService (status=%s, page=%d): %w", status, page, err)
@@ -98,13 +98,9 @@ func (m *MatchingEngineManager) RecoverState(ctx context.Context) error {
 
 			for _, o := range resp.Orders {
 				// 1. 解析价格与数量
-				price, err := decimal.NewFromString(o.Price)
-				if err != nil {
-					m.logger.Error("failed to parse order price during recovery", "order_id", o.OrderId, "price", o.Price)
-					continue
-				}
-				qty, _ := decimal.NewFromString(o.Quantity)
-				filled, _ := decimal.NewFromString(o.FilledQuantity)
+				price := decimal.NewFromFloat(o.Price)
+				qty := decimal.NewFromFloat(o.Quantity)
+				filled := decimal.NewFromFloat(o.FilledQuantity)
 
 				// 2. 计算剩余可撮合数量 (总数量 - 已成交数量)
 				remQty := qty.Sub(filled)
@@ -113,13 +109,13 @@ func (m *MatchingEngineManager) RecoverState(ctx context.Context) error {
 					// 3. 将订单无损注入内存订单簿
 					// 注意：此处调用 ReplayOrder，它只负责重建索引，不会触发成交或发送任何消息
 					m.engine.ReplayOrder(&types.Order{
-						OrderID:   o.OrderId,
+						OrderID:   o.Id,
 						Symbol:    o.Symbol,
 						Side:      types.Side(o.Side),
 						Price:     price,
 						Quantity:  remQty,
 						UserID:    o.UserId,
-						Timestamp: o.CreatedAt, // 使用原始下单时间戳，保证撮合队列的绝对公平
+						Timestamp: o.CreatedAt.AsTime().UnixNano(), // 使用原始下单时间戳，保证撮合队列的绝对公平
 					})
 					totalReplayed++
 				}

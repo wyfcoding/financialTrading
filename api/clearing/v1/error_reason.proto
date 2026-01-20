@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package api.clearing.v1;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/clearing/v1;clearingv1";
+
+enum ErrorReason {
+  // 缺省
+  UNSPECIFIED = 0;
+  // 结算单未找到
+  SETTLEMENT_NOT_FOUND = 1;
+  // 资金不足导致结算失败
+  INSUFFICIENT_FUNDS = 2;
+  // 状态无效
+  INVALID_STATUS = 3;
+}

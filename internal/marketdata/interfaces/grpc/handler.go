@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
-	pb "github.com/wyfcoding/financialtrading/goapi/marketdata/v1"
+	pb "github.com/wyfcoding/financialtrading/go-api/marketdata/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/application"
 	"github.com/wyfcoding/pkg/logging"
 	"google.golang.org/grpc/codes"

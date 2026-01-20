@@ -27,25 +27,25 @@ static_resources:
               domains: ["*"]
               routes:
               - match:
-                  prefix: "/api/v1/marketmaking"
+                  prefix: "/api/v1/clearing"
                 route:
-                  cluster: marketmaking
+                  cluster: clearing
           http_filters:
           - name: envoy.filters.http.router
             typed_config:
               "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
 
   clusters:
-  - name: marketmaking
+  - name: clearing
     connect_timeout: 0.25s
     type: LOGICAL_DNS
     lb_policy: ROUND_ROBIN
     load_assignment:
-      cluster_name: marketmaking
+      cluster_name: clearing
       endpoints:
       - lb_endpoints:
         - endpoint:
             address:
               socket_address:
-                address: marketmaking
+                address: clearing
                 port_value: 8080

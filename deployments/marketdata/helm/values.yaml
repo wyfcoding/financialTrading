@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: marketdata
+  repository: clearing
   pullPolicy: IfNotPresent
   tag: "latest"
 
@@ -47,7 +47,7 @@ ingress:
   className: ""
   annotations: {}
   hosts:
-    - host: marketdata.local
+    - host: clearing.local
       paths:
         - path: /
           pathType: ImplementationSpecific

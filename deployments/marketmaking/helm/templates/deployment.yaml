@@ -82,6 +82,14 @@ spec:
             periodSeconds: 5
           resources:
             {{- toYaml $.Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/configs/marketmaking/config.toml
+              subPath: config.toml
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "marketmaking.fullname" . }}-config
       {{- with $.Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

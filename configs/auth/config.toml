@@ -1,0 +1,11 @@
+[server]
+grpc_port = 9095
+http_port = 8085
+
+[database]
+driver = "mysql"
+source = "root:root@tcp(127.0.0.1:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+
+[log]
+level = "info"
+format = "json"

@@ -2,16 +2,16 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "marketmaking.fullname" . }}
+  name: {{ include "clearing.fullname" . }}
   labels:
-    {{- include "marketmaking.labels" . | nindent 4 }}
+    {{- include "clearing.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     # 注意：我们的 deployment 现在带后缀 -stable 和 -canary
     # HPA 通常针对稳定版进行扩展
-    name: {{ include "marketmaking.fullname" . }}-stable
+    name: {{ include "clearing.fullname" . }}-stable
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:

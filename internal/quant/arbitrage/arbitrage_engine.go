@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/shopspring/decimal"
-	marketdatav1 "github.com/wyfcoding/financialtrading/goapi/marketdata/v1"
+	marketdatav1 "github.com/wyfcoding/financialtrading/go-api/marketdata/v1"
 )
 
 // Opportunity 发现的套利机会

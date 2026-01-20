@@ -1,18 +1,18 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "marketdata.fullname" . }}-dashboard
+  name: {{ include "clearing.fullname" . }}-dashboard
   namespace: {{ .Release.Namespace }}
   labels:
     grafana_dashboard: "1" # Grafana Sidecar 会自动扫描此标签并导入
 spec:
-  marketdata-dashboard.json: |-
+  clearing-dashboard.json: |-
     {
       "annotations": { "list": [] },
       "editable": true,
       "panels": [
         {
-          "title": "Marketdata Service RED Metrics",
+          "title": "Clearing Service RED Metrics",
           "type": "row",
           "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
         },
@@ -21,7 +21,7 @@ spec:
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 },
           "targets": [
-            { "expr": "sum(rate(http_request_duration_seconds_count{service=\"{{ include \"marketdata.fullname\" . }}\"}[5m]))", "legendFormat": "Total QPS" }
+            { "expr": "sum(rate(http_request_duration_seconds_count{service=\"{{ include \"clearing.fullname\" . }}\"}[5m]))", "legendFormat": "Total QPS" }
           ]
         },
         {
@@ -29,7 +29,7 @@ spec:
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 8, "x": 8, "y": 1 },
           "targets": [
-            { "expr": "sum(rate(http_request_duration_seconds_count{service=\"{{ include \"marketdata.fullname\" . }}\", status=~\"5..\"}[5m]))", "legendFormat": "5xx" }
+            { "expr": "sum(rate(http_request_duration_seconds_count{service=\"{{ include \"clearing.fullname\" . }}\", status=~\"5..\"}[5m]))", "legendFormat": "5xx" }
           ]
         },
         {
@@ -37,20 +37,20 @@ spec:
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 8, "x": 16, "y": 1 },
           "targets": [
-            { "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service=\"{{ include \"marketdata.fullname\" . }}\"}[5m])))", "legendFormat": "P99" }
+            { "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service=\"{{ include \"clearing.fullname\" . }}\"}[5m])))", "legendFormat": "P99" }
           ]
         },
         {
-          "title": "Business: Marketdata Creation Status",
+          "title": "Business: Clearing Creation Status",
           "type": "row",
           "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 }
         },
         {
-          "title": "Marketdatas Created by Status",
+          "title": "Clearings Created by Status",
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
           "targets": [
-            { "expr": "sum by (status) (rate(marketdata_created_total{service=\"{{ include \"marketdata.fullname\" . }}\"}[5m]))", "legendFormat": "{{status}}" }
+            { "expr": "sum by (status) (rate(clearing_created_total{service=\"{{ include \"clearing.fullname\" . }}\"}[5m]))", "legendFormat": "{{status}}" }
           ]
         },
         {
@@ -58,15 +58,15 @@ spec:
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
           "targets": [
-            { "expr": "sum by (status) (rate(dtm_saga_status_total{service=\"{{ include \"marketdata.fullname\" . }}\"}[5m]))", "legendFormat": "{{status}}" }
+            { "expr": "sum by (status) (rate(dtm_saga_status_total{service=\"{{ include \"clearing.fullname\" . }}\"}[5m]))", "legendFormat": "{{status}}" }
           ]
         }
       ],
       "refresh": "10s",
       "schemaVersion": 36,
       "style": "dark",
-      "tags": ["ecommerce", "marketdata"],
+      "tags": ["ecommerce", "clearing"],
       "timezone": "",
-      "title": "Marketdata Service Dashboard",
-      "uid": "marketdata-service-std"
+      "title": "Clearing Service Dashboard",
+      "uid": "clearing-service-std"
     }

@@ -1,135 +1,144 @@
-// 包  gRPC 处理器实现
 package grpc
 
 import (
 	"context"
-	"log/slog"
+	"fmt"
 	"time"
 
-	pb "github.com/wyfcoding/financialtrading/goapi/order/v1"
+	"github.com/shopspring/decimal"
+	pb "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/application"
-	"github.com/wyfcoding/financialtrading/internal/order/domain"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// Handler gRPC 处理器
-// 负责处理与订单相关的 gRPC 请求
 type Handler struct {
-	// 嵌入 UnimplementedOrderServiceServer 以实现向前兼容
 	pb.UnimplementedOrderServiceServer
-	// 订单应用服务，处理业务逻辑
-	service *application.OrderService
+	app   *application.OrderManager
+	query *application.OrderQuery
 }
 
-// NewHandler 创建 gRPC 处理器实例
-// service: 注入的订单应用服务
-func NewHandler(service *application.OrderService) *Handler {
+func NewHandler(app *application.OrderManager, query *application.OrderQuery) *Handler {
 	return &Handler{
-		service: service,
+		app:   app,
+		query: query,
 	}
 }
 
-// CreateOrder 创建订单
-// 处理 gRPC CreateOrder 请求
 func (h *Handler) CreateOrder(ctx context.Context, req *pb.CreateOrderRequest) (*pb.CreateOrderResponse, error) {
-	start := time.Now()
-	slog.Info("gRPC CreateOrder received", "user_id", req.UserId, "symbol", req.Symbol, "side", req.Side, "price", req.Price, "quantity", req.Quantity)
-
-	// 调用应用服务创建订单
-	dto, err := h.service.CreateOrder(ctx, &application.CreateOrderRequest{
-		UserID:        req.UserId,
-		Symbol:        req.Symbol,
-		Side:          req.Side,
-		OrderType:     req.OrderType,
-		Price:         req.Price,
-		Quantity:      req.Quantity,
-		TimeInForce:   req.TimeInForce,
-		ClientOrderID: req.ClientOrderId,
-	})
-	if err != nil {
-		slog.Error("gRPC CreateOrder failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
-		return nil, status.Errorf(codes.Internal, "failed to create order: %v", err)
+	createReq := &application.CreateOrderRequest{
+		UserID:    req.UserId,
+		Symbol:    req.Symbol,
+		Side:      "buy",   // default
+		OrderType: "limit", // default
+		Price:     fmt.Sprintf("%f", req.Price),
+		Quantity:  fmt.Sprintf("%f", req.Quantity),
 	}
 
-	slog.Info("gRPC CreateOrder successful", "order_id", dto.OrderID, "user_id", req.UserId, "duration", time.Since(start))
-	// 返回创建成功的订单
+	if req.Side == pb.OrderSide_SELL {
+		createReq.Side = "sell"
+	}
+	if req.Type == pb.OrderType_MARKET {
+		createReq.OrderType = "market"
+	}
+
+	dto, err := h.app.CreateOrder(ctx, createReq)
+	if err != nil {
+		return nil, err
+	}
+
+	var status pb.OrderStatus
+	switch dto.Status {
+	case "pending":
+		status = pb.OrderStatus_PENDING
+	case "validated":
+		status = pb.OrderStatus_VALIDATED
+	case "filled":
+		status = pb.OrderStatus_FILLED
+	case "partially_filled":
+		status = pb.OrderStatus_PARTIALLY_FILLED
+	case "cancelled":
+		status = pb.OrderStatus_CANCELLED
+	default:
+		status = pb.OrderStatus_STATUS_UNSPECIFIED
+	}
+
 	return &pb.CreateOrderResponse{
-		Order: h.toProtoOrder(dto),
+		OrderId: dto.OrderID,
+		Status:  status,
 	}, nil
 }
 
-// CancelOrder 取消订单
-// 处理 gRPC CancelOrder 请求
 func (h *Handler) CancelOrder(ctx context.Context, req *pb.CancelOrderRequest) (*pb.CancelOrderResponse, error) {
-	start := time.Now()
-	slog.Info("gRPC CancelOrder received", "order_id", req.OrderId, "user_id", req.UserId)
-
-	// 调用应用服务取消订单
-	dto, err := h.service.CancelOrder(ctx, req.OrderId, req.UserId)
+	_, err := h.app.CancelOrder(ctx, req.OrderId, req.UserId)
 	if err != nil {
-		slog.Error("gRPC CancelOrder failed", "order_id", req.OrderId, "error", err, "duration", time.Since(start))
-		return nil, status.Errorf(codes.Internal, "failed to cancel order: %v", err)
+		return &pb.CancelOrderResponse{Success: false}, err
 	}
-
-	slog.Info("gRPC CancelOrder successful", "order_id", req.OrderId, "duration", time.Since(start))
-	return &pb.CancelOrderResponse{
-		Order: h.toProtoOrder(dto),
-	}, nil
+	return &pb.CancelOrderResponse{Success: true}, nil
 }
 
-// GetOrder 获取订单详情
-// 处理 gRPC GetOrder 请求
 func (h *Handler) GetOrder(ctx context.Context, req *pb.GetOrderRequest) (*pb.GetOrderResponse, error) {
-	dto, err := h.service.GetOrder(ctx, req.OrderId, req.UserId)
+	dto, err := h.query.GetOrder(ctx, req.OrderId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get order: %v", err)
+		return nil, err
 	}
-
+	if dto == nil {
+		return nil, fmt.Errorf("order not found")
+	}
 	return &pb.GetOrderResponse{
 		Order: h.toProtoOrder(dto),
 	}, nil
 }
 
-// ListOrders 分页检索订单列表
 func (h *Handler) ListOrders(ctx context.Context, req *pb.ListOrdersRequest) (*pb.ListOrdersResponse, error) {
-	limit := int(req.PageSize)
-	if limit <= 0 {
-		limit = 100 // 恢复模式下可能需要更大量拉取
-	}
-	offset := max(int((req.Page-1)*req.PageSize), 0)
-
-	dtos, total, err := h.service.ListOrders(ctx, req.UserId, req.Symbol, domain.OrderStatus(req.Status), limit, offset)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to list orders: %v", err)
-	}
-
-	orders := make([]*pb.Order, 0, len(dtos))
-	for _, dto := range dtos {
-		orders = append(orders, h.toProtoOrder(dto))
-	}
-
-	return &pb.ListOrdersResponse{
-		Orders:   orders,
-		Total:    total,
-		Page:     req.Page,
-		PageSize: int32(limit),
-	}, nil
+	return &pb.ListOrdersResponse{}, nil
 }
 
-func (h *Handler) toProtoOrder(dto *application.OrderDTO) *pb.Order {
+func (h *Handler) toProtoOrder(d *application.OrderDTO) *pb.Order {
+	price, _ := decimal.NewFromString(d.Price)
+	qty, _ := decimal.NewFromString(d.Quantity)
+	filled, _ := decimal.NewFromString(d.FilledQuantity)
+
+	var side pb.OrderSide
+	if d.Side == "buy" {
+		side = pb.OrderSide_BUY
+	} else {
+		side = pb.OrderSide_SELL
+	}
+
+	var oType pb.OrderType
+	if d.OrderType == "limit" {
+		oType = pb.OrderType_LIMIT
+	} else {
+		oType = pb.OrderType_MARKET
+	}
+
+	var status pb.OrderStatus
+	switch d.Status {
+	case "pending":
+		status = pb.OrderStatus_PENDING
+	case "validated":
+		status = pb.OrderStatus_VALIDATED
+	case "filled":
+		status = pb.OrderStatus_FILLED
+	case "partially_filled":
+		status = pb.OrderStatus_PARTIALLY_FILLED
+	case "cancelled":
+		status = pb.OrderStatus_CANCELLED
+	default:
+		status = pb.OrderStatus_STATUS_UNSPECIFIED
+	}
+
 	return &pb.Order{
-		OrderId:        dto.OrderID,
-		UserId:         dto.UserID,
-		Symbol:         dto.Symbol,
-		Side:           dto.Side,
-		OrderType:      dto.OrderType,
-		Price:          dto.Price,
-		Quantity:       dto.Quantity,
-		FilledQuantity: dto.FilledQuantity,
-		Status:         dto.Status,
-		TimeInForce:    dto.TimeInForce,
-		CreatedAt:      dto.CreatedAt,
-		UpdatedAt:      dto.UpdatedAt,
+		Id:             d.OrderID,
+		UserId:         d.UserID,
+		Symbol:         d.Symbol,
+		Side:           side,
+		Type:           oType,
+		Price:          price.InexactFloat64(),
+		Quantity:       qty.InexactFloat64(),
+		FilledQuantity: filled.InexactFloat64(),
+		Status:         status,
+		CreatedAt:      timestamppb.New(time.Unix(d.CreatedAt, 0)),
+		UpdatedAt:      timestamppb.New(time.Unix(d.UpdatedAt, 0)),
 	}
 }

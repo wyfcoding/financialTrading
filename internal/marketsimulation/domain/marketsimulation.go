@@ -2,8 +2,11 @@
 package domain
 
 import (
+	"context"
+	"fmt"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -24,8 +27,8 @@ const (
 	SimulationStatusStopped SimulationStatus = "STOPPED"
 )
 
-// SimulationScenario 模拟场景实体
-type SimulationScenario struct {
+// Simulation 模拟场景实体
+type Simulation struct {
 	gorm.Model
 	// ScenarioID 场景唯一标识
 	ScenarioID string `gorm:"column:scenario_id;type:varchar(32);uniqueIndex;not null" json:"scenario_id"`
@@ -45,6 +48,49 @@ type SimulationScenario struct {
 	StartTime time.Time `gorm:"column:start_time;type:datetime" json:"start_time"`
 	// EndTime 结束时间
 	EndTime time.Time `gorm:"column:end_time;type:datetime" json:"end_time"`
+
+	// Simulation Parameters (First Class Fields)
+	InitialPrice float64 `gorm:"column:initial_price;type:decimal(20,8)" json:"initial_price"`
+	Volatility   float64 `gorm:"column:volatility;type:decimal(10,4)" json:"volatility"`
+	Drift        float64 `gorm:"column:drift;type:decimal(10,4)" json:"drift"`
+	IntervalMs   int64   `gorm:"column:interval_ms;type:bigint" json:"interval_ms"`
+}
+
+func NewSimulation(name, symbol string, initialPrice, volatility, drift float64, intervalMs int64) *Simulation {
+	return &Simulation{
+		ScenarioID:   fmt.Sprintf("SIM-%d", time.Now().UnixNano()), // Simple ID generation
+		Name:         name,
+		Symbol:       symbol,
+		Type:         SimulationTypeRandomWalk,
+		Status:       SimulationStatusStopped,
+		InitialPrice: initialPrice,
+		Volatility:   volatility,
+		Drift:        drift,
+		IntervalMs:   intervalMs,
+	}
+}
+
+func (s *Simulation) Start() error {
+	s.Status = SimulationStatusRunning
+	s.StartTime = time.Now()
+	return nil
+}
+
+func (s *Simulation) Stop() {
+	s.Status = SimulationStatusStopped
+	s.EndTime = time.Now()
+}
+
+// SimulationRepository 模拟仓储接口
+type SimulationRepository interface {
+	Save(ctx context.Context, s *Simulation) error
+	Get(ctx context.Context, scenarioID string) (*Simulation, error)
+	List(ctx context.Context, limit int) ([]*Simulation, error)
+}
+
+// MarketDataPublisher 行情发布接口
+type MarketDataPublisher interface {
+	Publish(ctx context.Context, symbol string, price decimal.Decimal) error
 }
 
 // End of domain file

@@ -2,88 +2,85 @@ package http
 
 import (
 	"net/http"
-	"strconv"
-
-	"github.com/wyfcoding/pkg/response"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
+	executionv1 "github.com/wyfcoding/financialtrading/go-api/execution/v1"
 	"github.com/wyfcoding/financialtrading/internal/execution/application"
-	"github.com/wyfcoding/pkg/logging"
 )
 
-// HTTP 处理器
-// 负责处理与订单执行相关的 HTTP 请求
 type ExecutionHandler struct {
-	executionService *application.ExecutionService // 执行应用服务
+	app   *application.ExecutionApplicationService
+	query *application.ExecutionQueryService
 }
 
-// 创建 HTTP 处理器实例
-// executionService: 注入的执行应用服务
-func NewExecutionHandler(executionService *application.ExecutionService) *ExecutionHandler {
-	return &ExecutionHandler{
-		executionService: executionService,
-	}
+func NewExecutionHandler(app *application.ExecutionApplicationService, query *application.ExecutionQueryService) *ExecutionHandler {
+	return &ExecutionHandler{app: app, query: query}
 }
 
-// 注册路由
-// 将处理器方法绑定到 Gin 路由引擎
-func (h *ExecutionHandler) RegisterRoutes(router *gin.RouterGroup) {
-	api := router.Group("/api/v1/execution")
+func (h *ExecutionHandler) RegisterRoutes(r *gin.RouterGroup) {
+	v1 := r.Group("/v1/execution")
 	{
-		api.POST("/orders", h.ExecuteOrder)        // 执行订单
-		api.GET("/history", h.GetExecutionHistory) // 获取执行历史
+		v1.POST("/order", h.ExecuteOrder)
+		v1.POST("/algo", h.SubmitAlgoOrder)
 	}
 }
 
-// ExecuteOrder 执行订单
 func (h *ExecutionHandler) ExecuteOrder(c *gin.Context) {
-	var req application.ExecuteOrderRequest
+	var req executionv1.ExecuteOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	dto, err := h.executionService.ExecuteOrder(c.Request.Context(), &req)
+	price, _ := decimal.NewFromString(req.Price)
+	qty, _ := decimal.NewFromString(req.Quantity)
+
+	cmd := application.ExecuteOrderCommand{
+		OrderID:  req.OrderId,
+		UserID:   req.UserId,
+		Symbol:   req.Symbol,
+		Side:     req.Side,
+		Price:    price,
+		Quantity: qty,
+	}
+
+	dto, err := h.app.ExecuteOrder(c.Request.Context(), cmd)
 	if err != nil {
-		logging.Error(c.Request.Context(), "Failed to execute order", "error", err)
-		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	response.Success(c, dto)
+	c.JSON(http.StatusOK, dto)
 }
 
-// GetExecutionHistory 获取执行历史
-func (h *ExecutionHandler) GetExecutionHistory(c *gin.Context) {
-	userID := c.Query("user_id")
-	if userID == "" {
-		response.ErrorWithStatus(c, http.StatusBadRequest, "user_id is required", "")
+func (h *ExecutionHandler) SubmitAlgoOrder(c *gin.Context) {
+	var req executionv1.SubmitAlgoOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	limitStr := c.DefaultQuery("limit", "20")
-	limit, err := strconv.Atoi(limitStr)
+	totalQty, _ := decimal.NewFromString(req.TotalQuantity)
+
+	cmd := application.SubmitAlgoCommand{
+		UserID:    req.UserId,
+		Symbol:    req.Symbol,
+		Side:      req.Side,
+		TotalQty:  totalQty,
+		AlgoType:  req.AlgoType,
+		StartTime: req.StartTime,
+		EndTime:   req.EndTime,
+		Params: map[string]string{
+			"participation_rate": req.ParticipationRate,
+		},
+	}
+
+	algoID, err := h.app.SubmitAlgoOrder(c.Request.Context(), cmd)
 	if err != nil {
-		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid limit", "")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	offsetStr := c.DefaultQuery("offset", "0")
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid offset", "")
-		return
-	}
-
-	dtos, total, err := h.executionService.GetExecutionHistory(c.Request.Context(), userID, limit, offset)
-	if err != nil {
-		logging.Error(c.Request.Context(), "Failed to get execution history", "user_id", userID, "error", err)
-		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
-		return
-	}
-
-	response.Success(c, gin.H{
-		"data":  dtos,
-		"total": total,
-	})
+	c.JSON(http.StatusOK, gin.H{"algo_id": algoID, "status": "ACCEPTED"})
 }

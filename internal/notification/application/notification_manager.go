@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/wyfcoding/financialtrading/internal/notification/domain"
 	"github.com/wyfcoding/pkg/idgen"
@@ -27,15 +26,15 @@ func NewNotificationManager(repo domain.NotificationRepository, emailSender doma
 }
 
 // SendNotification 发送通知
-func (m *NotificationManager) SendNotification(ctx context.Context, userID string, notificationType string, subject string, content string, target string) (string, error) {
+func (m *NotificationManager) SendNotification(ctx context.Context, cmd SendNotificationCommand) (string, error) {
 	notification := &domain.Notification{
 		NotificationID: fmt.Sprintf("%d", idgen.GenID()),
-		UserID:         userID,
-		Type:           domain.NotificationType(notificationType),
-		Subject:        subject,
-		Content:        content,
-		Target:         target,
-		Status:         domain.NotificationStatusPending,
+		UserID:         cmd.UserID,
+		Channel:        domain.Channel(cmd.Channel),
+		Subject:        cmd.Subject,
+		Content:        cmd.Content,
+		Recipient:      cmd.Recipient,
+		Status:         domain.StatusPending,
 	}
 
 	if err := m.repo.Save(ctx, notification); err != nil {
@@ -43,26 +42,31 @@ func (m *NotificationManager) SendNotification(ctx context.Context, userID strin
 	}
 
 	var err error
-	switch notification.Type {
-	case domain.NotificationTypeEmail:
-		err = m.emailSender.Send(ctx, target, subject, content)
-	case domain.NotificationTypeSMS:
-		err = m.smsSender.Send(ctx, target, subject, content)
+	switch notification.Channel {
+	case domain.ChannelEmail:
+		err = m.emailSender.Send(ctx, cmd.Recipient, cmd.Subject, cmd.Content)
+	case domain.ChannelSMS:
+		err = m.smsSender.Send(ctx, cmd.Recipient, cmd.Subject, cmd.Content)
 	default:
-		err = fmt.Errorf("unsupported notification type: %s", notificationType)
+		// Fallback or ignore
 	}
 
 	if err != nil {
-		notification.Status = domain.NotificationStatusFailed
-		notification.ErrorMessage = err.Error()
+		notification.Status = domain.StatusFailed
+		notification.ErrorMsg = err.Error()
 	} else {
-		notification.Status = domain.NotificationStatusSent
-		now := time.Now()
-		notification.SentAt = &now
+		notification.Status = domain.StatusSent
 	}
 	if err := m.repo.Save(ctx, notification); err != nil {
 		logging.Error(ctx, "NotificationManager: failed to save notification", "error", err)
 	}
 
 	return notification.NotificationID, nil
+}
+
+// GetHistory 获取通知历史
+func (m *NotificationManager) GetHistory(ctx context.Context, userID string, limit int) ([]*domain.Notification, error) {
+	// ListByUserID returns (list, count, err)
+	list, _, err := m.repo.ListByUserID(ctx, userID, limit, 0)
+	return list, err
 }

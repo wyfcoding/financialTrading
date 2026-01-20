@@ -1,0 +1,28 @@
+image:
+  repository: financialtrading/admin
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  grpcPort: 9094
+  httpPort: 8084
+
+config:
+  server:
+    grpc_port: 9094
+    http_port: 8084
+  database:
+    driver: "mysql"
+    source: "root:root@tcp(mysql:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+  log:
+    level: "info"
+    format: "json"
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi

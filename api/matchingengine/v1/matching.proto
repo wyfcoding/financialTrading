@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package api.matchingengine.v1;
 
-option go_package = "github.com/wyfcoding/financialtrading/goapi/matchingengine/v1;matchingenginev1";
+option go_package = "github.com/wyfcoding/financialtrading/go-api/matchingengine/v1;v1";
 
 // 撮合核心引擎服务。
 service MatchingEngineService {

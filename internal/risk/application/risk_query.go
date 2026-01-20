@@ -36,7 +36,7 @@ func (q *RiskQuery) GetRiskMetrics(ctx context.Context, userID string) (*domain.
 
 // CheckRiskLimit 检查风险限额
 func (q *RiskQuery) CheckRiskLimit(ctx context.Context, userID, limitType string) (*domain.RiskLimit, error) {
-	return q.limitRepo.GetByUser(ctx, userID, limitType)
+	return q.limitRepo.GetByUserIDAndType(ctx, userID, limitType)
 }
 
 // GetRiskAlerts 获取风险告警

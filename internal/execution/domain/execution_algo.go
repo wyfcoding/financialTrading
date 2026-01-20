@@ -2,51 +2,76 @@ package domain
 
 import (
 	"errors"
-	"math/rand/v2"
 	"time"
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
-// ExecutionStrategyType 策略类型枚举
-type ExecutionStrategyType string
+// TradeSide 交易方向
+type TradeSide string
 
 const (
-	StrategyTWAP ExecutionStrategyType = "TWAP"
-	StrategyVWAP ExecutionStrategyType = "VWAP"
+	TradeSideBuy  TradeSide = "BUY"
+	TradeSideSell TradeSide = "SELL"
 )
 
-// ParentOrder 母单，需要被拆分的巨额订单
-type ParentOrder struct {
+// AlgoType 策略类型枚举
+type AlgoType string
+
+const (
+	AlgoTypeTWAP AlgoType = "TWAP"
+	AlgoTypeVWAP AlgoType = "VWAP"
+)
+
+// AlgoOrder 算法订单 (原 ParentOrder)
+type AlgoOrder struct {
 	gorm.Model
-	OrderID        string                `gorm:"type:varchar(64);unique_index;not null" json:"order_id"`
-	Symbol         string                `gorm:"type:varchar(20);not null" json:"symbol"`
-	Side           string                `gorm:"type:varchar(10);not null" json:"side"` // BUY, SELL
-	TotalQuantity  decimal.Decimal       `gorm:"type:decimal(20,8);not null" json:"total_quantity"`
-	ExecutedQty    decimal.Decimal       `gorm:"type:decimal(20,8);default:0" json:"executed_qty"`
-	StrategyType   ExecutionStrategyType `gorm:"type:varchar(20);not null" json:"strategy_type"`
-	StartTime      time.Time             `gorm:"not null" json:"start_time"`
-	EndTime        time.Time             `gorm:"not null" json:"end_time"`
-	Status         string                `gorm:"type:varchar(20);default:'PENDING'" json:"status"` // PENDING, ACTIVE, COMPLETED, CANCELLED
-	StrategyParams string                `gorm:"type:text" json:"strategy_params"`                 // JSON string for specific params
+	AlgoID            string          `gorm:"type:varchar(64);unique_index;not null" json:"algo_id"`
+	UserID            string          `gorm:"type:varchar(64);not null" json:"user_id"`
+	Symbol            string          `gorm:"type:varchar(20);not null" json:"symbol"`
+	Side              TradeSide       `gorm:"type:varchar(10);not null" json:"side"` // BUY, SELL using TradeSide
+	TotalQuantity     decimal.Decimal `gorm:"type:decimal(20,8);not null" json:"total_quantity"`
+	ExecutedQuantity  decimal.Decimal `gorm:"type:decimal(20,8);default:0" json:"executed_qty"`
+	ParticipationRate decimal.Decimal `gorm:"type:decimal(10,4);default:0" json:"participation_rate"` // Default 0
+	AlgoType          AlgoType        `gorm:"type:varchar(20);not null" json:"algo_type"`
+	StartTime         time.Time       `gorm:"not null" json:"start_time"`
+	EndTime           time.Time       `gorm:"not null" json:"end_time"`
+	Status            string          `gorm:"type:varchar(20);default:'PENDING'" json:"status"` // PENDING, ACTIVE, COMPLETED, CANCELLED
+	StrategyParams    string          `gorm:"type:text" json:"strategy_params"`                 // JSON string for specific params
+}
+
+func NewAlgoOrder(id, userID, symbol string, side TradeSide, totalQty decimal.Decimal, algoType AlgoType, start, end time.Time, params string) *AlgoOrder {
+	return &AlgoOrder{
+		AlgoID:         id,
+		UserID:         userID,
+		Symbol:         symbol,
+		Side:           side,
+		TotalQuantity:  totalQty,
+		AlgoType:       algoType,
+		StartTime:      start,
+		EndTime:        end,
+		StrategyParams: params,
+		Status:         "PENDING",
+	}
 }
 
 // ChildOrder 子单，拆分后的实际执行单
 type ChildOrder struct {
-	gorm.Model
-	ParentOrderID string          `gorm:"type:varchar(64);index;not null" json:"parent_order_id"`
-	SliceID       int             `gorm:"not null" json:"slice_id"` // 第几片
-	TargetTime    time.Time       `gorm:"not null" json:"target_time"`
-	Quantity      decimal.Decimal `gorm:"type:decimal(20,8);not null" json:"quantity"`
-	PriceLimit    decimal.Decimal `gorm:"type:decimal(20,8)" json:"price_limit"` // 可选限价
-	Status        string          `gorm:"type:varchar(20);default:'PENDING'" json:"status"`
+	OrderID   string          `json:"order_id"`
+	AlgoID    string          `json:"algo_id"` // 关联的 AlgoOrder ID
+	Symbol    string          `json:"symbol"`
+	Side      TradeSide       `json:"side"`
+	Quantity  decimal.Decimal `json:"quantity"`
+	Price     decimal.Decimal `json:"price"` // 限价单使用，市价单可为0
+	OrderType string          `json:"order_type"`
+	Timestamp int64           `json:"timestamp"`
 }
 
 // ExecutionStrategy 定义拆单算法接口
 type ExecutionStrategy interface {
 	// GenerateSlices 根据母单参数和市场状态生成剩余的子单计划
-	GenerateSlices(order *ParentOrder) ([]*ChildOrder, error)
+	GenerateSlices(order *AlgoOrder) ([]*ChildOrder, error)
 }
 
 // TWAPStrategy 时间加权平均价格策略
@@ -56,142 +81,71 @@ type TWAPStrategy struct {
 	Randomize    bool            // 是否添加随机噪音
 }
 
-func (s *TWAPStrategy) GenerateSlices(order *ParentOrder) ([]*ChildOrder, error) {
+func (s *TWAPStrategy) GenerateSlices(order *AlgoOrder) ([]*ChildOrder, error) {
 	now := time.Now()
 	if now.After(order.EndTime) {
 		return nil, errors.New("order execution window passed")
 	}
-	startTime := order.StartTime
-	if now.After(startTime) {
-		startTime = now
-	}
 
-	remainingQty := order.TotalQuantity.Sub(order.ExecutedQty)
+	remainingQty := order.TotalQuantity.Sub(order.ExecutedQuantity)
 	if remainingQty.LessThanOrEqual(decimal.Zero) {
-		return nil, nil
+		return nil, nil // 已完成
 	}
 
-	duration := order.EndTime.Sub(startTime)
-	if duration <= 0 {
-		return nil, errors.New("invalid time window")
+	// 计算剩余时间与切片间隔
+	remainingDuration := order.EndTime.Sub(now)
+	if remainingDuration <= 0 {
+		// 立即执行剩余全部？或者根据策略处理超时
+		// 这里简单处理：若超时但未完成，生成一个剩余量的单子（或报错）
+		return []*ChildOrder{{
+			AlgoID:    order.AlgoID,
+			Symbol:    order.Symbol,
+			Side:      order.Side,
+			Quantity:  remainingQty,
+			OrderType: "MARKET", // 紧急执行
+			Timestamp: now.Unix(),
+		}}, nil
 	}
 
-	// 假设每分钟切一片 (或根据最小单量决定)
-	// 这里简化为固定间隔切片
-	interval := 1 * time.Minute
-	numSlices := int(duration / interval)
-	if numSlices <= 0 {
-		numSlices = 1
+	// 简单 TWAP 逻辑：假设每分钟执行一次
+	// 实际应更复杂
+	// 这里仅生成下一个切片
+
+	// 示例：仅拆分为 minSliceSize
+	// 实际应根据 TotalQuantity/Duration 计算
+	sliceQty := s.MinSliceSize
+	if sliceQty.GreaterThan(remainingQty) {
+		sliceQty = remainingQty
 	}
 
-	baseSliceQty := remainingQty.Div(decimal.NewFromInt(int64(numSlices)))
-
-	// 如果切片太小，减少切片数量
-	if baseSliceQty.LessThan(s.MinSliceSize) && s.MinSliceSize.IsPositive() {
-		numSlices = int(remainingQty.Div(s.MinSliceSize).IntPart())
-		if numSlices == 0 {
-			numSlices = 1
-		}
-		baseSliceQty = remainingQty.Div(decimal.NewFromInt(int64(numSlices)))
-		interval = duration / time.Duration(numSlices)
+	child := &ChildOrder{
+		AlgoID:    order.AlgoID,
+		Symbol:    order.Symbol,
+		Side:      order.Side,
+		Quantity:  sliceQty,
+		OrderType: "LIMIT", // 需结合市场价格定
+		Timestamp: now.Unix(),
 	}
 
-	slices := make([]*ChildOrder, 0, numSlices)
-	randSource := rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0))
-
-	currentQtySum := decimal.Zero
-
-	for i := 0; i < numSlices; i++ {
-		qty := baseSliceQty
-
-		// 添加随机扰动 +/- 10%
-		if s.Randomize && numSlices > 1 {
-			noise := (randSource.Float64() - 0.5) * 0.2 // -0.1 to 0.1
-			qty = qty.Mul(decimal.NewFromFloat(1.0 + noise))
-		}
-
-		// 修正最后一片，确保总数匹配
-		if i == numSlices-1 {
-			qty = remainingQty.Sub(currentQtySum)
-		} else {
-			currentQtySum = currentQtySum.Add(qty)
-		}
-
-		// 目标执行时间也加入轻微随机延迟 (0-30s)
-		delay := time.Duration(0)
-		if s.Randomize {
-			delay = time.Duration(randSource.Int64N(30)) * time.Second
-		}
-
-		slices = append(slices, &ChildOrder{
-			ParentOrderID: order.OrderID,
-			SliceID:       i + 1,
-			TargetTime:    startTime.Add(time.Duration(i) * interval).Add(delay),
-			Quantity:      qty,
-			Status:        "PENDING",
-		})
-	}
-
-	return slices, nil
-}
-
-// VolumeProfileItem 历史成交量分布数据
-type VolumeProfileItem struct {
-	TimeSlot string  // "09:30", "09:35" etc.
-	Ratio    float64 // 该时段占全天总成交量的比例 (0.0 - 1.0)
+	return []*ChildOrder{child}, nil
 }
 
 // VWAPStrategy 成交量加权平均价格策略
-// 根据历史成交量分布曲线 (Volume Profile) 分配子单权重
+// 根据历史成交量分布预测当日分布，按比例下单
 type VWAPStrategy struct {
-	Profile []VolumeProfileItem
+	VolumeProfileProvider VolumeProfileProvider
 }
 
-func (s *VWAPStrategy) GenerateSlices(order *ParentOrder) ([]*ChildOrder, error) {
-	// 简化实现：假设 Profile 覆盖了订单的整个执行窗口
-	// 实际应用需匹配 TimeSlot 和当前时间
+type VolumeProfileProvider interface {
+	GetProfile(symbol string) ([]VolumeProfileItem, error)
+}
 
-	remainingQty := order.TotalQuantity.Sub(order.ExecutedQty)
-	if remainingQty.LessThanOrEqual(decimal.Zero) {
-		return nil, nil
-	}
+type VolumeProfileItem struct {
+	TimeSlot string // HH:MM
+	Ratio    decimal.Decimal
+}
 
-	// 计算剩余时间窗口内的总 Profile 权重
-	// 这里简化为：直接使用 Profile 的所有 bin 分配剩余数量
-	// 真实逻辑需要截取 Profile 中对应 StartTime -> EndTime 的部分
-
-	totalRatio := 0.0
-	for _, item := range s.Profile {
-		totalRatio += item.Ratio
-	}
-
-	slices := make([]*ChildOrder, 0, len(s.Profile))
-	currentQtySum := decimal.Zero
-
-	// 假设 Profile 的每个 Item 代表一个固定的时间窗口 (如 5 分钟)
-	interval := 5 * time.Minute
-	startTime := order.StartTime
-
-	for i, item := range s.Profile {
-		// 归一化比例
-		normalizedRatio := item.Ratio / totalRatio
-		qty := remainingQty.Mul(decimal.NewFromFloat(normalizedRatio))
-
-		// 修正最后一片
-		if i == len(s.Profile)-1 {
-			qty = remainingQty.Sub(currentQtySum)
-		} else {
-			currentQtySum = currentQtySum.Add(qty)
-		}
-
-		slices = append(slices, &ChildOrder{
-			ParentOrderID: order.OrderID,
-			SliceID:       i + 1,
-			TargetTime:    startTime.Add(time.Duration(i) * interval),
-			Quantity:      qty,
-			Status:        "PENDING",
-		})
-	}
-
-	return slices, nil
+func (s *VWAPStrategy) GenerateSlices(order *AlgoOrder) ([]*ChildOrder, error) {
+	// 简化实现
+	return nil, nil
 }

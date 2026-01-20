@@ -7,8 +7,8 @@ import (
 
 	"github.com/wyfcoding/pkg/algorithm/types"
 
-	clearingv1 "github.com/wyfcoding/financialtrading/goapi/clearing/v1"
-	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
+	clearingv1 "github.com/wyfcoding/financialtrading/go-api/clearing/v1"
+	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
 	"github.com/wyfcoding/pkg/messagequeue/outbox"
 	"gorm.io/gorm"

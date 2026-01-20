@@ -1,4 +1,3 @@
-// 包 监控分析服务的领域模型
 package domain
 
 import (
@@ -23,17 +22,31 @@ type Metric struct {
 }
 
 // SystemHealth 系统健康状态实体
-// 记录各个微服务的健康检查结果
 type SystemHealth struct {
 	gorm.Model
-	// ServiceName 服务名称
-	ServiceName string `gorm:"column:service_name;type:varchar(100);index;not null"`
-	// Status 状态: UP(正常), DOWN(停止), DEGRADED(降级)
-	Status string `gorm:"column:status;type:varchar(20);not null"`
-	// Message 详细消息
-	Message string `gorm:"column:message;type:text"`
+	ServiceName string  `gorm:"column:service_name;type:varchar(50);not null;index"`
+	Status      string  `gorm:"column:status;type:varchar(20);not null"` // UP, DOWN, DEGRADED
+	CPUUsage    float64 `gorm:"column:cpu_usage;type:decimal(5,2)"`
+	MemoryUsage float64 `gorm:"column:memory_usage;type:decimal(5,2)"`
+	Message     string  `gorm:"column:message;type:text"`
 	// LastChecked 上次检查时间
 	LastChecked int64 `gorm:"column:last_checked;type:bigint;not null"`
+}
+
+// Alert 告警实体
+type Alert struct {
+	gorm.Model
+	AlertID     string `gorm:"column:alert_id;type:varchar(32);uniqueIndex;not null"`
+	RuleName    string `gorm:"column:rule_name;type:varchar(100);not null"`
+	Severity    string `gorm:"column:severity;type:varchar(20);not null"` // INFO, WARNING, CRITICAL
+	Message     string `gorm:"column:message;type:text;not null"`
+	Source      string `gorm:"column:source;type:varchar(50)"`
+	GeneratedAt int64  `gorm:"column:generated_at;type:bigint;not null"`
+	Status      string `gorm:"column:status;type:varchar(20);default:'NEW'"` // NEW, ACKNOWLEDGED, RESOLVED
+}
+
+func (a *Alert) Timestamp() int64 {
+	return a.GeneratedAt
 }
 
 // End of domain file

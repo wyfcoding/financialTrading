@@ -1,12 +1,12 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: {{ include "marketmaking.fullname" . }}-request-id
+  name: {{ include "clearing.fullname" . }}-request-id
   namespace: {{ .Release.Namespace }}
 spec:
   workloadSelector:
     labels:
-      app.kubernetes.io/name: {{ include "marketmaking.name" . }}
+      app.kubernetes.io/name: {{ include "clearing.name" . }}
   configPatches:
   - applyTo: HTTP_FILTER
     match:

@@ -50,24 +50,31 @@ func (q *PositionQuery) GetPosition(ctx context.Context, positionID string) (*Po
 }
 
 func mapToPositionDTO(position *domain.Position) *PositionDTO {
-	var closedAt *int64
-	if position.ClosedAt != nil {
-		ts := position.ClosedAt.Unix()
-		closedAt = &ts
+	// Adapt new domain model to DTO
+	// Position now uses float64 and implicit side via quantity sign (if applicable, or just qty > 0)
+	// Missing fields: ClosedAt, Side, CurrentPrice (removed from domain).
+	// We infer Side.
+
+	side := "buy" // Default long
+	if position.Quantity < 0 {
+		side = "sell" // short
 	}
 
+	// Status? Position struct doesn't have it. Assume "OPEN" if returned by Repo.
+	status := "OPEN"
+
 	return &PositionDTO{
-		PositionID:    position.PositionID,
+		PositionID:    fmt.Sprintf("%d", position.ID), // ID is uint in gorm.Model
 		UserID:        position.UserID,
 		Symbol:        position.Symbol,
-		Side:          position.Side,
-		Quantity:      position.Quantity.String(),
-		EntryPrice:    position.EntryPrice.String(),
-		CurrentPrice:  position.CurrentPrice.String(),
-		UnrealizedPnL: position.UnrealizedPnL.String(),
-		RealizedPnL:   position.RealizedPnL.String(),
-		OpenedAt:      position.OpenedAt.Unix(),
-		ClosedAt:      closedAt,
-		Status:        position.Status,
+		Side:          side,
+		Quantity:      fmt.Sprintf("%f", position.Quantity),
+		EntryPrice:    fmt.Sprintf("%f", position.AverageEntryPrice),
+		CurrentPrice:  "0", // Not available in domain
+		UnrealizedPnL: "0", // Not available in domain (calculated dynamic)
+		RealizedPnL:   fmt.Sprintf("%f", position.RealizedPnL),
+		OpenedAt:      position.CreatedAt.Unix(),
+		ClosedAt:      nil,
+		Status:        status,
 	}
 }

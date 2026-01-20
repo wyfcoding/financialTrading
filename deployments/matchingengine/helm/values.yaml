@@ -1,105 +1,27 @@
-replicaCount: 1
-
 image:
-  repository: matchingengine
+  repository: financialtrading/matchingengine
   pullPolicy: IfNotPresent
   tag: "latest"
 
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
-
-serviceAccount:
-  create: true
-  annotations: {}
-  name: ""
-
-podAnnotations: {}
-
-podSecurityContext: {}
-  # fsGroup: 2000
-
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
-
 service:
   type: ClusterIP
-  httpPort: 8080
-  grpcPort: 9090
+  grpcPort: 9085
 
+config:
+  server:
+    grpc_port: 9085
+  log:
+    level: "info"
+    format: "json"
+  kafka:
+    brokers: ["kafka:9092"]
+    topic_trade: "matching.trade"
+    topic_order: "execution.order"
 
-canary:
-  enabled: false
-  version: v2
-  replicaCount: 1
-  trafficWeight: 10
-  headerMatch:
-    key: "x-canary"
-    value: "true"
-
-ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-  hosts:
-    - host: matchingengine.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  tls: []
-
-resources: 
+resources:
   limits:
-    cpu: 500m
-    memory: 512Mi
+    cpu: 200m
+    memory: 256Mi
   requests:
     cpu: 100m
     memory: 128Mi
-
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 80
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
-
-env:
-  - name: ECOMMERCE_SERVER_HTTP_PORT
-    value: "8080"
-  - name: ECOMMERCE_SERVER_GRPC_PORT
-    value: "9090"
-  - name: APP_ENVIRONMENT
-    value: "prod"
-
-
-# 顶级架构实践：机密信息管理
-# 在生产环境中，这些值应为空，并由 CI/CD 或 Secret Store (如 Vault) 在部署时注入
-secrets:
-  dbPassword: ""
-  redisPassword: ""
-  jwtSecret: ""
-
-# 可观测性预设
-observability:
-  tracing:
-    enabled: true
-    samplingRate: 100
-    provider: "otel"
-  metrics:
-    enabled: true
-    serviceMonitor:
-      enabled: true
-      interval: 15s
-  logging:
-    level: "info"
-    format: "json"

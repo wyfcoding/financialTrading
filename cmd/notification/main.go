@@ -1,203 +1,88 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log/slog"
-	"time"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/wyfcoding/pkg/database"
-	"github.com/wyfcoding/pkg/response"
-
-	"github.com/gin-gonic/gin"
-	"google.golang.org/grpc"
-
-	pb "github.com/wyfcoding/financialtrading/goapi/notification/v1"
+	"github.com/spf13/viper"
 	"github.com/wyfcoding/financialtrading/internal/notification/application"
+	"github.com/wyfcoding/financialtrading/internal/notification/domain"
 	"github.com/wyfcoding/financialtrading/internal/notification/infrastructure/persistence/mysql"
-	notificationgrpc "github.com/wyfcoding/financialtrading/internal/notification/interfaces/grpc"
-	notificationhttp "github.com/wyfcoding/financialtrading/internal/notification/interfaces/http"
-	"github.com/wyfcoding/pkg/app"
-	"github.com/wyfcoding/pkg/cache"
-	configpkg "github.com/wyfcoding/pkg/config"
-	"github.com/wyfcoding/pkg/grpcclient"
-	"github.com/wyfcoding/pkg/idempotency"
-	"github.com/wyfcoding/pkg/limiter"
-	"github.com/wyfcoding/pkg/logging"
-	"github.com/wyfcoding/pkg/messagequeue/kafka"
-	"github.com/wyfcoding/pkg/metrics"
-	"github.com/wyfcoding/pkg/middleware"
+	"github.com/wyfcoding/financialtrading/internal/notification/infrastructure/sender/mock"
+	grpc_server "github.com/wyfcoding/financialtrading/internal/notification/interfaces/grpc"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
+	gorm_mysql "gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
-// BootstrapName 服务唯一标识
-const BootstrapName = "notification"
-
-// IdempotencyPrefix 幂等性 Redis 键前缀
-const IdempotencyPrefix = "notification:idem"
-
-// Config 服务扩展配置
-type Config struct {
-	configpkg.Config `mapstructure:",squash"`
-}
-
-// AppContext 应用上下文 (包含对外服务实例与依赖)
-type AppContext struct {
-	Config       *Config
-	Notification *application.NotificationService
-	Clients      *ServiceClients
-	Handler      *notificationhttp.NotificationHandler
-	Metrics      *metrics.Metrics
-	Limiter      limiter.Limiter
-	Idempotency  idempotency.Manager
-}
-
-// ServiceClients 下游微服务客户端集合
-type ServiceClients struct {
-	// 根据需要添加下游依赖
-}
-
 func main() {
-	// 构建并运行服务
-	if err := app.NewBuilder[*Config, *AppContext](BootstrapName).
-		WithConfig(&Config{}).
-		WithService(initService).
-		WithGRPC(registerGRPC).
-		WithGin(registerGin).
-		WithGinMiddleware(
-			middleware.CORS(), // 跨域处理
-			middleware.TimeoutMiddleware(30*time.Second), // 全局超时
-		).
-		Build().
-		Run(); err != nil {
-		slog.Error("service bootstrap failed", "error", err)
-	}
-}
+	var configPath string
+	flag.StringVar(&configPath, "config", "configs/notification/config.toml", "path to config file")
+	flag.Parse()
 
-// registerGRPC 注册 gRPC 服务
-func registerGRPC(s *grpc.Server, ctx *AppContext) {
-	pb.RegisterNotificationServiceServer(s, notificationgrpc.NewHandler(ctx.Notification))
-}
-
-// registerGin 注册 HTTP 路由
-func registerGin(e *gin.Engine, ctx *AppContext) {
-
-	// 根据环境设置 Gin 模式
-	if ctx.Config.Server.Environment == "prod" {
-		gin.SetMode(gin.ReleaseMode)
+	// 1. Config
+	viper.SetConfigFile(configPath)
+	viper.AutomaticEnv()
+	if err := viper.ReadInConfig(); err != nil {
+		panic(fmt.Sprintf("read config failed: %v", err))
 	}
 
-	// 系统检查接口
-	sys := e.Group("/sys")
-	{
-		sys.GET("/health", func(c *gin.Context) {
-			response.SuccessWithRawData(c, gin.H{
-				"status":    "UP",
-				"service":   BootstrapName,
-				"timestamp": time.Now().Unix(),
-			})
-		})
-		sys.GET("/ready", func(c *gin.Context) {
-			response.SuccessWithRawData(c, gin.H{"status": "READY"})
-		})
-	}
+	// 2. Logger
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
 
-	// 指标暴露
-	if ctx.Config.Metrics.Enabled {
-		e.GET(ctx.Config.Metrics.Path, gin.WrapH(ctx.Metrics.Handler()))
-	}
-
-	// 全局限流中间件
-	e.Use(middleware.RateLimitWithLimiter(ctx.Limiter))
-
-	// 业务 API 路由 v1 (与 ecommerce 对齐)
-	api := e.Group("/api/v1")
-	{
-		ctx.Handler.RegisterRoutes(api)
-	}
-}
-
-// initService 初始化服务依赖 (数据库、缓存、客户端、领域层)
-func initService(cfg *Config, m *metrics.Metrics) (*AppContext, func(), error) {
-	c := cfg
-	bootLog := slog.With("module", "bootstrap")
-	logger := logging.Default() // 获取全局 Logger
-
-	// 打印脱敏配置
-	configpkg.PrintWithMask(c)
-
-	// 1. 初始化数据库 (MySQL)
-	db, err := database.NewDB(c.Data.Database, c.CircuitBreaker, logger, m)
+	// 3. Database
+	dsn := viper.GetString("database.source")
+	db, err := gorm.Open(gorm_mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		return nil, nil, fmt.Errorf("database init error: %w", err)
+		panic(fmt.Sprintf("connect db failed: %v", err))
 	}
 
-	// 2. 初始化缓存 (Redis)
-	redisCache, err := cache.NewRedisCache(c.Data.Redis, c.CircuitBreaker, logger, m)
+	// Auto Migrate
+	if err := db.AutoMigrate(&domain.Notification{}); err != nil {
+		panic(fmt.Sprintf("migrate db failed: %v", err))
+	}
+
+	// 4. Infrastructure & Domain
+	repo := mysql.NewNotificationRepository(db)
+	emailSender := mock.NewMockEmailSender()
+	smsSender := mock.NewMockSMSSender()
+
+	// 5. Application
+	appService := application.NewNotificationManager(repo, emailSender, smsSender)
+
+	// TODO: Kafka Consumer for async events
+
+	// 6. Interfaces
+	grpcSrv := grpc.NewServer()
+	grpc_server.NewServer(grpcSrv, appService)
+	reflection.Register(grpcSrv)
+	port := viper.GetString("server.grpc_port")
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {
-		if sqlDB, err := db.RawDB().DB(); err == nil {
-			sqlDB.Close()
-		}
-		return nil, nil, fmt.Errorf("redis init error: %w", err)
+		panic(err)
 	}
 
-	// 3. 初始化治理组件 (限流器、幂等管理器)
-	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, c.RateLimit.Burst)
-	idemManager := idempotency.NewRedisManager(redisCache.GetClient(), IdempotencyPrefix)
-
-	// 4. 初始化下游微服务客户端
-	clients := &ServiceClients{}
-	clientCleanup, err := grpcclient.InitClients(c.Services, m, c.CircuitBreaker, clients)
-	if err != nil {
-		redisCache.Close()
-		if sqlDB, err := db.RawDB().DB(); err == nil {
-			sqlDB.Close()
+	// 7. Start
+	go func() {
+		slog.Info("Starting gRPC server", "port", port)
+		if err := grpcSrv.Serve(lis); err != nil {
+			panic(err)
 		}
-		return nil, nil, fmt.Errorf("grpc clients init error: %w", err)
-	}
+	}()
 
-	// 5. DDD 分层装配
-	bootLog.Info("assembling services with full dependency injection...")
+	// 8. Graceful Shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	slog.Info("Shutting down server...")
 
-	// 5.1 Infrastructure (Persistence & Senders)
-	notificationRepo := mysql.NewNotificationRepository(db.RawDB())
-
-	// 初始化真实 Kafka 发送器
-	kafkaProducer := kafka.NewProducer(&c.MessageQueue.Kafka, logger, m)
-	emailSender := kafka.NewNotificationSender(kafkaProducer, "notification.email")
-	smsSender := kafka.NewNotificationSender(kafkaProducer, "notification.sms")
-
-	// 5.2 Application (Service)
-	notificationService := application.NewNotificationService(notificationRepo, emailSender, smsSender)
-
-	// 5.3 Interface (HTTP Handlers)
-	handler := notificationhttp.NewNotificationHandler(notificationService)
-
-	// 定义资源清理函数
-	cleanup := func() {
-		bootLog.Info("shutting down, releasing resources...")
-		if kafkaProducer != nil {
-			kafkaProducer.Close()
-		}
-		clientCleanup()
-		if redisCache != nil {
-			if err := redisCache.Close(); err != nil {
-				bootLog.Error("failed to close redis cache", "error", err)
-			}
-		}
-		if sqlDB, err := db.RawDB().DB(); err == nil && sqlDB != nil {
-			if err := sqlDB.Close(); err != nil {
-				bootLog.Error("failed to close sql database", "error", err)
-			}
-		}
-	}
-
-	// 返回应用上下文与清理函数
-	return &AppContext{
-		Config:       c,
-		Notification: notificationService,
-		Clients:      clients,
-		Handler:      handler,
-		Metrics:      m,
-		Limiter:      rateLimiter,
-		Idempotency:  idemManager,
-	}, cleanup, nil
+	grpcSrv.GracefulStop()
+	slog.Info("Server exiting")
 }

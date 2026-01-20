@@ -1,122 +1,103 @@
 syntax = "proto3";
 
-package api.risk.v1;
+package risk.v1;
 
-option go_package = "github.com/wyfcoding/financialtrading/goapi/risk/v1;riskv1";
+import "risk/v1/error_reason.proto";
 
-// 全局实时风控。
+option go_package = "github.com/wyfcoding/financialtrading/go-api/risk/v1;v1";
+
 service RiskService {
-  // 交易评分。
-  rpc AssessRisk(AssessRiskRequest) returns (AssessRiskResponse);
-
-  // 指标检索。
-  rpc GetRiskMetrics(GetRiskMetricsRequest) returns (GetRiskMetricsResponse);
-
-  // 额度检测。
-  rpc CheckRiskLimit(CheckRiskLimitRequest) returns (CheckRiskLimitResponse);
-
-  // 告警监控。
-  rpc GetRiskAlerts(GetRiskAlertsRequest) returns (GetRiskAlertsResponse);
+  rpc CheckRisk(CheckRiskRequest) returns (CheckRiskResponse) {};
+  rpc SetRiskLimit(SetRiskLimitRequest) returns (SetRiskLimitResponse) {};
+  
+  // Enhanced Risk Assessment
+  rpc AssessRisk(AssessRiskRequest) returns (AssessRiskResponse) {};
+  rpc GetRiskMetrics(GetRiskMetricsRequest) returns (GetRiskMetricsResponse) {};
+  rpc CheckRiskLimit(CheckRiskLimitRequest) returns (CheckRiskLimitResponse) {};
+  rpc GetRiskAlerts(GetRiskAlertsRequest) returns (GetRiskAlertsResponse) {};
 }
 
-// 风险量化档案。
+message CheckRiskRequest {
+  string user_id = 1;
+  string symbol = 2;
+  string side = 3; // "buy" or "sell"
+  double price = 4;
+  double quantity = 5;
+}
+
+message CheckRiskResponse {
+  bool passed = 1;
+  string reason = 2; // If not passed
+}
+
+message SetRiskLimitRequest {
+  string user_id = 1;
+  double max_order_size = 2;
+  double max_daily_loss = 3;
+}
+
+message SetRiskLimitResponse {
+  bool success = 1;
+}
+
+message AssessRiskRequest {
+  string user_id = 1;
+  string symbol = 2;
+  string side = 3;
+  string quantity = 4; // Decimal string
+  string price = 5; // Decimal string
+}
+
+message AssessRiskResponse {
+  bool is_allowed = 1;
+  string reason = 2;
+  string risk_level = 3;
+  string margin_requirement = 4;
+  string risk_score = 5;
+}
+
+message GetRiskMetricsRequest {
+  string user_id = 1;
+}
+
 message RiskMetrics {
-  // 95% 置信度 VaR。
   string var_95 = 1;
-  // 99% 置信度 VaR。
   string var_99 = 2;
-  // 最大净值回撤。
   string max_drawdown = 3;
-  // 风险调整收益比。
   string sharpe_ratio = 4;
-  // 资产相关度系数。
   string correlation = 5;
 }
 
-// 告警详细记录。
-message RiskAlert {
-  // 流水 ID。
-  string alert_id = 1;
-  // 类别。
-  string alert_type = 2;
-  // 严重级别。
-  string severity = 3;
-  // 详细详情。
-  string message = 4;
-  // 发生日期戳。
-  int64 timestamp = 5;
-}
-
-// 评分请求载荷。
-message AssessRiskRequest {
-  // 行为人 ID。
-  string user_id = 1;
-  // 标的代码。
-  string symbol = 2;
-  // 方向。
-  string side = 3;
-  // 成交数量。
-  string quantity = 4;
-  // 预估单价。
-  string price = 5;
-}
-
-// 评分结果详情。
-message AssessRiskResponse {
-  // 量级标志。
-  string risk_level = 1;
-  // 量化分数。
-  string risk_score = 2;
-  // 预留保证金。
-  string margin_requirement = 3;
-  // 拦截开关。
-  bool is_allowed = 4;
-  // 拦截理由概要。
-  string reason = 5;
-}
-
-// 指标查询载荷。
-message GetRiskMetricsRequest {
-  // 所有人。
-  string user_id = 1;
-}
-
-// 指标响应结果。
 message GetRiskMetricsResponse {
-  // 指标载荷详情。
   RiskMetrics metrics = 1;
 }
 
-// 验证请求载荷。
 message CheckRiskLimitRequest {
-  // 用户鉴权。
   string user_id = 1;
-  // 限制类别。
   string limit_type = 2;
 }
 
-// 验证结果详情。
 message CheckRiskLimitResponse {
-  // 类别。
   string limit_type = 1;
-  // 基准限额。
   string limit_value = 2;
-  // 当前消耗。
   string current_value = 3;
-  // 剩余可用。
   string remaining = 4;
-  // 溢出标记。
   bool is_exceeded = 5;
 }
 
-// 监听查询载荷。
 message GetRiskAlertsRequest {
-  // 用户鉴权 ID。
   string user_id = 1;
+  int32 limit = 2;
 }
 
-// 监听响应结果。
+message RiskAlert {
+  string alert_id = 1;
+  string alert_type = 2;
+  string severity = 3;
+  string message = 4;
+  int64 timestamp = 5;
+}
+
 message GetRiskAlertsResponse {
-  // 告警序列。
   repeated RiskAlert alerts = 1;
 }

@@ -1,118 +1,96 @@
-// 包 domain 订单服务的领域模型
 package domain
 
 import (
-	"github.com/shopspring/decimal"
+	"errors"
+	"time"
+
 	"gorm.io/gorm"
 )
 
-// OrderStatus 订单状态
+type OrderType string
+type OrderSide string
 type OrderStatus string
 
 const (
-	OrderStatusPending         OrderStatus = "PENDING"          // 等待处理
-	OrderStatusOpen            OrderStatus = "OPEN"             // 订单已开启（挂单中）
-	OrderStatusPartiallyFilled OrderStatus = "PARTIALLY_FILLED" // 部分成交
-	OrderStatusFilled          OrderStatus = "FILLED"           // 全部成交
-	OrderStatusCancelled       OrderStatus = "CANCELLED"        // 已取消
-	OrderStatusRejected        OrderStatus = "REJECTED"         // 已拒绝
+	TypeLimit  OrderType = "limit"
+	TypeMarket OrderType = "market"
+
+	SideBuy  OrderSide = "buy"
+	SideSell OrderSide = "sell"
+
+	StatusPending         OrderStatus = "pending"
+	StatusValidated       OrderStatus = "validated"
+	StatusRejected        OrderStatus = "rejected"
+	StatusPartiallyFilled OrderStatus = "partially_filled"
+	StatusFilled          OrderStatus = "filled"
+	StatusCancelled       OrderStatus = "cancelled"
 )
 
-// OrderSide 订单方向
-type OrderSide string
-
-const (
-	OrderSideBuy  OrderSide = "BUY"
-	OrderSideSell OrderSide = "SELL"
-)
-
-// OrderType 订单类型
-type OrderType string
-
-const (
-	OrderTypeLimit      OrderType = "LIMIT"
-	OrderTypeMarket     OrderType = "MARKET"
-	OrderTypeStopLoss   OrderType = "STOP_LOSS"
-	OrderTypeTakeProfit OrderType = "TAKE_PROFIT"
-)
-
-// TimeInForce 订单有效期
-type TimeInForce string
-
-const (
-	TimeInForceGTC TimeInForce = "GTC" // 成交为止 (Good Till Cancel)
-	TimeInForceIOC TimeInForce = "IOC" // 立即成交否则取消 (Immediate Or Cancel)
-	TimeInForceFOK TimeInForce = "FOK" // 全部成交否则取消 (Fill Or Kill)
-)
-
-// Order 订单实体
-// 代表用户提交的一笔订单
+// Order represents an OMS order
 type Order struct {
-	gorm.Model
-	// 订单 ID
-	OrderID string `gorm:"column:order_id;type:varchar(32);uniqueIndex;not null" json:"order_id"`
-	// 用户 ID
-	UserID string `gorm:"column:user_id;type:varchar(32);index;not null" json:"user_id"`
-	// 交易对符号
-	Symbol string `gorm:"column:symbol;type:varchar(20);index;not null" json:"symbol"`
-	// 买卖方向
-	Side OrderSide `gorm:"column:side;type:varchar(10);not null" json:"side"`
-	// 订单类型
-	Type OrderType `gorm:"column:type;type:varchar(20);not null" json:"type"`
-	// 价格
-	Price decimal.Decimal `gorm:"column:price;type:decimal(32,18);not null" json:"price"`
-	// 数量
-	Quantity decimal.Decimal `gorm:"column:quantity;type:decimal(32,18);not null" json:"quantity"`
-	// 已成交数量
-	FilledQuantity decimal.Decimal `gorm:"column:filled_quantity;type:decimal(32,18);not null;default:0" json:"filled_quantity"`
-	// 订单状态
-	Status OrderStatus `gorm:"column:status;type:varchar(20);index;not null" json:"status"`
-	// 有效期
-	TimeInForce TimeInForce `gorm:"column:time_in_force;type:varchar(10);not null" json:"time_in_force"`
-	// 客户端订单 ID（用于幂等性）
-	ClientOrderID string `gorm:"column:client_order_id;type:varchar(32);index" json:"client_order_id"`
-	// 备注
-	Remark string `gorm:"column:remark;type:varchar(255)" json:"remark"`
+	ID             string      `gorm:"column:id;primaryKey;type:varchar(36)" json:"id"` // UUID
+	UserID         string      `gorm:"column:user_id;type:varchar(50);index;not null" json:"user_id"`
+	Symbol         string      `gorm:"column:symbol;type:varchar(20);not null" json:"symbol"`
+	Side           OrderSide   `gorm:"column:side;type:varchar(10);not null" json:"side"`
+	Type           OrderType   `gorm:"column:type;type:varchar(10);not null" json:"type"`
+	Price          float64     `gorm:"column:price;type:decimal(20,8)" json:"price"`
+	Quantity       float64     `gorm:"column:quantity;type:decimal(20,8);not null" json:"quantity"`
+	FilledQuantity float64     `gorm:"column:filled_quantity;type:decimal(20,8);default:0" json:"filled_quantity"`
+	AveragePrice   float64     `gorm:"column:average_price;type:decimal(20,8);default:0" json:"average_price"`
+	Status         OrderStatus `gorm:"column:status;type:varchar(20);index;not null;default:'pending'" json:"status"`
+
+	CreatedAt time.Time `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt time.Time `gorm:"column:updated_at" json:"updated_at"`
+	gorm.DeletedAt
 }
 
-// NewOrder 创建订单
-func NewOrder(orderID, userID, symbol string, side OrderSide, orderType OrderType, price, quantity decimal.Decimal, timeInForce TimeInForce, clientOrderID string) *Order {
+func NewOrder(id, userID, symbol string, side OrderSide, typ OrderType, price, qty float64) *Order {
 	return &Order{
-		OrderID:        orderID,
-		UserID:         userID,
-		Symbol:         symbol,
-		Side:           side,
-		Type:           orderType,
-		Price:          price,
-		Quantity:       quantity,
-		FilledQuantity: decimal.Zero,
-		Status:         OrderStatusPending,
-		TimeInForce:    timeInForce,
-		ClientOrderID:  clientOrderID,
+		ID:        id,
+		UserID:    userID,
+		Symbol:    symbol,
+		Side:      side,
+		Type:      typ,
+		Price:     price,
+		Quantity:  qty,
+		Status:    StatusPending,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 }
 
-// GetRemainingQuantity 获取剩余数量
-func (o *Order) GetRemainingQuantity() decimal.Decimal {
-	return o.Quantity.Sub(o.FilledQuantity)
+// Validate performs basic static validation
+func (o *Order) Validate() error {
+	if o.Quantity <= 0 {
+		return errors.New("quantity must be positive")
+	}
+	if o.Type == TypeLimit && o.Price <= 0 {
+		return errors.New("price must be positive for limit orders")
+	}
+	return nil
 }
 
-// IsFilled 是否已完全成交
-func (o *Order) IsFilled() bool {
-	return o.FilledQuantity.Equal(o.Quantity)
+// MarkValidated transitions to Validated state
+func (o *Order) MarkValidated() {
+	if o.Status == StatusPending {
+		o.Status = StatusValidated
+		o.UpdatedAt = time.Now()
+	}
 }
 
-// CanBeCancelled 是否可以取消
-func (o *Order) CanBeCancelled() bool {
-	return o.Status == OrderStatusOpen || o.Status == OrderStatusPartiallyFilled
-}
+// UpdateExecution updates order with execution report
+func (o *Order) UpdateExecution(filledQty, tradePrice float64) {
+	// Simple average price calculation
+	totalValue := (o.AveragePrice * o.FilledQuantity) + (tradePrice * filledQty)
+	o.FilledQuantity += filledQty
+	if o.FilledQuantity > 0 {
+		o.AveragePrice = totalValue / o.FilledQuantity
+	}
 
-// OrderDomainService 订单领域服务
-type OrderDomainService interface {
-	// ValidateOrder 验证订单合法性
-	ValidateOrder(order *Order) error
-	// CalculateFee 计算订单预计费用
-	CalculateFee(order *Order) decimal.Decimal
-	// CheckBalance 检查用户余额是否足以支持该订单
-	CheckBalance(userID string, amount decimal.Decimal) (bool, error)
+	if o.FilledQuantity >= o.Quantity {
+		o.Status = StatusFilled
+	} else if o.FilledQuantity > 0 {
+		o.Status = StatusPartiallyFilled
+	}
+	o.UpdatedAt = time.Now()
 }

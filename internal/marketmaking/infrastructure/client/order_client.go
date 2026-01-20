@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/shopspring/decimal"
-	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
-	positionv1 "github.com/wyfcoding/financialtrading/goapi/position/v1"
+	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
+	positionv1 "github.com/wyfcoding/financialtrading/go-api/position/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
 	"github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/grpcclient"

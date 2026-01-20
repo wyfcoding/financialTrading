@@ -1,75 +1,109 @@
-// 包 domain 持仓服务的领域模型
 package domain
 
 import (
-	"time"
-
-	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
-// Position 持仓实体
-// 代表用户在某个交易对上的持仓信息
+// Position represents a user's holding in a symbol
 type Position struct {
 	gorm.Model
-	// 持仓 ID
-	PositionID string `gorm:"column:position_id;type:varchar(32);uniqueIndex;not null" json:"position_id"`
-	// 用户 ID
-	UserID string `gorm:"column:user_id;type:varchar(32);index;not null" json:"user_id"`
-	// 交易对
-	Symbol string `gorm:"column:symbol;type:varchar(20);index;not null" json:"symbol"`
-	// 买卖方向 (LONG/SHORT)
-	Side string `gorm:"column:side;type:varchar(10);not null" json:"side"`
-	// 持仓数量
-	Quantity decimal.Decimal `gorm:"column:quantity;type:decimal(32,18);not null" json:"quantity"`
-	// 开仓价格 (平均成本)
-	EntryPrice decimal.Decimal `gorm:"column:entry_price;type:decimal(32,18);not null" json:"entry_price"`
-	// 当前价格
-	CurrentPrice decimal.Decimal `gorm:"column:current_price;type:decimal(32,18);not null" json:"current_price"`
-	// 未实现盈亏
-	UnrealizedPnL decimal.Decimal `gorm:"column:unrealized_pnl;type:decimal(32,18);not null" json:"unrealized_pnl"`
-	// 已实现盈亏
-	RealizedPnL decimal.Decimal `gorm:"column:realized_pnl;type:decimal(32,18);not null" json:"realized_pnl"`
-	// 开仓时间
-	OpenedAt time.Time `gorm:"column:opened_at;type:datetime;not null" json:"opened_at"`
-	// 平仓时间
-	ClosedAt *time.Time `gorm:"column:closed_at;type:datetime" json:"closed_at"`
-	// 状态
-	Status string `gorm:"column:status;type:varchar(20);index;not null" json:"status"`
-	// 版本号 (用于乐观锁)
-	Version int64 `gorm:"column:version;default:0;not null" json:"version"`
+	UserID            string  `gorm:"column:user_id;type:varchar(50);index;uniqueIndex:idx_user_symbol"`
+	Symbol            string  `gorm:"column:symbol;type:varchar(20);index;uniqueIndex:idx_user_symbol"`
+	Quantity          float64 `gorm:"column:quantity;type:decimal(20,8)"`
+	AverageEntryPrice float64 `gorm:"column:average_entry_price;type:decimal(20,8)"`
+	RealizedPnL       float64 `gorm:"column:realized_pnl;type:decimal(20,8);default:0"`
 }
 
-// AddQuantity 增加持仓数量并滚动计算开仓均价 (加权平均成本法)
-func (p *Position) AddQuantity(qty, price decimal.Decimal) {
-	if qty.IsZero() {
-		return
-	}
-
-	// 新开仓均价 = (旧持仓量 * 旧均价 + 新成交量 * 成交价) / (旧持仓量 + 新成交量)
-	totalCost := p.Quantity.Mul(p.EntryPrice).Add(qty.Mul(price))
-	newQty := p.Quantity.Add(qty)
-
-	if !newQty.IsZero() {
-		p.EntryPrice = totalCost.Div(newQty)
-	}
-	p.Quantity = newQty
+func (p *Position) TableName() string {
+	return "positions"
 }
 
-// RealizePnL 实现盈亏结转：当卖出资产时，根据开仓均价计算并记录已实现盈亏
-func (p *Position) RealizePnL(qty, price decimal.Decimal) {
-	if qty.IsZero() {
-		return
+func NewPosition(userID, symbol string) *Position {
+	return &Position{
+		UserID:            userID,
+		Symbol:            symbol,
+		Quantity:          0,
+		AverageEntryPrice: 0,
+		RealizedPnL:       0,
 	}
-
-	// 盈亏计算公式：(成交价 - 成本价) * 成交数量
-	pnl := price.Sub(p.EntryPrice).Mul(qty)
-
-	// 累加到已实现盈亏
-	p.RealizedPnL = p.RealizedPnL.Add(pnl)
-
-	// 注意：在 TCC 模式下，Quantity 在下单时已扣除，此处无需再次操作数量
-	// 但如果是纯 Saga 模式，此处还需 p.Quantity = p.Quantity.Sub(qty)
 }
 
-// End of domain file
+// UpdatePosition updates the position based on a trade execution
+// This is a simplified Average Cost Basis implementation
+func (p *Position) UpdatePosition(side string, qty, price float64) {
+	if side == "buy" {
+		if p.Quantity >= 0 {
+			// Long + Buy -> Add to position, update avg price
+			totalValue := (p.Quantity * p.AverageEntryPrice) + (qty * price)
+			p.Quantity += qty
+			p.AverageEntryPrice = totalValue / p.Quantity
+		} else {
+			// Short + Buy -> Reducing position (Covering)
+			// e.g. Short 10 @ 100. Buy 5 @ 90.
+			// Realized PnL on 5 units = (Entry 100 - Exit 90) * 5 = 50
+			// Remaining Short 5 @ 100.
+
+			// If covering more than open, flip to Long
+			remainingQty := p.Quantity + qty
+
+			if remainingQty > 0 {
+				// Flip short to long
+				// 1. Cover entire short
+				coverQty := -p.Quantity
+				pnl := (p.AverageEntryPrice - price) * coverQty
+				p.RealizedPnL += pnl
+
+				// 2. Open new long
+				newLongQty := remainingQty
+				p.Quantity = newLongQty
+				p.AverageEntryPrice = price
+			} else {
+				// Reduce short
+				// qty is positive (buy), p.Quantity is negative
+				// covered amount is `qty`
+				pnl := (p.AverageEntryPrice - price) * qty
+				p.RealizedPnL += pnl
+				p.Quantity += qty // approaches 0
+				if p.Quantity == 0 {
+					p.AverageEntryPrice = 0
+				}
+			}
+		}
+	} else { // SELL
+		if p.Quantity <= 0 {
+			// Short + Sell -> Add to short position, update avg price
+			// Use abs values for calculation logic
+			absQty := -p.Quantity
+			totalValue := (absQty * p.AverageEntryPrice) + (qty * price)
+			p.Quantity -= qty // becomes more negative
+			p.AverageEntryPrice = totalValue / (-p.Quantity)
+		} else {
+			// Long + Sell -> Reducing position
+			// e.g. Long 10 @ 100. Sell 5 @ 110.
+			// PnL = (110 - 100) * 5 = 50.
+
+			remainingQty := p.Quantity - qty
+
+			if remainingQty < 0 {
+				// Flip long to short
+				// 1. Close entire long
+				closeQty := p.Quantity
+				pnl := (price - p.AverageEntryPrice) * closeQty
+				p.RealizedPnL += pnl
+
+				// 2. Open new short
+				newShortQty := remainingQty // negative
+				p.Quantity = newShortQty
+				p.AverageEntryPrice = price
+			} else {
+				// Reduce long
+				pnl := (price - p.AverageEntryPrice) * qty
+				p.RealizedPnL += pnl
+				p.Quantity -= qty
+				if p.Quantity == 0 {
+					p.AverageEntryPrice = 0
+				}
+			}
+		}
+	}
+}

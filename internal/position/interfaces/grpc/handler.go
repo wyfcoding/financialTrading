@@ -8,7 +8,7 @@ import (
 
 	"github.com/dtm-labs/client/dtmgrpc"
 	"github.com/shopspring/decimal"
-	pb "github.com/wyfcoding/financialtrading/goapi/position/v1"
+	pb "github.com/wyfcoding/financialtrading/go-api/position/v1"
 	"github.com/wyfcoding/financialtrading/internal/position/application"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

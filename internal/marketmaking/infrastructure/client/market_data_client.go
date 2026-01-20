@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/shopspring/decimal"
-	market_data "github.com/wyfcoding/financialtrading/goapi/marketdata/v1"
+	market_data "github.com/wyfcoding/financialtrading/go-api/marketdata/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
 	"github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/grpcclient"

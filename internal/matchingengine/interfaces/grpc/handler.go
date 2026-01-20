@@ -8,7 +8,7 @@ import (
 
 	"github.com/wyfcoding/pkg/algorithm/types"
 
-	pb "github.com/wyfcoding/financialtrading/goapi/matchingengine/v1"
+	pb "github.com/wyfcoding/financialtrading/go-api/matchingengine/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/application"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package auth.v1;
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/auth/v1;v1";
+
+enum ErrorReason {
+  GE_UNSPECIFIED = 0;
+  GE_UNKNOWN_ERROR = 1;
+  GE_INVALID_ARGUMENT = 2;
+  GE_RECORD_NOT_FOUND = 3;
+  USER_NOT_FOUND = 101;
+  INVALID_PASSWORD = 102;
+  EMAIL_CONFLICT = 103;
+}

@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package api.account.v1;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/account/v1;accountv1";
+
+enum ErrorReason {
+  // 设置缺省值
+  UNSPECIFIED = 0;
+  // 账户未找到
+  ACCOUNT_NOT_FOUND = 1;
+  // 余额不足
+  INSUFFICIENT_BALANCE = 2;
+  // 冻结金额不足
+  INSUFFICIENT_FROZEN_BALANCE = 3;
+  // 无效的参数
+  INVALID_ARGUMENT = 4;
+}

@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	pb "github.com/wyfcoding/financialtrading/goapi/risk/v1"
+	pb "github.com/wyfcoding/financialtrading/go-api/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/risk/application"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

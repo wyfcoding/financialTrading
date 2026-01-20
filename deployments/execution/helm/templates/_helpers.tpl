@@ -1,14 +1,14 @@
 {/*
 Expand the name of the chart.
 */}
-{- define "execution.name" -}
+{- define "clearing.name" -}
 {- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }
 {- end }
 
 {/*
 Create a default fully qualified app name.
 */}
-{- define "execution.fullname" -}
+{- define "clearing.fullname" -}
 {- if .Values.fullnameOverride }
 {- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }
 {- else }
@@ -24,16 +24,16 @@ Create a default fully qualified app name.
 {/*
 Create chart name and version as used by the chart label.
 */}
-{- define "execution.chart" -}
+{- define "clearing.chart" -}
 {- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }
 {- end }
 
 {/*
 Common labels
 */}
-{- define "execution.labels" -}
-helm.sh/chart: { include "execution.chart" . }
-{ include "execution.selectorLabels" . }
+{- define "clearing.labels" -}
+helm.sh/chart: { include "clearing.chart" . }
+{ include "clearing.selectorLabels" . }
 {- if .Chart.AppVersion }
 app.kubernetes.io/version: { .Chart.AppVersion | quote }
 {- end }
@@ -43,17 +43,17 @@ app.kubernetes.io/managed-by: { .Release.Service }
 {/*
 Selector labels
 */}
-{- define "execution.selectorLabels" -}
-app.kubernetes.io/name: { include "execution.name" . }
+{- define "clearing.selectorLabels" -}
+app.kubernetes.io/name: { include "clearing.name" . }
 app.kubernetes.io/instance: { .Release.Name }
 {- end }
 
 {/*
 Create the name of the service account to use
 */}
-{- define "execution.serviceAccountName" -}
+{- define "clearing.serviceAccountName" -}
 {- if .Values.serviceAccount.create }
-{- default (include "execution.fullname" .) .Values.serviceAccount.name }
+{- default (include "clearing.fullname" .) .Values.serviceAccount.name }
 {- else }
 {- default "default" .Values.serviceAccount.name }
 {- end }

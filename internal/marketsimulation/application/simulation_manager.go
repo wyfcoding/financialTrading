@@ -14,12 +14,12 @@ import (
 
 // MarketSimulationManager 处理所有市场模拟相关的写入操作（Commands）。
 type MarketSimulationManager struct {
-	repo      domain.SimulationScenarioRepository
+	repo      domain.SimulationRepository
 	publisher domain.MarketDataPublisher
 }
 
 // NewMarketSimulationManager 构造函数。
-func NewMarketSimulationManager(repo domain.SimulationScenarioRepository, publisher domain.MarketDataPublisher) *MarketSimulationManager {
+func NewMarketSimulationManager(repo domain.SimulationRepository, publisher domain.MarketDataPublisher) *MarketSimulationManager {
 	return &MarketSimulationManager{
 		repo:      repo,
 		publisher: publisher,
@@ -28,7 +28,7 @@ func NewMarketSimulationManager(repo domain.SimulationScenarioRepository, publis
 
 // StartSimulation 启动模拟
 func (m *MarketSimulationManager) StartSimulation(ctx context.Context, name string, symbol string, simulationType string, parameters string) (string, error) {
-	scenario := &domain.SimulationScenario{
+	scenario := &domain.Simulation{
 		ScenarioID: fmt.Sprintf("%d", idgen.GenID()),
 		Name:       name,
 		Symbol:     symbol,

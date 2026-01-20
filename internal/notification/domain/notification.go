@@ -1,51 +1,60 @@
-// Package domain 通知服务的领域模型
 package domain
 
 import (
-	"time"
-
 	"gorm.io/gorm"
 )
 
-// NotificationType 通知类型
-type NotificationType string
-
-const (
-	NotificationTypeEmail   NotificationType = "EMAIL"   // 邮件通知
-	NotificationTypeSMS     NotificationType = "SMS"     // 短信通知
-	NotificationTypeWebhook NotificationType = "WEBHOOK" // Webhook 通知
-)
-
-// NotificationStatus 通知状态
 type NotificationStatus string
 
 const (
-	NotificationStatusPending NotificationStatus = "PENDING"
-	NotificationStatusSent    NotificationStatus = "SENT"
-	NotificationStatusFailed  NotificationStatus = "FAILED"
+	StatusPending NotificationStatus = "pending"
+	StatusSent    NotificationStatus = "sent"
+	StatusFailed  NotificationStatus = "failed"
 )
 
-// Notification 通知实体
+type Channel string
+
+const (
+	ChannelEmail Channel = "email"
+	ChannelSMS   Channel = "sms"
+	ChannelPush  Channel = "push"
+)
+
+// Notification represents a message sent to a user
 type Notification struct {
 	gorm.Model
-	// NotificationID 通知 ID
-	NotificationID string `gorm:"column:notification_id;type:varchar(32);uniqueIndex;not null" json:"notification_id"`
-	// UserID 用户 ID
-	UserID string `gorm:"column:user_id;type:varchar(32);index;not null" json:"user_id"`
-	// Type 通知类型
-	Type NotificationType `gorm:"column:type;type:varchar(20);not null" json:"type"`
-	// Subject 通知主题
-	Subject string `gorm:"column:subject;type:varchar(100)" json:"subject"`
-	// Content 通知内容
-	Content string `gorm:"column:content;type:text" json:"content"`
-	// Target 通知目标（如邮箱、手机号）
-	Target string `gorm:"column:target;type:varchar(100);not null" json:"target"`
-	// Status 通知状态
-	Status NotificationStatus `gorm:"column:status;type:varchar(20);index;not null;default:'PENDING'" json:"status"`
-	// ErrorMessage 错误信息
-	ErrorMessage string `gorm:"column:error_message;type:text" json:"error_message"`
-	// SentAt 发送时间
-	SentAt *time.Time `gorm:"column:sent_at;type:datetime" json:"sent_at"`
+	NotificationID string             `gorm:"column:notification_id;type:varchar(50);uniqueIndex" json:"notification_id"`
+	UserID         string             `gorm:"column:user_id;type:varchar(50);index" json:"user_id"`
+	Channel        Channel            `gorm:"column:channel;type:varchar(20)" json:"channel"`
+	Recipient      string             `gorm:"column:recipient;type:varchar(100)" json:"recipient"`
+	Subject        string             `gorm:"column:subject;type:varchar(255)" json:"subject"`
+	Content        string             `gorm:"column:content;type:text" json:"content"`
+	Status         NotificationStatus `gorm:"column:status;type:varchar(20);index" json:"status"`
+	ErrorMsg       string             `gorm:"column:error_msg;type:text" json:"error_msg"`
 }
 
-// End of domain file
+// TableName overrides the table name
+func (Notification) TableName() string {
+	return "notifications"
+}
+
+// NewNotification creates a new notification
+func NewNotification(userID string, channel Channel, recipient, subject, content string) *Notification {
+	return &Notification{
+		UserID:    userID,
+		Channel:   channel,
+		Recipient: recipient,
+		Subject:   subject,
+		Content:   content,
+		Status:    StatusPending,
+	}
+}
+
+func (n *Notification) MarkSent() {
+	n.Status = StatusSent
+}
+
+func (n *Notification) MarkFailed(err string) {
+	n.Status = StatusFailed
+	n.ErrorMsg = err
+}

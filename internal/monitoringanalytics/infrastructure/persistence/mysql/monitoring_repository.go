@@ -4,6 +4,7 @@ package mysql
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/domain"
@@ -97,6 +98,15 @@ func (r *metricRepositoryImpl) metricToDomain(m *MetricModel) (*domain.Metric, e
 	}, nil
 }
 
+func (r *metricRepositoryImpl) GetTradeMetrics(ctx context.Context, symbol string, startTime, endTime time.Time) ([]*domain.TradeMetric, error) {
+	var metrics []*domain.TradeMetric
+	err := r.db.WithContext(ctx).
+		Where("symbol = ? AND timestamp >= ? AND timestamp <= ?", symbol, startTime, endTime).
+		Order("timestamp asc").
+		Find(&metrics).Error
+	return metrics, err
+}
+
 type systemHealthRepositoryImpl struct {
 	db *gorm.DB
 }
@@ -146,4 +156,55 @@ func (r *systemHealthRepositoryImpl) healthToDomain(m *SystemHealthModel) *domai
 		Message:     m.Message,
 		LastChecked: m.LastChecked,
 	}
+}
+
+// AlertModel 告警数据库模型
+type AlertModel struct {
+	gorm.Model
+	Severity  string `gorm:"column:severity;type:varchar(20)"`
+	Message   string `gorm:"column:message;type:text"`
+	Source    string `gorm:"column:source;type:varchar(50)"`
+	Timestamp int64  `gorm:"column:timestamp;type:bigint;index"`
+}
+
+func (AlertModel) TableName() string { return "analytics_alerts" }
+
+type alertRepositoryImpl struct {
+	db *gorm.DB
+}
+
+func NewAlertRepository(db *gorm.DB) domain.AlertRepository {
+	return &alertRepositoryImpl{db: db}
+}
+
+func (r *alertRepositoryImpl) Save(ctx context.Context, a *domain.Alert) error {
+	m := &AlertModel{
+		Model:     a.Model,
+		Severity:  a.Severity,
+		Message:   a.Message,
+		Source:    a.Source,
+		Timestamp: time.Now().Unix(),
+	}
+	err := r.db.WithContext(ctx).Create(m).Error
+	if err == nil {
+		a.Model = m.Model
+	}
+	return err
+}
+
+func (r *alertRepositoryImpl) GetAlerts(ctx context.Context, limit int) ([]*domain.Alert, error) {
+	var models []AlertModel
+	if err := r.db.WithContext(ctx).Order("timestamp desc").Limit(limit).Find(&models).Error; err != nil {
+		return nil, err
+	}
+	res := make([]*domain.Alert, len(models))
+	for i, m := range models {
+		res[i] = &domain.Alert{
+			Model:    m.Model,
+			Severity: m.Severity,
+			Message:  m.Message,
+			Source:   m.Source,
+		}
+	}
+	return res, nil
 }

@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	pb "github.com/wyfcoding/financialtrading/goapi/quant/v1"
+	pb "github.com/wyfcoding/financialtrading/go-api/quant/v1"
 	"github.com/wyfcoding/financialtrading/internal/quant/application"
 	"github.com/wyfcoding/financialtrading/internal/quant/domain"
 	"google.golang.org/protobuf/types/known/timestamppb"

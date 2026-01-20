@@ -1,0 +1,9 @@
+package domain
+
+import "context"
+
+type UserRepository interface {
+	Save(ctx context.Context, user *User) error
+	GetByEmail(ctx context.Context, email string) (*User, error)
+	GetByID(ctx context.Context, id uint) (*User, error)
+}

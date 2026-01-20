@@ -8,7 +8,7 @@ import (
 
 	"github.com/dtm-labs/client/dtmgrpc"
 	"github.com/shopspring/decimal"
-	pb "github.com/wyfcoding/financialtrading/goapi/account/v1"
+	pb "github.com/wyfcoding/financialtrading/go-api/account/v1"
 	"github.com/wyfcoding/financialtrading/internal/account/application"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -32,7 +32,7 @@ func (h *Handler) CreateAccount(ctx context.Context, req *pb.CreateAccountReques
 	start := time.Now()
 	slog.InfoContext(ctx, "grpc create_account received", "user_id", req.UserId, "currency", req.Currency)
 
-	dto, err := h.service.CreateAccount(ctx, &application.CreateAccountRequest{
+	dto, err := h.service.CreateAccount(ctx, application.CreateAccountCommand{
 		UserID:      req.UserId,
 		AccountType: req.AccountType,
 		Currency:    req.Currency,

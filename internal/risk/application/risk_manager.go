@@ -122,7 +122,7 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 		Reason:            assessmentResult.Reason,
 	}
 
-	limit, err := m.limitRepo.GetByUser(ctx, req.UserID, "MAX_SINGLE_ORDER_VALUE")
+	limit, err := m.limitRepo.GetByUserIDAndType(ctx, req.UserID, "MAX_SINGLE_ORDER_VALUE")
 	if err == nil && limit != nil {
 		if orderValue.GreaterThan(limit.LimitValue) {
 			assessment.IsAllowed = false
@@ -232,7 +232,7 @@ func (m *RiskManager) PerformGlobalRiskScan(ctx context.Context) error {
 			continue
 		}
 
-		limit, err := m.limitRepo.GetByUser(ctx, userID, "VAR_LIMIT")
+		limit, err := m.limitRepo.GetByUserIDAndType(ctx, userID, "VAR_LIMIT")
 		if err == nil && limit != nil {
 			if riskValue.Abs().GreaterThan(limit.LimitValue) {
 				m.internalLogger().WarnContext(ctx, "VaR exceeds limit, triggering circuit breaker", "user_id", userID, "var", riskValue.String(), "limit", limit.LimitValue.String())

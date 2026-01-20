@@ -1,35 +1,21 @@
-# Build stage
-FROM golang:1.25-alpine AS builder
+FROM golang:1.21 AS builder
 
 WORKDIR /app
 
-# Install dependencies
-RUN apk add --no-cache git make
-
-# Copy go mod and sum files
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o bin/server cmd/marketsimulation/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o marketsimulation cmd/marketsimulation/main.go
 
-# Final stage
 FROM alpine:latest
 
 WORKDIR /app
 
-# Install runtime dependencies
-RUN apk add --no-cache ca-certificates tzdata
+COPY --from=builder /app/marketsimulation .
+COPY --from=builder /app/configs/marketsimulation/config.toml ./configs/marketsimulation/
 
-# Copy binary from builder
-COPY --from=builder /app/bin/server .
-# COPY --from=builder /app/configs/marketsimulation/config.toml ./configs/marketsimulation/config.toml
+EXPOSE 8084 9084
 
-# Expose ports
-EXPOSE 8080 9090
-
-# Run the application
-CMD ["./server"]
+CMD ["./marketsimulation", "-config", "configs/marketsimulation/config.toml"]

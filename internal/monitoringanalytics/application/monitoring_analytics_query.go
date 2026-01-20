@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"time"
 
 	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/domain"
 )
@@ -10,13 +11,15 @@ import (
 type MonitoringAnalyticsQuery struct {
 	metricRepo domain.MetricRepository
 	healthRepo domain.SystemHealthRepository
+	alertRepo  domain.AlertRepository
 }
 
 // NewMonitoringAnalyticsQuery 构造函数。
-func NewMonitoringAnalyticsQuery(metricRepo domain.MetricRepository, healthRepo domain.SystemHealthRepository) *MonitoringAnalyticsQuery {
+func NewMonitoringAnalyticsQuery(metricRepo domain.MetricRepository, healthRepo domain.SystemHealthRepository, alertRepo domain.AlertRepository) *MonitoringAnalyticsQuery {
 	return &MonitoringAnalyticsQuery{
 		metricRepo: metricRepo,
 		healthRepo: healthRepo,
+		alertRepo:  alertRepo,
 	}
 }
 
@@ -25,7 +28,14 @@ func (q *MonitoringAnalyticsQuery) GetMetrics(ctx context.Context, name string, 
 	return q.metricRepo.GetMetrics(ctx, name, startTime, endTime)
 }
 
-// GetSystemHealth 获取服务最新的健康检查记录
+func (q *MonitoringAnalyticsQuery) GetTradeMetrics(ctx context.Context, symbol string, startTime, endTime time.Time) ([]*domain.TradeMetric, error) {
+	return q.metricRepo.GetTradeMetrics(ctx, symbol, startTime, endTime)
+}
+
 func (q *MonitoringAnalyticsQuery) GetSystemHealth(ctx context.Context, serviceName string) ([]*domain.SystemHealth, error) {
 	return q.healthRepo.GetLatestHealth(ctx, serviceName, 10)
+}
+
+func (q *MonitoringAnalyticsQuery) GetAlerts(ctx context.Context, limit int) ([]*domain.Alert, error) {
+	return q.alertRepo.GetAlerts(ctx, limit)
 }

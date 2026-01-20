@@ -1,19 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "matchingengine.fullname" . }}
+  name: {{ .Chart.Name }}
   labels:
-    {{- include "matchingengine.labels" . | nindent 4 }}
+    app: {{ .Chart.Name }}
 spec:
   type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.service.httpPort }}
-      targetPort: http
-      protocol: TCP
-      name: http
     - port: {{ .Values.service.grpcPort }}
       targetPort: grpc
       protocol: TCP
       name: grpc
   selector:
-    {{- include "matchingengine.selectorLabels" . | nindent 4 }}
+    app: {{ .Chart.Name }}

@@ -25,8 +25,9 @@ WORKDIR /app
 RUN apk add --no-cache ca-certificates tzdata
 
 # Copy binary from builder
+# Copy binary from builder
 COPY --from=builder /app/bin/server .
-# COPY --from=builder /app/configs/account/config.toml ./configs/account/config.toml
+COPY --from=builder /app/configs/account/config.toml ./configs/account/config.toml
 
 # Expose ports
 EXPOSE 8080 9090

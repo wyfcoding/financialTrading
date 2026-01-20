@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/shopspring/decimal"
-	pb "github.com/wyfcoding/financialtrading/goapi/pricing/v1"
+	pb "github.com/wyfcoding/financialtrading/go-api/pricing/v1"
 	"github.com/wyfcoding/financialtrading/internal/pricing/application"
 	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
 	"google.golang.org/protobuf/types/known/timestamppb"

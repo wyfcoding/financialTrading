@@ -1,11 +1,22 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "order.fullname" . }}-config
+  name: {{ .Chart.Name }}-config
   labels:
-    {{- include "order.labels" . | nindent 4 }}
+    app: {{ .Chart.Name }}
 data:
   config.toml: |
     [server]
-    name = "{{ .Values.image.repository }}"
-    environment = "prod"
+    grpc_port = "{{ .Values.config.server.grpc_port }}"
+
+    [database]
+    driver = "{{ .Values.config.database.driver }}"
+    source = "{{ .Values.config.database.source }}"
+
+    [log]
+    level = "{{ .Values.config.log.level }}"
+    format = "{{ .Values.config.log.format }}"
+
+    [kafka]
+    brokers = {{ .Values.config.kafka.brokers | toJson }}
+    topic_order = "{{ .Values.config.kafka.topic_order }}"

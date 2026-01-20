@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package api.execution.v1;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/execution/v1;executionv1";
+
+enum ErrorReason {
+  // 缺省
+  UNSPECIFIED = 0;
+  // 订单未找到
+  ORDER_NOT_FOUND = 1;
+  // 市场数据不可用
+  MARKET_DATA_UNAVAILABLE = 2;
+  // 算法执行失败
+  ALGO_EXECUTION_FAILED = 3;
+  // 智能路由失败
+  SOR_EXECUTION_FAILED = 4;
+}

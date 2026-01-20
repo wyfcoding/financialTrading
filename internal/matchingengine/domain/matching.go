@@ -84,9 +84,19 @@ func NewDisruptionEngine(symbol string, capacity uint64, logger *slog.Logger) (*
 		logger:    logger,
 		halted:    0,
 	}
-	// 启动核心撮合 Worker (单线程)
-	go e.run()
+	// 启动逻辑移至 Start()
 	return e, nil
+}
+
+func (e *DisruptionEngine) Start() error {
+	e.logger.Info("starting disruption engine...", "symbol", e.symbol)
+	go e.run()
+	return nil
+}
+
+func (e *DisruptionEngine) Shutdown() {
+	e.logger.Info("stopping disruption engine...", "symbol", e.symbol)
+	close(e.stopChan)
 }
 
 // Halt 立即且不可逆地停止引擎运行。

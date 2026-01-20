@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package api.marketdata.v1;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/marketdata/v1;marketdatav1";
+
+enum ErrorReason {
+  // 缺省
+  UNSPECIFIED = 0;
+  // 数据未找到
+  DATA_NOT_FOUND = 1;
+  // 无效的时间范围
+  INVALID_TIME_RANGE = 2;
+  // 不支持的周期
+  UNSUPPORTED_INTERVAL = 3;
+}

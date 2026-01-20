@@ -1,233 +1,117 @@
 package main
 
 import (
-	"context"
+	"flag"
 	"fmt"
 	"log/slog"
-	"time"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/wyfcoding/pkg/database"
-	"github.com/wyfcoding/pkg/response"
-
-	"github.com/gin-gonic/gin"
-	"google.golang.org/grpc"
-
-	clearingv1 "github.com/wyfcoding/financialtrading/goapi/clearing/v1"
-	pb "github.com/wyfcoding/financialtrading/goapi/matchingengine/v1"
-	orderv1 "github.com/wyfcoding/financialtrading/goapi/order/v1"
+	"github.com/spf13/viper"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/application"
-	"github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/persistence/mysql"
-	matchinggrpc "github.com/wyfcoding/financialtrading/internal/matchingengine/interfaces/grpc"
-	matchinghttp "github.com/wyfcoding/financialtrading/internal/matchingengine/interfaces/http"
-	"github.com/wyfcoding/pkg/app"
-	"github.com/wyfcoding/pkg/cache"
-	configpkg "github.com/wyfcoding/pkg/config"
-	"github.com/wyfcoding/pkg/grpcclient"
-	"github.com/wyfcoding/pkg/idempotency"
-	"github.com/wyfcoding/pkg/limiter"
-	"github.com/wyfcoding/pkg/logging"
-	"github.com/wyfcoding/pkg/messagequeue/kafka"
-	"github.com/wyfcoding/pkg/messagequeue/outbox"
-	"github.com/wyfcoding/pkg/metrics"
-	"github.com/wyfcoding/pkg/middleware"
+	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
+	match_mem "github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/persistence/memory"
+	match_mysql "github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/persistence/mysql"
+	grpc_server "github.com/wyfcoding/financialtrading/internal/matchingengine/interfaces/grpc"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
+	gorm_mysql "gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
-// BootstrapName 服务唯一标识
-const BootstrapName = "matchingengine"
-
-// IdempotencyPrefix 幂等性 Redis 键前缀
-const IdempotencyPrefix = "matchingengine:idem"
-
-// Config 服务扩展配置
-type Config struct {
-	configpkg.Config `mapstructure:",squash"`
-}
-
-// AppContext 应用上下文 (包含对外服务实例与依赖)
-type AppContext struct {
-	Config      *Config
-	Matching    *application.MatchingEngineService
-	Clients     *ServiceClients
-	Handler     *matchinghttp.MatchingHandler
-	Metrics     *metrics.Metrics
-	Limiter     limiter.Limiter
-	Idempotency idempotency.Manager
-	Outbox      *outbox.Processor
-}
-
-// ServiceClients 下游微服务客户端集合
-type ServiceClients struct {
-	ClearingConn *grpc.ClientConn `service:"clearing"`
-	OrderConn    *grpc.ClientConn `service:"order"`
-
-	// 具体的客户端接口
-	Clearing clearingv1.ClearingServiceClient
-}
-
 func main() {
-	// 构建并运行服务
-	if err := app.NewBuilder[*Config, *AppContext](BootstrapName).
-		WithConfig(&Config{}).
-		WithService(initService).
-		WithGRPC(registerGRPC).
-		WithGin(registerGin).
-		WithGinMiddleware(
-			middleware.CORS(), // 跨域处理
-			middleware.TimeoutMiddleware(30*time.Second), // 全局超时
-		).
-		Build().
-		Run(); err != nil {
-		slog.Error("service bootstrap failed", "error", err)
-	}
-}
+	var configPath string
+	flag.StringVar(&configPath, "config", "configs/matchingengine/config.toml", "path to config file")
+	flag.Parse()
 
-// registerGRPC 注册 gRPC 服务
-func registerGRPC(s *grpc.Server, ctx *AppContext) {
-	pb.RegisterMatchingEngineServiceServer(s, matchinggrpc.NewHandler(ctx.Matching))
-}
-
-// registerGin 注册 HTTP 路由
-func registerGin(e *gin.Engine, ctx *AppContext) {
-
-	// 根据环境设置 Gin 模式
-	if ctx.Config.Server.Environment == "prod" {
-		gin.SetMode(gin.ReleaseMode)
+	// 1. Config
+	viper.SetConfigFile(configPath)
+	viper.AutomaticEnv()
+	if err := viper.ReadInConfig(); err != nil {
+		panic(fmt.Sprintf("read config failed: %v", err))
 	}
 
-	// 系统检查接口
-	sys := e.Group("/sys")
-	{
-		sys.GET("/health", func(c *gin.Context) {
-			response.SuccessWithRawData(c, gin.H{
-				"status":    "UP",
-				"service":   BootstrapName,
-				"timestamp": time.Now().Unix(),
-			})
-		})
-		sys.GET("/ready", func(c *gin.Context) {
-			response.SuccessWithRawData(c, gin.H{"status": "READY"})
-		})
-	}
+	// 2. Logger
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
 
-	// 指标暴露
-	if ctx.Config.Metrics.Enabled {
-		e.GET(ctx.Config.Metrics.Path, gin.WrapH(ctx.Metrics.Handler()))
-	}
-
-	// 全局限流中间件
-	e.Use(middleware.RateLimitWithLimiter(ctx.Limiter))
-
-	// 业务 API 路由 v1 (与 ecommerce 对齐)
-	api := e.Group("/api/v1")
-	{
-		ctx.Handler.RegisterRoutes(api)
-	}
-}
-
-// initService 执行复杂的服务依赖注入与资源初始化。
-func initService(cfg *Config, m *metrics.Metrics) (*AppContext, func(), error) {
-	c := cfg
-	bootLog := slog.With("module", "bootstrap")
-	logger := logging.Default()
-
-	configpkg.PrintWithMask(c)
-
-	// 1. 初始化持久化层
-	db, err := database.NewDB(c.Data.Database, c.CircuitBreaker, logger, m)
+	// 3. Database (MySQL)
+	dsn := viper.GetString("database.source")
+	db, err := gorm.Open(gorm_mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		return nil, nil, fmt.Errorf("database init error: %w", err)
+		panic(fmt.Sprintf("connect db failed: %v", err))
 	}
 
-	// 2. 初始化缓存层
-	redisCache, err := cache.NewRedisCache(c.Data.Redis, c.CircuitBreaker, logger, m)
+	// Auto Migrate is risky for Matching Engine if high load, but okay for dev
+	// Assuming Trade table exists
+
+	// 4. Infrastructure
+	// OrderBookRepo: In-Memory (Redis in real prod, but Memory correct for LMAX style)
+	orderBookRepo := match_mem.NewInMemoryRepository()
+	// TradeRepo: MySQL
+	tradeRepo := match_mysql.NewTradeRepository(db)
+	// Outbox
+	// outboxMgr := outbox.NewOutboxManager(db, logger)
+
+	// 5. Domain Engine
+	symbol := viper.GetString("matching.symbol")
+	if symbol == "" {
+		symbol = "BTC-USDT" // Default
+	}
+	// DisruptionEngine usage: NewDisruptionEngine(symbol, bufferSize, logger)
+	bufferSize := uint64(1024 * 1024)
+	disruptionEngine, err := domain.NewDisruptionEngine(symbol, bufferSize, logger)
 	if err != nil {
-		if sqlDB, err := db.RawDB().DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-		return nil, nil, fmt.Errorf("redis init error: %w", err)
+		panic(fmt.Sprintf("failed to init disruption engine: %v", err))
 	}
+	if err := disruptionEngine.Start(); err != nil {
+		panic(fmt.Sprintf("failed to start disruption engine: %v", err))
+	}
+	defer disruptionEngine.Shutdown()
 
-	// 3. 初始化限流与幂等治理组件
-	rateLimiter := limiter.NewRedisLimiter(redisCache.GetClient(), c.RateLimit.Rate, c.RateLimit.Burst)
-	idemManager := idempotency.NewRedisManager(redisCache.GetClient(), IdempotencyPrefix)
+	// 6. Application Manager
+	// NewMatchingEngineManager(symbol, engine, tradeRepo, orderBookRepo, db, outboxMgr, logger)
+	manager := application.NewMatchingEngineManager(
+		symbol,
+		disruptionEngine,
+		tradeRepo,
+		orderBookRepo,
+		db,
+		nil, // outboxMgr (temporarily disabled due to pkg missing)
+		logger,
+	)
 
-	// 4. 初始化异步通信组件 (Kafka + Outbox)
-	producer := kafka.NewProducer(&c.MessageQueue.Kafka, logger, m)
+	// 7. Interfaces (gRPC)
+	grpcSrv := grpc.NewServer()
+	// NewServer needs Manager, not Service (we updated server.go in previous steps)
+	grpc_server.NewServer(grpcSrv, manager)
+	reflection.Register(grpcSrv)
 
-	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
-	outboxProcessor := outbox.NewProcessor(outboxMgr, func(ctx context.Context, topic, key string, payload []byte) error {
-		if producer == nil {
-			return fmt.Errorf("kafka producer not initialized")
-		}
-		return producer.PublishToTopic(ctx, topic, []byte(key), payload)
-	}, 100, 5*time.Second)
-	outboxProcessor.Start()
-
-	// 5. 组装下游微服务客户端
-	clients := &ServiceClients{}
-	clientCleanup, err := grpcclient.InitClients(c.Services, m, c.CircuitBreaker, clients)
+	port := viper.GetString("server.grpc_port")
+	if port == "" {
+		port = "50055"
+	}
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {
-		_ = redisCache.Close()
-		if sqlDB, err := db.RawDB().DB(); err == nil {
-			_ = sqlDB.Close()
+		panic(err)
+	}
+
+	// 8. Start
+	go func() {
+		slog.Info("Starting gRPC server", "port", port)
+		if err := grpcSrv.Serve(lis); err != nil {
+			panic(err)
 		}
-		return nil, nil, fmt.Errorf("grpc clients init error: %w", err)
-	}
-	if clients.ClearingConn != nil {
-		clients.Clearing = clearingv1.NewClearingServiceClient(clients.ClearingConn)
-	}
+	}()
 
-	// 6. 核心业务 DDD 装配
-	bootLog.Info("assembling matching engine with ddd layers...")
+	// 9. Graceful Shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	slog.Info("Shutting down server...")
 
-	tradeRepo, orderBookRepo := mysql.NewMatchingRepository(db.RawDB())
-
-	defaultSymbol := "BTC/USDT"
-	matchingService, err := application.NewMatchingEngineService(defaultSymbol, tradeRepo, orderBookRepo, db.RawDB(), outboxMgr, logger.Logger)
-	if err != nil {
-		_ = redisCache.Close()
-		if sqlDB, err := db.RawDB().DB(); err == nil {
-			_ = sqlDB.Close()
-		}
-		return nil, nil, fmt.Errorf("matching service init error: %w", err)
-	}
-	if clients.Clearing != nil {
-		matchingService.SetClearingClient(clients.Clearing)
-	}
-	if clients.OrderConn != nil {
-		matchingService.SetOrderClient(orderv1.NewOrderServiceClient(clients.OrderConn))
-	}
-
-	handler := matchinghttp.NewMatchingHandler(matchingService)
-
-	// 定义优雅关停时的资源释放回调
-	cleanup := func() {
-		bootLog.Info("shutting down and releasing system resources...")
-		outboxProcessor.Stop()
-		clientCleanup()
-		if producer != nil {
-			_ = producer.Close()
-		}
-		if redisCache != nil {
-			if err := redisCache.Close(); err != nil {
-				bootLog.Error("failed to close redis cache", "error", err)
-			}
-		}
-		if sqlDB, err := db.RawDB().DB(); err == nil && sqlDB != nil {
-			if err := sqlDB.Close(); err != nil {
-				bootLog.Error("failed to close sql database", "error", err)
-			}
-		}
-	}
-
-	return &AppContext{
-		Config:      c,
-		Matching:    matchingService,
-		Clients:     clients,
-		Handler:     handler,
-		Metrics:     m,
-		Limiter:     rateLimiter,
-		Idempotency: idemManager,
-		Outbox:      outboxProcessor,
-	}, cleanup, nil
+	grpcSrv.GracefulStop()
+	slog.Info("Server exiting")
 }

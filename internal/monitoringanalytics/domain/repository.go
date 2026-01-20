@@ -1,0 +1,24 @@
+package domain
+
+import (
+	"context"
+	"time"
+)
+
+// MetricRepository 定义指标数据的存储接口
+type MetricRepository interface {
+	Save(ctx context.Context, m *Metric) error
+	GetMetrics(ctx context.Context, name string, startTime, endTime int64) ([]*Metric, error)
+	GetTradeMetrics(ctx context.Context, symbol string, startTime, endTime time.Time) ([]*TradeMetric, error)
+}
+
+// SystemHealthRepository 定义系统健康状态的存储接口
+type SystemHealthRepository interface {
+	Save(ctx context.Context, h *SystemHealth) error
+	GetLatestHealth(ctx context.Context, serviceName string, limit int) ([]*SystemHealth, error)
+}
+
+type AlertRepository interface {
+	Save(ctx context.Context, alert *Alert) error
+	GetAlerts(ctx context.Context, limit int) ([]*Alert, error)
+}

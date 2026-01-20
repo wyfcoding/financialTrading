@@ -13,7 +13,7 @@ type MarketSimulationService struct {
 }
 
 // NewMarketSimulationService 构造函数。
-func NewMarketSimulationService(repo domain.SimulationScenarioRepository, publisher domain.MarketDataPublisher) *MarketSimulationService {
+func NewMarketSimulationService(repo domain.SimulationRepository, publisher domain.MarketDataPublisher) *MarketSimulationService {
 	return &MarketSimulationService{
 		manager: NewMarketSimulationManager(repo, publisher),
 		query:   NewMarketSimulationQuery(repo),
@@ -32,6 +32,6 @@ func (s *MarketSimulationService) StopSimulation(ctx context.Context, scenarioID
 
 // --- Query (Reads) ---
 
-func (s *MarketSimulationService) GetSimulationStatus(ctx context.Context, scenarioID string) (*domain.SimulationScenario, error) {
+func (s *MarketSimulationService) GetSimulationStatus(ctx context.Context, scenarioID string) (*domain.Simulation, error) {
 	return s.query.GetSimulationStatus(ctx, scenarioID)
 }

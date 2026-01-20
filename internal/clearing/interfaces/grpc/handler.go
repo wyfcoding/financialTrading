@@ -8,7 +8,7 @@ import (
 	"log/slog"
 	"time"
 
-	pb "github.com/wyfcoding/financialtrading/goapi/clearing/v1"
+	pb "github.com/wyfcoding/financialtrading/go-api/clearing/v1"
 	"github.com/wyfcoding/financialtrading/internal/clearing/application"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

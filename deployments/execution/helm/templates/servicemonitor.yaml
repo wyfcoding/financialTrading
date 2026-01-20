@@ -2,14 +2,14 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "execution.fullname" . }}
+  name: {{ include "clearing.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "execution.labels" . | nindent 4 }}
+    {{- include "clearing.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      {{- include "execution.selectorLabels" . | nindent 6 }}
+      {{- include "clearing.selectorLabels" . | nindent 6 }}
   endpoints:
   - port: http
     path: /metrics

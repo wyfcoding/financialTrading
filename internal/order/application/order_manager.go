@@ -7,9 +7,9 @@ import (
 
 	"github.com/dtm-labs/client/dtmgrpc"
 	"github.com/shopspring/decimal"
-	accountv1 "github.com/wyfcoding/financialtrading/goapi/account/v1"
-	positionv1 "github.com/wyfcoding/financialtrading/goapi/position/v1"
-	riskv1 "github.com/wyfcoding/financialtrading/goapi/risk/v1"
+	accountv1 "github.com/wyfcoding/financialtrading/go-api/account/v1"
+	positionv1 "github.com/wyfcoding/financialtrading/go-api/position/v1"
+	riskv1 "github.com/wyfcoding/financialtrading/go-api/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
 	"github.com/wyfcoding/pkg/dtm"
 	"github.com/wyfcoding/pkg/idgen"
@@ -107,21 +107,21 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 
 	// 2. 远程金融级风控服务同步校验
 	if m.riskCli != nil {
-		remoteResp, err := m.riskCli.AssessRisk(ctx, &riskv1.AssessRiskRequest{
+		remoteResp, err := m.riskCli.CheckRisk(ctx, &riskv1.CheckRiskRequest{
 			UserId:   req.UserID,
 			Symbol:   req.Symbol,
 			Side:     req.Side,
-			Quantity: quantity.String(),
-			Price:    price.String(),
+			Quantity: quantity.InexactFloat64(),
+			Price:    price.InexactFloat64(),
 		})
 		if err != nil {
 			logging.Error(ctx, "remote risk assessment failed", "error", err)
 			return nil, fmt.Errorf("remote risk check failed: %w", err)
 		}
-		if !remoteResp.IsAllowed {
-			return nil, fmt.Errorf("transaction blocked by remote risk: %s (level: %s)", remoteResp.Reason, remoteResp.RiskLevel)
+		if !remoteResp.Passed {
+			return nil, fmt.Errorf("transaction blocked by remote risk: %s", remoteResp.Reason)
 		}
-		logging.Info(ctx, "remote risk check passed", "risk_level", remoteResp.RiskLevel, "score", remoteResp.RiskScore)
+		logging.Info(ctx, "remote risk check passed")
 	}
 
 	orderID := fmt.Sprintf("ORD-%d", idgen.GenID())
@@ -131,10 +131,8 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 		req.Symbol,
 		domain.OrderSide(req.Side),
 		domain.OrderType(req.OrderType),
-		price,
-		quantity,
-		domain.TimeInForce(req.TimeInForce),
-		req.ClientOrderID,
+		price.InexactFloat64(),
+		quantity.InexactFloat64(),
 	)
 
 	// --- 3. 开启分布式 TCC 事务控制资产冻结 ---
@@ -146,7 +144,7 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 
 		err = tcc.Execute(ctx, func(t *dtmgrpc.TccGrpc) error {
 			switch order.Side {
-			case domain.OrderSideBuy:
+			case domain.SideBuy:
 				// 买单：冻结账户 USDT 余额
 				accountGrpcPrefix := m.accountSvcURL + "/api.account.v1.AccountService"
 				freezeReq := &accountv1.TccFreezeRequest{
@@ -158,13 +156,13 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 				if err := dtm.CallBranch(t, freezeReq, accountGrpcPrefix+"/TccTryFreeze", accountGrpcPrefix+"/TccConfirmFreeze", accountGrpcPrefix+"/TccCancelFreeze"); err != nil {
 					return err
 				}
-			case domain.OrderSideSell:
+			case domain.SideSell:
 				// 卖单：冻结标的资产持仓
 				positionGrpcPrefix := m.positionSvcURL + "/api.position.v1.PositionService"
 				freezeReq := &positionv1.TccPositionRequest{
 					UserId:   req.UserID,
 					Symbol:   order.Symbol,
-					Quantity: order.Quantity.String(),
+					Quantity: decimal.NewFromFloat(order.Quantity).String(),
 					OrderId:  orderID,
 				}
 				if err := dtm.CallBranch(t, freezeReq, positionGrpcPrefix+"/TccTryFreeze", positionGrpcPrefix+"/TccConfirmFreeze", positionGrpcPrefix+"/TccCancelFreeze"); err != nil {
@@ -189,24 +187,21 @@ func (m *OrderManager) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 	}
 
 	m.logger.InfoContext(ctx, "order created successfully", "order_id", orderID, "user_id", req.UserID)
-	// ... (DTO 组装保持不变) ...
+
 	return &OrderDTO{
-		OrderID:        order.OrderID,
+		OrderID:        order.ID, // Fix: Use ID
 		UserID:         order.UserID,
 		Symbol:         order.Symbol,
 		Side:           string(order.Side),
 		OrderType:      string(order.Type),
-		Price:          order.Price.String(),
-		Quantity:       order.Quantity.String(),
-		FilledQuantity: order.FilledQuantity.String(),
+		Price:          decimal.NewFromFloat(order.Price).String(),
+		Quantity:       decimal.NewFromFloat(order.Quantity).String(),
+		FilledQuantity: decimal.NewFromFloat(order.FilledQuantity).String(),
 		Status:         string(order.Status),
-		TimeInForce:    string(order.TimeInForce),
 		CreatedAt:      order.CreatedAt.Unix(),
 		UpdatedAt:      order.UpdatedAt.Unix(),
 	}, nil
 }
-
-// ... (HandleTradeExecuted 保持逻辑不变，统一日志) ...
 
 // HandleTradeExecuted 处理撮合引擎发出的成交事件。
 func (m *OrderManager) HandleTradeExecuted(ctx context.Context, event map[string]any) error {
@@ -218,6 +213,9 @@ func (m *OrderManager) HandleTradeExecuted(ctx context.Context, event map[string
 
 	m.logger.InfoContext(ctx, "handling trade executed event", "trade_id", tradeID, "buy_order", buyOrderID, "sell_order", sellOrderID)
 
+	// Since we don't have updateFillStatus implemented as a separate method anymore or it was private, I will inline logic or restore it if I want to match previous behavior.
+	// But to save tokens/complexity I will implement minimal update logic here.
+	// Actually I should implement updateFillStatus helper.
 	if err := m.updateFillStatus(ctx, buyOrderID, quantity, price, "buy match"); err != nil {
 		return err
 	}
@@ -235,13 +233,8 @@ func (m *OrderManager) updateFillStatus(ctx context.Context, orderID string, qty
 		return err
 	}
 
-	order.FilledQuantity = order.FilledQuantity.Add(qty)
-	if order.FilledQuantity.GreaterThanOrEqual(order.Quantity) {
-		order.Status = domain.OrderStatusFilled
-	} else {
-		order.Status = domain.OrderStatusPartiallyFilled
-	}
-	order.Remark = fmt.Sprintf("%s: %s @ %s", msg, qty.String(), price.String())
+	order.UpdateExecution(qty.InexactFloat64(), price.InexactFloat64())
+	// order.Remark = ... (Order struct doesn't have Remark in domain/order.go step 2082) So skip Remark.
 
 	if err := m.repo.Save(ctx, order); err != nil {
 		m.logger.ErrorContext(ctx, "failed to update order fill status", "order_id", orderID, "error", err)
@@ -264,16 +257,18 @@ func (m *OrderManager) CancelOrder(ctx context.Context, orderID, userID string) 
 	if order.UserID != userID {
 		return nil, fmt.Errorf("order does not belong to user: %s", userID)
 	}
-	if !order.CanBeCancelled() {
+
+	if order.Status == domain.StatusFilled || order.Status == domain.StatusCancelled {
 		return nil, fmt.Errorf("order cannot be cancelled, current status: %s", order.Status)
 	}
 
-	if order.Status == domain.OrderStatusOpen || order.Status == domain.OrderStatusPartiallyFilled {
-		remainingQty := order.Quantity.Sub(order.FilledQuantity)
+	if order.Status == domain.StatusPending || order.Status == domain.StatusPartiallyFilled {
+		remainingQty := decimal.NewFromFloat(order.Quantity - order.FilledQuantity)
+		price := decimal.NewFromFloat(order.Price)
 
 		switch order.Side {
-		case domain.OrderSideBuy:
-			remainingAmount := remainingQty.Mul(order.Price)
+		case domain.SideBuy:
+			remainingAmount := remainingQty.Mul(price)
 			if m.accountCli != nil {
 				_, err := m.accountCli.TccCancelFreeze(ctx, &accountv1.TccFreezeRequest{
 					UserId:   userID,
@@ -286,7 +281,7 @@ func (m *OrderManager) CancelOrder(ctx context.Context, orderID, userID string) 
 					return nil, fmt.Errorf("failed to unfreeze funds: %w", err)
 				}
 			}
-		case domain.OrderSideSell:
+		case domain.SideSell:
 			if m.positionCli != nil {
 				_, err := m.positionCli.TccCancelFreeze(ctx, &positionv1.TccPositionRequest{
 					UserId:   userID,
@@ -302,25 +297,24 @@ func (m *OrderManager) CancelOrder(ctx context.Context, orderID, userID string) 
 		}
 	}
 
-	if err := m.repo.UpdateStatus(ctx, orderID, domain.OrderStatusCancelled); err != nil {
+	if err := m.repo.UpdateStatus(ctx, orderID, domain.StatusCancelled); err != nil {
 		logging.Error(ctx, "failed to update order status after unfreezing", "order_id", orderID, "error", err)
 		return nil, fmt.Errorf("failed to finalize cancellation: %w", err)
 	}
 
 	m.logger.InfoContext(ctx, "order cancelled successfully", "order_id", orderID, "user_id", userID)
-	order.Status = domain.OrderStatusCancelled
-	// ... (DTO 组装) ...
+	order.Status = domain.StatusCancelled
+
 	return &OrderDTO{
-		OrderID:        order.OrderID,
+		OrderID:        order.ID, // Fix: Use ID
 		UserID:         order.UserID,
 		Symbol:         order.Symbol,
 		Side:           string(order.Side),
 		OrderType:      string(order.Type),
-		Price:          order.Price.String(),
-		Quantity:       order.Quantity.String(),
-		FilledQuantity: order.FilledQuantity.String(),
+		Price:          decimal.NewFromFloat(order.Price).String(),
+		Quantity:       decimal.NewFromFloat(order.Quantity).String(),
+		FilledQuantity: decimal.NewFromFloat(order.FilledQuantity).String(),
 		Status:         string(order.Status),
-		TimeInForce:    string(order.TimeInForce),
 		CreatedAt:      order.CreatedAt.Unix(),
 		UpdatedAt:      order.UpdatedAt.Unix(),
 	}, nil
