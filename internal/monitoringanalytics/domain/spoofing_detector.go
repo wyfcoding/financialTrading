@@ -21,13 +21,13 @@ type OrderEvent struct {
 // SpoofingDetector 市场操纵检测器
 type SpoofingDetector struct {
 	history map[string][]surveillance.MarketEvent
-	engine  *surveillance.SurveillanceEngine
+	engine  *surveillance.Engine
 }
 
 func NewSpoofingDetector(threshold decimal.Decimal, window time.Duration) *SpoofingDetector {
 	return &SpoofingDetector{
 		history: make(map[string][]surveillance.MarketEvent),
-		engine:  &surveillance.SurveillanceEngine{Threshold: threshold, Window: window},
+		engine:  &surveillance.Engine{Threshold: threshold, Window: window},
 	}
 }
 
