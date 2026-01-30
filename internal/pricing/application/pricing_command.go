@@ -9,24 +9,22 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 )
 
-// PricingManager 处理所有定价相关的写入操作（Commands）。
-type PricingManager struct {
+// PricingCommandService 处理所有定价相关的写入操作（Commands）。
+type PricingCommandService struct {
 	marketDataClient domain.MarketDataClient
-	pricingRepo      domain.PricingRepository
-	priceRepo        domain.PriceRepository
+	repo             domain.PricingRepository
 }
 
-// NewPricingManager 构造函数。
-func NewPricingManager(marketDataClient domain.MarketDataClient, pricingRepo domain.PricingRepository, priceRepo domain.PriceRepository) *PricingManager {
-	return &PricingManager{
+// NewPricingCommandService 构造函数。
+func NewPricingCommandService(marketDataClient domain.MarketDataClient, repo domain.PricingRepository) *PricingCommandService {
+	return &PricingCommandService{
 		marketDataClient: marketDataClient,
-		pricingRepo:      pricingRepo,
-		priceRepo:        priceRepo,
+		repo:             repo,
 	}
 }
 
 // GetOptionPrice 计算期权价格 (Black-Scholes) 并保存结果
-func (m *PricingManager) GetOptionPrice(ctx context.Context, contract domain.OptionContract, underlyingPrice decimal.Decimal, volatility, riskFreeRate float64) (decimal.Decimal, error) {
+func (s *PricingCommandService) GetOptionPrice(ctx context.Context, contract domain.OptionContract, underlyingPrice decimal.Decimal, volatility, riskFreeRate float64) (decimal.Decimal, error) {
 	timeToExpiry := float64(contract.ExpiryDate-time.Now().UnixMilli()) / 1000 / 24 / 3600 / 365
 	sVal, _ := underlyingPrice.Float64()
 	kVal, _ := contract.StrikePrice.Float64()
@@ -49,15 +47,16 @@ func (m *PricingManager) GetOptionPrice(ctx context.Context, contract domain.Opt
 		Vega:            result.Vega,
 		Rho:             result.Rho,
 		CalculatedAt:    time.Now().UnixMilli(),
+		PricingModel:    "BlackScholes",
 	}
-	if err := m.pricingRepo.Save(ctx, repoResult); err != nil {
-		logging.Error(ctx, "PricingManager: failed to save price result", "error", err)
+	if err := s.repo.SavePricingResult(ctx, repoResult); err != nil {
+		logging.Error(ctx, "PricingCommandService: failed to save price result", "error", err)
 	}
 
 	return result.Price, nil
 }
 
-func (m *PricingManager) OnQuoteReceived(ctx context.Context, symbol string, bid, ask float64, source string) error {
+func (s *PricingCommandService) OnQuoteReceived(ctx context.Context, symbol string, bid, ask float64, source string) error {
 	price := domain.NewPrice(symbol, bid, ask, source)
-	return m.priceRepo.Save(ctx, price)
+	return s.repo.SavePrice(ctx, price)
 }

@@ -6,38 +6,31 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// RiskLimitRepository repository interface
-type RiskLimitRepository interface {
-	Save(ctx context.Context, limit *RiskLimit) error
-	GetByUserID(ctx context.Context, userID string) ([]*RiskLimit, error) // Changed to return slice
-	GetByUserIDAndType(ctx context.Context, userID, limitType string) (*RiskLimit, error)
-	Get(ctx context.Context, id string) (*RiskLimit, error)
-}
+// RiskRepository 风险聚合仓储接口，整合了限额、评估、指标、告警和熔断器的持久化操作。
+type RiskRepository interface {
+	// Limit
+	SaveLimit(ctx context.Context, limit *RiskLimit) error
+	GetLimitsByUserID(ctx context.Context, userID string) ([]*RiskLimit, error)
+	GetLimitByUserIDAndType(ctx context.Context, userID, limitType string) (*RiskLimit, error)
+	GetLimit(ctx context.Context, id string) (*RiskLimit, error)
 
-// RiskAssessmentRepository repository interface
-type RiskAssessmentRepository interface {
-	Save(ctx context.Context, assessment *RiskAssessment) error
-	Get(ctx context.Context, id string) (*RiskAssessment, error)
-	GetLatestByUser(ctx context.Context, userID string) (*RiskAssessment, error)
-}
+	// Assessment
+	SaveAssessment(ctx context.Context, assessment *RiskAssessment) error
+	GetAssessment(ctx context.Context, id string) (*RiskAssessment, error)
+	GetLatestAssessmentByUser(ctx context.Context, userID string) (*RiskAssessment, error)
 
-// RiskMetricsRepository repository interface
-type RiskMetricsRepository interface {
-	Save(ctx context.Context, metrics *RiskMetrics) error
-	Get(ctx context.Context, userID string) (*RiskMetrics, error)
-}
+	// Metrics
+	SaveMetrics(ctx context.Context, metrics *RiskMetrics) error
+	GetMetrics(ctx context.Context, userID string) (*RiskMetrics, error)
 
-// RiskAlertRepository repository interface
-type RiskAlertRepository interface {
-	Save(ctx context.Context, alert *RiskAlert) error
-	GetByUser(ctx context.Context, userID string, limit int) ([]*RiskAlert, error)
-	DeleteByID(ctx context.Context, id string) error
-}
+	// Alert
+	SaveAlert(ctx context.Context, alert *RiskAlert) error
+	GetAlertsByUser(ctx context.Context, userID string, limit int) ([]*RiskAlert, error)
+	DeleteAlertByID(ctx context.Context, id string) error
 
-// CircuitBreakerRepository repository interface
-type CircuitBreakerRepository interface {
-	Save(ctx context.Context, cb *CircuitBreaker) error
-	GetByUserID(ctx context.Context, userID string) (*CircuitBreaker, error)
+	// CircuitBreaker
+	SaveCircuitBreaker(ctx context.Context, cb *CircuitBreaker) error
+	GetCircuitBreakerByUserID(ctx context.Context, userID string) (*CircuitBreaker, error)
 }
 
 // RiskDomainService interface

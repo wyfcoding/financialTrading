@@ -14,7 +14,7 @@ import (
 	pricing_pb "github.com/wyfcoding/financialtrading/go-api/pricing/v1"
 	"github.com/wyfcoding/financialtrading/internal/pricing/application"
 	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
-	"github.com/wyfcoding/financialtrading/internal/pricing/infrastructure/persistence/mysql"
+	"github.com/wyfcoding/financialtrading/internal/pricing/infrastructure/persistence"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/pricing/interfaces/grpc"
 	"github.com/wyfcoding/pkg/logging"
 	"golang.org/x/sync/errgroup"
@@ -48,16 +48,15 @@ func main() {
 	}
 
 	// Auto Migrate
-	if err := db.AutoMigrate(&domain.Price{}); err != nil {
+	if err := db.AutoMigrate(&domain.Price{}, &persistence.PricingResultModel{}); err != nil {
 		panic(fmt.Sprintf("migrate db failed: %v", err))
 	}
 
 	// 4. Infrastructure & Domain
-	priceRepo := mysql.NewPriceRepository(db)
-	pricingRepo := mysql.NewPricingRepository(db)
+	repo := persistence.NewPricingRepository(db)
 
 	// 5. Application
-	appService := application.NewPricingService(nil, pricingRepo, priceRepo)
+	appService := application.NewPricingService(nil, repo)
 
 	// 6. Interfaces
 	// gRPC

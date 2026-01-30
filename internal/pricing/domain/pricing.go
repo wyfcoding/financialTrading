@@ -43,8 +43,10 @@ type PricingResult struct {
 	Gamma           decimal.Decimal `gorm:"column:gamma;type:decimal(32,18)"`
 	Theta           decimal.Decimal `gorm:"column:theta;type:decimal(32,18)"`
 	Vega            decimal.Decimal `gorm:"column:vega;type:decimal(32,18)"`
-	Rho             decimal.Decimal `gorm:"column:rho;type:decimal(32,18)"`
-	CalculatedAt    int64           `gorm:"column:calculated_at;type:bigint;not null"`
+	// ...
+	Rho          decimal.Decimal `gorm:"column:rho;type:decimal(32,18)"`
+	CalculatedAt int64           `gorm:"column:calculated_at;type:bigint;not null"`
+	PricingModel string          `gorm:"column:pricing_model;type:varchar(32)"`
 }
 
 // End of domain file

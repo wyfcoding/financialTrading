@@ -16,47 +16,37 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// RiskManager 处理所有风险管理相关的写入操作（Commands）。
-type RiskManager struct {
-	assessmentRepo domain.RiskAssessmentRepository
-	metricsRepo    domain.RiskMetricsRepository
-	limitRepo      domain.RiskLimitRepository
-	alertRepo      domain.RiskAlertRepository
-	breakerRepo    domain.CircuitBreakerRepository
-	calculator     *finance.RiskCalculator
-	marginCalc     domain.MarginCalculator
-	ruleEngine     risk.Evaluator // 动态规则引擎
-	localCache     cache.Cache    // 本地热点缓存
+// RiskCommandService 处理所有风险管理相关的写入操作（Commands）。
+type RiskCommandService struct {
+	repo       domain.RiskRepository
+	calculator *finance.RiskCalculator
+	marginCalc domain.MarginCalculator
+	ruleEngine risk.Evaluator // 动态规则引擎
+	localCache cache.Cache    // 本地热点缓存
+	logger     *slog.Logger
 }
 
-// NewRiskManager 构造函数。
-func NewRiskManager(
-	assessmentRepo domain.RiskAssessmentRepository,
-	metricsRepo domain.RiskMetricsRepository,
-	limitRepo domain.RiskLimitRepository,
-	alertRepo domain.RiskAlertRepository,
-	breakerRepo domain.CircuitBreakerRepository,
+// NewRiskCommandService 构造函数。
+func NewRiskCommandService(
+	repo domain.RiskRepository,
 	ruleEngine risk.Evaluator,
 	marginCalc domain.MarginCalculator,
 	localCache cache.Cache,
-) *RiskManager {
-	return &RiskManager{
-		assessmentRepo: assessmentRepo,
-		metricsRepo:    metricsRepo,
-		limitRepo:      limitRepo,
-		alertRepo:      alertRepo,
-		breakerRepo:    breakerRepo,
-		calculator:     finance.NewRiskCalculator(),
-		marginCalc:     marginCalc,
-		ruleEngine:     ruleEngine,
-		localCache:     localCache,
+	logger *slog.Logger,
+) *RiskCommandService {
+	return &RiskCommandService{
+		repo:       repo,
+		calculator: finance.NewRiskCalculator(),
+		marginCalc: marginCalc,
+		ruleEngine: ruleEngine,
+		localCache: localCache,
+		logger:     logger.With("module", "risk_command"),
 	}
 }
 
 // AssessRisk 执行全方位的交易风险评估。
-// 流程：极速熔断自检 -> 账户状态回源 -> 规则引擎判定 -> 组合限额校验 -> 结果持久化与告警。
-func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*RiskAssessmentDTO, error) {
-	ctx, span := tracing.Tracer().Start(ctx, "RiskManager.AssessRisk", trace.WithSpanKind(trace.SpanKindInternal))
+func (s *RiskCommandService) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*RiskAssessmentDTO, error) {
+	ctx, span := tracing.Tracer().Start(ctx, "RiskCommandService.AssessRisk", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 	tracing.AddTag(ctx, "user_id", req.UserID)
 	tracing.AddTag(ctx, "symbol", req.Symbol)
@@ -64,7 +54,7 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 	// 1. 极速熔断检查 (L1 Local Cache)
 	breakerKey := fmt.Sprintf("breaker:%s", req.UserID)
 	var isFired bool
-	if err := m.localCache.Get(ctx, breakerKey, &isFired); err == nil && isFired {
+	if err := s.localCache.Get(ctx, breakerKey, &isFired); err == nil && isFired {
 		return &RiskAssessmentDTO{
 			IsAllowed: false,
 			Reason:    "account trading suspended (cached)",
@@ -72,14 +62,14 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 	}
 
 	// 2. 检查账户熔断状态 (DB 回源)
-	breaker, err := m.breakerRepo.GetByUserID(ctx, req.UserID)
+	breaker, err := s.repo.GetCircuitBreakerByUserID(ctx, req.UserID)
 	if err != nil {
-		m.internalLogger().ErrorContext(ctx, "failed to get breaker from repo", "user_id", req.UserID, "error", err)
+		s.logger.ErrorContext(ctx, "failed to get breaker from repo", "user_id", req.UserID, "error", err)
 		return nil, err
 	}
 	if breaker != nil && breaker.IsFired {
-		if err := m.localCache.Set(ctx, breakerKey, true, 30*time.Second); err != nil {
-			m.internalLogger().WarnContext(ctx, "failed to update breaker local cache", "user_id", req.UserID, "error", err)
+		if err := s.localCache.Set(ctx, breakerKey, true, 30*time.Second); err != nil {
+			s.logger.WarnContext(ctx, "failed to update breaker local cache", "user_id", req.UserID, "error", err)
 		}
 		return &RiskAssessmentDTO{
 			IsAllowed: false,
@@ -97,14 +87,14 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 	}
 	orderValue := quantity.Mul(price)
 
-	assessmentResult, err := m.ruleEngine.Assess(ctx, "trade.assess", map[string]any{
+	assessmentResult, err := s.ruleEngine.Assess(ctx, "trade.assess", map[string]any{
 		"user_id":     req.UserID,
 		"symbol":      req.Symbol,
 		"quantity":    quantity.InexactFloat64(),
 		"order_value": orderValue.InexactFloat64(),
 	})
 	if err != nil {
-		m.internalLogger().ErrorContext(ctx, "rule engine assessment failed", "error", err)
+		s.logger.ErrorContext(ctx, "rule engine assessment failed", "error", err)
 		return nil, fmt.Errorf("risk system internal error")
 	}
 
@@ -116,10 +106,10 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 		riskLevel = domain.RiskLevelHigh
 	}
 
-	// 动态计算保证金要求 (基于当前波动率)
-	marginRequirement, err := m.marginCalc.CalculateRequiredMargin(ctx, req.Symbol, orderValue)
+	// 动态计算保证金要求
+	marginRequirement, err := s.marginCalc.CalculateRequiredMargin(ctx, req.Symbol, orderValue)
 	if err != nil {
-		m.internalLogger().WarnContext(ctx, "failed to calculate dynamic margin, using fallback", "error", err)
+		s.logger.WarnContext(ctx, "failed to calculate dynamic margin, using fallback", "error", err)
 		marginRequirement = orderValue.Mul(decimal.NewFromFloat(0.1)) // 10% 兜底
 	}
 
@@ -139,8 +129,8 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 
 	limitKey := fmt.Sprintf("limit:max_val:%s", req.UserID)
 	var limit *domain.RiskLimit
-	err = m.localCache.GetOrSet(ctx, limitKey, &limit, 5*time.Minute, func() (any, error) {
-		return m.limitRepo.GetByUserIDAndType(ctx, req.UserID, "MAX_SINGLE_ORDER_VALUE")
+	err = s.localCache.GetOrSet(ctx, limitKey, &limit, 5*time.Minute, func() (any, error) {
+		return s.repo.GetLimitByUserIDAndType(ctx, req.UserID, "MAX_SINGLE_ORDER_VALUE")
 	})
 
 	if err == nil && limit != nil {
@@ -150,8 +140,8 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 		}
 	}
 
-	if err := m.assessmentRepo.Save(ctx, assessment); err != nil {
-		m.internalLogger().ErrorContext(ctx, "failed to save risk assessment", "user_id", req.UserID, "error", err)
+	if err := s.repo.SaveAssessment(ctx, assessment); err != nil {
+		s.logger.ErrorContext(ctx, "failed to save risk assessment", "user_id", req.UserID, "error", err)
 		return nil, err
 	}
 
@@ -163,13 +153,13 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 			Severity:  string(riskLevel),
 			Message:   fmt.Sprintf("high risk detected for %s: %s", req.Symbol, assessment.Reason),
 		}
-		if err := m.alertRepo.Save(ctx, alert); err != nil {
-			m.internalLogger().ErrorContext(ctx, "failed to save risk alert", "user_id", req.UserID, "error", err)
+		if err := s.repo.SaveAlert(ctx, alert); err != nil {
+			s.logger.ErrorContext(ctx, "failed to save risk alert", "user_id", req.UserID, "error", err)
 		}
 	}
 
-	m.internalLogger().InfoContext(ctx, "risk assessment completed", "user_id", req.UserID, "is_allowed", assessment.IsAllowed, "level", riskLevel)
-	// ... (DTO 组装) ...
+	s.logger.InfoContext(ctx, "risk assessment completed", "user_id", req.UserID, "is_allowed", assessment.IsAllowed, "level", riskLevel)
+
 	return &RiskAssessmentDTO{
 		AssessmentID:      assessment.ID,
 		UserID:            assessment.UserID,
@@ -186,10 +176,8 @@ func (m *RiskManager) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*
 	}, nil
 }
 
-// ... (CalculatePortfolioRisk 补全日志) ...
-
 // CalculatePortfolioRisk 基于历史波动率与相关性矩阵计算组合风险（VaR/ES）。
-func (m *RiskManager) CalculatePortfolioRisk(ctx context.Context, req *CalculatePortfolioRiskRequest) (*CalculatePortfolioRiskResponse, error) {
+func (s *RiskCommandService) CalculatePortfolioRisk(ctx context.Context, req *CalculatePortfolioRiskRequest) (*CalculatePortfolioRiskResponse, error) {
 	assets := make([]domain.PortfolioAsset, len(req.Assets))
 	for i, a := range req.Assets {
 		pos, _ := decimal.NewFromString(a.Position)
@@ -213,7 +201,7 @@ func (m *RiskManager) CalculatePortfolioRisk(ctx context.Context, req *Calculate
 
 	result, err := domain.CalculatePortfolioRisk(domainInput)
 	if err != nil {
-		m.internalLogger().ErrorContext(ctx, "portfolio risk calculation failed", "error", err)
+		s.logger.ErrorContext(ctx, "portfolio risk calculation failed", "error", err)
 		return nil, err
 	}
 
@@ -222,8 +210,8 @@ func (m *RiskManager) CalculatePortfolioRisk(ctx context.Context, req *Calculate
 		compVaR[k] = v.String()
 	}
 
-	m.internalLogger().InfoContext(ctx, "portfolio risk calculated", "total_value", result.TotalValue.String(), "var", result.VaR.String())
-	// ... (Response 组装) ...
+	s.logger.InfoContext(ctx, "portfolio risk calculated", "total_value", result.TotalValue.String(), "var", result.VaR.String())
+
 	return &CalculatePortfolioRiskResponse{
 		TotalValue:      result.TotalValue.String(),
 		VaR:             result.VaR.String(),
@@ -233,60 +221,44 @@ func (m *RiskManager) CalculatePortfolioRisk(ctx context.Context, req *Calculate
 	}, nil
 }
 
-// ... (PerformGlobalRiskScan 修复忽略错误) ...
-
 // PerformGlobalRiskScan 自动扫描所有活跃账户的风险指标，并对超标账户触发熔断。
-func (m *RiskManager) PerformGlobalRiskScan(ctx context.Context) error {
-	m.internalLogger().InfoContext(ctx, "starting automated risk scan and stress test")
+func (s *RiskCommandService) PerformGlobalRiskScan(ctx context.Context) error {
+	s.logger.InfoContext(ctx, "starting automated risk scan and stress test")
 
-	// 实际生产中应从 User/Account 服务获取活跃用户列表
-	// 这里我们假设通过仓库查询有持仓或近期活动的 UID
-	uids := []string{"1001", "1002", "1003"} // 依然简化，但逻辑已具备扩展性
+	uids := []string{"1001", "1002", "1003"} // 简化版
 
 	for _, userID := range uids {
-		// 1. 获取用户资产数据 (模拟获取)
-		// 实际应调用 accountCli.GetPortfolio(userID)
-
-		// 2. 运行多个压力测试情景
-		scenarioResults := domain.RunStressTests([]domain.PortfolioAsset{}) // 使用空资产切片进行默认情景演示
+		scenarioResults := domain.RunStressTests([]domain.PortfolioAsset{})
 
 		for name, impact := range scenarioResults {
-			if impact.Abs().GreaterThan(decimal.NewFromInt(10000)) { // 假设阈值 $10k
-				m.internalLogger().WarnContext(ctx, "Stress test limit exceeded", "user_id", userID, "scenario", name, "impact", impact.String())
+			if impact.Abs().GreaterThan(decimal.NewFromInt(10000)) {
+				s.logger.WarnContext(ctx, "Stress test limit exceeded", "user_id", userID, "scenario", name, "impact", impact.String())
 
-				// 触发自动熔断
-				m.breakerRepo.Save(ctx, &domain.CircuitBreaker{
+				s.repo.SaveCircuitBreaker(ctx, &domain.CircuitBreaker{
 					UserID:        userID,
 					IsFired:       true,
 					TriggerReason: fmt.Sprintf("Stress scenario [%s] impact %s exceeds threshold", name, impact.String()),
 				})
-
-				// 发送紧急通知 (可通过 Event 或 直接调用 NotificationSvc)
 			}
 		}
 	}
 
-	m.internalLogger().InfoContext(ctx, "global risk scan completed")
+	s.logger.InfoContext(ctx, "global risk scan completed")
 	return nil
-}
-
-// internalLogger 返回预配置模块标签的日志记录器。
-func (m *RiskManager) internalLogger() *slog.Logger {
-	return slog.Default().With("module", "risk_manager")
 }
 
 // SaveRiskMetrics 对用户的量化风险指标进行快照存储。
-func (m *RiskManager) SaveRiskMetrics(ctx context.Context, metrics *domain.RiskMetrics) error {
-	if err := m.metricsRepo.Save(ctx, metrics); err != nil {
-		m.internalLogger().ErrorContext(ctx, "failed to save risk metrics", "user_id", metrics.UserID, "error", err)
+func (s *RiskCommandService) SaveRiskMetrics(ctx context.Context, metrics *domain.RiskMetrics) error {
+	if err := s.repo.SaveMetrics(ctx, metrics); err != nil {
+		s.logger.ErrorContext(ctx, "failed to save risk metrics", "user_id", metrics.UserID, "error", err)
 		return err
 	}
-	m.internalLogger().DebugContext(ctx, "risk metrics saved", "user_id", metrics.UserID)
+	s.logger.DebugContext(ctx, "risk metrics saved", "user_id", metrics.UserID)
 	return nil
 }
 
-func (m *RiskManager) CheckRisk(ctx context.Context, userID string, symbol string, quantity, price float64) (bool, string) {
-	limit, err := m.limitRepo.GetByUserIDAndType(ctx, userID, "ORDER_SIZE")
+func (s *RiskCommandService) CheckRisk(ctx context.Context, userID string, symbol string, quantity, price float64) (bool, string) {
+	limit, err := s.repo.GetLimitByUserIDAndType(ctx, userID, "ORDER_SIZE")
 	if err != nil {
 		return false, "No risk profile found"
 	}
@@ -302,12 +274,12 @@ func (m *RiskManager) CheckRisk(ctx context.Context, userID string, symbol strin
 	return true, ""
 }
 
-func (m *RiskManager) SetRiskLimit(ctx context.Context, userID string, maxOrderSize, maxDailyLoss float64) error {
+func (s *RiskCommandService) SetRiskLimit(ctx context.Context, userID string, maxOrderSize, maxDailyLoss float64) error {
 	limit := &domain.RiskLimit{
 		UserID:       userID,
 		LimitType:    "ORDER_SIZE",
 		LimitValue:   decimal.NewFromFloat(maxOrderSize),
 		CurrentValue: decimal.Zero,
 	}
-	return m.limitRepo.Save(ctx, limit)
+	return s.repo.SaveLimit(ctx, limit)
 }

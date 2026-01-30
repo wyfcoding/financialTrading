@@ -22,7 +22,7 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/risk/application"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
 	risk_client "github.com/wyfcoding/financialtrading/internal/risk/infrastructure/client"
-	"github.com/wyfcoding/financialtrading/internal/risk/infrastructure/persistence/mysql"
+	"github.com/wyfcoding/financialtrading/internal/risk/infrastructure/persistence"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/risk/interfaces/grpc"
 	"github.com/wyfcoding/pkg/cache"
 	"github.com/wyfcoding/pkg/logging"
@@ -64,11 +64,7 @@ func main() {
 	}
 
 	// 4. Infrastructure & Domain
-	limitRepo := mysql.NewRiskLimitRepository(db)
-	assessmentRepo := mysql.NewRiskAssessmentRepository(db)
-	metricsRepo := mysql.NewRiskMetricsRepository(db)
-	alertRepo := mysql.NewRiskAlertRepository(db)
-	breakerRepo := mysql.NewCircuitBreakerRepository(db)
+	repo := persistence.NewRiskRepository(db)
 
 	ruleEngine := risk.NewBaseEvaluator(logger.Logger)
 	localCache, _ := cache.NewBigCache(time.Minute, 100, logger)
@@ -89,7 +85,7 @@ func main() {
 	)
 
 	// 5. Application
-	appService := application.NewRiskService(assessmentRepo, metricsRepo, limitRepo, alertRepo, breakerRepo, ruleEngine, marginCalc, localCache)
+	appService := application.NewRiskService(repo, ruleEngine, marginCalc, localCache, logger.Logger)
 
 	// 6. Interfaces
 	// gRPC
