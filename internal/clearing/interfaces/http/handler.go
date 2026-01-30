@@ -10,17 +10,12 @@ import (
 )
 
 type ClearingHandler struct {
-	appService   *application.ClearingService
-	queryService *application.ClearingQueryService
+	app *application.ClearingService
 }
 
-func NewClearingHandler(
-	appService *application.ClearingService,
-	queryService *application.ClearingQueryService,
-) *ClearingHandler {
+func NewClearingHandler(app *application.ClearingService) *ClearingHandler {
 	return &ClearingHandler{
-		appService:   appService,
-		queryService: queryService,
+		app: app,
 	}
 }
 
@@ -51,7 +46,7 @@ func (h *ClearingHandler) SettleTrade(c *gin.Context) {
 		Price:      price,
 	}
 
-	dto, err := h.appService.SettleTrade(c.Request.Context(), &cmd)
+	dto, err := h.app.Command.SettleTrade(c.Request.Context(), &cmd)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -62,7 +57,7 @@ func (h *ClearingHandler) SettleTrade(c *gin.Context) {
 
 func (h *ClearingHandler) GetSettlement(c *gin.Context) {
 	id := c.Param("id")
-	dto, err := h.queryService.GetSettlement(c.Request.Context(), id)
+	dto, err := h.app.Query.GetSettlement(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return

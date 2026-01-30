@@ -13,14 +13,12 @@ import (
 
 type Handler struct {
 	pb.UnimplementedOrderServiceServer
-	app   *application.OrderManager
-	query *application.OrderQuery
+	app *application.OrderService
 }
 
-func NewHandler(app *application.OrderManager, query *application.OrderQuery) *Handler {
+func NewHandler(app *application.OrderService) *Handler {
 	return &Handler{
-		app:   app,
-		query: query,
+		app: app,
 	}
 }
 
@@ -77,7 +75,7 @@ func (h *Handler) CancelOrder(ctx context.Context, req *pb.CancelOrderRequest) (
 }
 
 func (h *Handler) GetOrder(ctx context.Context, req *pb.GetOrderRequest) (*pb.GetOrderResponse, error) {
-	dto, err := h.query.GetOrder(ctx, req.OrderId)
+	dto, err := h.app.GetOrder(ctx, req.OrderId)
 	if err != nil {
 		return nil, err
 	}

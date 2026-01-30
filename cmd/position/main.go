@@ -16,7 +16,7 @@ import (
 	pb "github.com/wyfcoding/financialtrading/go-api/position/v1"
 	"github.com/wyfcoding/financialtrading/internal/position/application"
 	"github.com/wyfcoding/financialtrading/internal/position/domain"
-	"github.com/wyfcoding/financialtrading/internal/position/infrastructure/persistence/mysql"
+	"github.com/wyfcoding/financialtrading/internal/position/infrastructure/persistence"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/position/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/position/interfaces/http"
 	"golang.org/x/sync/errgroup"
@@ -55,10 +55,10 @@ func main() {
 	}
 
 	// 4. Infrastructure & Domain
-	repo := mysql.NewPositionRepository(db)
+	repo := persistence.NewPositionRepository(db)
 
 	// 5. Application
-	appService := application.NewPositionService(repo)
+	appService := application.NewPositionService(repo, logger)
 	// queryService := application.NewPositionQuery(repo) // Not used independently here yet, handler instantiates/uses it?
 	// Handler currently takes PositionService only.
 	// Wait, Handler uses h.service.GetPositions which is in PositionQuery?

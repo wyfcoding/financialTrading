@@ -11,14 +11,14 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 )
 
-// MatchingHandler 负责处理与撮合引擎相关的 HTTP 请求
+// MatchingHandler 负责处理 HTTP 请求
 type MatchingHandler struct {
-	matchingService *application.MatchingEngineService
+	app *application.MatchingService
 }
 
-func NewMatchingHandler(matchingService *application.MatchingEngineService) *MatchingHandler {
+func NewMatchingHandler(app *application.MatchingService) *MatchingHandler {
 	return &MatchingHandler{
-		matchingService: matchingService,
+		app: app,
 	}
 }
 
@@ -39,7 +39,7 @@ func (h *MatchingHandler) SubmitOrder(c *gin.Context) {
 		return
 	}
 
-	result, err := h.matchingService.SubmitOrder(c.Request.Context(), &req)
+	result, err := h.app.Command.SubmitOrder(c.Request.Context(), &req)
 	if err != nil {
 		logging.Error(c.Request.Context(), "failed to submit order", "error", err)
 		response.Error(c, err)
@@ -58,7 +58,7 @@ func (h *MatchingHandler) GetOrderBook(c *gin.Context) {
 		return
 	}
 
-	snapshot, err := h.matchingService.GetOrderBook(c.Request.Context(), depth)
+	snapshot, err := h.app.Query.GetOrderBook(c.Request.Context(), depth)
 	if err != nil {
 		logging.Error(c.Request.Context(), "failed to get order book snapshot", "error", err)
 		response.Error(c, err)
@@ -83,7 +83,7 @@ func (h *MatchingHandler) GetTrades(c *gin.Context) {
 		return
 	}
 
-	trades, err := h.matchingService.GetTrades(c.Request.Context(), symbol, limit)
+	trades, err := h.app.Query.GetTrades(c.Request.Context(), symbol, limit)
 	if err != nil {
 		logging.Error(c.Request.Context(), "failed to get trade history", "symbol", symbol, "error", err)
 		response.Error(c, err)

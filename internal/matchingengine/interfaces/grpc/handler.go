@@ -3,27 +3,27 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
-	"github.com/wyfcoding/pkg/algorithm/types"
-
 	pb "github.com/wyfcoding/financialtrading/go-api/matchingengine/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/application"
+	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-// Handler 实现了 MatchingEngineService 的 gRPC 服务端接口。
+// Handler 实现了 gRPC 服务端接口。
 type Handler struct {
 	pb.UnimplementedMatchingEngineServiceServer
-	service *application.MatchingEngineService // 关联的撮合应用服务
+	app *application.MatchingService // 关联的门面服务
 }
 
-// NewHandler 构造一个新的撮合引擎 gRPC 处理器实例。
-func NewHandler(service *application.MatchingEngineService) *Handler {
+// NewHandler 构造新的 gRPC 处理器实例。
+func NewHandler(app *application.MatchingService) *Handler {
 	return &Handler{
-		service: service,
+		app: app,
 	}
 }
 
@@ -32,7 +32,7 @@ func (h *Handler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderRequest) (
 	start := time.Now()
 	slog.InfoContext(ctx, "grpc submit_order received", "order_id", req.OrderId, "symbol", req.Symbol)
 
-	result, err := h.service.SubmitOrder(ctx, &application.SubmitOrderRequest{
+	result, err := h.app.Command.SubmitOrder(ctx, &application.SubmitOrderRequest{
 		OrderID:                req.OrderId,
 		Symbol:                 req.Symbol,
 		Side:                   req.Side,
@@ -49,8 +49,17 @@ func (h *Handler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderRequest) (
 	}
 
 	pbTrades := make([]*pb.Trade, 0, len(result.Trades))
-	for _, trade := range result.Trades {
-		pbTrades = append(pbTrades, h.toProtoTrade(trade))
+	for _, t := range result.Trades {
+		domainTrade := &domain.Trade{
+			TradeID:     t.TradeID,
+			BuyOrderID:  t.BuyOrderID,
+			SellOrderID: t.SellOrderID,
+			Symbol:      t.Symbol,
+			Price:       t.Price.InexactFloat64(),
+			Quantity:    t.Quantity.InexactFloat64(),
+			Timestamp:   time.Unix(0, t.Timestamp),
+		}
+		pbTrades = append(pbTrades, h.toProtoTrade(domainTrade))
 	}
 
 	slog.InfoContext(ctx, "grpc submit_order successful", "order_id", req.OrderId, "trades_count", len(pbTrades), "duration", time.Since(start))
@@ -65,7 +74,7 @@ func (h *Handler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderRequest) (
 // GetOrderBook 返回当前内存订单簿的聚合深度快照。
 func (h *Handler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequest) (*pb.GetOrderBookResponse, error) {
 	start := time.Now()
-	snapshot, err := h.service.GetOrderBook(ctx, int(req.Depth))
+	snapshot, err := h.app.Query.GetOrderBook(ctx, int(req.Depth))
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc get_order_book failed", "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get order book: %v", err)
@@ -99,7 +108,7 @@ func (h *Handler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequest)
 // GetTrades 获取指定交易对的最近成交历史记录。
 func (h *Handler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (*pb.GetTradesResponse, error) {
 	start := time.Now()
-	trades, err := h.service.GetTrades(ctx, req.Symbol, int(req.Limit))
+	trades, err := h.app.Query.GetTrades(ctx, req.Symbol, int(req.Limit))
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc get_trades failed", "symbol", req.Symbol, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get trades: %v", err)
@@ -117,13 +126,13 @@ func (h *Handler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (*pb.
 	}, nil
 }
 
-func (h *Handler) toProtoTrade(trade *types.Trade) *pb.Trade {
+func (h *Handler) toProtoTrade(trade *domain.Trade) *pb.Trade {
 	return &pb.Trade{
 		TradeId:     trade.TradeID,
 		BuyOrderId:  trade.BuyOrderID,
 		SellOrderId: trade.SellOrderID,
-		Price:       trade.Price.String(),
-		Quantity:    trade.Quantity.String(),
-		Timestamp:   trade.Timestamp,
+		Price:       fmt.Sprintf("%f", trade.Price),
+		Quantity:    fmt.Sprintf("%f", trade.Quantity),
+		Timestamp:   trade.Timestamp.UnixNano(),
 	}
 }

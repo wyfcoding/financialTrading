@@ -13,16 +13,13 @@ import (
 // HTTP 处理器
 // 负责处理与订单相关的 HTTP 请求
 type OrderHandler struct {
-	app   *application.OrderManager
-	query *application.OrderQuery
+	app *application.OrderService
 }
 
 // 创建 HTTP 处理器实例
-// orderService: 注入的订单应用服务
-func NewOrderHandler(app *application.OrderManager, query *application.OrderQuery) *OrderHandler {
+func NewOrderHandler(app *application.OrderService) *OrderHandler {
 	return &OrderHandler{
-		app:   app,
-		query: query,
+		app: app,
 	}
 }
 
@@ -95,7 +92,7 @@ func (h *OrderHandler) GetOrder(c *gin.Context) {
 		return
 	}
 
-	dto, err := h.query.GetOrder(c.Request.Context(), orderID) // query typically doesn't need userID if it's broad
+	dto, err := h.app.GetOrder(c.Request.Context(), orderID) // query typically doesn't need userID if it's broad
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get order", "order_id", orderID, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")

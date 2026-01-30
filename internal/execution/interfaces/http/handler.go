@@ -10,12 +10,11 @@ import (
 )
 
 type ExecutionHandler struct {
-	app   *application.ExecutionApplicationService
-	query *application.ExecutionQueryService
+	app *application.ExecutionService
 }
 
-func NewExecutionHandler(app *application.ExecutionApplicationService, query *application.ExecutionQueryService) *ExecutionHandler {
-	return &ExecutionHandler{app: app, query: query}
+func NewExecutionHandler(app *application.ExecutionService) *ExecutionHandler {
+	return &ExecutionHandler{app: app}
 }
 
 func (h *ExecutionHandler) RegisterRoutes(r *gin.RouterGroup) {
@@ -45,7 +44,7 @@ func (h *ExecutionHandler) ExecuteOrder(c *gin.Context) {
 		Quantity: qty,
 	}
 
-	dto, err := h.app.ExecuteOrder(c.Request.Context(), cmd)
+	dto, err := h.app.Command.ExecuteOrder(c.Request.Context(), cmd)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -74,7 +73,7 @@ func (h *ExecutionHandler) SubmitAlgoOrder(c *gin.Context) {
 		Params:    req.ParticipationRate,
 	}
 
-	algoID, err := h.app.SubmitAlgoOrder(c.Request.Context(), cmd)
+	algoID, err := h.app.Command.SubmitAlgoOrder(c.Request.Context(), cmd)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

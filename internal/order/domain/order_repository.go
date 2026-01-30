@@ -2,8 +2,6 @@ package domain
 
 import (
 	"context"
-
-	"github.com/shopspring/decimal"
 )
 
 // OrderRepository 订单仓储接口
@@ -21,7 +19,7 @@ type OrderRepository interface {
 	// UpdateStatus 更新订单状态
 	UpdateStatus(ctx context.Context, orderID string, status OrderStatus) error
 	// UpdateFilledQuantity 更新已成交数量
-	UpdateFilledQuantity(ctx context.Context, orderID string, filledQuantity decimal.Decimal) error
+	UpdateFilledQuantity(ctx context.Context, orderID string, filledQuantity float64) error
 	// Delete 根据订单 ID 删除订单
 	Delete(ctx context.Context, orderID string) error
 }

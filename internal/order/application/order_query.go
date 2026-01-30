@@ -7,35 +7,50 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
 )
 
-type OrderQuery struct {
+// OrderQueryService 处理所有订单相关的查询操作（Queries）。
+type OrderQueryService struct {
 	repo domain.OrderRepository
 }
 
-func NewOrderQuery(repo domain.OrderRepository) *OrderQuery {
-	return &OrderQuery{repo: repo}
+// NewOrderQueryService 构造函数。
+func NewOrderQueryService(repo domain.OrderRepository) *OrderQueryService {
+	return &OrderQueryService{repo: repo}
 }
 
-func (q *OrderQuery) GetOrder(ctx context.Context, orderID string) (*OrderDTO, error) {
-	order, err := q.repo.Get(ctx, orderID)
-	if err != nil {
+func (s *OrderQueryService) GetOrder(ctx context.Context, orderID string) (*OrderDTO, error) {
+	order, err := s.repo.Get(ctx, orderID)
+	if err != nil || order == nil {
 		return nil, err
 	}
-	if order == nil {
-		return nil, nil
+	return s.toDTO(order), nil
+}
+
+func (s *OrderQueryService) ListOrders(ctx context.Context, userID string, status domain.OrderStatus, limit, offset int) ([]*OrderDTO, int64, error) {
+	orders, total, err := s.repo.ListByUser(ctx, userID, status, limit, offset)
+	if err != nil {
+		return nil, 0, err
 	}
 
+	dtos := make([]*OrderDTO, 0, len(orders))
+	for _, o := range orders {
+		dtos = append(dtos, s.toDTO(o))
+	}
+	return dtos, total, nil
+}
+
+func (s *OrderQueryService) toDTO(o *domain.Order) *OrderDTO {
 	return &OrderDTO{
-		OrderID:        order.ID,
-		UserID:         order.UserID,
-		Symbol:         order.Symbol,
-		Side:           string(order.Side),
-		OrderType:      string(order.Type),
-		Price:          decimal.NewFromFloat(order.Price).String(),
-		Quantity:       decimal.NewFromFloat(order.Quantity).String(),
-		FilledQuantity: decimal.NewFromFloat(order.FilledQuantity).String(),
-		Status:         string(order.Status),
-		// TimeInForce removed
-		CreatedAt: order.CreatedAt.Unix(),
-		UpdatedAt: order.UpdatedAt.Unix(),
-	}, nil
+		OrderID:        o.OrderID,
+		UserID:         o.UserID,
+		Symbol:         o.Symbol,
+		Side:           string(o.Side),
+		OrderType:      string(o.Type),
+		Price:          decimal.NewFromFloat(o.Price).String(),
+		Quantity:       decimal.NewFromFloat(o.Quantity).String(),
+		FilledQuantity: decimal.NewFromFloat(o.FilledQuantity).String(),
+		Status:         string(o.Status),
+		TimeInForce:    string(o.TimeInForce),
+		CreatedAt:      o.CreatedAt.Unix(),
+		UpdatedAt:      o.UpdatedAt.Unix(),
+	}
 }

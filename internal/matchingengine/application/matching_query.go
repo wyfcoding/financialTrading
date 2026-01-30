@@ -3,27 +3,25 @@ package application
 import (
 	"context"
 
-	"github.com/wyfcoding/pkg/algorithm/types"
-
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
 )
 
-// MatchingEngineQuery 处理所有撮合引擎相关的查询操作（Queries）。
-type MatchingEngineQuery struct {
+// MatchingQueryService 处理所有撮合引擎相关的查询操作（Queries）。
+type MatchingQueryService struct {
 	engine    *domain.DisruptionEngine
 	tradeRepo domain.TradeRepository
 }
 
-// NewMatchingEngineQuery 构造函数。
-func NewMatchingEngineQuery(engine *domain.DisruptionEngine, tradeRepo domain.TradeRepository) *MatchingEngineQuery {
-	return &MatchingEngineQuery{
+// NewMatchingQueryService 构造函数。
+func NewMatchingQueryService(engine *domain.DisruptionEngine, tradeRepo domain.TradeRepository) *MatchingQueryService {
+	return &MatchingQueryService{
 		engine:    engine,
 		tradeRepo: tradeRepo,
 	}
 }
 
 // GetOrderBook 获取订单簿快照
-func (q *MatchingEngineQuery) GetOrderBook(ctx context.Context, depth int) (*domain.OrderBookSnapshot, error) {
+func (q *MatchingQueryService) GetOrderBook(ctx context.Context, depth int) (*domain.OrderBookSnapshot, error) {
 	if depth <= 0 {
 		depth = 20
 	}
@@ -31,7 +29,7 @@ func (q *MatchingEngineQuery) GetOrderBook(ctx context.Context, depth int) (*dom
 }
 
 // GetTrades 获取成交历史
-func (q *MatchingEngineQuery) GetTrades(ctx context.Context, symbol string, limit int) ([]*types.Trade, error) {
+func (q *MatchingQueryService) GetTrades(ctx context.Context, symbol string, limit int) ([]*domain.Trade, error) {
 	if limit <= 0 {
 		limit = 100
 	}

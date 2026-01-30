@@ -15,11 +15,12 @@ import (
 	executionv1 "github.com/wyfcoding/financialtrading/go-api/execution/v1"
 	marketdatav1 "github.com/wyfcoding/financialtrading/go-api/marketdata/v1"
 	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
+	"github.com/wyfcoding/financialtrading/internal/account/infrastructure/messaging"
 	"github.com/wyfcoding/financialtrading/internal/execution/application"
 	"github.com/wyfcoding/financialtrading/internal/execution/domain"
 	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure"
 	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/client"
-	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/persistence/mysql"
+	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/persistence"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/execution/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/execution/interfaces/http"
 	"github.com/wyfcoding/pkg/config"
@@ -78,14 +79,10 @@ func main() {
 
 	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
 
-	// 5. Application
-	tradeRepo := mysql.NewTradeRepository(db.RawDB())
-	algoRepo := mysql.NewAlgoOrderRepository(db.RawDB())
-
-	// Init Order Client
+	// 5. Clients
 	orderAddr := cfg.GetGRPCAddr("order")
 	if orderAddr == "" {
-		orderAddr = "localhost:50051" // Fallback
+		orderAddr = "localhost:50051"
 	}
 	orderConn, err := grpc.Dial(orderAddr, grpc.WithInsecure())
 	if err != nil {
@@ -94,7 +91,6 @@ func main() {
 	}
 	orderCli := orderv1.NewOrderServiceClient(orderConn)
 
-	// Init MarketData Client
 	mdAddr := cfg.GetGRPCAddr("marketdata")
 	if mdAddr == "" {
 		mdAddr = "localhost:50052"
@@ -103,17 +99,31 @@ func main() {
 	if err != nil {
 		slog.Error("failed to connect to marketdata service", "error", err)
 	}
+
+	// 5. Application Services
+	tradeRepo := persistence.NewTradeRepository(db.RawDB())
+	algoRepo := persistence.NewAlgoOrderRepository(db.RawDB())
+	outboxPub := messaging.NewOutboxPublisher(outboxMgr)
+
 	mdCli := marketdatav1.NewMarketDataServiceClient(mdConn)
 	mdProvider := client.NewGRPCMarketDataProvider(mdCli)
 	volumeProvider := infrastructure.NewMockVolumeProfileProvider()
 
-	appService := application.NewExecutionApplicationService(tradeRepo, algoRepo, orderCli, mdProvider, volumeProvider, metricsImpl, outboxMgr, db.RawDB())
-	queryService := application.NewExecutionQueryService(tradeRepo)
+	executionSvc := application.NewExecutionService(
+		tradeRepo,
+		algoRepo,
+		outboxPub,
+		orderCli,
+		mdProvider,
+		volumeProvider,
+		metricsImpl,
+		db.RawDB(),
+	)
 
 	// 6. Interfaces
 	grpcSrv := grpc.NewServer()
-	executionSrv := grpcserver.NewHandler(appService)
-	executionv1.RegisterExecutionServiceServer(grpcSrv, executionSrv)
+	executionHandler := grpcserver.NewHandler(executionSvc)
+	executionv1.RegisterExecutionServiceServer(grpcSrv, executionHandler)
 	reflection.Register(grpcSrv)
 
 	gin.SetMode(gin.ReleaseMode)
@@ -123,7 +133,7 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Recovery())
 
-	httpHandler := httpserver.NewExecutionHandler(appService, queryService)
+	httpHandler := httpserver.NewExecutionHandler(executionSvc)
 	httpHandler.RegisterRoutes(r.Group("/api"))
 
 	// 7. Start
@@ -151,7 +161,7 @@ func main() {
 
 	g.Go(func() error {
 		slog.Info("Execution algorithm worker starting")
-		appService.StartAlgoWorker(ctx)
+		executionSvc.StartAlgoWorker(ctx)
 		return nil
 	})
 

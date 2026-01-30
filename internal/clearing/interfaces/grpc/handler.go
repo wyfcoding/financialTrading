@@ -16,18 +16,15 @@ import (
 )
 
 // Handler 是清算服务的 gRPC 处理器。
-// 它实现了由 apoch 生成的 `ClearingServiceServer` 接口。
 type Handler struct {
 	pb.UnimplementedClearingServiceServer
-	appService   *application.ClearingService
-	queryService *application.ClearingQueryService
+	app *application.ClearingService
 }
 
 // NewHandler 创建 gRPC 处理器实例。
-func NewHandler(appService *application.ClearingService, queryService *application.ClearingQueryService) *Handler {
+func NewHandler(app *application.ClearingService) *Handler {
 	return &Handler{
-		appService:   appService,
-		queryService: queryService,
+		app: app,
 	}
 }
 
@@ -48,7 +45,7 @@ func (h *Handler) SettleTrade(ctx context.Context, req *pb.SettleTradeRequest) (
 		Price:      price,
 	}
 
-	dto, err := h.appService.SettleTrade(ctx, appReq)
+	dto, err := h.app.Command.SettleTrade(ctx, appReq)
 	if err != nil {
 		slog.Error("gRPC SettleTrade failed", "trade_id", req.TradeId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to settle trade: %v", err)
@@ -71,7 +68,7 @@ func (h *Handler) GetSettlements(ctx context.Context, req *pb.GetSettlementsRequ
 
 // SagaMarkSettlementCompleted Saga 正向: 确认结算成功
 func (h *Handler) SagaMarkSettlementCompleted(ctx context.Context, req *pb.SagaSettlementRequest) (*pb.SagaSettlementResponse, error) {
-	if err := h.appService.SagaMarkSettlementCompleted(ctx, req.SettlementId); err != nil {
+	if err := h.app.Command.SagaMarkSettlementCompleted(ctx, req.SettlementId); err != nil {
 		return nil, status.Errorf(codes.Internal, "SagaMarkSettlementCompleted failed: %v", err)
 	}
 	return &pb.SagaSettlementResponse{Success: true}, nil
@@ -79,7 +76,7 @@ func (h *Handler) SagaMarkSettlementCompleted(ctx context.Context, req *pb.SagaS
 
 // SagaMarkSettlementFailed Saga 补偿: 标记结算失败
 func (h *Handler) SagaMarkSettlementFailed(ctx context.Context, req *pb.SagaSettlementRequest) (*pb.SagaSettlementResponse, error) {
-	if err := h.appService.SagaMarkSettlementFailed(ctx, req.SettlementId, req.Reason); err != nil {
+	if err := h.app.Command.SagaMarkSettlementFailed(ctx, req.SettlementId, req.Reason); err != nil {
 		return nil, status.Errorf(codes.Internal, "SagaMarkSettlementFailed failed: %v", err)
 	}
 	return &pb.SagaSettlementResponse{Success: true}, nil
@@ -87,7 +84,7 @@ func (h *Handler) SagaMarkSettlementFailed(ctx context.Context, req *pb.SagaSett
 
 // ExecuteEODClearing 执行日终清算
 func (h *Handler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEODClearingRequest) (*pb.ExecuteEODClearingResponse, error) {
-	clearingID, err := h.appService.ExecuteEODClearing(ctx, req.ClearingDate)
+	clearingID, err := h.app.Command.ExecuteEODClearing(ctx, req.ClearingDate)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to execute EOD clearing: %v", err)
 	}
@@ -101,7 +98,7 @@ func (h *Handler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEODClea
 
 // GetClearingStatus 获取状态
 func (h *Handler) GetClearingStatus(ctx context.Context, req *pb.GetClearingStatusRequest) (*pb.GetClearingStatusResponse, error) {
-	dto, err := h.appService.GetClearingStatus(ctx, req.ClearingId)
+	dto, err := h.app.Query.GetClearingStatus(ctx, req.ClearingId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get clearing status: %v", err)
 	}
@@ -112,14 +109,14 @@ func (h *Handler) GetClearingStatus(ctx context.Context, req *pb.GetClearingStat
 	return &pb.GetClearingStatusResponse{
 		ClearingId:      dto.SettlementID,
 		Status:          dto.Status,
-		TradesProcessed: dto.TradesSettled,
-		TradesTotal:     dto.TotalTrades,
+		TradesProcessed: int64(dto.TradesSettled),
+		TradesTotal:     int64(dto.TotalTrades),
 	}, nil
 }
 
 // GetMarginRequirement 获取保证金
 func (h *Handler) GetMarginRequirement(ctx context.Context, req *pb.GetMarginRequirementRequest) (*pb.GetMarginRequirementResponse, error) {
-	margin, err := h.appService.GetMarginRequirement(ctx, req.Symbol)
+	margin, err := h.app.Query.GetMarginRequirement(ctx, req.Symbol)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get margin requirement: %v", err)
 	}

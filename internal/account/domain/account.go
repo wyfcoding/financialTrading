@@ -1,9 +1,8 @@
 package domain
 
 import (
-	"time"
-
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 )
 
 // AccountType 账户类型
@@ -15,24 +14,26 @@ const (
 )
 
 // Account 账户聚合根
-// 纯领域模型，不依赖数据库标签
 type Account struct {
-	ID               string
-	UserID           string
-	AccountType      AccountType
-	Currency         string
-	Balance          decimal.Decimal
-	AvailableBalance decimal.Decimal
-	FrozenBalance    decimal.Decimal
-	Version          int64
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	gorm.Model
+	AccountID        string          `gorm:"column:account_id;type:varchar(32);uniqueIndex;not null;comment:账户ID"`
+	UserID           string          `gorm:"column:user_id;type:varchar(32);index;not null;comment:用户ID"`
+	AccountType      AccountType     `gorm:"column:account_type;type:varchar(20);not null;comment:账户类型"`
+	Currency         string          `gorm:"column:currency;type:varchar(10);not null;comment:币种"`
+	Balance          decimal.Decimal `gorm:"column:balance;type:decimal(32,18);default:0;not null;comment:总余额"`
+	AvailableBalance decimal.Decimal `gorm:"column:available_balance;type:decimal(32,18);default:0;not null;comment:可用余额"`
+	FrozenBalance    decimal.Decimal `gorm:"column:frozen_balance;type:decimal(32,18);default:0;not null;comment:冻结余额"`
+	Version          int64           `gorm:"column:version;default:0;not null;comment:乐观锁版本"`
+}
+
+func (Account) TableName() string {
+	return "accounts"
 }
 
 // NewAccount 创建新账户
-func NewAccount(id, userID, currency string, accType AccountType) *Account {
+func NewAccount(accountID, userID, currency string, accType AccountType) *Account {
 	return &Account{
-		ID:               id,
+		AccountID:        accountID,
 		UserID:           userID,
 		AccountType:      accType,
 		Currency:         currency,
@@ -40,8 +41,6 @@ func NewAccount(id, userID, currency string, accType AccountType) *Account {
 		AvailableBalance: decimal.Zero,
 		FrozenBalance:    decimal.Zero,
 		Version:          0,
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
 	}
 }
 
@@ -50,7 +49,6 @@ func (a *Account) Deposit(amount decimal.Decimal) {
 	if amount.IsPositive() {
 		a.Balance = a.Balance.Add(amount)
 		a.AvailableBalance = a.AvailableBalance.Add(amount)
-		a.UpdatedAt = time.Now()
 	}
 }
 
@@ -59,7 +57,6 @@ func (a *Account) Freeze(amount decimal.Decimal) bool {
 	if a.AvailableBalance.GreaterThanOrEqual(amount) {
 		a.AvailableBalance = a.AvailableBalance.Sub(amount)
 		a.FrozenBalance = a.FrozenBalance.Add(amount)
-		a.UpdatedAt = time.Now()
 		return true
 	}
 	return false
@@ -70,7 +67,6 @@ func (a *Account) Unfreeze(amount decimal.Decimal) bool {
 	if a.FrozenBalance.GreaterThanOrEqual(amount) {
 		a.FrozenBalance = a.FrozenBalance.Sub(amount)
 		a.AvailableBalance = a.AvailableBalance.Add(amount)
-		a.UpdatedAt = time.Now()
 		return true
 	}
 	return false
@@ -81,7 +77,6 @@ func (a *Account) DeductFrozen(amount decimal.Decimal) bool {
 	if a.FrozenBalance.GreaterThanOrEqual(amount) {
 		a.Balance = a.Balance.Sub(amount)
 		a.FrozenBalance = a.FrozenBalance.Sub(amount)
-		a.UpdatedAt = time.Now()
 		return true
 	}
 	return false
@@ -92,7 +87,6 @@ func (a *Account) Withdraw(amount decimal.Decimal) bool {
 	if a.AvailableBalance.GreaterThanOrEqual(amount) {
 		a.Balance = a.Balance.Sub(amount)
 		a.AvailableBalance = a.AvailableBalance.Sub(amount)
-		a.UpdatedAt = time.Now()
 		return true
 	}
 	return false

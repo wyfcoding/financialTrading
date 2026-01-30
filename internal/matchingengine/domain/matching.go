@@ -408,16 +408,16 @@ type MatchingResult struct {
 }
 
 type OrderBookLevel struct {
-	Price    decimal.Decimal
-	Quantity decimal.Decimal
+	Price    decimal.Decimal `gorm:"type:decimal(32,18);not null"`
+	Quantity decimal.Decimal `gorm:"type:decimal(32,18);not null"`
 }
 
 type OrderBookSnapshot struct {
 	gorm.Model
-	Symbol    string
-	Bids      []*OrderBookLevel
-	Asks      []*OrderBookLevel
-	Timestamp int64
+	Symbol    string            `gorm:"column:symbol;type:varchar(20);index;not null"`
+	Bids      []*OrderBookLevel `gorm:"column:bids;type:json"`
+	Asks      []*OrderBookLevel `gorm:"column:asks;type:json"`
+	Timestamp int64             `gorm:"column:timestamp;not null"`
 }
 
 // AuctionEngine 拍卖引擎

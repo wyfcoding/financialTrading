@@ -42,7 +42,8 @@ const (
 
 // Order represents an OMS order
 type Order struct {
-	ID             string      `gorm:"column:id;primaryKey;type:varchar(36)" json:"id"` // UUID
+	gorm.Model
+	OrderID        string      `gorm:"column:order_id;type:varchar(36);uniqueIndex;not null" json:"order_id"` // UUID
 	UserID         string      `gorm:"column:user_id;type:varchar(50);index;not null" json:"user_id"`
 	Symbol         string      `gorm:"column:symbol;type:varchar(20);not null" json:"symbol"`
 	Side           OrderSide   `gorm:"column:side;type:varchar(10);not null" json:"side"`
@@ -58,24 +59,22 @@ type Order struct {
 	// Complex Order Support
 	ParentOrderID string `gorm:"column:parent_id;type:varchar(36);index" json:"parent_id"` // For Bracket/OCO
 	IsOCO         bool   `gorm:"column:is_oco" json:"is_oco"`
+}
 
-	CreatedAt time.Time `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt time.Time `gorm:"column:updated_at" json:"updated_at"`
-	gorm.DeletedAt
+func (Order) TableName() string {
+	return "orders"
 }
 
 func NewOrder(id, userID, symbol string, side OrderSide, typ OrderType, price, qty float64) *Order {
 	return &Order{
-		ID:        id,
-		UserID:    userID,
-		Symbol:    symbol,
-		Side:      side,
-		Type:      typ,
-		Price:     price,
-		Quantity:  qty,
-		Status:    StatusPending,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		OrderID:  id,
+		UserID:   userID,
+		Symbol:   symbol,
+		Side:     side,
+		Type:     typ,
+		Price:    price,
+		Quantity: qty,
+		Status:   StatusPending,
 	}
 }
 

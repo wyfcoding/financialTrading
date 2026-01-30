@@ -14,7 +14,9 @@ import (
 	"github.com/gin-gonic/gin"
 	accountv1 "github.com/wyfcoding/financialtrading/go-api/account/v1"
 	"github.com/wyfcoding/financialtrading/internal/account/application"
-	"github.com/wyfcoding/financialtrading/internal/account/infrastructure/persistence/mysql"
+	"github.com/wyfcoding/financialtrading/internal/account/domain"
+	"github.com/wyfcoding/financialtrading/internal/account/infrastructure/messaging"
+	"github.com/wyfcoding/financialtrading/internal/account/infrastructure/persistence"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/account/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/account/interfaces/http"
 	"github.com/wyfcoding/pkg/config"
@@ -70,7 +72,7 @@ func main() {
 
 	// Auto Migrate (仅用于开发方便)
 	if cfg.Server.Environment == "dev" {
-		if err := db.RawDB().AutoMigrate(&mysql.AccountPO{}, &mysql.EventPO{}, &mysql.TransactionPO{}); err != nil {
+		if err := db.RawDB().AutoMigrate(&domain.Account{}, &persistence.EventPO{}, &persistence.TransactionPO{}); err != nil {
 			slog.Error("failed to migrate database", "error", err)
 		}
 	}
@@ -79,17 +81,19 @@ func main() {
 	outboxMgr := outbox.NewManager(db.RawDB(), nil)
 
 	// 5. 初始化仓储
-	accountRepo := mysql.NewAccountRepository(db.RawDB())
-	eventStore := mysql.NewEventStore(db.RawDB())
+	accountRepo := persistence.NewAccountRepository(db.RawDB())
+	eventStore := persistence.NewEventStore(db.RawDB())
+	outboxPub := messaging.NewOutboxPublisher(outboxMgr)
 
 	// 6. 初始化应用服务
-	appService := application.NewAccountService(accountRepo, eventStore, outboxMgr, db.RawDB())
+	commandSvc := application.NewAccountCommandService(accountRepo, eventStore, outboxPub, db.RawDB())
 	queryService := application.NewAccountQueryService(accountRepo)
+	appService := application.NewAccountService(commandSvc, queryService)
 
 	// 7. 初始化接口层
 	// gRPC
 	grpcSrv := grpc.NewServer()
-	accountSrv := grpcserver.NewHandler(appService, queryService)
+	accountSrv := grpcserver.NewHandler(appService)
 	accountv1.RegisterAccountServiceServer(grpcSrv, accountSrv)
 	reflection.Register(grpcSrv)
 
@@ -102,7 +106,7 @@ func main() {
 	r.Use(gin.Recovery())
 	// Middleware could be added here
 
-	httpHandler := httpserver.NewAccountHandler(appService, queryService)
+	httpHandler := httpserver.NewAccountHandler(appService)
 	httpHandler.RegisterRoutes(r.Group("/api"))
 
 	// 8. 启动服务

@@ -3,6 +3,8 @@ package domain
 import (
 	"sync"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type OrderSide int
@@ -21,16 +23,21 @@ const (
 
 // Order represents an internal order in the matching engine
 type Order struct {
-	ID        string
-	Symbol    string
-	Side      OrderSide
-	Type      OrderType
-	Price     float64
-	Quantity  float64
-	Timestamp time.Time
+	gorm.Model
+	OrderID   string    `gorm:"column:order_id;type:varchar(32);uniqueIndex;not null;comment:订单ID"`
+	Symbol    string    `gorm:"column:symbol;type:varchar(20);index;not null;comment:标的"`
+	Side      OrderSide `gorm:"column:side;type:tinyint;not null;comment:方向"`
+	Type      OrderType `gorm:"column:type;type:tinyint;not null;comment:类型"`
+	Price     float64   `gorm:"column:price;type:double;not null;comment:价格"`
+	Quantity  float64   `gorm:"column:quantity;type:double;not null;comment:数量"`
+	Timestamp time.Time `gorm:"column:timestamp;not null;comment:时间"`
 
 	// Working state
-	FilledQty float64
+	FilledQty float64 `gorm:"column:filled_qty;type:double;default:0;comment:已成交量"`
+}
+
+func (Order) TableName() string {
+	return "matching_orders"
 }
 
 // RemainingQty returns the remaining quantity to be filled
@@ -45,12 +52,18 @@ func (o *Order) IsFilled() bool {
 
 // Trade represents a successful match
 type Trade struct {
-	MakerOrderID string
-	TakerOrderID string
-	Symbol       string
-	Price        float64
-	Quantity     float64
-	Timestamp    time.Time
+	gorm.Model
+	TradeID     string    `gorm:"column:trade_id;type:varchar(32);uniqueIndex;not null;comment:成交ID"`
+	BuyOrderID  string    `gorm:"column:buy_order_id;type:varchar(32);index;not null;comment:买方订单ID"`
+	SellOrderID string    `gorm:"column:sell_order_id;type:varchar(32);index;not null;comment:卖方订单ID"`
+	Symbol      string    `gorm:"column:symbol;type:varchar(20);index;not null;comment:标的"`
+	Price       float64   `gorm:"column:price;type:double;not null;comment:价格"`
+	Quantity    float64   `gorm:"column:quantity;type:double;not null;comment:数量"`
+	Timestamp   time.Time `gorm:"column:timestamp;not null;comment:时间"`
+}
+
+func (Trade) TableName() string {
+	return "matching_trades"
 }
 
 var orderPool = sync.Pool{
@@ -60,9 +73,9 @@ var orderPool = sync.Pool{
 }
 
 // NewOrder creates or acquires an order instance from the pool
-func NewOrder(id, symbol string, side OrderSide, typ OrderType, price, qty float64) *Order {
+func NewOrder(orderID, symbol string, side OrderSide, typ OrderType, price, qty float64) *Order {
 	o := orderPool.Get().(*Order)
-	o.ID = id
+	o.OrderID = orderID
 	o.Symbol = symbol
 	o.Side = side
 	o.Type = typ
@@ -78,7 +91,7 @@ func ReleaseOrder(o *Order) {
 	if o == nil {
 		return
 	}
-	o.ID = ""
+	o.OrderID = ""
 	o.Symbol = ""
 	o.Side = 0
 	o.Type = 0

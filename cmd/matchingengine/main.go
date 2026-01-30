@@ -15,13 +15,19 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/spf13/viper"
+	clearingv1 "github.com/wyfcoding/financialtrading/go-api/clearing/v1"
 	pb "github.com/wyfcoding/financialtrading/go-api/matchingengine/v1"
+	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/application"
-	match_mem "github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/persistence/memory"
-	match_mysql "github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/persistence/mysql"
+	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
+	"github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/messaging"
+	"github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/persistence"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/matchingengine/interfaces/grpc"
+	httpserver "github.com/wyfcoding/financialtrading/internal/matchingengine/interfaces/http"
+	"github.com/wyfcoding/pkg/messagequeue/outbox"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 	gorm_mysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -51,8 +57,15 @@ func main() {
 	}
 
 	// 4. Infrastructure
-	orderBookRepo := match_mem.NewInMemoryRepository()
-	tradeRepo := match_mysql.NewTradeRepository(db)
+	orderBookRepo := persistence.NewOrderBookRepository(db)
+	tradeRepo := persistence.NewTradeRepository(db)
+	outboxMgr := outbox.NewManager(db, logger)
+	outboxPub := messaging.NewOutboxPublisher(outboxMgr)
+
+	// AutoMigrate
+	if err := db.AutoMigrate(&domain.OrderBookSnapshot{}, &domain.Trade{}, &domain.Order{}); err != nil {
+		slog.Error("failed to migrate database", "error", err)
+	}
 
 	// 5. Domain Engine Configuration
 	symbol := viper.GetString("matching.symbol")
@@ -61,29 +74,49 @@ func main() {
 	}
 
 	// 6. Application Service
-	service, err := application.NewMatchingEngineService(
+	service, err := application.NewMatchingService(
 		symbol,
 		tradeRepo,
 		orderBookRepo,
 		db,
-		nil, // outboxMgr (ignored if not used)
+		outboxPub,
 		logger,
 	)
 	if err != nil {
-		panic(fmt.Sprintf("failed to init matching engine service: %v", err))
+		panic(fmt.Sprintf("failed to init matching engine: %v", err))
 	}
 
-	// 7. Interfaces (gRPC)
+	// 7. Inject Downstream Clients & Recover State
+	orderAddr := viper.GetString("service.order_addr")
+	if orderAddr == "" {
+		orderAddr = "localhost:50051"
+	}
+	orderConn, _ := grpc.NewClient(orderAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	service.SetOrderClient(orderv1.NewOrderServiceClient(orderConn))
+
+	clearingAddr := viper.GetString("service.clearing_addr")
+	if clearingAddr == "" {
+		clearingAddr = "localhost:50053"
+	}
+	clearingConn, _ := grpc.NewClient(clearingAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	service.SetClearingClient(clearingv1.NewClearingServiceClient(clearingConn))
+
+	// 8. Interfaces (gRPC)
 	grpcSrv := grpc.NewServer()
 	handler := grpc_server.NewHandler(service)
 	pb.RegisterMatchingEngineServiceServer(grpcSrv, handler)
 	reflection.Register(grpcSrv)
 
-	// HTTP Support for Probes, Metrics, Pprof
+	// 9. Interfaces (HTTP)
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
 
+	// Domain Routes
+	matchingHttp := httpserver.NewMatchingHandler(service)
+	matchingHttp.RegisterRoutes(r.Group(""))
+
+	// Probes, Metrics, Pprof
 	sys := r.Group("/sys")
 	{
 		sys.GET("/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "UP"}) })

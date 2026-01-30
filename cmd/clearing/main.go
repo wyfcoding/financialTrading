@@ -15,7 +15,9 @@ import (
 	accountv1 "github.com/wyfcoding/financialtrading/go-api/account/v1"
 	clearingv1 "github.com/wyfcoding/financialtrading/go-api/clearing/v1"
 	"github.com/wyfcoding/financialtrading/internal/clearing/application"
-	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/persistence/mysql"
+	"github.com/wyfcoding/financialtrading/internal/clearing/domain"
+	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/messaging"
+	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/persistence"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/clearing/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/clearing/interfaces/http"
 	"github.com/wyfcoding/pkg/config"
@@ -68,7 +70,7 @@ func main() {
 	}
 
 	if cfg.Server.Environment == "dev" {
-		if err := db.RawDB().AutoMigrate(&mysql.SettlementPO{}); err != nil {
+		if err := db.RawDB().AutoMigrate(&domain.Settlement{}); err != nil {
 			slog.Error("failed to migrate database", "error", err)
 		}
 	}
@@ -89,13 +91,15 @@ func main() {
 	accountClient := accountv1.NewAccountServiceClient(accountConn)
 
 	// 6. Application
-	repo := mysql.NewSettlementRepository(db.RawDB())
-	appService := application.NewClearingService(repo, outboxMgr, db.RawDB(), accountClient)
+	repo := persistence.NewSettlementRepository(db.RawDB())
+	outboxPub := messaging.NewOutboxPublisher(outboxMgr)
+	commandSvc := application.NewClearingCommandService(repo, outboxPub, db.RawDB(), accountClient)
 	queryService := application.NewClearingQueryService(repo)
+	appService := application.NewClearingService(commandSvc, queryService)
 
 	// 7. Interfaces
 	grpcSrv := grpc.NewServer()
-	clearingSrv := grpcserver.NewHandler(appService, queryService)
+	clearingSrv := grpcserver.NewHandler(appService)
 	clearingv1.RegisterClearingServiceServer(grpcSrv, clearingSrv)
 	reflection.Register(grpcSrv)
 
@@ -106,7 +110,7 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Recovery())
 
-	httpHandler := httpserver.NewClearingHandler(appService, queryService)
+	httpHandler := httpserver.NewClearingHandler(appService)
 	httpHandler.RegisterRoutes(r.Group("/api"))
 
 	// 8. Start

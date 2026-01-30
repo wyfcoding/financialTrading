@@ -12,6 +12,8 @@ type PositionRepository interface {
 	Save(ctx context.Context, position *Position) error
 	// Get 根据持仓 ID 获取持仓
 	Get(ctx context.Context, positionID string) (*Position, error)
+	// GetByUserSymbol 根据用户 ID 和标的获取持仓
+	GetByUserSymbol(ctx context.Context, userID, symbol string) (*Position, error)
 	// GetByUser 获取用户持仓列表
 	GetByUser(ctx context.Context, userID string, limit, offset int) ([]*Position, int64, error)
 	// GetBySymbol 获取交易对持仓列表

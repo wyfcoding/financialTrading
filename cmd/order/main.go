@@ -18,7 +18,7 @@ import (
 	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/application"
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
-	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/persistence/mysql"
+	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/persistence"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/order/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/order/interfaces/http"
 	"github.com/wyfcoding/pkg/security/risk"
@@ -58,7 +58,7 @@ func main() {
 	}
 
 	// 4. Infrastructure & Domain
-	repo := mysql.NewOrderRepository(db)
+	repo := persistence.NewOrderRepository(db)
 
 	// Risk Evaluator (Local)
 	riskEngine, err := risk.NewDynamicRiskEngine(logger)
@@ -68,19 +68,18 @@ func main() {
 
 	// 5. Application
 	// Inject dependencies
-	orderManager := application.NewOrderManager(repo, riskEngine, logger)
-	orderQuery := application.NewOrderQuery(repo)
+	orderService := application.NewOrderService(repo, riskEngine, logger)
 
 	// Configure DTM/Remote Services if needed (from config)
 	if dtmServer := viper.GetString("dtm.server"); dtmServer != "" {
-		orderManager.SetDTMServer(dtmServer)
+		orderService.SetDTMServer(dtmServer)
 	}
 	// TODO: SetRiskClient, SetAccountClient, SetPositionClient using gRPC connection pools
 
 	// 6. Interfaces
 	// gRPC
 	grpcSrv := grpc.NewServer()
-	handler := grpc_server.NewHandler(orderManager, orderQuery)
+	handler := grpc_server.NewHandler(orderService)
 	orderv1.RegisterOrderServiceServer(grpcSrv, handler)
 	reflection.Register(grpcSrv)
 
@@ -88,7 +87,7 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
-	hHandler := http_server.NewOrderHandler(orderManager, orderQuery)
+	hHandler := http_server.NewOrderHandler(orderService)
 	hHandler.RegisterRoutes(r.Group("/api"))
 
 	// System Endpoints (Health, Metrics, Pprof)
