@@ -16,16 +16,16 @@ type QuoteUpdatedEvent struct {
 
 // KlineUpdatedEvent K线更新事件
 type KlineUpdatedEvent struct {
-	Symbol    string    `json:"symbol"`
-	Interval  string    `json:"interval"`
-	OpenPrice string    `json:"open_price"`
-	HighPrice string    `json:"high_price"`
-	LowPrice  string    `json:"low_price"`
-	ClosePrice string   `json:"close_price"`
-	Volume    string    `json:"volume"`
-	OpenTime  time.Time `json:"open_time"`
-	CloseTime time.Time `json:"close_time"`
-	Timestamp time.Time `json:"timestamp"`
+	Symbol     string    `json:"symbol"`
+	Interval   string    `json:"interval"`
+	OpenPrice  string    `json:"open_price"`
+	HighPrice  string    `json:"high_price"`
+	LowPrice   string    `json:"low_price"`
+	ClosePrice string    `json:"close_price"`
+	Volume     string    `json:"volume"`
+	OpenTime   time.Time `json:"open_time"`
+	CloseTime  time.Time `json:"close_time"`
+	Timestamp  time.Time `json:"timestamp"`
 }
 
 // TradeExecutedEvent 交易执行事件
@@ -40,8 +40,8 @@ type TradeExecutedEvent struct {
 
 // OrderBookUpdatedEvent 订单簿更新事件
 type OrderBookUpdatedEvent struct {
-	Symbol    string    `json:"symbol"`
+	Symbol    string      `json:"symbol"`
 	Bids      [][2]string `json:"bids"`
 	Asks      [][2]string `json:"asks"`
-	Timestamp time.Time `json:"timestamp"`
+	Timestamp time.Time   `json:"timestamp"`
 }

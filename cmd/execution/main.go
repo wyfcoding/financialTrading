@@ -20,7 +20,7 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/execution/domain"
 	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure"
 	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/client"
-	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/persistence"
+	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/persistence/mysql"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/execution/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/execution/interfaces/http"
 	"github.com/wyfcoding/pkg/config"
@@ -101,8 +101,8 @@ func main() {
 	}
 
 	// 5. Application Services
-	tradeRepo := persistence.NewTradeRepository(db.RawDB())
-	algoRepo := persistence.NewAlgoOrderRepository(db.RawDB())
+	tradeRepo := mysql.NewTradeRepository(db.RawDB())
+	algoRepo := mysql.NewAlgoOrderRepository(db.RawDB())
 	outboxPub := messaging.NewOutboxPublisher(outboxMgr)
 
 	mdCli := marketdatav1.NewMarketDataServiceClient(mdConn)

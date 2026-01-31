@@ -67,14 +67,14 @@ func (c *MonitoringAnalyticsCommand) SaveSystemHealth(ctx context.Context, healt
 
 	// 发布系统健康状态变更事件
 	event := domain.SystemHealthChangedEvent{
-		ServiceName:  health.ServiceName,
-		OldStatus:    "", // 实际应用中需要获取旧状态
-		NewStatus:    health.Status,
-		CPUUsage:     health.CPUUsage,
-		MemoryUsage:  health.MemoryUsage,
-		Message:      health.Message,
-		LastChecked:  health.LastChecked,
-		OccurredOn:   time.Now(),
+		ServiceName: health.ServiceName,
+		OldStatus:   "", // 实际应用中需要获取旧状态
+		NewStatus:   health.Status,
+		CPUUsage:    health.CPUUsage,
+		MemoryUsage: health.MemoryUsage,
+		Message:     health.Message,
+		LastChecked: health.LastChecked,
+		OccurredOn:  time.Now(),
 	}
 
 	return c.eventPublisher.PublishSystemHealthChanged(event)
@@ -105,11 +105,11 @@ func (c *MonitoringAnalyticsCommand) CreateAlert(ctx context.Context, alert *dom
 func (c *MonitoringAnalyticsCommand) UpdateAlertStatus(ctx context.Context, alertID string, oldStatus, newStatus string) error {
 	// 发布告警状态变更事件
 	event := domain.AlertStatusChangedEvent{
-		AlertID:     alertID,
-		OldStatus:   oldStatus,
-		NewStatus:   newStatus,
-		UpdatedAt:   time.Now().Unix(),
-		OccurredOn:  time.Now(),
+		AlertID:    alertID,
+		OldStatus:  oldStatus,
+		NewStatus:  newStatus,
+		UpdatedAt:  time.Now().Unix(),
+		OccurredOn: time.Now(),
 	}
 
 	return c.eventPublisher.PublishAlertStatusChanged(event)
@@ -119,18 +119,18 @@ func (c *MonitoringAnalyticsCommand) UpdateAlertStatus(ctx context.Context, aler
 func (c *MonitoringAnalyticsCommand) RecordExecutionAudit(ctx context.Context, audit *domain.ExecutionAudit) error {
 	// 发布执行审计创建事件
 	event := domain.ExecutionAuditCreatedEvent{
-		ID:        audit.ID,
-		TradeID:   audit.TradeID,
-		OrderID:   audit.OrderID,
-		UserID:    audit.UserID,
-		Symbol:    audit.Symbol,
-		Side:      audit.Side,
-		Price:     audit.Price,
-		Quantity:  audit.Quantity,
-		Fee:       audit.Fee,
-		Venue:     audit.Venue,
-		AlgoType:  audit.AlgoType,
-		Timestamp: audit.Timestamp,
+		ID:         audit.ID,
+		TradeID:    audit.TradeID,
+		OrderID:    audit.OrderID,
+		UserID:     audit.UserID,
+		Symbol:     audit.Symbol,
+		Side:       audit.Side,
+		Price:      audit.Price,
+		Quantity:   audit.Quantity,
+		Fee:        audit.Fee,
+		Venue:      audit.Venue,
+		AlgoType:   audit.AlgoType,
+		Timestamp:  audit.Timestamp,
 		OccurredOn: time.Now(),
 	}
 

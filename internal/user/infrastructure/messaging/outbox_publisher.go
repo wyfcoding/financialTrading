@@ -132,7 +132,7 @@ func (p *OutboxPublisher) ProcessOutboxMessages(ctx context.Context, batchSize i
 	for _, message := range messages {
 		// 这里应该实现将消息发送到消息队列的逻辑
 		// 例如使用 Kafka、RabbitMQ 等
-		
+
 		// 模拟发送成功
 		if err := p.db.Model(&message).Update("status", "sent").Error; err != nil {
 			return err

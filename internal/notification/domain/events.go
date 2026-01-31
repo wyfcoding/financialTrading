@@ -48,11 +48,11 @@ type NotificationStatusChangedEvent struct {
 
 // BatchNotificationCreatedEvent 批量通知创建事件
 type BatchNotificationCreatedEvent struct {
-	BatchID        string
+	BatchID         string
 	NotificationIDs []string
-	UserIDs        []string
-	Channel        Channel
-	Count          int
-	CreatedAt      int64
-	OccurredOn     time.Time
+	UserIDs         []string
+	Channel         Channel
+	Count           int
+	CreatedAt       int64
+	OccurredOn      time.Time
 }

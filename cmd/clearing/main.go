@@ -17,7 +17,7 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/clearing/application"
 	"github.com/wyfcoding/financialtrading/internal/clearing/domain"
 	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/messaging"
-	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/persistence"
+	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/persistence/mysql"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/clearing/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/clearing/interfaces/http"
 	"github.com/wyfcoding/pkg/config"
@@ -91,7 +91,7 @@ func main() {
 	accountClient := accountv1.NewAccountServiceClient(accountConn)
 
 	// 6. Application
-	repo := persistence.NewSettlementRepository(db.RawDB())
+	repo := mysql.NewSettlementRepository(db.RawDB())
 	outboxPub := messaging.NewOutboxPublisher(outboxMgr)
 	commandSvc := application.NewClearingCommandService(repo, outboxPub, db.RawDB(), accountClient)
 	queryService := application.NewClearingQueryService(repo)

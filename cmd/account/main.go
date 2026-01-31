@@ -16,7 +16,7 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/account/application"
 	"github.com/wyfcoding/financialtrading/internal/account/domain"
 	"github.com/wyfcoding/financialtrading/internal/account/infrastructure/messaging"
-	"github.com/wyfcoding/financialtrading/internal/account/infrastructure/persistence"
+	"github.com/wyfcoding/financialtrading/internal/account/infrastructure/persistence/mysql"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/account/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/account/interfaces/http"
 	"github.com/wyfcoding/pkg/config"
@@ -72,7 +72,7 @@ func main() {
 
 	// Auto Migrate (仅用于开发方便)
 	if cfg.Server.Environment == "dev" {
-		if err := db.RawDB().AutoMigrate(&domain.Account{}, &persistence.EventPO{}, &persistence.TransactionPO{}); err != nil {
+		if err := db.RawDB().AutoMigrate(&domain.Account{}, &mysql.EventPO{}, &mysql.TransactionPO{}); err != nil {
 			slog.Error("failed to migrate database", "error", err)
 		}
 	}
@@ -81,8 +81,8 @@ func main() {
 	outboxMgr := outbox.NewManager(db.RawDB(), nil)
 
 	// 5. 初始化仓储
-	accountRepo := persistence.NewAccountRepository(db.RawDB())
-	eventStore := persistence.NewEventStore(db.RawDB())
+	accountRepo := mysql.NewAccountRepository(db.RawDB())
+	eventStore := mysql.NewEventStore(db.RawDB())
 	outboxPub := messaging.NewOutboxPublisher(outboxMgr)
 
 	// 6. 初始化应用服务

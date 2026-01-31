@@ -26,49 +26,49 @@ type AlertGeneratedEvent struct {
 
 // AlertStatusChangedEvent 告警状态变更事件
 type AlertStatusChangedEvent struct {
-	AlertID     string
-	OldStatus   string
-	NewStatus   string
-	UpdatedAt   int64
-	OccurredOn  time.Time
+	AlertID    string
+	OldStatus  string
+	NewStatus  string
+	UpdatedAt  int64
+	OccurredOn time.Time
 }
 
 // SystemHealthChangedEvent 系统健康状态变更事件
 type SystemHealthChangedEvent struct {
-	ServiceName  string
-	OldStatus    string
-	NewStatus    string
-	CPUUsage     float64
-	MemoryUsage  float64
-	Message      string
-	LastChecked  int64
-	OccurredOn   time.Time
+	ServiceName string
+	OldStatus   string
+	NewStatus   string
+	CPUUsage    float64
+	MemoryUsage float64
+	Message     string
+	LastChecked int64
+	OccurredOn  time.Time
 }
 
 // ExecutionAuditCreatedEvent 执行审计创建事件
 type ExecutionAuditCreatedEvent struct {
-	ID        string
-	TradeID   string
-	OrderID   string
-	UserID    string
-	Symbol    string
-	Side      string
-	Price     interface{}
-	Quantity  interface{}
-	Fee       interface{}
-	Venue     string
-	AlgoType  string
-	Timestamp int64
+	ID         string
+	TradeID    string
+	OrderID    string
+	UserID     string
+	Symbol     string
+	Side       string
+	Price      interface{}
+	Quantity   interface{}
+	Fee        interface{}
+	Venue      string
+	AlgoType   string
+	Timestamp  int64
 	OccurredOn time.Time
 }
 
 // SpoofingDetectedEvent 哄骗检测事件
 type SpoofingDetectedEvent struct {
-	UserID       string
-	Symbol       string
-	OrderID      string
-	DetectedAt   int64
-	OccurredOn   time.Time
+	UserID     string
+	Symbol     string
+	OrderID    string
+	DetectedAt int64
+	OccurredOn time.Time
 }
 
 // MarketAnomalyDetectedEvent 市场异常检测事件
