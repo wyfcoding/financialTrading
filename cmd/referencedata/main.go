@@ -16,7 +16,7 @@ import (
 	ref_pb "github.com/wyfcoding/financialtrading/go-api/referencedata/v1"
 	"github.com/wyfcoding/financialtrading/internal/referencedata/application"
 	"github.com/wyfcoding/financialtrading/internal/referencedata/domain"
-	"github.com/wyfcoding/financialtrading/internal/referencedata/infrastructure/persistence"
+	"github.com/wyfcoding/financialtrading/internal/referencedata/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/referencedata/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/referencedata/interfaces/http"
 	"github.com/wyfcoding/pkg/logging"
@@ -56,7 +56,7 @@ func main() {
 	}
 
 	// 4. Infrastructure & Domain
-	repo := persistence.NewReferenceDataRepository(db)
+	repo := mysql.NewReferenceDataRepository(db)
 
 	// 5. Application
 	appService, err := application.NewReferenceDataService(repo, db)

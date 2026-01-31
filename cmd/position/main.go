@@ -16,7 +16,7 @@ import (
 	pb "github.com/wyfcoding/financialtrading/go-api/position/v1"
 	"github.com/wyfcoding/financialtrading/internal/position/application"
 	"github.com/wyfcoding/financialtrading/internal/position/domain"
-	"github.com/wyfcoding/financialtrading/internal/position/infrastructure/persistence"
+	"github.com/wyfcoding/financialtrading/internal/position/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/position/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/position/interfaces/http"
 	"golang.org/x/sync/errgroup"
@@ -55,7 +55,7 @@ func main() {
 	}
 
 	// 4. Infrastructure & Domain
-	repo := persistence.NewPositionRepository(db)
+	repo := mysql.NewPositionRepository(db)
 
 	// 5. Application
 	appService, err := application.NewPositionService(repo, db)
