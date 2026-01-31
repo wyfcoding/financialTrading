@@ -15,7 +15,6 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/notification/application"
 	"github.com/wyfcoding/financialtrading/internal/notification/domain"
 	"github.com/wyfcoding/financialtrading/internal/notification/infrastructure/persistence/mysql"
-	"github.com/wyfcoding/financialtrading/internal/notification/infrastructure/sender/mock"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/notification/interfaces/grpc"
 	"github.com/wyfcoding/pkg/logging"
 	"golang.org/x/sync/errgroup"
@@ -55,11 +54,12 @@ func main() {
 
 	// 4. Infrastructure & Domain
 	repo := mysql.NewNotificationRepository(db)
-	emailSender := mock.NewMockEmailSender()
-	smsSender := mock.NewMockSMSSender()
 
 	// 5. Application
-	appService := application.NewNotificationManager(repo, emailSender, smsSender)
+	appService, err := application.NewNotificationService(repo, db)
+	if err != nil {
+		panic(fmt.Sprintf("init notification service failed: %v", err))
+	}
 
 	// 6. Interfaces
 	// gRPC

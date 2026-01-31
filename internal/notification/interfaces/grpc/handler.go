@@ -13,10 +13,10 @@ import (
 
 type Handler struct {
 	v1.UnimplementedNotificationServer
-	app *application.NotificationManager
+	app *application.NotificationService
 }
 
-func NewHandler(app *application.NotificationManager) *Handler {
+func NewHandler(app *application.NotificationService) *Handler {
 	return &Handler{app: app}
 }
 
@@ -44,7 +44,7 @@ func (h *Handler) SendNotification(ctx context.Context, req *v1.SendNotification
 }
 
 func (h *Handler) GetHistory(ctx context.Context, req *v1.GetHistoryRequest) (*v1.GetHistoryResponse, error) {
-	dtos, err := h.app.GetHistory(ctx, req.UserId, int(req.Limit))
+	dtos, _, err := h.app.GetNotificationHistory(ctx, req.UserId, int(req.Limit), 0)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

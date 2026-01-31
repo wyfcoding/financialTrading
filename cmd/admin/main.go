@@ -77,7 +77,7 @@ func main() {
 	// 创建事件发布者
 	eventPublisher := &dummyEventPublisher{}
 
-	appService := application.NewAdminApplicationService(adminRepo, roleRepo, eventPublisher)
+	appService := application.NewAdminService(adminRepo, roleRepo, eventPublisher)
 
 	// 6. Interfaces
 	// gRPC

@@ -9,12 +9,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/spf13/viper"
 	"github.com/wyfcoding/financialtrading/internal/user/application"
 	"github.com/wyfcoding/financialtrading/internal/user/domain"
 	"github.com/wyfcoding/financialtrading/internal/user/infrastructure/messaging"
 	"github.com/wyfcoding/financialtrading/internal/user/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/user/interfaces/grpc"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	gorm_mysql "gorm.io/driver/mysql"
@@ -43,7 +43,7 @@ func main() {
 
 	repo := mysql.NewUserRepository(db)
 	publisher := messaging.NewOutboxPublisher(db)
-	appService := application.NewUserApplicationService(repo, publisher)
+	appService := application.NewUserService(repo, publisher)
 
 	grpcSrv := grpc.NewServer()
 	grpc_server.NewServer(grpcSrv, appService)

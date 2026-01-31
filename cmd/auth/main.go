@@ -67,7 +67,7 @@ func main() {
 	// 创建事件发布者（使用空实现）
 	eventPublisher := &mockEventPublisher{}
 
-	appService := application.NewAuthApplicationService(repo, apiKeyRepo, keySvc, eventPublisher)
+	appService := application.NewAuthService(repo, apiKeyRepo, keySvc, eventPublisher)
 
 	grpcSrv := grpc.NewServer()
 	grpc_server.NewServer(grpcSrv, appService)

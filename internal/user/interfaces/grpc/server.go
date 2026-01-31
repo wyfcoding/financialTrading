@@ -11,10 +11,10 @@ import (
 
 type Server struct {
 	v1.UnimplementedUserServiceServer
-	app *application.UserApplicationService
+	app *application.UserService
 }
 
-func NewServer(s *grpc.Server, app *application.UserApplicationService) *Server {
+func NewServer(s *grpc.Server, app *application.UserService) *Server {
 	srv := &Server{app: app}
 	v1.RegisterUserServiceServer(s, srv)
 	return srv

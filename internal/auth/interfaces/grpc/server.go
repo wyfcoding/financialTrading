@@ -13,10 +13,10 @@ import (
 
 type Server struct {
 	v1.UnimplementedAuthServiceServer
-	app *application.AuthApplicationService
+	app *application.AuthService
 }
 
-func NewServer(s *grpc.Server, app *application.AuthApplicationService) *Server {
+func NewServer(s *grpc.Server, app *application.AuthService) *Server {
 	srv := &Server{app: app}
 	v1.RegisterAuthServiceServer(s, srv)
 	return srv

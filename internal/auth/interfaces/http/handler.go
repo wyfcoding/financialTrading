@@ -3,15 +3,15 @@ package http
 import (
 	"net/http"
 
-	"github.com/wyfcoding/financialtrading/internal/auth/application"
 	"github.com/gin-gonic/gin"
+	"github.com/wyfcoding/financialtrading/internal/auth/application"
 )
 
 type Handler struct {
-	app *application.AuthApplicationService
+	app *application.AuthService
 }
 
-func NewHandler(r *gin.Engine, app *application.AuthApplicationService) {
+func NewHandler(r *gin.Engine, app *application.AuthService) {
 	h := &Handler{app: app}
 	g := r.Group("/v1/auth")
 	g.POST("/register", h.Register)

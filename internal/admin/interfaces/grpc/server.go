@@ -13,10 +13,10 @@ import (
 
 type Server struct {
 	v1.UnimplementedAdminServiceServer
-	app *application.AdminApplicationService
+	app *application.AdminService
 }
 
-func NewServer(s *grpc.Server, app *application.AdminApplicationService) *Server {
+func NewServer(s *grpc.Server, app *application.AdminService) *Server {
 	srv := &Server{app: app}
 	v1.RegisterAdminServiceServer(s, srv)
 	return srv

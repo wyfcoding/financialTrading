@@ -3,15 +3,15 @@ package http
 import (
 	"net/http"
 
-	"github.com/wyfcoding/financialtrading/internal/admin/application"
 	"github.com/gin-gonic/gin"
+	"github.com/wyfcoding/financialtrading/internal/admin/application"
 )
 
 type Handler struct {
-	app *application.AdminApplicationService
+	app *application.AdminService
 }
 
-func NewHandler(r *gin.Engine, app *application.AdminApplicationService) {
+func NewHandler(r *gin.Engine, app *application.AdminService) {
 	h := &Handler{app: app}
 
 	g := r.Group("/v1/admin")

@@ -8,27 +8,6 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/auth/domain"
 )
 
-// RegisterCommand 注册命令
-type RegisterCommand struct {
-	Email    string
-	Password string
-	Role     domain.UserRole
-}
-
-// LoginCommand 登录命令
-type LoginCommand struct {
-	Email    string
-	Password string
-}
-
-// CreateAPIKeyCommand 创建API Key命令
-type CreateAPIKeyCommand struct {
-	UserID  string
-	Label   string
-	Scopes  string
-	Enabled bool
-}
-
 // AuthCommandService 认证命令服务
 type AuthCommandService struct {
 	repo       domain.UserRepository

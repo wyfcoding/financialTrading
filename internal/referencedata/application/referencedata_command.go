@@ -8,53 +8,6 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/referencedata/domain"
 )
 
-// CreateSymbolCommand 创建交易对命令
-type CreateSymbolCommand struct {
-	SymbolID       string
-	BaseCurrency   string
-	QuoteCurrency  string
-	ExchangeID     string
-	SymbolCode     string
-	Status         string
-	MinOrderSize   float64
-	PricePrecision float64
-}
-
-// UpdateSymbolCommand 更新交易对命令
-type UpdateSymbolCommand struct {
-	SymbolID       string
-	Status         string
-	MinOrderSize   float64
-	PricePrecision float64
-}
-
-// DeleteSymbolCommand 删除交易对命令
-type DeleteSymbolCommand struct {
-	SymbolID string
-}
-
-// CreateExchangeCommand 创建交易所命令
-type CreateExchangeCommand struct {
-	ExchangeID string
-	Name       string
-	Country    string
-	Status     string
-	Timezone   string
-}
-
-// UpdateExchangeCommand 更新交易所命令
-type UpdateExchangeCommand struct {
-	ExchangeID string
-	Status     string
-	Country    string
-	Timezone   string
-}
-
-// DeleteExchangeCommand 删除交易所命令
-type DeleteExchangeCommand struct {
-	ExchangeID string
-}
-
 // ReferenceDataCommand 处理参考数据相关的命令操作
 type ReferenceDataCommand struct {
 	repo           domain.ReferenceDataRepository

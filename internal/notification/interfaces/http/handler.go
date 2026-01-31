@@ -14,12 +14,12 @@ import (
 // HTTP 处理器
 // 负责处理与通知相关的 HTTP 请求
 type NotificationHandler struct {
-	app *application.NotificationManager // 通知应用服务
+	app *application.NotificationService // 通知应用服务
 }
 
 // 创建 HTTP 处理器实例
 // app: 注入的通知应用服务
-func NewNotificationHandler(app *application.NotificationManager) *NotificationHandler {
+func NewNotificationHandler(app *application.NotificationService) *NotificationHandler {
 	return &NotificationHandler{app: app}
 }
 
@@ -81,7 +81,7 @@ func (h *NotificationHandler) GetNotificationHistory(c *gin.Context) {
 		return
 	}
 
-	notifications, err := h.app.GetHistory(c.Request.Context(), userID, limit)
+	notifications, _, err := h.app.GetNotificationHistory(c.Request.Context(), userID, limit, 0)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get notification history", "user_id", userID, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")

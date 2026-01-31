@@ -113,3 +113,56 @@ func (s *ReferenceDataService) GetExchange(ctx context.Context, id string) (*dom
 func (s *ReferenceDataService) ListExchanges(ctx context.Context, limit int, offset int) ([]*domain.Exchange, error) {
 	return s.Query.ListExchanges(ctx, limit, offset)
 }
+
+// --- DTO Definitions ---
+
+type InstrumentDTO struct {
+	Symbol        string  `json:"symbol"`
+	BaseCurrency  string  `json:"base_currency"`
+	QuoteCurrency string  `json:"quote_currency"`
+	TickSize      float64 `json:"tick_size"`
+	LotSize       float64 `json:"lot_size"`
+	Type          string  `json:"type"`
+	MaxLeverage   int     `json:"max_leverage"`
+}
+
+type CreateSymbolCommand struct {
+	SymbolID       string
+	BaseCurrency   string
+	QuoteCurrency  string
+	ExchangeID     string
+	SymbolCode     string
+	Status         string
+	MinOrderSize   float64
+	PricePrecision float64
+}
+
+type UpdateSymbolCommand struct {
+	SymbolID       string
+	Status         string
+	MinOrderSize   float64
+	PricePrecision float64
+}
+
+type DeleteSymbolCommand struct {
+	SymbolID string
+}
+
+type CreateExchangeCommand struct {
+	ExchangeID string
+	Name       string
+	Country    string
+	Status     string
+	Timezone   string
+}
+
+type UpdateExchangeCommand struct {
+	ExchangeID string
+	Status     string
+	Country    string
+	Timezone   string
+}
+
+type DeleteExchangeCommand struct {
+	ExchangeID string
+}
