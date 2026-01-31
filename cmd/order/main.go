@@ -18,7 +18,7 @@ import (
 	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/application"
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
-	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/persistence"
+	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/order/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/order/interfaces/http"
 	"golang.org/x/sync/errgroup"
@@ -57,7 +57,7 @@ func main() {
 	}
 
 	// 4. Infrastructure & Domain
-	repo := persistence.NewOrderRepository(db)
+	repo := mysql.NewOrderRepository(db)
 
 	// 5. Application
 	// Inject dependencies

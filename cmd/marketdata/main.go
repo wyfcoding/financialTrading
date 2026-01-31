@@ -16,7 +16,7 @@ import (
 	marketdatav1 "github.com/wyfcoding/financialtrading/go-api/marketdata/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/application"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/domain"
-	"github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/persistence"
+	"github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/persistence/mysql"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/interfaces/events"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/marketdata/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/marketdata/interfaces/http"
@@ -76,7 +76,7 @@ func main() {
 	}
 
 	// 5. Repository & Application
-	repo := persistence.NewMarketDataRepository(db.RawDB())
+	repo := mysql.NewMarketDataRepository(db.RawDB())
 
 	// 创建事件发布者
 	eventPublisher := &dummyEventPublisher{}

@@ -92,13 +92,6 @@ func (s *Simulation) Stop() {
 	s.EndTime = time.Now()
 }
 
-// SimulationRepository 模拟仓储接口
-type SimulationRepository interface {
-	Save(ctx context.Context, s *Simulation) error
-	Get(ctx context.Context, scenarioID string) (*Simulation, error)
-	List(ctx context.Context, limit int) ([]*Simulation, error)
-}
-
 // MarketDataPublisher 行情发布接口
 type MarketDataPublisher interface {
 	Publish(ctx context.Context, symbol string, price decimal.Decimal) error

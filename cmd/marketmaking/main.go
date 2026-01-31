@@ -16,7 +16,7 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/application"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/client"
-	"github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/persistence"
+	"github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/persistence/mysql"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/marketmaking/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/marketmaking/interfaces/http"
 	"github.com/wyfcoding/pkg/config"
@@ -73,7 +73,7 @@ func main() {
 		}
 	}
 
-	strategyRepo := persistence.NewMarketMakingRepository(db.RawDB())
+	strategyRepo := mysql.NewMarketMakingRepository(db.RawDB())
 
 	// Clients
 	orderAddr := cfg.GetGRPCAddr("order")
