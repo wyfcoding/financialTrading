@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	executionv1 "github.com/wyfcoding/financialtrading/go-api/execution/v1"
@@ -23,12 +24,14 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/persistence/mysql"
 	execution_redis "github.com/wyfcoding/financialtrading/internal/execution/infrastructure/persistence/redis"
 	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/search"
+	"github.com/wyfcoding/financialtrading/internal/execution/interfaces/events"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/execution/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/execution/interfaces/http"
 	"github.com/wyfcoding/pkg/cache"
 	"github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/database"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
 	"github.com/wyfcoding/pkg/messagequeue/outbox"
 	"github.com/wyfcoding/pkg/metrics"
 	search_pkg "github.com/wyfcoding/pkg/search"
@@ -64,9 +67,6 @@ func main() {
 
 	// 3. Metrics
 	metricsImpl := metrics.NewMetrics(cfg.Server.Name)
-	if cfg.Metrics.Enabled {
-		go metricsImpl.ExposeHTTP(cfg.Metrics.Port)
-	}
 
 	// 4. Infrastructure
 	db, err := database.NewDB(cfg.Data.Database, cfg.CircuitBreaker, logger, metricsImpl)
@@ -76,14 +76,21 @@ func main() {
 	}
 
 	if cfg.Server.Environment == "dev" {
-		if err := db.RawDB().AutoMigrate(&domain.Trade{}, &domain.AlgoOrder{}); err != nil {
+		if err := db.RawDB().AutoMigrate(&domain.Trade{}, &domain.AlgoOrder{}, &outbox.Message{}); err != nil {
 			slog.Error("failed to migrate database", "error", err)
 		}
 	}
 
+	// 5. Kafka & Outbox
+	kafkaProducer := kafka.NewProducer(&cfg.MessageQueue.Kafka, logger, metricsImpl)
 	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
+	// 包装推送器以匹配签名
+	pusher := func(ctx context.Context, topic, key string, payload []byte) error {
+		return kafkaProducer.PublishToTopic(ctx, topic, []byte(key), payload)
+	}
+	outboxProcessor := outbox.NewProcessor(outboxMgr, pusher, 100, 2*time.Second)
 
-	// 5. Clients
+	// Clients
 	orderAddr := cfg.GetGRPCAddr("order")
 	if orderAddr == "" {
 		orderAddr = "localhost:50051"
@@ -104,7 +111,7 @@ func main() {
 		slog.Error("failed to connect to marketdata service", "error", err)
 	}
 
-	// 5. Application Services
+	// 6. Application Services
 	tradeRepo := mysql.NewTradeRepository(db.RawDB())
 	algoRepo := mysql.NewAlgoOrderRepository(db.RawDB())
 	outboxPub := messaging.NewOutboxPublisher(outboxMgr)
@@ -143,24 +150,45 @@ func main() {
 		db.RawDB(),
 	)
 
-	// 6. Interfaces
+	// 7. Event Handlers (Syncers)
+	searchConsumer := kafka.NewConsumer(&cfg.MessageQueue.Kafka, logger, metricsImpl)
+	tradeSearchHandler := events.NewTradeSearchHandler(tradeSearchRepo, tradeRepo, searchConsumer, 5)
+
+	redisConsumer := kafka.NewConsumer(&cfg.MessageQueue.Kafka, logger, metricsImpl)
+	algoRedisHandler := events.NewAlgoRedisHandler(redisRepo, algoRepo, redisConsumer, 5)
+
+	// 8. Interfaces
 	grpcSrv := grpc.NewServer()
 	executionHandler := grpcserver.NewHandler(executionSvc)
 	executionv1.RegisterExecutionServiceServer(grpcSrv, executionHandler)
 	reflection.Register(grpcSrv)
 
 	gin.SetMode(gin.ReleaseMode)
-	if cfg.Server.Environment == "dev" {
-		gin.SetMode(gin.DebugMode)
-	}
 	r := gin.New()
 	r.Use(gin.Recovery())
-
 	httpHandler := httpserver.NewExecutionHandler(executionSvc)
 	httpHandler.RegisterRoutes(r.Group("/api"))
 
-	// 7. Start
+	// 9. Start
 	g, ctx := errgroup.WithContext(context.Background())
+
+	// Outbox
+	g.Go(func() error {
+		outboxProcessor.Start()
+		<-ctx.Done()
+		outboxProcessor.Stop()
+		return nil
+	})
+
+	// Syncers
+	g.Go(func() error {
+		tradeSearchHandler.Start(ctx)
+		return nil
+	})
+	g.Go(func() error {
+		algoRedisHandler.Start(ctx)
+		return nil
+	})
 
 	g.Go(func() error {
 		addr := fmt.Sprintf(":%d", cfg.Server.GRPC.Port)

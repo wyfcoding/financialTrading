@@ -19,6 +19,7 @@ type ExecutionCommandService struct {
 	tradeRepo      domain.TradeRepository
 	algoRepo       domain.AlgoOrderRepository
 	redisRepo      domain.AlgoRedisRepository
+	eventStore     domain.EventStore
 	publisher      domain.EventPublisher
 	orderClient    orderv1.OrderServiceClient
 	marketData     domain.MarketDataProvider
@@ -32,6 +33,7 @@ func NewExecutionCommandService(
 	tradeRepo domain.TradeRepository,
 	algoRepo domain.AlgoOrderRepository,
 	redisRepo domain.AlgoRedisRepository,
+	eventStore domain.EventStore,
 	publisher domain.EventPublisher,
 	orderClient orderv1.OrderServiceClient,
 	marketData domain.MarketDataProvider,
@@ -43,6 +45,7 @@ func NewExecutionCommandService(
 		tradeRepo:      tradeRepo,
 		algoRepo:       algoRepo,
 		redisRepo:      redisRepo,
+		eventStore:     eventStore,
 		publisher:      publisher,
 		orderClient:    orderClient,
 		marketData:     marketData,
@@ -70,6 +73,12 @@ func (s *ExecutionCommandService) ExecuteOrder(ctx context.Context, cmd ExecuteO
 		if err := s.tradeRepo.Save(txCtx, trade); err != nil {
 			return err
 		}
+
+		// 保存领域事件
+		if err := s.eventStore.Save(txCtx, trade.TradeID, trade.GetUncommittedEvents(), trade.Version()); err != nil {
+			return err
+		}
+		trade.MarkCommitted()
 
 		// 发布集成事件 (Outbox Pattern)
 		return s.publisher.PublishInTx(ctx, tx, "trade.executed", trade.TradeID, map[string]any{
@@ -114,7 +123,23 @@ func (s *ExecutionCommandService) SubmitAlgoOrder(ctx context.Context, cmd Submi
 		cmd.Params,
 	)
 
-	if err := s.algoRepo.Save(ctx, algoOrder); err != nil {
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		txCtx := contextx.WithTx(ctx, tx)
+		if err := s.algoRepo.Save(txCtx, algoOrder); err != nil {
+			return err
+		}
+
+		// 保存领域事件
+		if err := s.eventStore.Save(txCtx, algoOrder.AlgoID, algoOrder.GetUncommittedEvents(), algoOrder.Version()); err != nil {
+			return err
+		}
+		algoOrder.MarkCommitted()
+
+		// 缓存实时状态
+		return s.redisRepo.Save(txCtx, algoOrder)
+	})
+
+	if err != nil {
 		return "", err
 	}
 
@@ -254,12 +279,29 @@ func (s *ExecutionCommandService) processActiveAlgoOrders(ctx context.Context) {
 				Price:    slice.Price.InexactFloat64(),
 				Quantity: slice.Quantity.InexactFloat64(),
 			})
-			order.ExecutedQuantity = order.ExecutedQuantity.Add(slice.Quantity)
+
+			// 通过领域事件更新已成交量
+			order.ApplyChange(&domain.TradeExecutedEvent{
+				TradeID:  fmt.Sprintf("TRD-ALGO-%d", idgen.GenID()),
+				OrderID:  "ALGO-CHILD",
+				UserID:   order.UserID,
+				Symbol:   order.Symbol,
+				Quantity: slice.Quantity.String(),
+				Price:    slice.Price.String(),
+				Time:     time.Now().Unix(),
+			})
 		}
 
-		if order.ExecutedQuantity.GreaterThanOrEqual(order.TotalQuantity) {
-			order.Status = "COMPLETED"
-		}
-		_ = s.algoRepo.Save(ctx, order)
+		_ = s.db.Transaction(func(tx *gorm.DB) error {
+			txCtx := contextx.WithTx(ctx, tx)
+			if err := s.algoRepo.Save(txCtx, order); err != nil {
+				return err
+			}
+			if err := s.eventStore.Save(txCtx, order.AlgoID, order.GetUncommittedEvents(), order.Version()); err != nil {
+				return err
+			}
+			order.MarkCommitted()
+			return s.redisRepo.Save(txCtx, order)
+		})
 	}
 }

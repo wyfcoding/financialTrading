@@ -1,6 +1,16 @@
 package domain
 
-import "context"
+import (
+	"context"
+
+	"github.com/wyfcoding/pkg/eventsourcing"
+)
+
+// EventStore 事件存储接口
+type EventStore interface {
+	Save(ctx context.Context, aggregateID string, events []eventsourcing.DomainEvent, expectedVersion int64) error
+	Load(ctx context.Context, aggregateID string) ([]eventsourcing.DomainEvent, error)
+}
 
 // TradeRepository 成交单仓储接口
 type TradeRepository interface {

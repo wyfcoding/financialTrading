@@ -2,6 +2,8 @@ package domain
 
 import (
 	"context"
+
+	"github.com/wyfcoding/pkg/eventsourcing"
 )
 
 // AccountRepository 账户仓储接口
@@ -17,8 +19,6 @@ type AccountRepository interface {
 
 // EventStore 事件存储接口
 type EventStore interface {
-	// Append 将事件追加到事件日志
-	Append(ctx context.Context, aggregateID string, events []AccountEvent) error
-	// Load 加载指定聚合的所有事件
-	Load(ctx context.Context, aggregateID string) ([]AccountEvent, error)
+	Save(ctx context.Context, aggregateID string, events []eventsourcing.DomainEvent, expectedVersion int64) error
+	Load(ctx context.Context, aggregateID string) ([]eventsourcing.DomainEvent, error)
 }

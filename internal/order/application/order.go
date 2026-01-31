@@ -5,6 +5,7 @@ import (
 
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
 	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/messaging"
+	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/persistence/mysql"
 	"gorm.io/gorm"
 )
 
@@ -36,18 +37,15 @@ type OrderService struct {
 }
 
 // NewOrderService 构造函数
-func NewOrderService(repo domain.OrderRepository, searchRepo domain.OrderSearchRepository, db interface{}) (*OrderService, error) {
+func NewOrderService(repo domain.OrderRepository, searchRepo domain.OrderSearchRepository, db *gorm.DB) (*OrderService, error) {
+	// 创建事件存储
+	eventStore := mysql.NewEventStore(db)
+
 	// 创建事件发布者
-	var eventPublisher domain.EventPublisher
-	if gormDB, ok := db.(*gorm.DB); ok {
-		eventPublisher = messaging.NewOutboxEventPublisher(gormDB)
-	} else {
-		// 使用空实现作为降级方案
-		eventPublisher = &mockEventPublisher{}
-	}
+	eventPublisher := messaging.NewOutboxEventPublisher(db)
 
 	// 创建命令服务
-	command := NewOrderCommandService(repo, eventPublisher)
+	command := NewOrderCommandService(repo, eventStore, eventPublisher, db)
 
 	// 创建查询服务
 	query := NewOrderQueryService(repo, searchRepo)

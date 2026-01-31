@@ -6,6 +6,7 @@ import (
 	"github.com/shopspring/decimal"
 	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/execution/domain"
+	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/persistence/mysql"
 	"github.com/wyfcoding/pkg/metrics"
 	"gorm.io/gorm"
 )
@@ -29,8 +30,11 @@ func NewExecutionService(
 	metrics *metrics.Metrics,
 	db *gorm.DB,
 ) *ExecutionService {
+	// 创建事件存储
+	eventStore := mysql.NewEventStore(db)
+
 	return &ExecutionService{
-		Command: NewExecutionCommandService(tradeRepo, algoRepo, redisRepo, publisher, orderClient, marketData, volumeProvider, metrics, db),
+		Command: NewExecutionCommandService(tradeRepo, algoRepo, redisRepo, eventStore, publisher, orderClient, marketData, volumeProvider, metrics, db),
 		Query:   NewExecutionQueryService(tradeRepo, searchRepo),
 	}
 }

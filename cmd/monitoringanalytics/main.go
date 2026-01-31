@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/gin-gonic/gin"
@@ -23,6 +24,7 @@ import (
 	http_server "github.com/wyfcoding/financialtrading/internal/monitoringanalytics/interfaces/http"
 	"github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/metrics"
 	"github.com/wyfcoding/pkg/search"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -58,12 +60,22 @@ func main() {
 	alertRepo := mysql.NewAlertRepository(db)
 
 	// Elasticsearch
-	esCfg := &config.ElasticsearchConfig{
-		Addresses: viper.GetStringSlice("elasticsearch.addresses"),
-		Username:  viper.GetString("elasticsearch.username"),
-		Password:  viper.GetString("elasticsearch.password"),
+	esCfg := &search.Config{
+		ServiceName: "monitoring-audit",
+		ElasticsearchConfig: config.ElasticsearchConfig{
+			Addresses: viper.GetStringSlice("elasticsearch.addresses"),
+			Username:  viper.GetString("elasticsearch.username"),
+			Password:  viper.GetString("elasticsearch.password"),
+		},
+		BreakerConfig: config.CircuitBreakerConfig{
+			Enabled:     true,
+			Interval:    5 * time.Second,
+			Timeout:     10 * time.Second,
+			MaxRequests: 100,
+		},
 	}
-	esClient, err := search.NewClient(esCfg, logger)
+	metricsES := metrics.NewMetrics("monitoring-es")
+	esClient, err := search.NewClient(esCfg, logger, metricsES)
 	if err != nil {
 		slog.Error("failed to init elasticsearch", "error", err)
 	}

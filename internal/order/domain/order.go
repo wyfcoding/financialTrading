@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/wyfcoding/pkg/eventsourcing"
 	"gorm.io/gorm"
 )
 
@@ -43,6 +44,7 @@ const (
 // Order represents an OMS order
 type Order struct {
 	gorm.Model
+	eventsourcing.AggregateRoot
 	OrderID        string      `gorm:"column:order_id;type:varchar(36);uniqueIndex;not null" json:"order_id"` // UUID
 	UserID         string      `gorm:"column:user_id;type:varchar(50);index;not null" json:"user_id"`
 	Symbol         string      `gorm:"column:symbol;type:varchar(20);not null" json:"symbol"`
@@ -66,7 +68,7 @@ func (Order) TableName() string {
 }
 
 func NewOrder(id, userID, symbol string, side OrderSide, typ OrderType, price, qty float64) *Order {
-	return &Order{
+	o := &Order{
 		OrderID:  id,
 		UserID:   userID,
 		Symbol:   symbol,
@@ -75,6 +77,48 @@ func NewOrder(id, userID, symbol string, side OrderSide, typ OrderType, price, q
 		Price:    price,
 		Quantity: qty,
 		Status:   StatusPending,
+	}
+	o.SetID(id)
+
+	o.ApplyChange(&OrderCreatedEvent{
+		OrderID:    id,
+		UserID:     userID,
+		Symbol:     symbol,
+		Side:       side,
+		Type:       typ,
+		Price:      price,
+		Quantity:   qty,
+		OccurredOn: time.Now(),
+	})
+	return o
+}
+
+// Apply 实现了 eventsourcing.EventApplier 接口
+func (o *Order) Apply(event eventsourcing.DomainEvent) {
+	switch e := event.(type) {
+	case *OrderCreatedEvent:
+		o.OrderID = e.OrderID
+		o.UserID = e.UserID
+		o.Symbol = e.Symbol
+		o.Side = e.Side
+		o.Type = e.Type
+		o.Price = e.Price
+		o.Quantity = e.Quantity
+		o.Status = StatusPending
+	case *OrderValidatedEvent:
+		o.Status = StatusValidated
+	case *OrderRejectedEvent:
+		o.Status = StatusRejected
+	case *OrderPartiallyFilledEvent:
+		o.FilledQuantity = e.FilledQuantity
+		o.AveragePrice = e.AveragePrice
+		o.Status = StatusPartiallyFilled
+	case *OrderFilledEvent:
+		o.FilledQuantity = e.TotalQuantity
+		o.AveragePrice = e.AveragePrice
+		o.Status = StatusFilled
+	case *OrderCancelledEvent:
+		o.Status = StatusCancelled
 	}
 }
 
@@ -92,8 +136,13 @@ func (o *Order) Validate() error {
 // MarkValidated transitions to Validated state
 func (o *Order) MarkValidated() {
 	if o.Status == StatusPending {
-		o.Status = StatusValidated
-		o.UpdatedAt = time.Now()
+		o.ApplyChange(&OrderValidatedEvent{
+			OrderID:     o.OrderID,
+			UserID:      o.UserID,
+			Symbol:      o.Symbol,
+			ValidatedAt: time.Now().UnixNano(),
+			OccurredOn:  time.Now(),
+		})
 	}
 }
 
@@ -101,15 +150,33 @@ func (o *Order) MarkValidated() {
 func (o *Order) UpdateExecution(filledQty, tradePrice float64) {
 	// Simple average price calculation
 	totalValue := (o.AveragePrice * o.FilledQuantity) + (tradePrice * filledQty)
-	o.FilledQuantity += filledQty
-	if o.FilledQuantity > 0 {
-		o.AveragePrice = totalValue / o.FilledQuantity
+	newFilledQty := o.FilledQuantity + filledQty
+	var newAvgPrice float64
+	if newFilledQty > 0 {
+		newAvgPrice = totalValue / newFilledQty
 	}
 
-	if o.FilledQuantity >= o.Quantity {
-		o.Status = StatusFilled
-	} else if o.FilledQuantity > 0 {
-		o.Status = StatusPartiallyFilled
+	if newFilledQty >= o.Quantity {
+		o.ApplyChange(&OrderFilledEvent{
+			OrderID:       o.OrderID,
+			UserID:        o.UserID,
+			Symbol:        o.Symbol,
+			TotalQuantity: newFilledQty,
+			AveragePrice:  newAvgPrice,
+			FilledAt:      time.Now().UnixNano(),
+			OccurredOn:    time.Now(),
+		})
+	} else {
+		o.ApplyChange(&OrderPartiallyFilledEvent{
+			OrderID:           o.OrderID,
+			UserID:            o.UserID,
+			Symbol:            o.Symbol,
+			FilledQuantity:    newFilledQty,
+			RemainingQuantity: o.Quantity - newFilledQty,
+			TradePrice:        tradePrice,
+			AveragePrice:      newAvgPrice,
+			FilledAt:          time.Now().UnixNano(),
+			OccurredOn:        time.Now(),
+		})
 	}
-	o.UpdatedAt = time.Now()
 }

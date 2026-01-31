@@ -2,10 +2,12 @@ package mysql
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
 	"github.com/wyfcoding/pkg/contextx"
+	"github.com/wyfcoding/pkg/eventsourcing"
 	"gorm.io/gorm"
 )
 
@@ -20,9 +22,10 @@ func NewOrderRepository(db *gorm.DB) domain.OrderRepository {
 
 func (r *orderRepository) Save(ctx context.Context, order *domain.Order) error {
 	db := r.getDB(ctx)
-	if order.ID == 0 {
+	if order.Model.ID == 0 {
 		return db.Create(order).Error
 	}
+	// 乐观锁建议：通过 version 字段进行 Save
 	return db.Save(order).Error
 }
 
@@ -34,6 +37,7 @@ func (r *orderRepository) Get(ctx context.Context, orderID string) (*domain.Orde
 		}
 		return nil, err
 	}
+	order.SetID(orderID)
 	return &order, nil
 }
 
@@ -49,6 +53,9 @@ func (r *orderRepository) ListByUser(ctx context.Context, userID string, status 
 	}
 	if err := db.Limit(limit).Offset(offset).Order("created_at desc").Find(&orders).Error; err != nil {
 		return nil, 0, err
+	}
+	for _, o := range orders {
+		o.SetID(o.OrderID)
 	}
 	return orders, total, nil
 }
@@ -66,12 +73,18 @@ func (r *orderRepository) ListBySymbol(ctx context.Context, symbol string, statu
 	if err := db.Limit(limit).Offset(offset).Order("created_at desc").Find(&orders).Error; err != nil {
 		return nil, 0, err
 	}
+	for _, o := range orders {
+		o.SetID(o.OrderID)
+	}
 	return orders, total, nil
 }
 
 func (r *orderRepository) GetActiveOrdersBySymbol(ctx context.Context, symbol string) ([]*domain.Order, error) {
 	var orders []*domain.Order
 	err := r.getDB(ctx).Where("symbol = ? AND status IN ?", symbol, []domain.OrderStatus{domain.StatusPending, domain.StatusValidated, domain.StatusPartiallyFilled}).Find(&orders).Error
+	for _, o := range orders {
+		o.SetID(o.OrderID)
+	}
 	return orders, err
 }
 
@@ -92,4 +105,54 @@ func (r *orderRepository) getDB(ctx context.Context) *gorm.DB {
 		return tx
 	}
 	return r.db
+}
+
+// --- EventStore 实现 ---
+
+type eventStore struct {
+	db *gorm.DB
+}
+
+func NewEventStore(db *gorm.DB) domain.EventStore {
+	return &eventStore{db: db}
+}
+
+func (s *eventStore) Save(ctx context.Context, aggregateID string, events []eventsourcing.DomainEvent, expectedVersion int64) error {
+	db := s.getDB(ctx)
+	for _, event := range events {
+		payload, _ := json.Marshal(event)
+		po := &EventPO{
+			AggregateID: aggregateID,
+			EventType:   event.EventType(),
+			Payload:     string(payload),
+			OccurredAt:  event.OccurredAt().UnixNano(),
+		}
+		if err := db.Create(po).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *eventStore) Load(ctx context.Context, aggregateID string) ([]eventsourcing.DomainEvent, error) {
+	return nil, nil // TODO: 实现加载逻辑
+}
+
+func (s *eventStore) getDB(ctx context.Context) *gorm.DB {
+	if tx, ok := contextx.GetTx(ctx).(*gorm.DB); ok {
+		return tx
+	}
+	return s.db
+}
+
+type EventPO struct {
+	gorm.Model
+	AggregateID string `gorm:"column:aggregate_id;type:varchar(36);index;not null"`
+	EventType   string `gorm:"column:event_type;type:varchar(50);not null"`
+	Payload     string `gorm:"column:payload;type:json;not null"`
+	OccurredAt  int64  `gorm:"column:occurred_at;not null"`
+}
+
+func (EventPO) TableName() string {
+	return "order_events"
 }

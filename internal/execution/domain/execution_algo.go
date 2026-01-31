@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/wyfcoding/pkg/eventsourcing"
 	"gorm.io/gorm"
 )
 
-// TradeSide 交易方向
 type TradeSide string
 
 const (
@@ -17,7 +17,6 @@ const (
 	TradeSideSell TradeSide = "SELL"
 )
 
-// AlgoType 策略类型枚举
 type AlgoType string
 
 const (
@@ -27,21 +26,19 @@ const (
 	AlgoTypeSOR  AlgoType = "SOR"
 )
 
-// Venue 交易场所/交易所定义
 type Venue struct {
 	ID           string
 	Name         string
-	ExecutionFee decimal.Decimal // 每笔交易的手续费率 (e.g. 0.0001)
-	Latency      time.Duration   // 预估往返延迟
-	Weight       float64         // 场所优先权重
+	ExecutionFee decimal.Decimal
+	Latency      time.Duration
+	Weight       float64
 }
 
-// VenueDepth 交易场所的深度信息
 type VenueDepth struct {
 	VenueID string
 	Symbol  string
-	Asks    []PriceLevel // 卖盘 (升序)
-	Bids    []PriceLevel // 买盘 (降序)
+	Asks    []PriceLevel
+	Bids    []PriceLevel
 }
 
 type PriceLevel struct {
@@ -49,9 +46,9 @@ type PriceLevel struct {
 	Quantity decimal.Decimal
 }
 
-// AlgoOrder 算法订单 (母单)
 type AlgoOrder struct {
 	gorm.Model
+	eventsourcing.AggregateRoot
 	AlgoID            string          `gorm:"column:algo_id;type:varchar(64);uniqueIndex;not null;comment:算法订单ID" json:"algo_id"`
 	UserID            string          `gorm:"column:user_id;type:varchar(64);not null;comment:用户ID" json:"user_id"`
 	Symbol            string          `gorm:"column:symbol;type:varchar(20);not null;comment:标的" json:"symbol"`
@@ -71,7 +68,7 @@ func (AlgoOrder) TableName() string {
 }
 
 func NewAlgoOrder(id, userID, symbol string, side TradeSide, totalQty decimal.Decimal, algoType AlgoType, start, end time.Time, params string) *AlgoOrder {
-	return &AlgoOrder{
+	a := &AlgoOrder{
 		AlgoID:         id,
 		UserID:         userID,
 		Symbol:         symbol,
@@ -82,6 +79,35 @@ func NewAlgoOrder(id, userID, symbol string, side TradeSide, totalQty decimal.De
 		EndTime:        end,
 		StrategyParams: params,
 		Status:         "PENDING",
+	}
+	a.SetID(id)
+
+	a.ApplyChange(&AlgoOrderStartedEvent{
+		AlgoID:    id,
+		UserID:    userID,
+		Symbol:    symbol,
+		AlgoType:  string(algoType),
+		TotalQty:  totalQty.String(),
+		StartTime: start.Unix(),
+	})
+	return a
+}
+
+func (a *AlgoOrder) Apply(event eventsourcing.DomainEvent) {
+	switch e := event.(type) {
+	case *AlgoOrderStartedEvent:
+		a.AlgoID = e.AlgoID
+		a.UserID = e.UserID
+		a.Symbol = e.Symbol
+		a.AlgoType = AlgoType(e.AlgoType)
+		a.TotalQuantity, _ = decimal.NewFromString(e.TotalQty)
+		a.Status = "RUNNING"
+	case *TradeExecutedEvent:
+		executedQty, _ := decimal.NewFromString(e.Quantity)
+		a.ExecutedQuantity = a.ExecutedQuantity.Add(executedQty)
+		if a.ExecutedQuantity.GreaterThanOrEqual(a.TotalQuantity) {
+			a.Status = "COMPLETED"
+		}
 	}
 }
 

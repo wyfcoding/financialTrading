@@ -3,43 +3,59 @@ package events
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 
+	kafkago "github.com/segmentio/kafka-go"
 	"github.com/wyfcoding/financialtrading/internal/execution/domain"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
 )
 
 type TradeSearchHandler struct {
 	searchRepo domain.TradeSearchRepository
 	tradeRepo  domain.TradeRepository
+	consumer   *kafka.Consumer
+	workers    int
 }
 
-func NewTradeSearchHandler(searchRepo domain.TradeSearchRepository, tradeRepo domain.TradeRepository) *TradeSearchHandler {
+func NewTradeSearchHandler(searchRepo domain.TradeSearchRepository, tradeRepo domain.TradeRepository, consumer *kafka.Consumer, workers int) *TradeSearchHandler {
 	return &TradeSearchHandler{
 		searchRepo: searchRepo,
 		tradeRepo:  tradeRepo,
+		consumer:   consumer,
+		workers:    workers,
 	}
 }
 
-func (h *TradeSearchHandler) OnTradeExecuted(ctx context.Context, payload []byte) error {
-	var event struct {
-		TradeID string `json:"trade_id"`
+// Start 启动订阅并处理消息。
+func (h *TradeSearchHandler) Start(ctx context.Context) {
+	if h.consumer == nil {
+		return
 	}
-	if err := json.Unmarshal(payload, &event); err != nil {
+	slog.Info("Starting TradeSearchHandler", "workers", h.workers)
+	h.consumer.Start(ctx, h.workers, h.handleMessage)
+}
+
+func (h *TradeSearchHandler) handleMessage(ctx context.Context, msg kafkago.Message) error {
+	var event map[string]any
+	if err := json.Unmarshal(msg.Value, &event); err != nil {
+		slog.ErrorContext(ctx, "failed to unmarshal trade event", "error", err)
 		return err
 	}
 
-	// 从主库获取最新状态并同步到 ES
-	// 注意：订单 ID 的 trade 需要通过 Repo 获取，或者 Payload 已经包含全量信息
-	// 这里为了简单，假设 Payload 已包含全量信息，或者重新从 DB 拉取。
-	// 标准的做法是 Payload 包含关键 ID，Handler 向 DB 拉取最新 Aggregate。
+	tradeID, ok := event["trade_id"].(string)
+	if !ok {
+		return nil
+	}
 
-	// 这里先简单处理，假设我们要从 DB 拉取
-	trades, err := h.tradeRepo.List(ctx, "") // 实际上需要按 TradeID 获取，此处 domain 接口需增强
+	// 此时通常需要一个 Get(tradeID) 方法，如果 Repos 没有，则按现有逻辑处理
+	// 为保持现状且不破坏编译，此处保留原有回查逻辑并修复
+	trades, err := h.tradeRepo.List(ctx, "") // 这里可能需要用户 ID，假设空为列出所有
 	if err != nil {
 		return err
 	}
 
 	for _, t := range trades {
-		if t.TradeID == event.TradeID {
+		if t.TradeID == tradeID {
 			return h.searchRepo.Index(ctx, t)
 		}
 	}

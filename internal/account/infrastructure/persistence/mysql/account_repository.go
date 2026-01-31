@@ -8,6 +8,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/account/domain"
 	"github.com/wyfcoding/pkg/contextx"
+	"github.com/wyfcoding/pkg/eventsourcing"
 	"gorm.io/gorm"
 )
 
@@ -24,18 +25,20 @@ func NewAccountRepository(db *gorm.DB) domain.AccountRepository {
 func (r *accountRepository) Save(ctx context.Context, account *domain.Account) error {
 	db := r.getDB(ctx)
 
-	if account.ID == 0 {
+	// 使用 gorm.Model 的 ID 判断新老对象
+	if account.Model.ID == 0 {
 		return db.Create(account).Error
 	}
 
-	// 乐观锁更新
+	// 乐观锁更新 (使用 AggregateRoot.Version())
+	currentVersion := account.Version()
 	result := db.Model(&domain.Account{}).
-		Where("account_id = ? AND version = ?", account.AccountID, account.Version).
+		Where("account_id = ? AND version = ?", account.AccountID, currentVersion).
 		Updates(map[string]interface{}{
 			"balance":           account.Balance,
 			"available_balance": account.AvailableBalance,
 			"frozen_balance":    account.FrozenBalance,
-			"version":           account.Version + 1,
+			"version":           currentVersion + 1,
 		})
 
 	if result.Error != nil {
@@ -45,7 +48,7 @@ func (r *accountRepository) Save(ctx context.Context, account *domain.Account) e
 		return errors.New("optimistic lock failed: account modified by another transaction")
 	}
 
-	account.Version++
+	account.SetVersion(currentVersion + 1)
 	return nil
 }
 
@@ -57,6 +60,8 @@ func (r *accountRepository) Get(ctx context.Context, id string) (*domain.Account
 		}
 		return nil, err
 	}
+	// 设置聚合 ID
+	acc.SetID(acc.AccountID)
 	return &acc, nil
 }
 
@@ -64,6 +69,9 @@ func (r *accountRepository) GetByUserID(ctx context.Context, userID string) ([]*
 	var accounts []*domain.Account
 	if err := r.getDB(ctx).Where("user_id = ?", userID).Find(&accounts).Error; err != nil {
 		return nil, err
+	}
+	for _, acc := range accounts {
+		acc.SetID(acc.AccountID)
 	}
 	return accounts, nil
 }
@@ -92,7 +100,7 @@ func NewEventStore(db *gorm.DB) domain.EventStore {
 	return &eventStore{db: db}
 }
 
-func (s *eventStore) Append(ctx context.Context, aggregateID string, events []domain.AccountEvent) error {
+func (s *eventStore) Save(ctx context.Context, aggregateID string, events []eventsourcing.DomainEvent, expectedVersion int64) error {
 	db := s.getDB(ctx)
 
 	for _, event := range events {
@@ -115,7 +123,7 @@ func (s *eventStore) Append(ctx context.Context, aggregateID string, events []do
 	return nil
 }
 
-func (s *eventStore) Load(ctx context.Context, aggregateID string) ([]domain.AccountEvent, error) {
+func (s *eventStore) Load(ctx context.Context, aggregateID string) ([]eventsourcing.DomainEvent, error) {
 	return nil, nil
 }
 

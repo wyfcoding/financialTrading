@@ -34,9 +34,8 @@ func (r *positionRedisRepository) Save(ctx context.Context, position *domain.Pos
 	return r.client.Set(ctx, key, data, r.ttl).Err()
 }
 
-func (r *positionRedisRepository) Get(ctx context.Context, userID, symbol string) (*domain.Position, error) {
-	key := r.key(userID, symbol)
-	data, err := r.client.Get(ctx, key).Bytes()
+func (r *positionRedisRepository) Get(ctx context.Context, positionID string) (*domain.Position, error) {
+	data, err := r.client.Get(ctx, positionID).Bytes()
 	if err == redis.Nil {
 		return nil, nil
 	}
@@ -67,7 +66,7 @@ func (r *positionRedisRepository) GetBySymbol(ctx context.Context, symbol string
 }
 
 func (r *positionRedisRepository) GetByUserSymbol(ctx context.Context, userID, symbol string) (*domain.Position, error) {
-	return r.Get(ctx, userID, symbol)
+	return r.Get(ctx, r.key(userID, symbol))
 }
 
 func (r *positionRedisRepository) Update(ctx context.Context, position *domain.Position) error {

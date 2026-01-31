@@ -5,33 +5,51 @@ import (
 	"encoding/json"
 	"log/slog"
 
+	kafkago "github.com/segmentio/kafka-go"
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
 )
 
 // OrderSearchHandler 监听订单变更并将数据同步到 Elasticsearch。
 type OrderSearchHandler struct {
 	searchRepo domain.OrderSearchRepository
-	orderRepo  domain.OrderRepository // 用于在事件消息不足时回查（可选）
+	orderRepo  domain.OrderRepository
+	consumer   *kafka.Consumer
+	workers    int
 }
 
-func NewOrderSearchHandler(searchRepo domain.OrderSearchRepository, orderRepo domain.OrderRepository) *OrderSearchHandler {
+func NewOrderSearchHandler(searchRepo domain.OrderSearchRepository, orderRepo domain.OrderRepository, consumer *kafka.Consumer, workers int) *OrderSearchHandler {
 	return &OrderSearchHandler{
 		searchRepo: searchRepo,
 		orderRepo:  orderRepo,
+		consumer:   consumer,
+		workers:    workers,
 	}
 }
 
-// HandleOrderCreated 处理订单创建事件。
-func (h *OrderSearchHandler) HandleOrderCreated(ctx context.Context, payload []byte) error {
-	var event struct {
-		OrderID string `json:"order_id"`
+// Start 启动订阅并处理消息。
+func (h *OrderSearchHandler) Start(ctx context.Context) {
+	if h.consumer == nil {
+		return
 	}
-	if err := json.Unmarshal(payload, &event); err != nil {
+	slog.Info("Starting OrderSearchHandler", "workers", h.workers)
+	h.consumer.Start(ctx, h.workers, h.handleMessage)
+}
+
+func (h *OrderSearchHandler) handleMessage(ctx context.Context, msg kafkago.Message) error {
+	var event map[string]any
+	if err := json.Unmarshal(msg.Value, &event); err != nil {
+		slog.ErrorContext(ctx, "failed to unmarshal order event", "error", err)
 		return err
 	}
 
-	// 此时通常回查主库以获取最新完整 Order 对象
-	order, err := h.orderRepo.Get(ctx, event.OrderID)
+	orderID, ok := event["order_id"].(string)
+	if !ok {
+		return nil // skip or log
+	}
+
+	// 回查主库获取聚合状态
+	order, err := h.orderRepo.Get(ctx, orderID)
 	if err != nil {
 		return err
 	}
@@ -40,15 +58,4 @@ func (h *OrderSearchHandler) HandleOrderCreated(ctx context.Context, payload []b
 	}
 
 	return h.searchRepo.Index(ctx, order)
-}
-
-// HandleOrderUpdated 处理订单状态/执行更新事件。
-func (h *OrderSearchHandler) HandleOrderUpdated(ctx context.Context, payload []byte) error {
-	// 逻辑与 Created 类似，确保 ES 中始终是最新的 Order 聚合状态
-	return h.HandleOrderCreated(ctx, payload)
-}
-
-// Subscribe 注册消费者订阅。
-func (h *OrderSearchHandler) Subscribe(ctx context.Context, consumer any) {
-	slog.Info("Consuming financial order events for ES search indexing")
 }

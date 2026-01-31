@@ -13,7 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
-	pb "github.com/wyfcoding/financialtrading/go-api/position/v1"
+	positionv1 "github.com/wyfcoding/financialtrading/go-api/position/v1"
 	"github.com/wyfcoding/financialtrading/internal/position/application"
 	"github.com/wyfcoding/financialtrading/internal/position/domain"
 	"github.com/wyfcoding/financialtrading/internal/position/infrastructure/persistence"
@@ -23,6 +23,8 @@ import (
 	http_server "github.com/wyfcoding/financialtrading/internal/position/interfaces/http"
 	"github.com/wyfcoding/pkg/cache"
 	configpkg "github.com/wyfcoding/pkg/config"
+	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/metrics"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -43,8 +45,11 @@ func main() {
 	}
 
 	// 2. Logger
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	logger := logging.NewFromConfig(&logging.Config{
+		Service: "position-service",
+		Level:   "info",
+	})
+	slog.SetDefault(logger.Logger)
 
 	// 3. Database
 	dsn := viper.GetString("database.source")
@@ -53,18 +58,21 @@ func main() {
 		panic(fmt.Sprintf("connect db failed: %v", err))
 	}
 
+	// 4. Metrics
+	metricsImpl := metrics.NewMetrics("position-service")
+
 	// Auto Migrate
 	if err := db.AutoMigrate(&domain.Position{}); err != nil {
 		panic(fmt.Sprintf("migrate db failed: %v", err))
 	}
 
-	// 4. Infrastructure & Domain
+	// 5. Infrastructure & Domain
 	// Redis
 	redisCfg := &configpkg.RedisConfig{
 		Addrs: []string{viper.GetString("redis.addr")},
 	}
 	cbCfg := configpkg.CircuitBreakerConfig{Enabled: false}
-	redisCache, err := cache.NewRedisCache(redisCfg, cbCfg, logger, nil)
+	redisCache, err := cache.NewRedisCache(redisCfg, cbCfg, logger, metricsImpl)
 	if err != nil {
 		slog.Error("failed to init redis", "error", err)
 	}
@@ -92,14 +100,8 @@ func main() {
 	// 6. Interfaces
 	// gRPC
 	grpcSrv := grpc.NewServer()
-
-	// FIX: Handler logic update required (see Step 2337 view).
-	// Handler uses h.service.GetPositions. But h.service is PositionService.
-	// PositionService in step 2331 only has commands.
-	// I should merge Query into Service or inject both.
-	// Cleanest: Inject both into Handler.
-	handler := grpc_server.NewHandler(appService)
-	pb.RegisterPositionServiceServer(grpcSrv, handler)
+	h := grpc_server.NewHandler(appService)
+	positionv1.RegisterPositionServiceServer(grpcSrv, h)
 	reflection.Register(grpcSrv)
 
 	// HTTP

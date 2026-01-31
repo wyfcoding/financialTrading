@@ -10,8 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-
-	"net/http/pprof"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -24,6 +23,10 @@ import (
 	grpc_server "github.com/wyfcoding/financialtrading/internal/order/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/order/interfaces/http"
 	configpkg "github.com/wyfcoding/pkg/config"
+	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
+	"github.com/wyfcoding/pkg/messagequeue/outbox"
+	"github.com/wyfcoding/pkg/metrics"
 	search_pkg "github.com/wyfcoding/pkg/search"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -45,8 +48,11 @@ func main() {
 	}
 
 	// 2. Logger
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	logger := logging.NewFromConfig(&logging.Config{
+		Service: "order-service",
+		Level:   "info",
+	})
+	slog.SetDefault(logger.Logger)
 
 	// 3. Database
 	dsn := viper.GetString("database.source")
@@ -55,12 +61,28 @@ func main() {
 		panic(fmt.Sprintf("connect db failed: %v", err))
 	}
 
+	// 4. Metrics & Kafka
+	metricsImpl := metrics.NewMetrics("order-service")
+
+	kafkaCfg := &configpkg.KafkaConfig{
+		Brokers: viper.GetStringSlice("kafka.brokers"),
+		Topic:   "order-events",
+	}
+	kafkaProducer := kafka.NewProducer(kafkaCfg, logger, metricsImpl)
+
+	outboxMgr := outbox.NewManager(db, logger.Logger)
+	// 包装推送器以匹配签名
+	pusher := func(ctx context.Context, topic, key string, payload []byte) error {
+		return kafkaProducer.PublishToTopic(ctx, topic, []byte(key), payload)
+	}
+	outboxProcessor := outbox.NewProcessor(outboxMgr, pusher, 100, 2*time.Second)
+
 	// Auto Migrate
-	if err := db.AutoMigrate(&domain.Order{}); err != nil {
+	if err := db.AutoMigrate(&domain.Order{}, &outbox.Message{}); err != nil {
 		panic(fmt.Sprintf("migrate db failed: %v", err))
 	}
 
-	// 4. Infrastructure & Domain
+	// 5. Infrastructure & Domain
 	repo := mysql.NewOrderRepository(db)
 
 	// ES Initialization
@@ -70,68 +92,55 @@ func main() {
 			Addresses: viper.GetStringSlice("elasticsearch.addresses"),
 		},
 	}
-	esClient, err := search_pkg.NewClient(esCfg, nil, nil)
+	esClient, err := search_pkg.NewClient(esCfg, logger, metricsImpl)
 	if err != nil {
 		slog.Error("failed to connect elasticsearch", "error", err)
 	}
 	searchRepo := search.NewOrderSearchRepository(esClient)
 
-	// 5. Application
-	// Inject dependencies
+	// 6. Application
 	orderService, err := application.NewOrderService(repo, searchRepo, db)
 	if err != nil {
 		panic(fmt.Sprintf("failed to init order service: %v", err))
 	}
 
-	// Configure DTM/Remote Services if needed (from config)
-	if dtmServer := viper.GetString("dtm.server"); dtmServer != "" {
-		orderService.SetDTMServer(dtmServer)
+	// 7. Event Handlers (Syncers)
+	consumerCfg := &configpkg.KafkaConfig{
+		Brokers: viper.GetStringSlice("kafka.brokers"),
+		Topic:   "order-events",
+		GroupID: "order-search-syncer",
 	}
-	// TODO: SetRiskClient, SetAccountClient, SetPositionClient using gRPC connection pools
+	kafkaConsumer := kafka.NewConsumer(consumerCfg, logger, metricsImpl)
+	searchHandler := events.NewOrderSearchHandler(searchRepo, repo, kafkaConsumer, 5)
 
-	// 7. Event Handlers
-	searchHandler := events.NewOrderSearchHandler(searchRepo, repo)
-	searchHandler.Subscribe(context.Background(), nil)
-
-	// 6. Interfaces
-	// gRPC
+	// 8. Interfaces
 	grpcSrv := grpc.NewServer()
-	handler := grpc_server.NewHandler(orderService)
-	orderv1.RegisterOrderServiceServer(grpcSrv, handler)
+	h := grpc_server.NewHandler(orderService)
+	orderv1.RegisterOrderServiceServer(grpcSrv, h)
 	reflection.Register(grpcSrv)
 
-	// HTTP
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
 	hHandler := http_server.NewOrderHandler(orderService)
 	hHandler.RegisterRoutes(r.Group("/api"))
 
-	// System Endpoints (Health, Metrics, Pprof)
-	sys := r.Group("/sys")
-	{
-		sys.GET("/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "UP"}) })
-		sys.GET("/ready", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "READY"}) })
-	}
+	// 9. Start
+	g, ctx := errgroup.WithContext(context.Background())
 
-	// Metrics
-	r.GET("/metrics", func(c *gin.Context) {
-		// In a real app, this should expose Prometheus stats
-		c.String(http.StatusOK, "# HELP order_service_running Status of order service\n# TYPE order_service_running gauge\norder_service_running 1")
+	// Outbox Processor
+	g.Go(func() error {
+		outboxProcessor.Start()
+		<-ctx.Done()
+		outboxProcessor.Stop()
+		return nil
 	})
 
-	// Pprof
-	pp := r.Group("/debug/pprof")
-	{
-		pp.GET("/", gin.WrapF(pprof.Index))
-		pp.GET("/cmdline", gin.WrapF(pprof.Cmdline))
-		pp.GET("/profile", gin.WrapF(pprof.Profile))
-		pp.GET("/symbol", gin.WrapF(pprof.Symbol))
-		pp.GET("/trace", gin.WrapF(pprof.Trace))
-	}
-
-	// 7. Start
-	g, ctx := errgroup.WithContext(context.Background())
+	// Search Syncer
+	g.Go(func() error {
+		searchHandler.Start(ctx)
+		return nil
+	})
 
 	grpcPort := viper.GetString("server.grpc_port")
 	g.Go(func() error {
@@ -145,7 +154,7 @@ func main() {
 
 	httpPort := viper.GetString("server.http_port")
 	if httpPort == "" {
-		httpPort = "8081" // Default for order?
+		httpPort = "8081"
 	}
 	g.Go(func() error {
 		addr := fmt.Sprintf(":%s", httpPort)
@@ -157,7 +166,7 @@ func main() {
 		return nil
 	})
 
-	// 8. Graceful Shutdown
+	// 10. Graceful Shutdown
 	g.Go(func() error {
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

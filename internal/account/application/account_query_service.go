@@ -77,6 +77,6 @@ func (q *AccountQueryService) toDTO(a *domain.Account) *AccountDTO {
 		FrozenBalance:    a.FrozenBalance.String(),
 		CreatedAt:        a.CreatedAt.Unix(),
 		UpdatedAt:        a.UpdatedAt.Unix(),
-		Version:          a.Version,
+		Version:          a.Version(),
 	}
 }

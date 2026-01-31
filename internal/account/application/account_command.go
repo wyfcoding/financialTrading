@@ -67,15 +67,6 @@ func (s *AccountCommandService) CreateAccount(ctx context.Context, cmd CreateAcc
 		domain.AccountType(cmd.AccountType),
 	)
 
-	// 生成领域事件
-	event := domain.AccountCreatedEvent{
-		BaseEvent:   domain.BaseEvent{Timestamp: account.CreatedAt},
-		AccountID:   account.AccountID,
-		UserID:      account.UserID,
-		AccountType: string(account.AccountType),
-		Currency:    account.Currency,
-	}
-
 	// 事务保存
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		txCtx := contextx.WithTx(ctx, tx) // 传递事务上下文
@@ -84,9 +75,10 @@ func (s *AccountCommandService) CreateAccount(ctx context.Context, cmd CreateAcc
 			return err
 		}
 
-		if err := s.eventStore.Append(txCtx, account.AccountID, []domain.AccountEvent{event}); err != nil {
+		if err := s.eventStore.Save(txCtx, account.AccountID, account.GetUncommittedEvents(), account.Version()); err != nil {
 			return err
 		}
+		account.MarkCommitted()
 
 		// 发送集成事件 (Outbox Pattern)
 		return s.publisher.PublishInTx(ctx, tx, "account.created", accountID, map[string]any{
@@ -119,21 +111,14 @@ func (s *AccountCommandService) Deposit(ctx context.Context, cmd DepositCommand)
 		// 2. Do Domain Logic
 		account.Deposit(cmd.Amount)
 
-		// Event
-		event := domain.FundsDepositedEvent{
-			BaseEvent: domain.BaseEvent{Timestamp: account.UpdatedAt},
-			AccountID: account.AccountID,
-			Amount:    cmd.Amount,
-			Balance:   account.Balance,
-		}
-
 		// 3. Save
 		if err := s.repo.Save(txCtx, account); err != nil {
 			return err
 		}
-		if err := s.eventStore.Append(txCtx, account.AccountID, []domain.AccountEvent{event}); err != nil {
+		if err := s.eventStore.Save(txCtx, account.AccountID, account.GetUncommittedEvents(), account.Version()); err != nil {
 			return err
 		}
+		account.MarkCommitted()
 
 		// Integration Event
 		return s.publisher.PublishInTx(ctx, tx, "account.deposited", fmt.Sprintf("DEP-%d", idgen.GenID()), map[string]any{
@@ -153,7 +138,7 @@ func (s *AccountCommandService) toDTO(a *domain.Account) *AccountDTO {
 		FrozenBalance:    a.FrozenBalance.String(),
 		CreatedAt:        a.CreatedAt.Unix(),
 		UpdatedAt:        a.UpdatedAt.Unix(),
-		Version:          a.Version,
+		Version:          a.Version(),
 	}
 }
 
@@ -170,21 +155,18 @@ func (s *AccountCommandService) Freeze(ctx context.Context, cmd FreezeCommand) e
 			return fmt.Errorf("account not found")
 		}
 
-		if success := account.Freeze(cmd.Amount); !success {
+		if success := account.Freeze(cmd.Amount, cmd.Reason); !success {
 			return fmt.Errorf("insufficient available balance")
-		}
-
-		event := domain.FundsFrozenEvent{
-			BaseEvent: domain.BaseEvent{Timestamp: account.UpdatedAt},
-			AccountID: account.AccountID,
-			Amount:    cmd.Amount,
-			Reason:    cmd.Reason,
 		}
 
 		if err := s.repo.Save(txCtx, account); err != nil {
 			return err
 		}
-		return s.eventStore.Append(txCtx, account.AccountID, []domain.AccountEvent{event})
+		if err := s.eventStore.Save(txCtx, account.AccountID, account.GetUncommittedEvents(), account.Version()); err != nil {
+			return err
+		}
+		account.MarkCommitted()
+		return nil
 	})
 }
 
@@ -324,7 +306,7 @@ func (s *AccountCommandService) TccTryFreeze(ctx context.Context, barrier any, u
 			return fmt.Errorf("account not found for user %s currency %s", userID, currency)
 		}
 
-		if success := targetAccount.Freeze(amount); !success {
+		if success := targetAccount.Freeze(amount, "TCC Freeze"); !success {
 			return fmt.Errorf("insufficient balance for TCC freeze")
 		}
 		return s.repo.Save(ctx, targetAccount)

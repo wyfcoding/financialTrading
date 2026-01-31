@@ -6,16 +6,16 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/domain"
+	"github.com/wyfcoding/pkg/search"
 )
 
 type auditESRepository struct {
-	client *elasticsearch.Client
+	client *search.Client
 	index  string
 }
 
-func NewAuditESRepository(client *elasticsearch.Client) domain.AuditESRepository {
+func NewAuditESRepository(client *search.Client) domain.AuditESRepository {
 	return &auditESRepository{
 		client: client,
 		index:  "execution_audits",
@@ -23,26 +23,7 @@ func NewAuditESRepository(client *elasticsearch.Client) domain.AuditESRepository
 }
 
 func (r *auditESRepository) Index(ctx context.Context, audit *domain.ExecutionAudit) error {
-	data, err := json.Marshal(audit)
-	if err != nil {
-		return err
-	}
-
-	res, err := r.client.Index(
-		r.index,
-		bytes.NewReader(data),
-		r.client.Index.WithContext(ctx),
-		r.client.Index.WithDocumentID(audit.ID),
-	)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-
-	if res.IsError() {
-		return fmt.Errorf("failed to index audit: %s", res.String())
-	}
-	return nil
+	return r.client.Index(ctx, r.index, audit.ID, audit)
 }
 
 func (r *auditESRepository) BatchIndex(ctx context.Context, audits []*domain.ExecutionAudit) error {
@@ -62,20 +43,10 @@ func (r *auditESRepository) BatchIndex(ctx context.Context, audits []*domain.Exe
 		buf.Write(data)
 	}
 
-	res, err := r.client.Bulk(bytes.NewReader(buf.Bytes()), r.client.Bulk.WithContext(ctx))
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-
-	if res.IsError() {
-		return fmt.Errorf("failed to bulk index audits: %s", res.String())
-	}
-	return nil
+	return r.client.Bulk(ctx, &buf)
 }
 
 func (r *auditESRepository) Search(ctx context.Context, query string, from, size int) ([]*domain.ExecutionAudit, int64, error) {
-	var buf bytes.Buffer
 	searchQuery := map[string]any{
 		"from": from,
 		"size": size,
@@ -90,41 +61,25 @@ func (r *auditESRepository) Search(ctx context.Context, query string, from, size
 		},
 	}
 
-	if err := json.NewEncoder(&buf).Encode(searchQuery); err != nil {
+	var results struct {
+		Hits struct {
+			Total struct {
+				Value int64 `json:"value"`
+			} `json:"total"`
+			Hits []struct {
+				Source domain.ExecutionAudit `json:"_source"`
+			} `json:"hits"`
+		} `json:"hits"`
+	}
+
+	if err := r.client.Search(ctx, r.index, searchQuery, &results); err != nil {
 		return nil, 0, err
 	}
 
-	res, err := r.client.Search(
-		r.client.Search.WithContext(ctx),
-		r.client.Search.WithIndex(r.index),
-		r.client.Search.WithBody(&buf),
-		r.client.Search.WithTrackTotalHits(true),
-	)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer res.Body.Close()
-
-	if res.IsError() {
-		return nil, 0, fmt.Errorf("search failed: %s", res.String())
+	audits := make([]*domain.ExecutionAudit, 0, len(results.Hits.Hits))
+	for i := range results.Hits.Hits {
+		audits = append(audits, &results.Hits.Hits[i].Source)
 	}
 
-	var rMap map[string]any
-	if err := json.NewDecoder(res.Body).Decode(&rMap); err != nil {
-		return nil, 0, err
-	}
-
-	hits := rMap["hits"].(map[string]any)
-	total := int64(hits["total"].(map[string]any)["value"].(float64))
-
-	results := make([]*domain.ExecutionAudit, 0)
-	for _, hit := range hits["hits"].([]any) {
-		source := hit.(map[string]any)["_source"]
-		data, _ := json.Marshal(source)
-		var a domain.ExecutionAudit
-		_ = json.Unmarshal(data, &a)
-		results = append(results, &a)
-	}
-
-	return results, total, nil
+	return audits, results.Hits.Total.Value, nil
 }

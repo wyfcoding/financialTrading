@@ -22,8 +22,7 @@ func NewOrderSearchRepository(client *search.Client) domain.OrderSearchRepositor
 }
 
 func (r *orderSearchRepository) Index(ctx context.Context, order *domain.Order) error {
-	docID := fmt.Sprintf("%d", order.ID)
-	return r.client.Index(ctx, r.index, docID, order)
+	return r.client.Index(ctx, r.index, order.OrderID, order)
 }
 
 func (r *orderSearchRepository) Search(ctx context.Context, query map[string]any, limit int) ([]*domain.Order, error) {
