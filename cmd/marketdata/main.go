@@ -15,7 +15,8 @@ import (
 	"github.com/shopspring/decimal"
 	marketdatav1 "github.com/wyfcoding/financialtrading/go-api/marketdata/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/application"
-	"github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/persistence/mysql"
+	"github.com/wyfcoding/financialtrading/internal/marketdata/domain"
+	"github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/persistence"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/interfaces/events"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/marketdata/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/marketdata/interfaces/http"
@@ -67,20 +68,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Auto Migrate
 	if cfg.Server.Environment == "dev" {
-		if err := db.RawDB().AutoMigrate(&mysql.QuotePO{}, &mysql.KlinePO{}, &mysql.TradePO{}); err != nil {
+		if err := db.RawDB().AutoMigrate(&domain.Quote{}, &domain.Kline{}, &domain.Trade{}, &domain.OrderBook{}); err != nil {
 			slog.Error("failed to migrate database", "error", err)
 		}
 	}
 
-	// 5. Application
-	quoteRepo := mysql.NewQuoteRepository(db.RawDB())
-	klineRepo := mysql.NewKlineRepository(db.RawDB())
-	tradeRepo := mysql.NewTradeRepository(db.RawDB())
-	orderBookRepo := mysql.NewOrderBookRepository(db.RawDB())
-
-	queryService := application.NewMarketDataQueryService(quoteRepo, klineRepo, tradeRepo)
-	serviceFacade := application.NewMarketDataService(quoteRepo, klineRepo, tradeRepo, orderBookRepo, slog.Default())
+	// 5. Repository & Application
+	repo := persistence.NewMarketDataRepository(db.RawDB())
+	serviceFacade := application.NewMarketDataService(repo, slog.Default())
 
 	// Kafka Consumer
 	kafkaCfg := &cfg.MessageQueue.Kafka
@@ -104,12 +101,14 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Recovery())
 
-	httpHandler := httpserver.NewMarketDataHandler(queryService)
+	httpHandler := httpserver.NewMarketDataHandler(serviceFacade)
 	httpHandler.RegisterRoutes(r.Group("/api"))
 
 	// Temporary: Ingest endpoints for testing
 	r.POST("/api/v1/marketdata/quote", func(c *gin.Context) {
-		var cmd application.IngestQuoteCommand
+		var cmd struct {
+			Symbol string `json:"symbol"`
+		}
 		if err := c.ShouldBindJSON(&cmd); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return

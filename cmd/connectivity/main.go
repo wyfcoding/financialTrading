@@ -59,9 +59,7 @@ func main() {
 	}
 	execCli, _ := client.NewExecutionClient(execAddr)
 
-	appService := application.NewConnectivityService(sessionMgr)
-	_ = application.NewMessageProcessor(sessionMgr, execCli)
-	_ = application.NewMarketGateway(sessionMgr) // 网关初始化
+	appService := application.NewConnectivityService(sessionMgr, execCli)
 
 	// 6. gRPC Server
 	grpcSrv := grpc.NewServer()

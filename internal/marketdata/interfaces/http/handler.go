@@ -9,11 +9,11 @@ import (
 )
 
 type MarketDataHandler struct {
-	query *application.MarketDataQueryService
+	app *application.MarketDataService
 }
 
-func NewMarketDataHandler(query *application.MarketDataQueryService) *MarketDataHandler {
-	return &MarketDataHandler{query: query}
+func NewMarketDataHandler(app *application.MarketDataService) *MarketDataHandler {
+	return &MarketDataHandler{app: app}
 }
 
 func (h *MarketDataHandler) RegisterRoutes(r *gin.RouterGroup) {
@@ -32,7 +32,7 @@ func (h *MarketDataHandler) GetLatestQuote(c *gin.Context) {
 		return
 	}
 
-	dto, err := h.query.GetLatestQuote(c.Request.Context(), symbol)
+	dto, err := h.app.Query.GetLatestQuote(c.Request.Context(), symbol)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -55,7 +55,7 @@ func (h *MarketDataHandler) GetKlines(c *gin.Context) {
 		}
 	}
 
-	dtos, err := h.query.GetKlines(c.Request.Context(), symbol, interval, limit)
+	dtos, err := h.app.Query.GetKlines(c.Request.Context(), symbol, interval, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -73,7 +73,7 @@ func (h *MarketDataHandler) GetTrades(c *gin.Context) {
 		}
 	}
 
-	dtos, err := h.query.GetTrades(c.Request.Context(), symbol, limit)
+	dtos, err := h.app.Query.GetTrades(c.Request.Context(), symbol, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

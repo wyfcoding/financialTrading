@@ -16,7 +16,7 @@ import (
 	ref_pb "github.com/wyfcoding/financialtrading/go-api/referencedata/v1"
 	"github.com/wyfcoding/financialtrading/internal/referencedata/application"
 	"github.com/wyfcoding/financialtrading/internal/referencedata/domain"
-	"github.com/wyfcoding/financialtrading/internal/referencedata/infrastructure/persistence/mysql"
+	"github.com/wyfcoding/financialtrading/internal/referencedata/infrastructure/persistence"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/referencedata/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/referencedata/interfaces/http"
 	"github.com/wyfcoding/pkg/logging"
@@ -51,17 +51,15 @@ func main() {
 	}
 
 	// Auto Migrate
-	if err := db.AutoMigrate(&domain.Instrument{}); err != nil {
+	if err := db.AutoMigrate(&domain.Symbol{}, &domain.Exchange{}); err != nil {
 		panic(fmt.Sprintf("migrate db failed: %v", err))
 	}
 
 	// 4. Infrastructure & Domain
-	refRepo := mysql.NewReferenceRepository(db)
-	symbolRepo := mysql.NewSymbolRepository(db)
-	exchangeRepo := mysql.NewExchangeRepository(db)
+	repo := persistence.NewReferenceDataRepository(db)
 
 	// 5. Application
-	appService := application.NewReferenceDataService(symbolRepo, exchangeRepo, refRepo)
+	appService := application.NewReferenceDataService(repo)
 
 	// 6. Interfaces
 	// gRPC

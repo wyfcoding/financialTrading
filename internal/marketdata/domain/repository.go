@@ -2,23 +2,22 @@ package domain
 
 import "context"
 
-type QuoteRepository interface {
-	Save(ctx context.Context, quote *Quote) error
-	GetLatest(ctx context.Context, symbol string) (*Quote, error)
-}
+// MarketDataRepository 市场数据统一仓储接口
+type MarketDataRepository interface {
+	// Quote
+	SaveQuote(ctx context.Context, quote *Quote) error
+	GetLatestQuote(ctx context.Context, symbol string) (*Quote, error)
 
-type KlineRepository interface {
-	Save(ctx context.Context, kline *Kline) error
+	// Kline
+	SaveKline(ctx context.Context, kline *Kline) error
 	GetKlines(ctx context.Context, symbol, interval string, limit int) ([]*Kline, error)
-	GetLatest(ctx context.Context, symbol, interval string) (*Kline, error)
-}
+	GetLatestKline(ctx context.Context, symbol, interval string) (*Kline, error)
 
-type TradeRepository interface {
-	Save(ctx context.Context, trade *Trade) error
+	// Trade
+	SaveTrade(ctx context.Context, trade *Trade) error
 	GetTrades(ctx context.Context, symbol string, limit int) ([]*Trade, error)
-}
 
-type OrderBookRepository interface {
-	Save(ctx context.Context, ob *OrderBook) error
-	Get(ctx context.Context, symbol string) (*OrderBook, error)
+	// OrderBook
+	SaveOrderBook(ctx context.Context, ob *OrderBook) error
+	GetOrderBook(ctx context.Context, symbol string) (*OrderBook, error)
 }
