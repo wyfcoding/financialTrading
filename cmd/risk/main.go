@@ -21,7 +21,7 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/risk/application"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
 	risk_client "github.com/wyfcoding/financialtrading/internal/risk/infrastructure/client"
-	"github.com/wyfcoding/financialtrading/internal/risk/infrastructure/persistence"
+	"github.com/wyfcoding/financialtrading/internal/risk/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/risk/interfaces/grpc"
 	"github.com/wyfcoding/pkg/logging"
 	"golang.org/x/sync/errgroup"
@@ -61,7 +61,7 @@ func main() {
 	}
 
 	// 4. Infrastructure & Domain
-	repo := persistence.NewRiskRepository(db)
+	repo := mysql.NewRiskRepository(db)
 
 	// MarketData Client
 	mdAddr := viper.GetString("services.marketdata")
