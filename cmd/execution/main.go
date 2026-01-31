@@ -21,13 +21,17 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure"
 	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/client"
 	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/persistence/mysql"
+	execution_redis "github.com/wyfcoding/financialtrading/internal/execution/infrastructure/persistence/redis"
+	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/search"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/execution/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/execution/interfaces/http"
+	"github.com/wyfcoding/pkg/cache"
 	"github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/database"
 	"github.com/wyfcoding/pkg/logging"
 	"github.com/wyfcoding/pkg/messagequeue/outbox"
 	"github.com/wyfcoding/pkg/metrics"
+	search_pkg "github.com/wyfcoding/pkg/search"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -105,13 +109,32 @@ func main() {
 	algoRepo := mysql.NewAlgoOrderRepository(db.RawDB())
 	outboxPub := messaging.NewOutboxPublisher(outboxMgr)
 
+	// ES & Redis Repositories
+	esCfg := &search_pkg.Config{
+		ServiceName:         cfg.Server.Name,
+		ElasticsearchConfig: cfg.Data.Elasticsearch,
+	}
+	esClient, err := search_pkg.NewClient(esCfg, logger, metricsImpl)
+	if err != nil {
+		slog.Error("failed to init elasticsearch", "error", err)
+	}
+	tradeSearchRepo := search.NewTradeSearchRepository(esClient)
+
+	redisCache, err := cache.NewRedisCache(&cfg.Data.Redis, cfg.CircuitBreaker, logger, metricsImpl)
+	if err != nil {
+		slog.Error("failed to init redis", "error", err)
+	}
+	redisRepo := execution_redis.NewAlgoRedisRepository(redisCache.GetClient())
+
 	mdCli := marketdatav1.NewMarketDataServiceClient(mdConn)
 	mdProvider := client.NewGRPCMarketDataProvider(mdCli)
 	volumeProvider := infrastructure.NewMockVolumeProfileProvider()
 
 	executionSvc := application.NewExecutionService(
 		tradeRepo,
+		tradeSearchRepo,
 		algoRepo,
+		redisRepo,
 		outboxPub,
 		orderCli,
 		mdProvider,

@@ -16,12 +16,14 @@ type AuthService struct {
 func NewAuthService(
 	repo domain.UserRepository,
 	apiKeyRepo domain.APIKeyRepository,
+	apiKeyRedisRepo domain.APIKeyRedisRepository,
+	sessionRepo domain.SessionRepository,
 	keySvc *APIKeyService,
 	publisher domain.EventPublisher,
 ) *AuthService {
 	return &AuthService{
-		commandService: NewAuthCommandService(repo, apiKeyRepo, keySvc, publisher),
-		queryService:   NewAuthQueryService(repo, apiKeyRepo),
+		commandService: NewAuthCommandService(repo, apiKeyRepo, apiKeyRedisRepo, sessionRepo, keySvc, publisher),
+		queryService:   NewAuthQueryService(repo, apiKeyRepo, apiKeyRedisRepo, sessionRepo),
 	}
 }
 

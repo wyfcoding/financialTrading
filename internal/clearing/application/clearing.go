@@ -45,3 +45,11 @@ func (s *ClearingService) SagaMarkSettlementFailed(ctx context.Context, settleme
 func (s *ClearingService) GetSettlement(ctx context.Context, id string) (*SettlementDTO, error) {
 	return s.Query.GetSettlement(ctx, id)
 }
+
+func (s *ClearingService) ListSettlements(ctx context.Context, userID, symbol string, limit, offset int) ([]*SettlementDTO, int64, error) {
+	return s.Query.ListSettlements(ctx, userID, symbol, limit, offset)
+}
+
+func (s *ClearingService) GetMarginRequirement(ctx context.Context, userID, symbol string) (*MarginDTO, error) {
+	return s.Query.GetMarginRequirement(ctx, userID, symbol)
+}

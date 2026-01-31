@@ -63,12 +63,7 @@ func (h *Handler) GetExecutionHistory(ctx context.Context, req *pb.GetExecutionH
 	start := time.Now()
 	slog.DebugContext(ctx, "grpc get_execution_history received", "user_id", req.UserId)
 
-	limit := int(req.Limit)
-	if limit <= 0 {
-		limit = 20
-	}
-
-	dtos, err := h.app.Query.ListExecutions(ctx, req.UserId)
+	dtos, err := h.app.ListExecutions(ctx, req.UserId)
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc get_execution_history failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get execution history: %v", err)

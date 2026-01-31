@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
 )
 
@@ -17,11 +18,12 @@ type RiskService struct {
 // NewRiskService 构造函数。
 func NewRiskService(
 	repo domain.RiskRepository,
+	redisRepo domain.RiskRedisRepository,
 	logger *slog.Logger,
 ) *RiskService {
 	return &RiskService{
-		Command: NewRiskCommand(repo),
-		Query:   NewRiskQueryService(repo),
+		Command: NewRiskCommand(repo, redisRepo),
+		Query:   NewRiskQueryService(repo, redisRepo),
 		logger:  logger.With("module", "risk_service"),
 	}
 }
@@ -29,28 +31,46 @@ func NewRiskService(
 // --- Command Facade ---
 
 func (s *RiskService) AssessRisk(ctx context.Context, req *AssessRiskRequest) (*RiskAssessmentDTO, error) {
-	// 暂时返回 nil，因为 Command 中可能没有定义 AssessRisk 方法
-	return nil, nil
+	qty, _ := decimal.NewFromString(req.Quantity)
+	price, _ := decimal.NewFromString(req.Price)
+
+	cmd := AssessRiskCommand{
+		UserID:   req.UserID,
+		Symbol:   req.Symbol,
+		Side:     req.Side,
+		Quantity: qty.InexactFloat64(),
+		Price:    price.InexactFloat64(),
+	}
+
+	agg, err := s.Command.AssessRisk(ctx, cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RiskAssessmentDTO{
+		AssessmentID:      agg.ID,
+		UserID:            agg.UserID,
+		Symbol:            agg.Symbol,
+		Side:              agg.Side,
+		Quantity:          agg.Quantity.String(),
+		Price:             agg.Price.String(),
+		RiskLevel:         string(agg.RiskLevel),
+		RiskScore:         agg.RiskScore.String(),
+		MarginRequirement: agg.MarginRequirement.String(),
+		IsAllowed:         agg.IsAllowed,
+		Reason:            agg.Reason,
+		CreatedAt:         agg.CreatedAt.Unix(),
+	}, nil
 }
 
-func (s *RiskService) CalculatePortfolioRisk(ctx context.Context, req *CalculatePortfolioRiskRequest) (*CalculatePortfolioRiskResponse, error) {
-	// 暂时返回 nil，因为 Command 中可能没有定义 CalculatePortfolioRisk 方法
-	return nil, nil
-}
-
-func (s *RiskService) PerformGlobalRiskScan(ctx context.Context) error {
-	// 暂时返回 nil，因为 Command 中可能没有定义 PerformGlobalRiskScan 方法
-	return nil
-}
-
-func (s *RiskService) CheckRisk(ctx context.Context, userID string, symbol string, quantity, price float64) (bool, string) {
-	// 暂时返回默认值，因为 Command 中可能没有定义 CheckRisk 方法
-	return true, ""
-}
-
-func (s *RiskService) SetRiskLimit(ctx context.Context, userID string, maxOrderSize, maxDailyLoss float64) error {
-	// 暂时返回 nil，因为 Command 中可能没有定义 SetRiskLimit 方法
-	return nil
+func (s *RiskService) SetRiskLimit(ctx context.Context, userID, limitType string, value float64) error {
+	cmd := UpdateRiskLimitCommand{
+		UserID:     userID,
+		LimitType:  limitType,
+		LimitValue: value,
+	}
+	_, err := s.Command.UpdateRiskLimit(ctx, cmd)
+	return err
 }
 
 // --- Query Facade ---

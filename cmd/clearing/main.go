@@ -18,13 +18,17 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/clearing/domain"
 	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/messaging"
 	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/persistence/mysql"
+	clearing_redis "github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/persistence/redis"
+	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/search"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/clearing/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/clearing/interfaces/http"
+	"github.com/wyfcoding/pkg/cache"
 	"github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/database"
 	"github.com/wyfcoding/pkg/logging"
 	"github.com/wyfcoding/pkg/messagequeue/outbox"
 	"github.com/wyfcoding/pkg/metrics"
+	search_pkg "github.com/wyfcoding/pkg/search"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -92,9 +96,27 @@ func main() {
 
 	// 6. Application
 	repo := mysql.NewSettlementRepository(db.RawDB())
+
+	// ES & Redis Repositories
+	esCfg := &search_pkg.Config{
+		ServiceName:         cfg.Server.Name,
+		ElasticsearchConfig: cfg.Data.Elasticsearch,
+	}
+	esClient, err := search_pkg.NewClient(esCfg, logger, metricsImpl)
+	if err != nil {
+		slog.Error("failed to init elasticsearch", "error", err)
+	}
+	searchRepo := search.NewSettlementSearchRepository(esClient)
+
+	redisCache, err := cache.NewRedisCache(&cfg.Data.Redis, cfg.CircuitBreaker, logger, metricsImpl)
+	if err != nil {
+		slog.Error("failed to init redis", "error", err)
+	}
+	redisRepo := clearing_redis.NewMarginRedisRepository(redisCache.GetClient())
+
 	outboxPub := messaging.NewOutboxPublisher(outboxMgr)
-	commandSvc := application.NewClearingCommandService(repo, outboxPub, db.RawDB(), accountClient)
-	queryService := application.NewClearingQueryService(repo)
+	commandSvc := application.NewClearingCommandService(repo, redisRepo, outboxPub, db.RawDB(), accountClient)
+	queryService := application.NewClearingQueryService(repo, searchRepo, redisRepo)
 	appService := application.NewClearingService(commandSvc, queryService)
 
 	// 7. Interfaces

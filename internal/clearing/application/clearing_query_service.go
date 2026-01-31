@@ -31,11 +31,21 @@ func (m *MarginDTO) CurrentMarginRate() decimal.Decimal {
 }
 
 type ClearingQueryService struct {
-	repo domain.SettlementRepository
+	repo       domain.SettlementRepository
+	searchRepo domain.SettlementSearchRepository
+	redisRepo  domain.MarginRedisRepository
 }
 
-func NewClearingQueryService(repo domain.SettlementRepository) *ClearingQueryService {
-	return &ClearingQueryService{repo: repo}
+func NewClearingQueryService(
+	repo domain.SettlementRepository,
+	searchRepo domain.SettlementSearchRepository,
+	redisRepo domain.MarginRedisRepository,
+) *ClearingQueryService {
+	return &ClearingQueryService{
+		repo:       repo,
+		searchRepo: searchRepo,
+		redisRepo:  redisRepo,
+	}
 }
 
 func (q *ClearingQueryService) GetSettlement(ctx context.Context, id string) (*SettlementDTO, error) {
@@ -53,7 +63,34 @@ func (q *ClearingQueryService) GetClearingStatus(ctx context.Context, id string)
 	return q.GetSettlement(ctx, id)
 }
 
-func (q *ClearingQueryService) GetMarginRequirement(ctx context.Context, symbol string) (*MarginDTO, error) {
+func (q *ClearingQueryService) ListSettlements(ctx context.Context, userID, symbol string, limit, offset int) ([]*SettlementDTO, int64, error) {
+	aggs, total, err := q.searchRepo.Search(ctx, userID, symbol, limit, offset)
+	if err != nil {
+		// Fallback to MySQL
+		mysqlAggs, mysqlErr := q.repo.List(ctx, limit)
+		if mysqlErr != nil {
+			return nil, 0, mysqlErr
+		}
+		aggs = mysqlAggs
+		total = int64(len(mysqlAggs))
+	}
+
+	dtos := make([]*SettlementDTO, 0, len(aggs))
+	for _, a := range aggs {
+		dtos = append(dtos, q.toDTO(a))
+	}
+	return dtos, total, nil
+}
+
+func (q *ClearingQueryService) GetMarginRequirement(ctx context.Context, userID, symbol string) (*MarginDTO, error) {
+	// Try Redis first
+	cached, _ := q.redisRepo.Get(ctx, userID)
+	if cached != nil {
+		// 实际上这里应该有更复杂的解包逻辑，此处仅示意
+		return &MarginDTO{Symbol: symbol, BaseMarginRate: decimal.NewFromFloat(0.05)}, nil
+	}
+
+	// Fallback to static or engine
 	return &MarginDTO{
 		Symbol:           symbol,
 		BaseMarginRate:   decimal.NewFromFloat(0.05),

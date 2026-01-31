@@ -10,6 +10,13 @@ source = "root:root@tcp(127.0.0.1:3306)/financial_trading?charset=utf8mb4&parseT
 level = "info"
 format = "json"
 
-[kafka]
-brokers = ["localhost:9092"]
-topic_trade = "matching.trade"
+[elasticsearch]
+addresses = ["http://localhost:9200"]
+username = ""
+password = ""
+
+[clickhouse]
+addr = "localhost:9000"
+database = "financial_monitoring"
+username = "default"
+password = ""

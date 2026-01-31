@@ -18,6 +18,7 @@ import (
 type ExecutionCommandService struct {
 	tradeRepo      domain.TradeRepository
 	algoRepo       domain.AlgoOrderRepository
+	redisRepo      domain.AlgoRedisRepository
 	publisher      domain.EventPublisher
 	orderClient    orderv1.OrderServiceClient
 	marketData     domain.MarketDataProvider
@@ -30,6 +31,7 @@ type ExecutionCommandService struct {
 func NewExecutionCommandService(
 	tradeRepo domain.TradeRepository,
 	algoRepo domain.AlgoOrderRepository,
+	redisRepo domain.AlgoRedisRepository,
 	publisher domain.EventPublisher,
 	orderClient orderv1.OrderServiceClient,
 	marketData domain.MarketDataProvider,
@@ -40,6 +42,7 @@ func NewExecutionCommandService(
 	return &ExecutionCommandService{
 		tradeRepo:      tradeRepo,
 		algoRepo:       algoRepo,
+		redisRepo:      redisRepo,
 		publisher:      publisher,
 		orderClient:    orderClient,
 		marketData:     marketData,

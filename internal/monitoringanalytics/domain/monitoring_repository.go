@@ -28,3 +28,10 @@ type ExecutionAuditRepository interface {
 	BatchSave(ctx context.Context, audits []*ExecutionAudit) error
 	Query(ctx context.Context, userID, symbol string, startTime, endTime int64) ([]*ExecutionAudit, error)
 }
+
+// AuditESRepository 提供审计流水的全文检索与复杂查询能力
+type AuditESRepository interface {
+	Index(ctx context.Context, audit *ExecutionAudit) error
+	BatchIndex(ctx context.Context, audits []*ExecutionAudit) error
+	Search(ctx context.Context, query string, from, size int) ([]*ExecutionAudit, int64, error)
+}

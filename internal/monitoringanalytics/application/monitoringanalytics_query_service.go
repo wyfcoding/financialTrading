@@ -9,18 +9,38 @@ import (
 
 // MonitoringAnalyticsQuery 处理所有监控和分析相关的查询操作（Queries）。
 type MonitoringAnalyticsQuery struct {
-	metricRepo domain.MetricRepository
-	healthRepo domain.SystemHealthRepository
-	alertRepo  domain.AlertRepository
+	metricRepo  domain.MetricRepository
+	healthRepo  domain.SystemHealthRepository
+	alertRepo   domain.AlertRepository
+	auditRepo   domain.ExecutionAuditRepository
+	auditESRepo domain.AuditESRepository
 }
 
 // NewMonitoringAnalyticsQuery 构造函数。
-func NewMonitoringAnalyticsQuery(metricRepo domain.MetricRepository, healthRepo domain.SystemHealthRepository, alertRepo domain.AlertRepository) *MonitoringAnalyticsQuery {
+func NewMonitoringAnalyticsQuery(
+	metricRepo domain.MetricRepository,
+	healthRepo domain.SystemHealthRepository,
+	alertRepo domain.AlertRepository,
+	auditRepo domain.ExecutionAuditRepository,
+	auditESRepo domain.AuditESRepository,
+) *MonitoringAnalyticsQuery {
 	return &MonitoringAnalyticsQuery{
-		metricRepo: metricRepo,
-		healthRepo: healthRepo,
-		alertRepo:  alertRepo,
+		metricRepo:  metricRepo,
+		healthRepo:  healthRepo,
+		alertRepo:   alertRepo,
+		auditRepo:   auditRepo,
+		auditESRepo: auditESRepo,
 	}
+}
+
+// SearchAudit 审计流水搜索 (Elasticsearch)
+func (q *MonitoringAnalyticsQuery) SearchAudit(ctx context.Context, query string, from, size int) ([]*domain.ExecutionAudit, int64, error) {
+	return q.auditESRepo.Search(ctx, query, from, size)
+}
+
+// QueryAudit 审计流水查询 (ClickHouse - 精确查询)
+func (q *MonitoringAnalyticsQuery) QueryAudit(ctx context.Context, userID, symbol string, startTime, endTime int64) ([]*domain.ExecutionAudit, error) {
+	return q.auditRepo.Query(ctx, userID, symbol, startTime, endTime)
 }
 
 // GetMetrics 获取指标历史数据

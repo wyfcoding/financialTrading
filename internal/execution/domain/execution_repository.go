@@ -9,9 +9,23 @@ type TradeRepository interface {
 	List(ctx context.Context, userID string) ([]*Trade, error)
 }
 
+// TradeSearchRepository 提供基于 Elasticsearch 的成交历史搜索
+type TradeSearchRepository interface {
+	Index(ctx context.Context, trade *Trade) error
+	Search(ctx context.Context, userID, symbol string, limit, offset int) ([]*Trade, int64, error)
+	Delete(ctx context.Context, tradeID string) error
+}
+
 // AlgoOrderRepository 算法订单仓储接口
 type AlgoOrderRepository interface {
 	Save(ctx context.Context, order *AlgoOrder) error
 	Get(ctx context.Context, algoID string) (*AlgoOrder, error)
 	ListActive(ctx context.Context) ([]*AlgoOrder, error)
+}
+
+// AlgoRedisRepository 提供基于 Redis 的实时算法状态缓存
+type AlgoRedisRepository interface {
+	Save(ctx context.Context, order *AlgoOrder) error
+	Get(ctx context.Context, algoID string) (*AlgoOrder, error)
+	Delete(ctx context.Context, algoID string) error
 }

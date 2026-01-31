@@ -10,24 +10,30 @@ import (
 
 // AuthCommandService 认证命令服务
 type AuthCommandService struct {
-	repo       domain.UserRepository
-	apiKeyRepo domain.APIKeyRepository
-	keySvc     *APIKeyService
-	publisher  domain.EventPublisher
+	repo            domain.UserRepository
+	apiKeyRepo      domain.APIKeyRepository
+	apiKeyRedisRepo domain.APIKeyRedisRepository
+	sessionRepo     domain.SessionRepository
+	keySvc          *APIKeyService
+	publisher       domain.EventPublisher
 }
 
 // NewAuthCommandService 创建认证命令服务实例
 func NewAuthCommandService(
 	repo domain.UserRepository,
 	apiKeyRepo domain.APIKeyRepository,
+	apiKeyRedisRepo domain.APIKeyRedisRepository,
+	sessionRepo domain.SessionRepository,
 	keySvc *APIKeyService,
 	publisher domain.EventPublisher,
 ) *AuthCommandService {
 	return &AuthCommandService{
-		repo:       repo,
-		apiKeyRepo: apiKeyRepo,
-		keySvc:     keySvc,
-		publisher:  publisher,
+		repo:            repo,
+		apiKeyRepo:      apiKeyRepo,
+		apiKeyRedisRepo: apiKeyRedisRepo,
+		sessionRepo:     sessionRepo,
+		keySvc:          keySvc,
+		publisher:       publisher,
 	}
 }
 
@@ -80,8 +86,23 @@ func (s *AuthCommandService) Login(ctx context.Context, cmd LoginCommand) (strin
 	}
 	s.publisher.Publish(ctx, "user.logged_in", cmd.Email, event)
 
-	exp := time.Now().Add(24 * time.Hour).Unix()
-	return "mock_jwt_" + cmd.Email, exp, nil
+	// 创建会话
+	token := "token_" + time.Now().Format("20060102150405") + "_" + cmd.Email
+	expTime := time.Now().Add(24 * time.Hour)
+	session := &domain.AuthSession{
+		Token:     token,
+		UserID:    user.ID,
+		Email:     user.Email,
+		Role:      user.Role,
+		CreatedAt: time.Now(),
+		ExpiresAt: expTime,
+	}
+
+	if err := s.sessionRepo.Save(ctx, session); err != nil {
+		return "", 0, err
+	}
+
+	return token, expTime.Unix(), nil
 }
 
 // CreateAPIKey 处理创建API Key
@@ -108,11 +129,19 @@ func (s *AuthCommandService) CreateAPIKey(ctx context.Context, cmd CreateAPIKeyC
 	}
 	s.publisher.Publish(ctx, "api_key.created", apiKey.Key, event)
 
+	// 同步缓存
+	_ = s.apiKeyRedisRepo.Save(ctx, apiKey)
+
 	return apiKey, nil
 }
 
 // ValidateAPIKey 处理验证API Key
 func (s *AuthCommandService) ValidateAPIKey(ctx context.Context, apiKey string) (*domain.APIKey, error) {
+	// 尝试从缓存获取
+	if cached, err := s.apiKeyRedisRepo.Get(ctx, apiKey); err == nil && cached != nil {
+		return cached, nil
+	}
+
 	key, err := s.apiKeyRepo.GetByKey(ctx, apiKey)
 	if err != nil {
 		// 发布验证失败事件
@@ -134,6 +163,9 @@ func (s *AuthCommandService) ValidateAPIKey(ctx context.Context, apiKey string) 
 		Timestamp: time.Now(),
 	}
 	s.publisher.Publish(ctx, "api_key.validated", apiKey, event)
+
+	// 同步缓存
+	_ = s.apiKeyRedisRepo.Save(ctx, key)
 
 	return key, nil
 }

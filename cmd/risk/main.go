@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -22,8 +23,12 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
 	risk_client "github.com/wyfcoding/financialtrading/internal/risk/infrastructure/client"
 	"github.com/wyfcoding/financialtrading/internal/risk/infrastructure/persistence/mysql"
+	risk_redis "github.com/wyfcoding/financialtrading/internal/risk/infrastructure/persistence/redis"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/risk/interfaces/grpc"
+	"github.com/wyfcoding/pkg/cache"
+	"github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/metrics"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -78,8 +83,33 @@ func main() {
 		mdClient,
 	)
 
+	// Redis Cache
+	redisCfg := &config.RedisConfig{
+		Addrs:    []string{viper.GetString("redis.addr")},
+		Password: viper.GetString("redis.password"),
+		DB:       viper.GetInt("redis.db"),
+		PoolSize: viper.GetInt("redis.pool_size"),
+	}
+	cbCfg := config.CircuitBreakerConfig{
+		Interval:    5 * time.Second,
+		Timeout:     10 * time.Second,
+		MaxRequests: 100,
+		Enabled:     true,
+	}
+
+	metricsImpl := metrics.NewMetrics("risk-service")
+	if viper.GetBool("metrics.enabled") {
+		go metricsImpl.ExposeHTTP(fmt.Sprintf(":%d", viper.GetInt("metrics.port")))
+	}
+
+	redisCache, err := cache.NewRedisCache(redisCfg, cbCfg, logger, metricsImpl)
+	if err != nil {
+		slog.Error("failed to init redis", "error", err)
+	}
+	redisRepo := risk_redis.NewRiskRedisRepository(redisCache.GetClient())
+
 	// 5. Application
-	appService := application.NewRiskService(repo, logger.Logger)
+	appService := application.NewRiskService(repo, redisRepo, logger.Logger)
 
 	// 6. Interfaces
 	// gRPC

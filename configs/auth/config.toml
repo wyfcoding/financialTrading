@@ -6,6 +6,12 @@ http_port = 8085
 driver = "mysql"
 source = "root:root@tcp(127.0.0.1:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
 
+[redis]
+addr = "localhost:6379"
+password = ""
+db = 0
+pool_size = 100
+
 [log]
 level = "info"
 format = "json"

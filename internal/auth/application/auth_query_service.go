@@ -8,18 +8,24 @@ import (
 
 // AuthQueryService 认证查询服务
 type AuthQueryService struct {
-	repo       domain.UserRepository
-	apiKeyRepo domain.APIKeyRepository
+	repo            domain.UserRepository
+	apiKeyRepo      domain.APIKeyRepository
+	apiKeyRedisRepo domain.APIKeyRedisRepository
+	sessionRepo     domain.SessionRepository
 }
 
 // NewAuthQueryService 创建认证查询服务实例
 func NewAuthQueryService(
 	repo domain.UserRepository,
 	apiKeyRepo domain.APIKeyRepository,
+	apiKeyRedisRepo domain.APIKeyRedisRepository,
+	sessionRepo domain.SessionRepository,
 ) *AuthQueryService {
 	return &AuthQueryService{
-		repo:       repo,
-		apiKeyRepo: apiKeyRepo,
+		repo:            repo,
+		apiKeyRepo:      apiKeyRepo,
+		apiKeyRedisRepo: apiKeyRedisRepo,
+		sessionRepo:     sessionRepo,
 	}
 }
 
@@ -33,12 +39,25 @@ func (s *AuthQueryService) GetUserByEmail(ctx context.Context, email string) (*d
 	return s.repo.GetByEmail(ctx, email)
 }
 
-// GetAPIKey 根据Key获取API Key信息
+// GetAPIKey 根据Key获取API Key信息（优先缓存）
 func (s *AuthQueryService) GetAPIKey(ctx context.Context, key string) (*domain.APIKey, error) {
-	return s.apiKeyRepo.GetByKey(ctx, key)
+	if cached, err := s.apiKeyRedisRepo.Get(ctx, key); err == nil && cached != nil {
+		return cached, nil
+	}
+
+	ak, err := s.apiKeyRepo.GetByKey(ctx, key)
+	if err == nil && ak != nil {
+		_ = s.apiKeyRedisRepo.Save(ctx, ak)
+	}
+	return ak, err
 }
 
 // ListAPIKeysByUserID 根据用户ID列出API Key
 func (s *AuthQueryService) ListAPIKeysByUserID(ctx context.Context, userID string) ([]*domain.APIKey, error) {
 	return s.apiKeyRepo.ListByUserID(ctx, userID)
+}
+
+// GetSession 根据 Token 获取会话
+func (s *AuthQueryService) GetSession(ctx context.Context, token string) (*domain.AuthSession, error) {
+	return s.sessionRepo.Get(ctx, token)
 }

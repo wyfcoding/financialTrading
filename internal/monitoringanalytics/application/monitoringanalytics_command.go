@@ -14,6 +14,8 @@ type MonitoringAnalyticsCommand struct {
 	metricRepo     domain.MetricRepository
 	healthRepo     domain.SystemHealthRepository
 	alertRepo      domain.AlertRepository
+	auditRepo      domain.ExecutionAuditRepository
+	auditESRepo    domain.AuditESRepository
 	eventPublisher domain.EventPublisher
 }
 
@@ -22,12 +24,16 @@ func NewMonitoringAnalyticsCommand(
 	metricRepo domain.MetricRepository,
 	healthRepo domain.SystemHealthRepository,
 	alertRepo domain.AlertRepository,
+	auditRepo domain.ExecutionAuditRepository,
+	auditESRepo domain.AuditESRepository,
 	eventPublisher domain.EventPublisher,
 ) *MonitoringAnalyticsCommand {
 	return &MonitoringAnalyticsCommand{
 		metricRepo:     metricRepo,
 		healthRepo:     healthRepo,
 		alertRepo:      alertRepo,
+		auditRepo:      auditRepo,
+		auditESRepo:    auditESRepo,
 		eventPublisher: eventPublisher,
 	}
 }
@@ -117,7 +123,13 @@ func (c *MonitoringAnalyticsCommand) UpdateAlertStatus(ctx context.Context, aler
 
 // RecordExecutionAudit 记录执行审计
 func (c *MonitoringAnalyticsCommand) RecordExecutionAudit(ctx context.Context, audit *domain.ExecutionAudit) error {
-	// 发布执行审计创建事件
+	// 1. 持久化到 ClickHouse (批量保存建议由上层或异步处理，这里为了简化直接保存)
+	_ = c.auditRepo.BatchSave(ctx, []*domain.ExecutionAudit{audit})
+
+	// 2. 索引到 Elasticsearch
+	_ = c.auditESRepo.Index(ctx, audit)
+
+	// 3. 发布执行审计创建事件
 	event := domain.ExecutionAuditCreatedEvent{
 		ID:         audit.ID,
 		TradeID:    audit.TradeID,

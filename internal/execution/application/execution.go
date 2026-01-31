@@ -19,7 +19,9 @@ type ExecutionService struct {
 // NewExecutionService 构造函数。
 func NewExecutionService(
 	tradeRepo domain.TradeRepository,
+	searchRepo domain.TradeSearchRepository,
 	algoRepo domain.AlgoOrderRepository,
+	redisRepo domain.AlgoRedisRepository,
 	publisher domain.EventPublisher,
 	orderClient orderv1.OrderServiceClient,
 	marketData domain.MarketDataProvider,
@@ -28,8 +30,8 @@ func NewExecutionService(
 	db *gorm.DB,
 ) *ExecutionService {
 	return &ExecutionService{
-		Command: NewExecutionCommandService(tradeRepo, algoRepo, publisher, orderClient, marketData, volumeProvider, metrics, db),
-		Query:   NewExecutionQueryService(tradeRepo),
+		Command: NewExecutionCommandService(tradeRepo, algoRepo, redisRepo, publisher, orderClient, marketData, volumeProvider, metrics, db),
+		Query:   NewExecutionQueryService(tradeRepo, searchRepo),
 	}
 }
 
@@ -62,7 +64,9 @@ func (s *ExecutionService) GetExecutionHistory(ctx context.Context, orderID stri
 }
 
 func (s *ExecutionService) ListExecutions(ctx context.Context, userID string) ([]*ExecutionDTO, error) {
-	return s.Query.ListExecutions(ctx, userID)
+	// 默认限额，协议未提供则使用默认值
+	dtos, _, err := s.Query.ListExecutions(ctx, userID, "", 100, 0)
+	return dtos, err
 }
 
 // --- DTO Definitions ---

@@ -10,14 +10,20 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"github.com/wyfcoding/financialtrading/internal/auth/application"
 	"github.com/wyfcoding/financialtrading/internal/auth/domain"
 	"github.com/wyfcoding/financialtrading/internal/auth/infrastructure/persistence/mysql"
+	auth_redis "github.com/wyfcoding/financialtrading/internal/auth/infrastructure/persistence/redis"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/auth/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/auth/interfaces/http"
+	"github.com/wyfcoding/pkg/cache"
+	"github.com/wyfcoding/pkg/config"
+	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/metrics"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	gorm_mysql "gorm.io/driver/mysql"
@@ -60,14 +66,41 @@ func main() {
 		panic(fmt.Sprintf("migrate db failed: %v", err))
 	}
 
+	// 4. Infrastructure & Domain
 	repo := mysql.NewUserRepository(db)
 	apiKeyRepo := mysql.NewAPIKeyRepository(db)
+
+	// Redis Cache
+	redisCfg := &config.RedisConfig{
+		Addrs:    []string{viper.GetString("redis.addr")},
+		Password: viper.GetString("redis.password"),
+		DB:       viper.GetInt("redis.db"),
+		PoolSize: viper.GetInt("redis.pool_size"),
+	}
+	cbCfg := config.CircuitBreakerConfig{
+		Interval:    5 * time.Second,
+		Timeout:     10 * time.Second,
+		MaxRequests: 100,
+		Enabled:     true,
+	}
+
+	metricsImpl := metrics.NewMetrics("auth-service")
+	loggerWrapper := logging.NewLogger("auth", "main", viper.GetString("log.level"))
+
+	redisCache, err := cache.NewRedisCache(redisCfg, cbCfg, loggerWrapper, metricsImpl)
+	if err != nil {
+		slog.Error("failed to init redis", "error", err)
+	}
+
+	sessionRepo := auth_redis.NewSessionRedisRepository(redisCache.GetClient())
+	apiKeyRedisRepo := auth_redis.NewAPIKeyRedisRepository(redisCache.GetClient())
+
 	keySvc := application.NewAPIKeyService(apiKeyRepo)
 
 	// 创建事件发布者（使用空实现）
 	eventPublisher := &mockEventPublisher{}
 
-	appService := application.NewAuthService(repo, apiKeyRepo, keySvc, eventPublisher)
+	appService := application.NewAuthService(repo, apiKeyRepo, apiKeyRedisRepo, sessionRepo, keySvc, eventPublisher)
 
 	grpcSrv := grpc.NewServer()
 	grpc_server.NewServer(grpcSrv, appService)

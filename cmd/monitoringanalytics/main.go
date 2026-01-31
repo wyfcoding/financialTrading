@@ -10,15 +10,20 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	v1 "github.com/wyfcoding/financialtrading/go-api/monitoringanalytics/v1"
 	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/application"
 	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/domain"
+	monitor_ck "github.com/wyfcoding/financialtrading/internal/monitoringanalytics/infrastructure/persistence/clickhouse"
+	monitor_es "github.com/wyfcoding/financialtrading/internal/monitoringanalytics/infrastructure/persistence/elasticsearch"
 	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/monitoringanalytics/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/monitoringanalytics/interfaces/http"
+	"github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/search"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -52,8 +57,34 @@ func main() {
 	healthRepo := mysql.NewSystemHealthRepository(db)
 	alertRepo := mysql.NewAlertRepository(db)
 
+	// Elasticsearch
+	esCfg := &config.ElasticsearchConfig{
+		Addresses: viper.GetStringSlice("elasticsearch.addresses"),
+		Username:  viper.GetString("elasticsearch.username"),
+		Password:  viper.GetString("elasticsearch.password"),
+	}
+	esClient, err := search.NewClient(esCfg, logger)
+	if err != nil {
+		slog.Error("failed to init elasticsearch", "error", err)
+	}
+	auditESRepo := monitor_es.NewAuditESRepository(esClient)
+
+	// ClickHouse
+	ckConn, err := clickhouse.Open(&clickhouse.Options{
+		Addr: []string{viper.GetString("clickhouse.addr")},
+		Auth: clickhouse.Auth{
+			Database: viper.GetString("clickhouse.database"),
+			Username: viper.GetString("clickhouse.username"),
+			Password: viper.GetString("clickhouse.password"),
+		},
+	})
+	if err != nil {
+		slog.Error("failed to init clickhouse", "error", err)
+	}
+	auditRepo := monitor_ck.NewAuditRepository(ckConn)
+
 	// 5. Application
-	appService, err := application.NewMonitoringAnalyticsService(metricRepo, healthRepo, alertRepo, db)
+	appService, err := application.NewMonitoringAnalyticsService(metricRepo, healthRepo, alertRepo, auditRepo, auditESRepo, db)
 	if err != nil {
 		panic(fmt.Sprintf("create app service failed: %v", err))
 	}

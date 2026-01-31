@@ -3,6 +3,7 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -27,18 +28,27 @@ func NewHandler(service *application.RiskService) *Handler {
 	}
 }
 
-// CheckRisk 检查交易风险 (Legacy)
+// CheckRisk 检查交易风险 (Legacy, mapped to AssessRisk)
 func (h *Handler) CheckRisk(ctx context.Context, req *pb.CheckRiskRequest) (*pb.CheckRiskResponse, error) {
-	passed, reason := h.service.CheckRisk(ctx, req.UserId, req.Symbol, req.Quantity, req.Price)
+	dto, err := h.service.AssessRisk(ctx, &application.AssessRiskRequest{
+		UserID:   req.UserId,
+		Symbol:   req.Symbol,
+		Side:     "buy", // Default side for legacy
+		Quantity: fmt.Sprintf("%.8f", req.Quantity),
+		Price:    fmt.Sprintf("%.8f", req.Price),
+	})
+	if err != nil {
+		return &pb.CheckRiskResponse{Passed: false, Reason: err.Error()}, nil
+	}
 	return &pb.CheckRiskResponse{
-		Passed: passed,
-		Reason: reason,
+		Passed: dto.IsAllowed,
+		Reason: dto.Reason,
 	}, nil
 }
 
 // SetRiskLimit 设置风险限额 (Legacy)
 func (h *Handler) SetRiskLimit(ctx context.Context, req *pb.SetRiskLimitRequest) (*pb.SetRiskLimitResponse, error) {
-	err := h.service.SetRiskLimit(ctx, req.UserId, req.MaxOrderSize, req.MaxDailyLoss)
+	err := h.service.SetRiskLimit(ctx, req.UserId, "ORDER_SIZE", req.MaxOrderSize)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

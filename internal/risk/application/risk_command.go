@@ -62,13 +62,15 @@ type UpdateRiskMetricsCommand struct {
 
 // RiskCommand 处理风险相关的命令操作
 type RiskCommand struct {
-	repo domain.RiskRepository
+	repo      domain.RiskRepository
+	redisRepo domain.RiskRedisRepository
 }
 
 // NewRiskCommand 创建新的 RiskCommand 实例
-func NewRiskCommand(repo domain.RiskRepository) *RiskCommand {
+func NewRiskCommand(repo domain.RiskRepository, redisRepo domain.RiskRedisRepository) *RiskCommand {
 	return &RiskCommand{
-		repo: repo,
+		repo:      repo,
+		redisRepo: redisRepo,
 	}
 }
 
@@ -108,10 +110,9 @@ func (c *RiskCommand) AssessRisk(ctx context.Context, cmd AssessRiskCommand) (*d
 	}
 
 	// 保存风险评估
-	// 暂时注释，因为 repository 接口中没有定义 SaveRiskAssessment 方法
-	// if err := c.repo.SaveRiskAssessment(ctx, assessment); err != nil {
-	// 	return nil, err
-	// }
+	if err := c.repo.SaveAssessment(ctx, assessment); err != nil {
+		return nil, err
+	}
 
 	// 如果风险等级为 HIGH 或 CRITICAL，生成告警
 	if riskLevel == domain.RiskLevelHigh || riskLevel == domain.RiskLevelCritical {
@@ -142,10 +143,12 @@ func (c *RiskCommand) UpdateRiskLimit(ctx context.Context, cmd UpdateRiskLimitCo
 	}
 
 	// 保存风险限额
-	// 暂时注释，因为 repository 接口中没有定义 SaveRiskLimit 方法
-	// if err := c.repo.SaveRiskLimit(ctx, limit); err != nil {
-	// 	return nil, err
-	// }
+	if err := c.repo.SaveLimit(ctx, limit); err != nil {
+		return nil, err
+	}
+
+	// 同步缓存
+	_ = c.redisRepo.SaveLimit(ctx, cmd.UserID, limit)
 
 	// 如果超出限额，生成风险告警
 	if limit.IsExceeded {
@@ -178,10 +181,12 @@ func (c *RiskCommand) TriggerCircuitBreaker(ctx context.Context, cmd TriggerCirc
 	}
 
 	// 保存熔断
-	// 暂时注释，因为 repository 接口中可能没有定义 SaveCircuitBreaker 方法
-	// if err := c.repo.SaveCircuitBreaker(ctx, circuitBreaker); err != nil {
-	// 	return nil, err
-	// }
+	if err := c.repo.SaveCircuitBreaker(ctx, circuitBreaker); err != nil {
+		return nil, err
+	}
+
+	// 同步缓存
+	_ = c.redisRepo.SaveCircuitBreaker(ctx, cmd.UserID, circuitBreaker)
 
 	// 生成风险告警
 	alertCmd := GenerateRiskAlertCommand{
@@ -225,10 +230,9 @@ func (c *RiskCommand) GenerateRiskAlert(ctx context.Context, cmd GenerateRiskAle
 	}
 
 	// 保存风险告警
-	// 暂时注释，因为 repository 接口中可能没有定义 SaveRiskAlert 方法
-	// if err := c.repo.SaveRiskAlert(ctx, alert); err != nil {
-	// 	return nil, err
-	// }
+	if err := c.repo.SaveAlert(ctx, alert); err != nil {
+		return nil, err
+	}
 
 	return alert, nil
 }
@@ -236,12 +240,22 @@ func (c *RiskCommand) GenerateRiskAlert(ctx context.Context, cmd GenerateRiskAle
 // UpdateRiskMetrics 更新风险指标
 func (c *RiskCommand) UpdateRiskMetrics(ctx context.Context, cmd UpdateRiskMetricsCommand) (*domain.RiskMetrics, error) {
 	// 保存风险指标
-	// 暂时注释，因为 repository 接口中可能没有定义 SaveRiskMetrics 方法
-	// if err := c.repo.SaveRiskMetrics(ctx, metrics); err != nil {
-	// 	return nil, err
-	// }
+	metrics := &domain.RiskMetrics{
+		UserID:      cmd.UserID,
+		VaR95:       decimal.NewFromFloat(cmd.VaR95),
+		VaR99:       decimal.NewFromFloat(cmd.VaR99),
+		MaxDrawdown: decimal.NewFromFloat(cmd.MaxDrawdown),
+		SharpeRatio: decimal.NewFromFloat(cmd.SharpeRatio),
+		Correlation: decimal.NewFromFloat(cmd.Correlation),
+	}
+	if err := c.repo.SaveMetrics(ctx, metrics); err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	// 同步缓存
+	_ = c.redisRepo.SaveMetrics(ctx, cmd.UserID, metrics)
+
+	return metrics, nil
 }
 
 // 辅助函数：计算风险分数

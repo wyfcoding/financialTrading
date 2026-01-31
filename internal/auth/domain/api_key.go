@@ -28,3 +28,10 @@ type APIKeyRepository interface {
 	GetByKey(ctx context.Context, key string) (*APIKey, error)
 	ListByUserID(ctx context.Context, userID string) ([]*APIKey, error)
 }
+
+// APIKeyRedisRepository 为 API Key 提供高性能缓存
+type APIKeyRedisRepository interface {
+	Save(ctx context.Context, key *APIKey) error
+	Get(ctx context.Context, key string) (*APIKey, error)
+	Delete(ctx context.Context, key string) error
+}

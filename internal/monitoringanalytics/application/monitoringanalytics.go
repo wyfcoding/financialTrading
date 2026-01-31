@@ -44,6 +44,8 @@ func NewMonitoringAnalyticsService(
 	metricRepo domain.MetricRepository,
 	healthRepo domain.SystemHealthRepository,
 	alertRepo domain.AlertRepository,
+	auditRepo domain.ExecutionAuditRepository,
+	auditESRepo domain.AuditESRepository,
 	db interface{},
 ) (*MonitoringAnalyticsService, error) {
 	// 创建事件发布者
@@ -60,6 +62,8 @@ func NewMonitoringAnalyticsService(
 		metricRepo,
 		healthRepo,
 		alertRepo,
+		auditRepo,
+		auditESRepo,
 		eventPublisher,
 	)
 
@@ -68,12 +72,24 @@ func NewMonitoringAnalyticsService(
 		metricRepo,
 		healthRepo,
 		alertRepo,
+		auditRepo,
+		auditESRepo,
 	)
 
 	return &MonitoringAnalyticsService{
 		Command: command,
 		Query:   query,
 	}, nil
+}
+
+// SearchAudit 搜索审计流水 (ES)
+func (s *MonitoringAnalyticsService) SearchAudit(ctx context.Context, query string, from, size int) ([]*domain.ExecutionAudit, int64, error) {
+	return s.Query.SearchAudit(ctx, query, from, size)
+}
+
+// QueryAudit 查询审计流水 (ClickHouse)
+func (s *MonitoringAnalyticsService) QueryAudit(ctx context.Context, userID, symbol string, startTime, endTime int64) ([]*domain.ExecutionAudit, error) {
+	return s.Query.QueryAudit(ctx, userID, symbol, startTime, endTime)
 }
 
 // --- Command (Writes) ---

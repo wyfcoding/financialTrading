@@ -18,6 +18,7 @@ require (
 require github.com/redis/go-redis/v9 v9.17.3
 
 require (
+	github.com/allegro/bigcache/v3 v3.1.0 // indirect
 	github.com/elastic/elastic-transport-go/v8 v8.8.0 // indirect
 	github.com/elastic/go-elasticsearch/v9 v9.2.1 // indirect
 )

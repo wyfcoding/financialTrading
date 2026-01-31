@@ -62,8 +62,33 @@ func (h *Handler) SettleTrade(ctx context.Context, req *pb.SettleTradeRequest) (
 
 // GetSettlements 获取清算记录
 func (h *Handler) GetSettlements(ctx context.Context, req *pb.GetSettlementsRequest) (*pb.GetSettlementsResponse, error) {
-	// 这里演示用途，实际应完善 QueryService.GetByUserID
-	return nil, status.Error(codes.Unimplemented, "list settlements by user_id not implemented yet")
+	start := time.Now()
+	slog.Info("gRPC GetSettlements received", "user_id", req.UserId)
+
+	limit := int(req.Limit)
+	if limit <= 0 {
+		limit = 20
+	}
+
+	dtos, _, err := h.app.Query.ListSettlements(ctx, req.UserId, "", limit, 0)
+	if err != nil {
+		slog.Error("gRPC GetSettlements failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
+		return nil, status.Errorf(codes.Internal, "failed to get settlements: %v", err)
+	}
+
+	records := make([]*pb.Settlement, 0, len(dtos))
+	for _, dto := range dtos {
+		records = append(records, &pb.Settlement{
+			SettlementId:   dto.SettlementID,
+			TradeId:        dto.TradeID,
+			Status:         dto.Status,
+			SettlementTime: dto.SettledAt,
+		})
+	}
+
+	return &pb.GetSettlementsResponse{
+		Settlements: records,
+	}, nil
 }
 
 // SagaMarkSettlementCompleted Saga 正向: 确认结算成功
@@ -116,7 +141,8 @@ func (h *Handler) GetClearingStatus(ctx context.Context, req *pb.GetClearingStat
 
 // GetMarginRequirement 获取保证金
 func (h *Handler) GetMarginRequirement(ctx context.Context, req *pb.GetMarginRequirementRequest) (*pb.GetMarginRequirementResponse, error) {
-	margin, err := h.app.Query.GetMarginRequirement(ctx, req.Symbol)
+	// 获取保证金要求
+	margin, err := h.app.Query.GetMarginRequirement(ctx, "", req.Symbol)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get margin requirement: %v", err)
 	}

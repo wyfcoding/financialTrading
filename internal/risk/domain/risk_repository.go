@@ -33,6 +33,21 @@ type RiskRepository interface {
 	GetCircuitBreakerByUserID(ctx context.Context, userID string) (*CircuitBreaker, error)
 }
 
+// RiskRedisRepository 提供基于 Redis 的实时风险数据（限额、指标、熔断器）缓存
+type RiskRedisRepository interface {
+	SaveLimit(ctx context.Context, userID string, limit *RiskLimit) error
+	GetLimit(ctx context.Context, userID, limitType string) (*RiskLimit, error)
+	DeleteLimit(ctx context.Context, userID, limitType string) error
+
+	SaveMetrics(ctx context.Context, userID string, metrics *RiskMetrics) error
+	GetMetrics(ctx context.Context, userID string) (*RiskMetrics, error)
+	DeleteMetrics(ctx context.Context, userID string) error
+
+	SaveCircuitBreaker(ctx context.Context, userID string, cb *CircuitBreaker) error
+	GetCircuitBreaker(ctx context.Context, userID string) (*CircuitBreaker, error)
+	DeleteCircuitBreaker(ctx context.Context, userID string) error
+}
+
 // RiskDomainService interface
 type RiskDomainService interface {
 	AssessTradeRisk(ctx context.Context, userID, symbol, side string, quantity, price decimal.Decimal) (*RiskAssessment, error)

@@ -84,6 +84,7 @@ func (s *AddSellStep) Compensate(ctx context.Context) error {
 // ClearingCommandService 处理清算相关的写操作。
 type ClearingCommandService struct {
 	repo          domain.SettlementRepository
+	redisRepo     domain.MarginRedisRepository
 	publisher     domain.EventPublisher
 	db            *gorm.DB
 	accountClient accountv1.AccountServiceClient
@@ -93,12 +94,14 @@ type ClearingCommandService struct {
 
 func NewClearingCommandService(
 	repo domain.SettlementRepository,
+	redisRepo domain.MarginRedisRepository,
 	publisher domain.EventPublisher,
 	db *gorm.DB,
 	accountClient accountv1.AccountServiceClient,
 ) *ClearingCommandService {
 	return &ClearingCommandService{
 		repo:          repo,
+		redisRepo:     redisRepo,
 		publisher:     publisher,
 		db:            db,
 		accountClient: accountClient,
