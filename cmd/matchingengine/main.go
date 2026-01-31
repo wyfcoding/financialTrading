@@ -21,7 +21,7 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/application"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/messaging"
-	"github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/persistence"
+	"github.com/wyfcoding/financialtrading/internal/matchingengine/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/matchingengine/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/matchingengine/interfaces/http"
 	"github.com/wyfcoding/pkg/messagequeue/outbox"
@@ -57,8 +57,8 @@ func main() {
 	}
 
 	// 4. Infrastructure
-	orderBookRepo := persistence.NewOrderBookRepository(db)
-	tradeRepo := persistence.NewTradeRepository(db)
+	orderBookRepo := mysql.NewOrderBookRepository(db)
+	tradeRepo := mysql.NewTradeRepository(db)
 	outboxMgr := outbox.NewManager(db, logger)
 	outboxPub := messaging.NewOutboxPublisher(outboxMgr)
 
