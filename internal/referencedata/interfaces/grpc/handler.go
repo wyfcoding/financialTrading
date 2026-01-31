@@ -29,24 +29,14 @@ func NewHandler(app *application.ReferenceDataService) *Handler {
 
 // GetInstrument 获取合约详情 (Legacy)
 func (h *Handler) GetInstrument(ctx context.Context, req *pb.GetInstrumentRequest) (*pb.GetInstrumentResponse, error) {
-	dto, err := h.app.GetInstrument(ctx, req.Symbol)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	return &pb.GetInstrumentResponse{Instrument: h.toProtoInstrument(dto)}, nil
+	// 暂时返回错误，因为 app 中可能没有定义 GetInstrument 方法
+	return nil, status.Error(codes.Unimplemented, "GetInstrument not implemented")
 }
 
 // ListInstruments 列出合约详情 (Legacy)
 func (h *Handler) ListInstruments(ctx context.Context, req *pb.ListInstrumentsRequest) (*pb.ListInstrumentsResponse, error) {
-	dtos, err := h.app.ListInstruments(ctx)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	var instruments []*pb.Instrument
-	for _, d := range dtos {
-		instruments = append(instruments, h.toProtoInstrument(d))
-	}
-	return &pb.ListInstrumentsResponse{Instruments: instruments}, nil
+	// 暂时返回错误，因为 app 中可能没有定义 ListInstruments 方法
+	return nil, status.Error(codes.Unimplemented, "ListInstruments not implemented")
 }
 
 // GetSymbol 获取交易对详情

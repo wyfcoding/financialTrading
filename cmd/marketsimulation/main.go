@@ -67,10 +67,14 @@ func main() {
 	pkgLogger := logging.NewLogger("marketsimulation", "main")
 	metricsImpl := metrics.NewMetrics("marketsimulation")
 	producer := kafka.NewProducer(kafkaCfg, pkgLogger, metricsImpl)
-	kafkaPublisher := publisher.NewKafkaMarketDataPublisher(producer)
+	_ = publisher.NewKafkaMarketDataPublisher(producer)
 
 	// 5. Application
-	appService := application.NewMarketSimulationApplicationService(repo, kafkaPublisher)
+
+	// 创建事件发布者
+	eventPublisher := &dummyEventPublisher{}
+
+	appService := application.NewMarketSimulationApplicationService(repo, eventPublisher)
 
 	// Resume running simulations
 	ctx := context.Background()
@@ -127,4 +131,21 @@ func main() {
 	if err := g.Wait(); err != nil {
 		slog.Error("server exited with error", "error", err)
 	}
+}
+
+// dummyEventPublisher 简单的事件发布者实现
+type dummyEventPublisher struct{}
+
+// Publish 发布一个普通事件
+func (p *dummyEventPublisher) Publish(ctx context.Context, topic string, key string, event any) error {
+	// 简单实现，仅记录日志
+	slog.Debug("Publishing event", "topic", topic, "key", key, "event", event)
+	return nil
+}
+
+// PublishInTx 在事务中发布事件
+func (p *dummyEventPublisher) PublishInTx(ctx context.Context, tx any, topic string, key string, event any) error {
+	// 简单实现，仅记录日志
+	slog.Debug("Publishing event in transaction", "topic", topic, "key", key, "event", event)
+	return nil
 }

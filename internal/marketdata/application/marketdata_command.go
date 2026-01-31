@@ -14,6 +14,7 @@ type MarketDataCommandService struct {
 	repo        domain.MarketDataRepository
 	logger      *slog.Logger
 	broadcaster Broadcaster
+	publisher   domain.EventPublisher
 }
 
 // Broadcaster 广播接口
@@ -22,10 +23,11 @@ type Broadcaster interface {
 }
 
 // NewMarketDataCommandService 构造函数。
-func NewMarketDataCommandService(repo domain.MarketDataRepository, logger *slog.Logger) *MarketDataCommandService {
+func NewMarketDataCommandService(repo domain.MarketDataRepository, logger *slog.Logger, publisher domain.EventPublisher) *MarketDataCommandService {
 	return &MarketDataCommandService{
-		repo:   repo,
-		logger: logger,
+		repo:      repo,
+		logger:    logger,
+		publisher: publisher,
 	}
 }
 
@@ -36,22 +38,97 @@ func (s *MarketDataCommandService) SetBroadcaster(b Broadcaster) {
 // SaveQuote 保存报价数据
 func (s *MarketDataCommandService) SaveQuote(ctx context.Context, symbol string, bidPrice, askPrice, bidSize, askSize, lastPrice, lastSize decimal.Decimal, timestamp int64, source string) error {
 	quote := domain.NewQuote(symbol, bidPrice, askPrice, bidSize, askSize, lastPrice, lastSize)
-	return s.repo.SaveQuote(ctx, quote)
+	if err := s.repo.SaveQuote(ctx, quote); err != nil {
+		return err
+	}
+
+	// 发布报价更新事件
+	event := domain.QuoteUpdatedEvent{
+		Symbol:    quote.Symbol,
+		BidPrice:  quote.BidPrice.String(),
+		AskPrice:  quote.AskPrice.String(),
+		BidSize:   quote.BidSize.String(),
+		AskSize:   quote.AskSize.String(),
+		LastPrice: quote.LastPrice.String(),
+		LastSize:  quote.LastSize.String(),
+		Timestamp: quote.Timestamp,
+	}
+	s.publisher.Publish(ctx, "marketdata.quote.updated", symbol, event)
+
+	return nil
 }
 
 // SaveKline 保存K线数据
 func (s *MarketDataCommandService) SaveKline(ctx context.Context, kline *domain.Kline) error {
-	return s.repo.SaveKline(ctx, kline)
+	if err := s.repo.SaveKline(ctx, kline); err != nil {
+		return err
+	}
+
+	// 发布K线更新事件
+	event := domain.KlineUpdatedEvent{
+		Symbol:     kline.Symbol,
+		Interval:   kline.Interval,
+		OpenPrice:  kline.Open.String(),
+		HighPrice:  kline.High.String(),
+		LowPrice:   kline.Low.String(),
+		ClosePrice: kline.Close.String(),
+		Volume:     kline.Volume.String(),
+		OpenTime:   kline.OpenTime,
+		CloseTime:  kline.CloseTime,
+		Timestamp:  time.Now(),
+	}
+	s.publisher.Publish(ctx, "marketdata.kline.updated", kline.Symbol, event)
+
+	return nil
 }
 
 // SaveTrade 保存成交数据
 func (s *MarketDataCommandService) SaveTrade(ctx context.Context, trade *domain.Trade) error {
-	return s.repo.SaveTrade(ctx, trade)
+	if err := s.repo.SaveTrade(ctx, trade); err != nil {
+		return err
+	}
+
+	// 发布交易执行事件
+	event := domain.TradeExecutedEvent{
+		Symbol:    trade.Symbol,
+		Price:     trade.Price.String(),
+		Quantity:  trade.Quantity.String(),
+		Side:      trade.Side,
+		TradeID:   trade.ID,
+		Timestamp: trade.Timestamp,
+	}
+	s.publisher.Publish(ctx, "marketdata.trade.executed", trade.Symbol, event)
+
+	return nil
 }
 
 // SaveOrderBook 保存订单簿
 func (s *MarketDataCommandService) SaveOrderBook(ctx context.Context, orderBook *domain.OrderBook) error {
-	return s.repo.SaveOrderBook(ctx, orderBook)
+	if err := s.repo.SaveOrderBook(ctx, orderBook); err != nil {
+		return err
+	}
+
+	// 构建订单簿事件数据
+	bids := make([][2]string, 0, len(orderBook.Bids))
+	for _, bid := range orderBook.Bids {
+		bids = append(bids, [2]string{bid.Price.String(), bid.Quantity.String()})
+	}
+
+	asks := make([][2]string, 0, len(orderBook.Asks))
+	for _, ask := range orderBook.Asks {
+		asks = append(asks, [2]string{ask.Price.String(), ask.Quantity.String()})
+	}
+
+	// 发布订单簿更新事件
+	event := domain.OrderBookUpdatedEvent{
+		Symbol:    orderBook.Symbol,
+		Bids:      bids,
+		Asks:      asks,
+		Timestamp: orderBook.Timestamp,
+	}
+	s.publisher.Publish(ctx, "marketdata.orderbook.updated", orderBook.Symbol, event)
+
+	return nil
 }
 
 // HandleTradeExecuted 处理成交事件，更新K线

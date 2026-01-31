@@ -59,7 +59,10 @@ func main() {
 	repo := persistence.NewReferenceDataRepository(db)
 
 	// 5. Application
-	appService := application.NewReferenceDataService(repo)
+	appService, err := application.NewReferenceDataService(repo, db)
+	if err != nil {
+		panic(fmt.Sprintf("failed to init reference data service: %v", err))
+	}
 
 	// 6. Interfaces
 	// gRPC

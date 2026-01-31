@@ -50,14 +50,20 @@ func (h *QuantHandler) CreateStrategy(c *gin.Context) {
 		return
 	}
 
-	id, err := h.app.CreateStrategy(c.Request.Context(), req.Name, req.Description, req.Script)
+	cmd := application.CreateStrategyCommand{
+		Name:        req.Name,
+		Description: req.Description,
+		Script:      req.Script,
+	}
+
+	strategy, err := h.app.CreateStrategy(c.Request.Context(), cmd)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to create strategy", "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	response.Success(c, gin.H{"strategy_id": id})
+	response.Success(c, gin.H{"strategy_id": strategy.ID})
 }
 
 // GetStrategy 获取策略
@@ -100,14 +106,21 @@ func (h *QuantHandler) RunBacktest(c *gin.Context) {
 		return
 	}
 
-	id, err := h.app.RunBacktest(c.Request.Context(), req.StrategyID, req.Symbol, req.StartTime, req.EndTime, req.InitialCapital)
+	cmd := application.RunBacktestCommand{
+		StrategyID: req.StrategyID,
+		Symbol:     req.Symbol,
+		StartTime:  req.StartTime.UnixMilli(),
+		EndTime:    req.EndTime.UnixMilli(),
+	}
+
+	result, err := h.app.RunBacktest(c.Request.Context(), cmd)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to run backtest", "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	response.Success(c, gin.H{"backtest_id": id})
+	response.Success(c, gin.H{"backtest_id": result.ID})
 }
 
 // GetBacktestResult 获取回测结果

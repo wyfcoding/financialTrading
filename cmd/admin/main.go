@@ -11,13 +11,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"github.com/wyfcoding/financialtrading/internal/admin/application"
 	"github.com/wyfcoding/financialtrading/internal/admin/domain"
 	"github.com/wyfcoding/financialtrading/internal/admin/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/admin/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/admin/interfaces/http"
-	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	gorm_mysql "gorm.io/driver/mysql"
@@ -73,7 +73,11 @@ func main() {
 	}
 
 	// 5. Application
-	appService := application.NewAdminApplicationService(adminRepo, roleRepo)
+
+	// 创建事件发布者
+	eventPublisher := &dummyEventPublisher{}
+
+	appService := application.NewAdminApplicationService(adminRepo, roleRepo, eventPublisher)
 
 	// 6. Interfaces
 	// gRPC
@@ -120,4 +124,21 @@ func main() {
 	grpcSrv.GracefulStop()
 	httpSrv.Shutdown(ctx)
 	slog.Info("Server exiting")
+}
+
+// dummyEventPublisher 简单的事件发布者实现
+type dummyEventPublisher struct{}
+
+// Publish 发布一个普通事件
+func (p *dummyEventPublisher) Publish(ctx context.Context, topic string, key string, event any) error {
+	// 简单实现，仅记录日志
+	slog.Debug("Publishing event", "topic", topic, "key", key, "event", event)
+	return nil
+}
+
+// PublishInTx 在事务中发布事件
+func (p *dummyEventPublisher) PublishInTx(ctx context.Context, tx any, topic string, key string, event any) error {
+	// 简单实现，仅记录日志
+	slog.Debug("Publishing event in transaction", "topic", topic, "key", key, "event", event)
+	return nil
 }

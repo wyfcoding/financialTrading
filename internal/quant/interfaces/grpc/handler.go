@@ -44,11 +44,16 @@ func (h *Handler) GetSignal(ctx context.Context, req *pb.GetSignalRequest) (*pb.
 
 // CreateStrategy 创建策略
 func (h *Handler) CreateStrategy(ctx context.Context, req *pb.CreateStrategyRequest) (*pb.CreateStrategyResponse, error) {
-	id, err := h.app.CreateStrategy(ctx, req.Name, req.Description, req.Script)
+	cmd := application.CreateStrategyCommand{
+		Name:        req.Name,
+		Description: req.Description,
+		Script:      req.Script,
+	}
+	strategy, err := h.app.CreateStrategy(ctx, cmd)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create strategy: %v", err)
 	}
-	return &pb.CreateStrategyResponse{StrategyId: id}, nil
+	return &pb.CreateStrategyResponse{StrategyId: strategy.ID}, nil
 }
 
 // GetStrategy 获取策略
@@ -67,11 +72,17 @@ func (h *Handler) GetStrategy(ctx context.Context, req *pb.GetStrategyRequest) (
 
 // RunBacktest 运行回测
 func (h *Handler) RunBacktest(ctx context.Context, req *pb.RunBacktestRequest) (*pb.RunBacktestResponse, error) {
-	id, err := h.app.RunBacktest(ctx, req.StrategyId, req.Symbol, req.StartTime.AsTime(), req.EndTime.AsTime(), req.InitialCapital)
+	cmd := application.RunBacktestCommand{
+		StrategyID: req.StrategyId,
+		Symbol:     req.Symbol,
+		StartTime:  req.StartTime.AsTime().UnixMilli(),
+		EndTime:    req.EndTime.AsTime().UnixMilli(),
+	}
+	result, err := h.app.RunBacktest(ctx, cmd)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to run backtest: %v", err)
 	}
-	return &pb.RunBacktestResponse{BacktestId: id}, nil
+	return &pb.RunBacktestResponse{BacktestId: result.ID}, nil
 }
 
 // GetBacktestResult 获取回测结果

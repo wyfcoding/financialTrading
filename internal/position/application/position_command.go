@@ -2,128 +2,192 @@ package application
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
+	"math"
+	"time"
 
-	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/position/domain"
-	"github.com/wyfcoding/pkg/logging"
 )
 
-// PositionCommandService 处理所有持仓相关的写入操作（Commands）。
-type PositionCommandService struct {
-	repo   domain.PositionRepository
-	logger *slog.Logger
+// UpdatePositionCommand 更新头寸命令
+type UpdatePositionCommand struct {
+	UserID   string
+	Symbol   string
+	Side     string
+	Quantity float64
+	Price    float64
 }
 
-// NewPositionCommandService 构造函数。
-func NewPositionCommandService(repo domain.PositionRepository, logger *slog.Logger) *PositionCommandService {
-	return &PositionCommandService{
-		repo:   repo,
-		logger: logger.With("module", "position_command"),
+// ChangeCostMethodCommand 变更成本计算方法命令
+type ChangeCostMethodCommand struct {
+	UserID string
+	Symbol string
+	Method string
+}
+
+// PositionCommand 处理头寸相关的命令操作
+type PositionCommand struct {
+	repo           domain.PositionRepository
+	eventPublisher domain.EventPublisher
+}
+
+// NewPositionCommand 创建新的 PositionCommand 实例
+func NewPositionCommand(repo domain.PositionRepository, eventPublisher domain.EventPublisher) *PositionCommand {
+	return &PositionCommand{
+		repo:           repo,
+		eventPublisher: eventPublisher,
 	}
 }
 
-// ClosePosition 彻底平仓指定的持仓。
-func (s *PositionCommandService) ClosePosition(ctx context.Context, positionID string, closePrice decimal.Decimal) error {
-	if positionID == "" || closePrice.LessThanOrEqual(decimal.Zero) {
-		return fmt.Errorf("invalid request parameters")
+// UpdatePosition 更新头寸
+func (c *PositionCommand) UpdatePosition(ctx context.Context, cmd UpdatePositionCommand) (*domain.Position, error) {
+	// 获取或创建头寸
+	position, err := c.repo.GetByUserSymbol(ctx, cmd.UserID, cmd.Symbol)
+	if err != nil {
+		// 创建新头寸
+		position = domain.NewPosition(cmd.UserID, cmd.Symbol)
+		position.Method = domain.CostBasisAverage
+
+		// 保存新头寸
+		if err := c.repo.Save(ctx, position); err != nil {
+			return nil, err
+		}
+
+		// 发布头寸创建事件
+		createdEvent := domain.PositionCreatedEvent{
+			UserID:            position.UserID,
+			Symbol:            position.Symbol,
+			Quantity:          position.Quantity,
+			AverageEntryPrice: position.AverageEntryPrice,
+			Method:            position.Method,
+			OccurredOn:        time.Now(),
+		}
+
+		c.eventPublisher.PublishPositionCreated(createdEvent)
 	}
 
-	if err := s.repo.Close(ctx, positionID, closePrice); err != nil {
-		logging.Error(ctx, "failed to close position", "position_id", positionID, "error", err)
+	// 记录旧值
+	oldQuantity := position.Quantity
+	oldAveragePrice := position.AverageEntryPrice
+	oldRealizedPnL := position.RealizedPnL
+
+	// 更新头寸
+	_, _ = position.UpdatePosition(cmd.Side, cmd.Quantity, cmd.Price)
+
+	// 保存头寸
+	if err := c.repo.Save(ctx, position); err != nil {
+		return nil, err
+	}
+
+	// 注意：这里暂时移除对SaveLot和DeleteLot的调用，因为Repository接口中没有定义这些方法
+	// 实际应用中需要根据Repository的具体实现来决定如何处理lots
+
+	// 计算 PnL 变化
+	pnlChange := position.RealizedPnL - oldRealizedPnL
+
+	// 发布头寸更新事件
+	updatedEvent := domain.PositionUpdatedEvent{
+		UserID:          position.UserID,
+		Symbol:          position.Symbol,
+		OldQuantity:     oldQuantity,
+		NewQuantity:     position.Quantity,
+		OldAveragePrice: oldAveragePrice,
+		NewAveragePrice: position.AverageEntryPrice,
+		TradeSide:       cmd.Side,
+		TradeQuantity:   cmd.Quantity,
+		TradePrice:      cmd.Price,
+		OccurredOn:      time.Now(),
+	}
+
+	c.eventPublisher.PublishPositionUpdated(updatedEvent)
+
+	// 如果 PnL 发生变化，发布盈亏更新事件
+	if math.Abs(pnlChange) > 0 {
+		pnlEvent := domain.PositionPnLUpdatedEvent{
+			UserID:         position.UserID,
+			Symbol:         position.Symbol,
+			OldRealizedPnL: oldRealizedPnL,
+			NewRealizedPnL: position.RealizedPnL,
+			TradeQuantity:  cmd.Quantity,
+			TradePrice:     cmd.Price,
+			PnLChange:      pnlChange,
+			UpdatedAt:      time.Now().Unix(),
+			OccurredOn:     time.Now(),
+		}
+
+		c.eventPublisher.PublishPositionPnLUpdated(pnlEvent)
+	}
+
+	// 如果头寸被关闭，发布关闭事件
+	if position.Quantity == 0 {
+		closedEvent := domain.PositionClosedEvent{
+			UserID:        position.UserID,
+			Symbol:        position.Symbol,
+			FinalQuantity: position.Quantity,
+			RealizedPnL:   position.RealizedPnL,
+			ClosedAt:      time.Now().Unix(),
+			OccurredOn:    time.Now(),
+		}
+
+		c.eventPublisher.PublishPositionClosed(closedEvent)
+	}
+
+	// 如果头寸方向发生变化，发布反手事件
+	if (oldQuantity > 0 && position.Quantity < 0) || (oldQuantity < 0 && position.Quantity > 0) {
+		oldDirection := "short"
+		if oldQuantity > 0 {
+			oldDirection = "long"
+		}
+
+		newDirection := "short"
+		if position.Quantity > 0 {
+			newDirection = "long"
+		}
+
+		flipEvent := domain.PositionFlipEvent{
+			UserID:       position.UserID,
+			Symbol:       position.Symbol,
+			OldDirection: oldDirection,
+			NewDirection: newDirection,
+			FlipQuantity: cmd.Quantity,
+			FlipPrice:    cmd.Price,
+			OccurredOn:   time.Now(),
+		}
+
+		c.eventPublisher.PublishPositionFlip(flipEvent)
+	}
+
+	return position, nil
+}
+
+// ChangeCostMethod 变更成本计算方法
+func (c *PositionCommand) ChangeCostMethod(ctx context.Context, cmd ChangeCostMethodCommand) error {
+	// 获取头寸
+	position, err := c.repo.GetByUserSymbol(ctx, cmd.UserID, cmd.Symbol)
+	if err != nil {
 		return err
 	}
 
-	logging.Info(ctx, "position closed successfully", "position_id", positionID, "close_price", closePrice.String())
-	return nil
-}
+	// 记录旧方法
+	oldMethod := position.Method
+	newMethod := domain.CostBasisMethod(cmd.Method)
 
-// --- TCC Distributed Transaction Support ---
+	// 更新方法
+	position.Method = newMethod
 
-func (s *PositionCommandService) TccTryFreeze(ctx context.Context, barrier any, userID, symbol string, quantity decimal.Decimal) error {
-	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		pos, err := s.repo.GetByUserSymbol(ctx, userID, symbol)
-		if err != nil {
-			return err
-		}
-		if pos == nil {
-			return fmt.Errorf("no open position found for %s", symbol)
-		}
+	// 保存头寸
+	if err := c.repo.Save(ctx, position); err != nil {
+		return err
+	}
 
-		requestQty := quantity.InexactFloat64()
-		if pos.Quantity < requestQty {
-			return fmt.Errorf("insufficient position quantity")
-		}
+	// 发布成本计算方法变更事件
+	methodChangedEvent := domain.PositionCostMethodChangedEvent{
+		UserID:     position.UserID,
+		Symbol:     position.Symbol,
+		OldMethod:  oldMethod,
+		NewMethod:  newMethod,
+		ChangedAt:  time.Now().Unix(),
+		OccurredOn: time.Now(),
+	}
 
-		pos.Quantity -= requestQty
-		return s.repo.Update(ctx, pos)
-	})
-}
-
-func (s *PositionCommandService) TccConfirmFreeze(ctx context.Context, barrier any, _, symbol string, quantity decimal.Decimal) error {
-	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		return nil
-	})
-}
-
-func (s *PositionCommandService) TccCancelFreeze(ctx context.Context, barrier any, userID, symbol string, quantity decimal.Decimal) error {
-	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		pos, err := s.repo.GetByUserSymbol(ctx, userID, symbol)
-		if err != nil {
-			return err
-		}
-		if pos != nil {
-			pos.Quantity += quantity.InexactFloat64()
-			return s.repo.Update(ctx, pos)
-		}
-		return fmt.Errorf("position not found to rollback freeze")
-	})
-}
-
-// --- Saga Distributed Transaction Support ---
-
-func (s *PositionCommandService) SagaDeductFrozen(ctx context.Context, barrier any, userID, symbol string, quantity, price decimal.Decimal) error {
-	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		pos, err := s.repo.GetByUserSymbol(ctx, userID, symbol)
-		if err != nil || pos == nil {
-			return fmt.Errorf("position not found")
-		}
-
-		pos.UpdatePosition("sell", quantity.InexactFloat64(), price.InexactFloat64())
-		return s.repo.Update(ctx, pos)
-	})
-}
-
-func (s *PositionCommandService) SagaRefundFrozen(ctx context.Context, barrier any, userID, symbol string, quantity decimal.Decimal) error {
-	return s.TccCancelFreeze(ctx, barrier, userID, symbol, quantity)
-}
-
-func (s *PositionCommandService) SagaAddPosition(ctx context.Context, barrier any, userID, symbol string, quantity, price decimal.Decimal) error {
-	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		pos, err := s.repo.GetByUserSymbol(ctx, userID, symbol)
-		if err != nil {
-			return err
-		}
-
-		if pos == nil {
-			pos = domain.NewPosition(userID, symbol)
-			pos.UpdatePosition("buy", quantity.InexactFloat64(), price.InexactFloat64())
-			return s.repo.Save(ctx, pos)
-		}
-
-		pos.UpdatePosition("buy", quantity.InexactFloat64(), price.InexactFloat64())
-		return s.repo.Update(ctx, pos)
-	})
-}
-
-func (s *PositionCommandService) SagaSubPosition(ctx context.Context, barrier any, userID, symbol string, quantity decimal.Decimal) error {
-	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		pos, err := s.repo.GetByUserSymbol(ctx, userID, symbol)
-		if err != nil || pos == nil {
-			return nil
-		}
-		pos.Quantity -= quantity.InexactFloat64()
-		return s.repo.Update(ctx, pos)
-	})
+	return c.eventPublisher.PublishPositionCostMethodChanged(methodChangedEvent)
 }

@@ -21,7 +21,6 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/persistence"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/order/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/order/interfaces/http"
-	"github.com/wyfcoding/pkg/security/risk"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -60,15 +59,12 @@ func main() {
 	// 4. Infrastructure & Domain
 	repo := persistence.NewOrderRepository(db)
 
-	// Risk Evaluator (Local)
-	riskEngine, err := risk.NewDynamicRiskEngine(logger)
-	if err != nil {
-		panic(fmt.Sprintf("failed to init risk engine: %v", err))
-	}
-
 	// 5. Application
 	// Inject dependencies
-	orderService := application.NewOrderService(repo, riskEngine, logger)
+	orderService, err := application.NewOrderService(repo, db)
+	if err != nil {
+		panic(fmt.Sprintf("failed to init order service: %v", err))
+	}
 
 	// Configure DTM/Remote Services if needed (from config)
 	if dtmServer := viper.GetString("dtm.server"); dtmServer != "" {

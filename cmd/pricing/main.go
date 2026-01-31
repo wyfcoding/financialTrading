@@ -56,7 +56,10 @@ func main() {
 	repo := persistence.NewPricingRepository(db)
 
 	// 5. Application
-	appService := application.NewPricingService(nil, repo)
+	appService, err := application.NewPricingService(repo, db)
+	if err != nil {
+		panic(fmt.Sprintf("failed to init pricing service: %v", err))
+	}
 
 	// 6. Interfaces
 	// gRPC

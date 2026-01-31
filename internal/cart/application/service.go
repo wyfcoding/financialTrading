@@ -4,41 +4,64 @@ import (
 	"context"
 
 	"github.com/wyfcoding/financialtrading/internal/cart/domain"
-	"gorm.io/gorm"
 )
 
-type CartApplicationService struct{ repo domain.CartRepository }
-
-func NewCartApplicationService(repo domain.CartRepository) *CartApplicationService {
-	return &CartApplicationService{repo: repo}
+// CartApplicationService 购物车服务门面，整合命令服务和查询服务
+type CartApplicationService struct {
+	commandService *CartCommandService
+	queryService   *CartQueryService
 }
 
+// NewCartApplicationService 创建购物车服务门面实例
+func NewCartApplicationService(
+	repo domain.CartRepository,
+	publisher domain.EventPublisher,
+) *CartApplicationService {
+	return &CartApplicationService{
+		commandService: NewCartCommandService(repo, publisher),
+		queryService:   NewCartQueryService(repo),
+	}
+}
+
+// GetCart 根据用户ID获取购物车信息
 func (s *CartApplicationService) GetCart(ctx context.Context, userID string) (*domain.Cart, error) {
-	cart, err := s.repo.GetByUserID(ctx, userID)
-	if err == gorm.ErrRecordNotFound {
-		return &domain.Cart{UserID: userID}, nil
-	}
-	return cart, err
+	return s.queryService.GetCart(ctx, userID)
 }
 
+// GetCartTotal 获取购物车总金额
+func (s *CartApplicationService) GetCartTotal(ctx context.Context, userID string) (float64, error) {
+	return s.queryService.GetCartTotal(ctx, userID)
+}
+
+// GetCartItemCount 获取购物车商品数量
+func (s *CartApplicationService) GetCartItemCount(ctx context.Context, userID string) (int, error) {
+	return s.queryService.GetCartItemCount(ctx, userID)
+}
+
+// AddItem 处理添加商品到购物车
 func (s *CartApplicationService) AddItem(ctx context.Context, userID, productID string, qty int, price float64) error {
-	cart, _ := s.repo.GetByUserID(ctx, userID)
-	if cart.ID == 0 {
-		cart = &domain.Cart{UserID: userID}
+	cmd := AddItemCommand{
+		UserID:    userID,
+		ProductID: productID,
+		Quantity:  qty,
+		Price:     price,
 	}
-	cart.AddItem(productID, qty, price)
-	return s.repo.Save(ctx, cart)
+	return s.commandService.AddItem(ctx, cmd)
 }
 
+// RemoveItem 处理从购物车移除商品
 func (s *CartApplicationService) RemoveItem(ctx context.Context, userID, productID string) error {
-	cart, err := s.repo.GetByUserID(ctx, userID)
-	if err != nil {
-		return err
+	cmd := RemoveItemCommand{
+		UserID:    userID,
+		ProductID: productID,
 	}
-	cart.RemoveItem(productID)
-	return s.repo.Save(ctx, cart)
+	return s.commandService.RemoveItem(ctx, cmd)
 }
 
+// ClearCart 处理清空购物车
 func (s *CartApplicationService) ClearCart(ctx context.Context, userID string) error {
-	return s.repo.Delete(ctx, userID)
+	cmd := ClearCartCommand{
+		UserID: userID,
+	}
+	return s.commandService.ClearCart(ctx, cmd)
 }

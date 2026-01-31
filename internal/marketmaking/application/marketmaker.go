@@ -16,15 +16,14 @@ type MarketMakingService struct {
 
 // NewMarketMakingService 构造函数。
 func NewMarketMakingService(
-	strategyRepo domain.QuoteStrategyRepository,
-	performanceRepo domain.PerformanceRepository,
+	repo domain.MarketMakingRepository,
 	orderClient domain.OrderClient,
 	marketDataClient domain.MarketDataClient,
 	logger *slog.Logger,
 ) *MarketMakingService {
 	return &MarketMakingService{
-		manager: NewMarketMakingManager(strategyRepo, performanceRepo, orderClient, marketDataClient, logger),
-		query:   NewMarketMakingQuery(strategyRepo, performanceRepo),
+		manager: NewMarketMakingManager(repo, orderClient, marketDataClient, logger),
+		query:   NewMarketMakingQuery(repo),
 	}
 }
 

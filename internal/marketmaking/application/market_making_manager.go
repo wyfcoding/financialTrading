@@ -13,8 +13,7 @@ import (
 
 // MarketMakingManager 处理所有做市相关的写入操作（Commands）。
 type MarketMakingManager struct {
-	strategyRepo     domain.QuoteStrategyRepository
-	performanceRepo  domain.PerformanceRepository
+	repo             domain.MarketMakingRepository
 	orderClient      domain.OrderClient
 	marketDataClient domain.MarketDataClient
 
@@ -30,15 +29,13 @@ type MarketMakingManager struct {
 
 // NewMarketMakingManager 构造函数。
 func NewMarketMakingManager(
-	strategyRepo domain.QuoteStrategyRepository,
-	performanceRepo domain.PerformanceRepository,
+	repo domain.MarketMakingRepository,
 	orderClient domain.OrderClient,
 	marketDataClient domain.MarketDataClient,
 	logger *slog.Logger,
 ) *MarketMakingManager {
 	return &MarketMakingManager{
-		strategyRepo:     strategyRepo,
-		performanceRepo:  performanceRepo,
+		repo:             repo,
 		orderClient:      orderClient,
 		marketDataClient: marketDataClient,
 		activeTasks:      make(map[string]context.CancelFunc),
@@ -60,7 +57,7 @@ func (m *MarketMakingManager) SetStrategy(ctx context.Context, symbol string, sp
 		Status:       domain.StrategyStatus(status),
 	}
 
-	if err := m.strategyRepo.SaveStrategy(ctx, strategy); err != nil {
+	if err := m.repo.SaveStrategy(ctx, strategy); err != nil {
 		return "", err
 	}
 
@@ -124,7 +121,7 @@ func (m *MarketMakingManager) executeQuote(ctx context.Context, symbol string) {
 	}
 
 	// 2. 获取当前策略配置
-	strategy, err := m.strategyRepo.GetStrategyBySymbol(ctx, symbol)
+	strategy, err := m.repo.GetStrategyBySymbol(ctx, symbol)
 	if err != nil || strategy == nil || strategy.Status != domain.StrategyStatusActive {
 		m.stopMarketMaking(symbol)
 		return
@@ -186,6 +183,6 @@ func (m *MarketMakingManager) executeQuote(ctx context.Context, symbol string) {
 			TotalTrades: trd,
 			EndTime:     time.Now(),
 		}
-		_ = m.performanceRepo.SavePerformance(ctx, perf)
+		_ = m.repo.SavePerformance(ctx, perf)
 	}
 }

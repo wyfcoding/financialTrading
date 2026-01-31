@@ -15,9 +15,9 @@ type MarketDataService struct {
 }
 
 // NewMarketDataService 构造函数。
-func NewMarketDataService(repo domain.MarketDataRepository, logger *slog.Logger) *MarketDataService {
+func NewMarketDataService(repo domain.MarketDataRepository, logger *slog.Logger, publisher domain.EventPublisher) *MarketDataService {
 	return &MarketDataService{
-		Command: NewMarketDataCommandService(repo, logger),
+		Command: NewMarketDataCommandService(repo, logger, publisher),
 		Query:   NewMarketDataQueryService(repo),
 	}
 }

@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -24,9 +23,7 @@ import (
 	risk_client "github.com/wyfcoding/financialtrading/internal/risk/infrastructure/client"
 	"github.com/wyfcoding/financialtrading/internal/risk/infrastructure/persistence"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/risk/interfaces/grpc"
-	"github.com/wyfcoding/pkg/cache"
 	"github.com/wyfcoding/pkg/logging"
-	"github.com/wyfcoding/pkg/security/risk"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -66,9 +63,6 @@ func main() {
 	// 4. Infrastructure & Domain
 	repo := persistence.NewRiskRepository(db)
 
-	ruleEngine := risk.NewBaseEvaluator(logger.Logger)
-	localCache, _ := cache.NewBigCache(time.Minute, 100, logger)
-
 	// MarketData Client
 	mdAddr := viper.GetString("services.marketdata")
 	mdConn, err := grpc.Dial(mdAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -78,14 +72,14 @@ func main() {
 	mdClient := risk_client.NewGRPCMarketDataClient(marketdatav1.NewMarketDataServiceClient(mdConn))
 
 	// Margin Calculator
-	marginCalc := domain.NewVolatilityAdjustedMarginCalculator(
+	_ = domain.NewVolatilityAdjustedMarginCalculator(
 		decimal.NewFromFloat(0.05), // 5% Base Margin
 		decimal.NewFromFloat(2.0),  // 2x Volatility Multiplier
 		mdClient,
 	)
 
 	// 5. Application
-	appService := application.NewRiskService(repo, ruleEngine, marginCalc, localCache, logger.Logger)
+	appService := application.NewRiskService(repo, logger.Logger)
 
 	// 6. Interfaces
 	// gRPC

@@ -14,8 +14,9 @@ import (
 	"github.com/gin-gonic/gin"
 	marketmakingv1 "github.com/wyfcoding/financialtrading/go-api/marketmaking/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/application"
+	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/client"
-	"github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/persistence/mysql"
+	"github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/persistence"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/marketmaking/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/marketmaking/interfaces/http"
 	"github.com/wyfcoding/pkg/config"
@@ -66,12 +67,13 @@ func main() {
 	}
 
 	if cfg.Server.Environment == "dev" {
-		if err := db.RawDB().AutoMigrate(&mysql.StrategyPO{}); err != nil {
+		// 自动迁移数据库模型
+		if err := db.RawDB().AutoMigrate(&domain.QuoteStrategy{}, &domain.MarketMakingPerformance{}); err != nil {
 			slog.Error("failed to migrate database", "error", err)
 		}
 	}
 
-	strategyRepo, _ := mysql.NewMarketMakingRepository(db.RawDB())
+	strategyRepo := persistence.NewMarketMakingRepository(db.RawDB())
 
 	// Clients
 	orderAddr := cfg.GetGRPCAddr("order")
@@ -89,7 +91,11 @@ func main() {
 	}
 
 	// 5. Application
-	appService := application.NewMarketMakingApplicationService(strategyRepo, orderCli, marketCli)
+
+	// 创建事件发布者（简单实现）
+	eventPublisher := &simpleEventPublisher{}
+
+	appService := application.NewMarketMakingApplicationService(strategyRepo, orderCli, marketCli, eventPublisher)
 
 	// 6. Interfaces
 	grpcSrv := grpc.NewServer()
@@ -149,4 +155,21 @@ func main() {
 	if err := g.Wait(); err != nil {
 		slog.Error("server exited with error", "error", err)
 	}
+}
+
+// simpleEventPublisher 简单的事件发布者实现
+type simpleEventPublisher struct{}
+
+// Publish 发布一个普通事件
+func (p *simpleEventPublisher) Publish(ctx context.Context, topic string, key string, event any) error {
+	// 简单实现，仅记录日志
+	slog.Debug("Publishing event", "topic", topic, "key", key, "event", event)
+	return nil
+}
+
+// PublishInTx 在事务中发布事件
+func (p *simpleEventPublisher) PublishInTx(ctx context.Context, tx any, topic string, key string, event any) error {
+	// 简单实现，仅记录日志
+	slog.Debug("Publishing event in transaction", "topic", topic, "key", key, "event", event)
+	return nil
 }

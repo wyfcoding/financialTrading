@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -22,6 +23,19 @@ import (
 	gorm_mysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
+
+// mockEventPublisher 事件发布者的空实现
+type mockEventPublisher struct{}
+
+// Publish 实现 domain.EventPublisher 接口
+func (m *mockEventPublisher) Publish(ctx context.Context, topic string, key string, event any) error {
+	return nil
+}
+
+// PublishInTx 实现 domain.EventPublisher 接口
+func (m *mockEventPublisher) PublishInTx(ctx context.Context, tx interface{}, topic string, key string, event any) error {
+	return nil
+}
 
 func main() {
 	var configPath string
@@ -49,7 +63,11 @@ func main() {
 	repo := mysql.NewUserRepository(db)
 	apiKeyRepo := mysql.NewAPIKeyRepository(db)
 	keySvc := application.NewAPIKeyService(apiKeyRepo)
-	appService := application.NewAuthApplicationService(repo, apiKeyRepo, keySvc)
+
+	// 创建事件发布者（使用空实现）
+	eventPublisher := &mockEventPublisher{}
+
+	appService := application.NewAuthApplicationService(repo, apiKeyRepo, keySvc, eventPublisher)
 
 	grpcSrv := grpc.NewServer()
 	grpc_server.NewServer(grpcSrv, appService)

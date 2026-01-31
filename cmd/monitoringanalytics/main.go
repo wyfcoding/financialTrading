@@ -53,7 +53,10 @@ func main() {
 	alertRepo := mysql.NewAlertRepository(db)
 
 	// 5. Application
-	appService := application.NewMonitoringAnalyticsService(metricRepo, healthRepo, alertRepo)
+	appService, err := application.NewMonitoringAnalyticsService(metricRepo, healthRepo, alertRepo, db)
+	if err != nil {
+		panic(fmt.Sprintf("create app service failed: %v", err))
+	}
 
 	// TODO: Start Kafka Consumer Group here to feed appService.RecordTrade
 

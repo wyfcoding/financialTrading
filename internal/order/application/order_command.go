@@ -2,333 +2,288 @@ package application
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
+	"time"
 
-	"github.com/dtm-labs/client/dtmgrpc"
-	"github.com/shopspring/decimal"
-	accountv1 "github.com/wyfcoding/financialtrading/go-api/account/v1"
-	positionv1 "github.com/wyfcoding/financialtrading/go-api/position/v1"
-	riskv1 "github.com/wyfcoding/financialtrading/go-api/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
-	"github.com/wyfcoding/pkg/dtm"
-	"github.com/wyfcoding/pkg/idgen"
-	"github.com/wyfcoding/pkg/logging"
-	"github.com/wyfcoding/pkg/security/risk"
-	"github.com/wyfcoding/pkg/tracing"
-	"github.com/wyfcoding/pkg/transaction"
-	"go.opentelemetry.io/otel/trace"
 )
 
-// OrderCommandService 处理所有订单相关的写入操作（Commands）。
-type OrderCommandService struct {
-	repo           domain.OrderRepository
-	riskEvaluator  risk.Evaluator
-	riskCli        riskv1.RiskServiceClient
-	accountCli     accountv1.AccountServiceClient
-	positionCli    positionv1.PositionServiceClient
-	dtmServer      string
-	accountSvcURL  string
-	positionSvcURL string
-	logger         *slog.Logger
+// PlaceOrderCommand 下单命令
+type PlaceOrderCommand struct {
+	UserID       string
+	Symbol       string
+	Side         string
+	Type         string
+	Price        float64
+	StopPrice    float64
+	Quantity     float64
+	TimeInForce  string
+	ParentOrderID string
+	IsOCO        bool
 }
 
-// NewOrderCommandService 构造函数。
-func NewOrderCommandService(repo domain.OrderRepository, riskEvaluator risk.Evaluator, logger *slog.Logger) *OrderCommandService {
-	return &OrderCommandService{
+// CancelOrderCommand 取消订单命令
+type CancelOrderCommand struct {
+	OrderID string
+	UserID  string
+	Reason  string
+}
+
+// OrderCommand 处理订单相关的命令操作
+type OrderCommand struct {
+	repo          domain.OrderRepository
+	eventPublisher domain.EventPublisher
+}
+
+// NewOrderCommand 创建新的 OrderCommand 实例
+func NewOrderCommand(repo domain.OrderRepository, eventPublisher domain.EventPublisher) *OrderCommand {
+	return &OrderCommand{
 		repo:          repo,
-		riskEvaluator: riskEvaluator,
-		logger:        logger.With("module", "order_command"),
+		eventPublisher: eventPublisher,
 	}
 }
 
-func (s *OrderCommandService) SetRiskClient(cli riskv1.RiskServiceClient) {
-	s.riskCli = cli
-}
+// PlaceOrder 下单
+func (c *OrderCommand) PlaceOrder(ctx context.Context, cmd PlaceOrderCommand) (string, error) {
+	// 创建订单
+	order := domain.NewOrder(
+		generateOrderID(),
+		cmd.UserID,
+		cmd.Symbol,
+		domain.OrderSide(cmd.Side),
+		domain.OrderType(cmd.Type),
+		cmd.Price,
+		cmd.Quantity,
+	)
 
-func (s *OrderCommandService) SetAccountClient(cli accountv1.AccountServiceClient, svcURL string) {
-	s.accountCli = cli
-	s.accountSvcURL = svcURL
-}
+	order.StopPrice = cmd.StopPrice
+	order.TimeInForce = domain.TimeInForce(cmd.TimeInForce)
+	order.ParentOrderID = cmd.ParentOrderID
+	order.IsOCO = cmd.IsOCO
 
-func (s *OrderCommandService) SetPositionClient(cli positionv1.PositionServiceClient, svcURL string) {
-	s.positionCli = cli
-	s.positionSvcURL = svcURL
-}
+	// 验证订单
+	if err := order.Validate(); err != nil {
+		// 发布订单被拒绝事件
+		rejectedEvent := domain.OrderRejectedEvent{
+			OrderID:     order.OrderID,
+			UserID:      order.UserID,
+			Symbol:      order.Symbol,
+			Reason:      err.Error(),
+			RejectedAt:  time.Now().Unix(),
+			OccurredOn:  time.Now(),
+		}
 
-func (s *OrderCommandService) SetDTMServer(addr string) {
-	s.dtmServer = addr
-}
-
-func (s *OrderCommandService) CreateOrder(ctx context.Context, req *CreateOrderRequest) (*OrderDTO, error) {
-	ctx, span := tracing.Tracer().Start(ctx, "OrderCommandService.CreateOrder", trace.WithSpanKind(trace.SpanKindInternal))
-	defer span.End()
-
-	defer logging.LogDuration(ctx, "order creation completed",
-		"user_id", req.UserID,
-		"symbol", req.Symbol,
-	)()
-
-	if req.UserID == "" || req.Symbol == "" || req.Side == "" {
-		return nil, fmt.Errorf("invalid request parameters")
+		c.eventPublisher.PublishOrderRejected(rejectedEvent)
+		return "", err
 	}
 
-	price, err := decimal.NewFromString(req.Price)
+	// 保存订单
+	if err := c.repo.Save(ctx, order); err != nil {
+		return "", err
+	}
+
+	// 发布订单创建事件
+	createdEvent := domain.OrderCreatedEvent{
+		OrderID:       order.OrderID,
+		UserID:        order.UserID,
+		Symbol:        order.Symbol,
+		Side:          order.Side,
+		Type:          order.Type,
+		Price:         order.Price,
+		StopPrice:     order.StopPrice,
+		Quantity:      order.Quantity,
+		TimeInForce:   order.TimeInForce,
+		ParentOrderID: order.ParentOrderID,
+		IsOCO:         order.IsOCO,
+		OccurredOn:    time.Now(),
+	}
+
+	c.eventPublisher.PublishOrderCreated(createdEvent)
+
+	// 验证订单并更新状态
+	order.MarkValidated()
+	if err := c.repo.Save(ctx, order); err != nil {
+		return order.OrderID, err
+	}
+
+	// 发布订单验证通过事件
+	validatedEvent := domain.OrderValidatedEvent{
+		OrderID:     order.OrderID,
+		UserID:      order.UserID,
+		Symbol:      order.Symbol,
+		ValidatedAt: time.Now().Unix(),
+		OccurredOn:  time.Now(),
+	}
+
+	c.eventPublisher.PublishOrderValidated(validatedEvent)
+
+	// 发布订单状态变更事件
+	statusChangedEvent := domain.OrderStatusChangedEvent{
+		OrderID:     order.OrderID,
+		OldStatus:   domain.StatusPending,
+		NewStatus:   domain.StatusValidated,
+		UpdatedAt:   time.Now().Unix(),
+		OccurredOn:  time.Now(),
+	}
+
+	c.eventPublisher.PublishOrderStatusChanged(statusChangedEvent)
+
+	return order.OrderID, nil
+}
+
+// CancelOrder 取消订单
+func (c *OrderCommand) CancelOrder(ctx context.Context, cmd CancelOrderCommand) error {
+	// 获取订单
+	order, err := c.repo.Get(ctx, cmd.OrderID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid price: %w", err)
-	}
-	quantity, err := decimal.NewFromString(req.Quantity)
-	if err != nil {
-		return nil, fmt.Errorf("invalid quantity: %w", err)
+		return err
 	}
 
-	totalAmount := price.Mul(quantity)
-
-	// 1. Local Risk Check
-	riskAssessment, err := s.riskEvaluator.Assess(ctx, "trade.order_create", map[string]any{
-		"user_id":  req.UserID,
-		"symbol":   req.Symbol,
-		"side":     req.Side,
-		"amount":   totalAmount.InexactFloat64(),
-		"quantity": quantity.InexactFloat64(),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("security system offline")
-	}
-	if riskAssessment.Level == risk.Reject {
-		return nil, fmt.Errorf("transaction blocked by local risk: %s", riskAssessment.Reason)
+	// 检查用户权限
+	if order.UserID != cmd.UserID {
+		return ErrUnauthorized
 	}
 
-	// 2. Remote Risk Check
-	if s.riskCli != nil {
-		resp, err := s.riskCli.CheckRisk(ctx, &riskv1.CheckRiskRequest{
-			UserId:   req.UserID,
-			Symbol:   req.Symbol,
-			Side:     req.Side,
-			Quantity: quantity.InexactFloat64(),
-			Price:    price.InexactFloat64(),
-		})
-		if err != nil {
-			return nil, fmt.Errorf("remote risk check failed: %w", err)
-		}
-		if !resp.Passed {
-			return nil, fmt.Errorf("transaction blocked by remote risk: %s", resp.Reason)
-		}
+	// 检查订单状态
+	if order.Status != domain.StatusValidated && order.Status != domain.StatusPartiallyFilled {
+		return ErrInvalidOrderStatus
 	}
 
-	orderID := fmt.Sprintf("ORD-%d", idgen.GenID())
-	order := domain.NewOrder(orderID, req.UserID, req.Symbol, domain.OrderSide(req.Side), domain.OrderType(req.OrderType), price.InexactFloat64(), quantity.InexactFloat64())
-	order.TimeInForce = domain.TimeInForce(req.TimeInForce)
-	if sp, err := decimal.NewFromString(req.StopPrice); err == nil {
-		order.StopPrice = sp.InexactFloat64()
-	}
-	order.IsOCO = req.IsOCO
-	order.ParentOrderID = req.LinkedOrderID
+	oldStatus := order.Status
 
-	// 3. TCC Transaction
-	if s.dtmServer != "" {
-		tcc := dtm.NewTcc(s.dtmServer, orderID)
-		err = tcc.Execute(ctx, func(t *dtmgrpc.TccGrpc) error {
-			switch order.Side {
-			case domain.SideBuy:
-				grpcURL := s.accountSvcURL + "/api.account.v1.AccountService"
-				freezeReq := &accountv1.TccFreezeRequest{
-					UserId:   req.UserID,
-					Currency: "USDT",
-					Amount:   totalAmount.String(),
-					OrderId:  orderID,
-				}
-				if err := dtm.CallBranch(t, freezeReq, grpcURL+"/TccTryFreeze", grpcURL+"/TccConfirmFreeze", grpcURL+"/TccCancelFreeze"); err != nil {
-					return err
-				}
-			case domain.SideSell:
-				grpcURL := s.positionSvcURL + "/api.position.v1.PositionService"
-				freezeReq := &positionv1.TccPositionRequest{
-					UserId:   req.UserID,
-					Symbol:   order.Symbol,
-					Quantity: quantity.String(),
-					OrderId:  orderID,
-				}
-				if err := dtm.CallBranch(t, freezeReq, grpcURL+"/TccTryFreeze", grpcURL+"/TccConfirmFreeze", grpcURL+"/TccCancelFreeze"); err != nil {
-					return err
-				}
-			}
-
-			if err := s.repo.Save(ctx, order); err != nil {
-				return err
-			}
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		if err := s.repo.Save(ctx, order); err != nil {
-			return nil, err
-		}
-	}
-
-	return s.toDTO(order), nil
-}
-
-func (s *OrderCommandService) CancelOrder(ctx context.Context, orderID, userID string) (*OrderDTO, error) {
-	order, err := s.repo.Get(ctx, orderID)
-	if err != nil || order == nil {
-		return nil, fmt.Errorf("order not found")
-	}
-	if order.UserID != userID {
-		return nil, fmt.Errorf("access denied")
-	}
-
-	if order.Status == domain.StatusFilled || order.Status == domain.StatusCancelled {
-		return nil, fmt.Errorf("cannot cancel order in state %s", order.Status)
-	}
-
-	remainingQty := order.Quantity - order.FilledQuantity
-	if remainingQty > 0 {
-		switch order.Side {
-		case domain.SideBuy:
-			if s.accountCli != nil {
-				amount := decimal.NewFromFloat(remainingQty).Mul(decimal.NewFromFloat(order.Price)).String()
-				_, err = s.accountCli.TccCancelFreeze(ctx, &accountv1.TccFreezeRequest{
-					UserId:   userID,
-					Currency: "USDT",
-					Amount:   amount,
-					OrderId:  orderID,
-				})
-				if err != nil {
-					return nil, err
-				}
-			}
-		case domain.SideSell:
-			if s.positionCli != nil {
-				_, err = s.positionCli.TccCancelFreeze(ctx, &positionv1.TccPositionRequest{
-					UserId:   userID,
-					Symbol:   order.Symbol,
-					Quantity: decimal.NewFromFloat(remainingQty).String(),
-					OrderId:  orderID,
-				})
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-	}
-
-	if err := s.repo.UpdateStatus(ctx, orderID, domain.StatusCancelled); err != nil {
-		return nil, err
-	}
+	// 更新订单状态
 	order.Status = domain.StatusCancelled
-	return s.toDTO(order), nil
-}
+	order.UpdatedAt = time.Now()
 
-func (s *OrderCommandService) HandleTradeExecuted(ctx context.Context, event map[string]any) error {
-	buyOrderID := event["buy_order_id"].(string)
-	sellOrderID := event["sell_order_id"].(string)
-	qty, _ := decimal.NewFromString(event["quantity"].(string))
-	price, _ := decimal.NewFromString(event["price"].(string))
-
-	if err := s.updateFillStatus(ctx, buyOrderID, qty.InexactFloat64(), price.InexactFloat64()); err != nil {
-		return err
-	}
-	if err := s.updateFillStatus(ctx, sellOrderID, qty.InexactFloat64(), price.InexactFloat64()); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (s *OrderCommandService) updateFillStatus(ctx context.Context, orderID string, qty, price float64) error {
-	order, err := s.repo.Get(ctx, orderID)
-	if err != nil || order == nil {
+	if err := c.repo.Save(ctx, order); err != nil {
 		return err
 	}
 
-	order.UpdateExecution(qty, price)
-	if err := s.repo.Save(ctx, order); err != nil {
+	// 发布订单被取消事件
+	cancelledEvent := domain.OrderCancelledEvent{
+		OrderID:     order.OrderID,
+		UserID:      order.UserID,
+		Symbol:      order.Symbol,
+		Reason:      cmd.Reason,
+		CancelledAt: time.Now().Unix(),
+		OccurredOn:  time.Now(),
+	}
+
+	c.eventPublisher.PublishOrderCancelled(cancelledEvent)
+
+	// 发布订单状态变更事件
+	statusChangedEvent := domain.OrderStatusChangedEvent{
+		OrderID:     order.OrderID,
+		OldStatus:   oldStatus,
+		NewStatus:   domain.StatusCancelled,
+		UpdatedAt:   time.Now().Unix(),
+		OccurredOn:  time.Now(),
+	}
+
+	c.eventPublisher.PublishOrderStatusChanged(statusChangedEvent)
+
+	return nil
+}
+
+// UpdateOrderExecution 更新订单执行状态
+func (c *OrderCommand) UpdateOrderExecution(ctx context.Context, orderID string, filledQty, tradePrice float64) error {
+	// 获取订单
+	order, err := c.repo.Get(ctx, orderID)
+	if err != nil {
 		return err
 	}
 
-	if order.IsOCO && order.ParentOrderID != "" && (order.Status == domain.StatusFilled || order.Status == domain.StatusCancelled) {
-		go s.CancelOrder(context.Background(), order.ParentOrderID, order.UserID)
+	oldStatus := order.Status
+
+	// 更新订单执行状态
+	order.UpdateExecution(filledQty, tradePrice)
+
+	if err := c.repo.Save(ctx, order); err != nil {
+		return err
 	}
+
+	// 根据新状态发布相应事件
+	switch order.Status {
+	case domain.StatusPartiallyFilled:
+		// 发布订单部分成交事件
+		partialEvent := domain.OrderPartiallyFilledEvent{
+			OrderID:         order.OrderID,
+			UserID:          order.UserID,
+			Symbol:          order.Symbol,
+			FilledQuantity:  order.FilledQuantity,
+			RemainingQuantity: order.Quantity - order.FilledQuantity,
+			TradePrice:      tradePrice,
+			AveragePrice:    order.AveragePrice,
+			FilledAt:        time.Now().Unix(),
+			OccurredOn:      time.Now(),
+		}
+
+		c.eventPublisher.PublishOrderPartiallyFilled(partialEvent)
+
+	case domain.StatusFilled:
+		// 发布订单完全成交事件
+		filledEvent := domain.OrderFilledEvent{
+			OrderID:       order.OrderID,
+			UserID:        order.UserID,
+			Symbol:        order.Symbol,
+			TotalQuantity: order.Quantity,
+			AveragePrice:  order.AveragePrice,
+			FilledAt:      time.Now().Unix(),
+			OccurredOn:    time.Now(),
+		}
+
+		c.eventPublisher.PublishOrderFilled(filledEvent)
+	}
+
+	// 发布订单状态变更事件
+	statusChangedEvent := domain.OrderStatusChangedEvent{
+		OrderID:     order.OrderID,
+		OldStatus:   oldStatus,
+		NewStatus:   order.Status,
+		UpdatedAt:   time.Now().Unix(),
+		OccurredOn:  time.Now(),
+	}
+
+	c.eventPublisher.PublishOrderStatusChanged(statusChangedEvent)
+
 	return nil
 }
 
-func (s *OrderCommandService) toDTO(o *domain.Order) *OrderDTO {
-	return &OrderDTO{
-		OrderID:        o.OrderID,
-		UserID:         o.UserID,
-		Symbol:         o.Symbol,
-		Side:           string(o.Side),
-		OrderType:      string(o.Type),
-		Price:          decimal.NewFromFloat(o.Price).String(),
-		Quantity:       decimal.NewFromFloat(o.Quantity).String(),
-		FilledQuantity: decimal.NewFromFloat(o.FilledQuantity).String(),
-		Status:         string(o.Status),
-		TimeInForce:    string(o.TimeInForce),
-		CreatedAt:      o.CreatedAt.Unix(),
-		UpdatedAt:      o.UpdatedAt.Unix(),
+// 生成订单 ID
+func generateOrderID() string {
+	return "ORDER_" + time.Now().Format("20060102150405") + "_" + randomString(8)
+}
+
+// 生成随机字符串
+func randomString(n int) string {
+	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[time.Now().UnixNano()%int64(len(letterBytes))]
 	}
+	return string(b)
 }
 
-// --- Saga Steps ---
+// 错误定义
+var (
+	ErrUnauthorized     = NewError("unauthorized", "unauthorized to cancel this order")
+	ErrInvalidOrderStatus = NewError("invalid_order_status", "order status cannot be cancelled")
+)
 
-type OrderCreateStep struct {
-	transaction.BaseStep
-	repo  domain.OrderRepository
-	order *domain.Order
+// Error 自定义错误
+type Error struct {
+	Code    string
+	Message string
 }
 
-func (s *OrderCreateStep) Execute(ctx context.Context) error {
-	s.order.Status = domain.StatusPending
-	return s.repo.Save(ctx, s.order)
+// Error 实现 error 接口
+func (e *Error) Error() string {
+	return e.Message
 }
 
-func (s *OrderCreateStep) Compensate(ctx context.Context) error {
-	return s.repo.UpdateStatus(ctx, s.order.OrderID, domain.StatusCancelled)
-}
-
-type RiskCheckStep struct {
-	transaction.BaseStep
-	riskCli riskv1.RiskServiceClient
-	order   *domain.Order
-}
-
-func (s *RiskCheckStep) Execute(ctx context.Context) error {
-	if s.riskCli == nil {
-		return nil
+// NewError 创建新的错误
+func NewError(code, message string) *Error {
+	return &Error{
+		Code:    code,
+		Message: message,
 	}
-	resp, err := s.riskCli.CheckRisk(ctx, &riskv1.CheckRiskRequest{
-		UserId:   s.order.UserID,
-		Symbol:   s.order.Symbol,
-		Side:     string(s.order.Side),
-		Quantity: s.order.Quantity,
-		Price:    s.order.Price,
-	})
-	if err != nil || !resp.Passed {
-		return fmt.Errorf("risk check failed")
-	}
-	return nil
-}
-
-func (s *RiskCheckStep) Compensate(ctx context.Context) error {
-	return nil
-}
-
-type AccountBalanceStep struct {
-	transaction.BaseStep
-	accountCli accountv1.AccountServiceClient
-	order      *domain.Order
-	amount     string
-}
-
-func (s *AccountBalanceStep) Execute(ctx context.Context) error {
-	if s.accountCli == nil {
-		return nil
-	}
-	return nil // Mocked
-}
-
-func (s *AccountBalanceStep) Compensate(ctx context.Context) error {
-	return nil
 }

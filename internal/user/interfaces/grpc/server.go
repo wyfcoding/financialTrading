@@ -33,7 +33,8 @@ func (s *Server) GetUser(ctx context.Context, req *v1.GetUserRequest) (*v1.GetUs
 func (s *Server) UpdateUser(ctx context.Context, req *v1.UpdateUserRequest) (*v1.UpdateUserResponse, error) {
 	var id uint
 	fmt.Sscanf(req.Id, "%d", &id)
-	if err := s.app.UpdateUser(ctx, id, req.Name, req.Phone); err != nil {
+	_, err := s.app.UpdateUser(ctx, id, "", "", req.Phone, req.Name, "", "")
+	if err != nil {
 		return nil, err
 	}
 	return &v1.UpdateUserResponse{Success: true}, nil

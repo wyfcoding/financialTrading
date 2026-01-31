@@ -60,7 +60,10 @@ func main() {
 	backtestRepo := mysql.NewBacktestResultRepository(db)
 
 	// 5. Application
-	appService := application.NewQuantService(strategyRepo, backtestRepo, signalRepo, nil)
+	appService, err := application.NewQuantService(strategyRepo, backtestRepo, signalRepo, db)
+	if err != nil {
+		panic(fmt.Sprintf("failed to init quant service: %v", err))
+	}
 
 	// 6. Interfaces
 	// gRPC

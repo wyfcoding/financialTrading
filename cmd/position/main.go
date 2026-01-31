@@ -58,7 +58,10 @@ func main() {
 	repo := persistence.NewPositionRepository(db)
 
 	// 5. Application
-	appService := application.NewPositionService(repo, logger)
+	appService, err := application.NewPositionService(repo, db)
+	if err != nil {
+		panic(fmt.Sprintf("failed to init position service: %v", err))
+	}
 	// queryService := application.NewPositionQuery(repo) // Not used independently here yet, handler instantiates/uses it?
 	// Handler currently takes PositionService only.
 	// Wait, Handler uses h.service.GetPositions which is in PositionQuery?

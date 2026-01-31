@@ -34,22 +34,57 @@ func (h *OrderHandler) RegisterRoutes(router *gin.RouterGroup) {
 	}
 }
 
+// CreateOrderRequest 创建订单请求
+
+type CreateOrderRequest struct {
+	UserID        string  `json:"user_id" binding:"required"`
+	Symbol        string  `json:"symbol" binding:"required"`
+	Side          string  `json:"side" binding:"required"`
+	Type          string  `json:"type" binding:"required"`
+	Price         float64 `json:"price" binding:"required"`
+	StopPrice     float64 `json:"stop_price"`
+	Quantity      float64 `json:"quantity" binding:"required"`
+	TimeInForce   string  `json:"time_in_force"`
+	ParentOrderID string  `json:"parent_order_id"`
+	IsOCO         bool    `json:"is_oco"`
+}
+
 // CreateOrder 创建订单
 func (h *OrderHandler) CreateOrder(c *gin.Context) {
-	var req application.CreateOrderRequest
+	var req CreateOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
-	dto, err := h.app.CreateOrder(c.Request.Context(), &req)
+	cmd := application.PlaceOrderCommand{
+		UserID:        req.UserID,
+		Symbol:        req.Symbol,
+		Side:          req.Side,
+		Type:          req.Type,
+		Price:         req.Price,
+		StopPrice:     req.StopPrice,
+		Quantity:      req.Quantity,
+		TimeInForce:   req.TimeInForce,
+		ParentOrderID: req.ParentOrderID,
+		IsOCO:         req.IsOCO,
+	}
+
+	orderID, err := h.app.PlaceOrder(c.Request.Context(), cmd)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to create order", "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	response.Success(c, dto)
+	response.Success(c, gin.H{"order_id": orderID})
+}
+
+// CancelOrderRequest 取消订单请求
+
+type CancelOrderRequest struct {
+	UserID string `json:"user_id" binding:"required"`
+	Reason string `json:"reason"`
 }
 
 // CancelOrder 取消订单
@@ -60,22 +95,25 @@ func (h *OrderHandler) CancelOrder(c *gin.Context) {
 		return
 	}
 
-	// 假设 user_id 通过头部或上下文传递（例如来自认证中间件）
-	// 如果上下文中没有，为简单起见，我们目前尝试从查询参数中获取
-	userID := c.Query("user_id")
-	if userID == "" {
-		response.ErrorWithStatus(c, http.StatusBadRequest, "user_id is required", "")
+	var req CancelOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 
-	dto, err := h.app.CancelOrder(c.Request.Context(), orderID, userID)
-	if err != nil {
+	cmd := application.CancelOrderCommand{
+		OrderID: orderID,
+		UserID:  req.UserID,
+		Reason:  req.Reason,
+	}
+
+	if err := h.app.CancelOrder(c.Request.Context(), cmd); err != nil {
 		logging.Error(c.Request.Context(), "Failed to cancel order", "order_id", orderID, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
-	response.Success(c, dto)
+	response.Success(c, gin.H{"status": "cancelled", "order_id": orderID})
 }
 
 // GetOrder 获取订单

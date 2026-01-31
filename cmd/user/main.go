@@ -11,6 +11,7 @@ import (
 
 	"github.com/wyfcoding/financialtrading/internal/user/application"
 	"github.com/wyfcoding/financialtrading/internal/user/domain"
+	"github.com/wyfcoding/financialtrading/internal/user/infrastructure/messaging"
 	"github.com/wyfcoding/financialtrading/internal/user/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/user/interfaces/grpc"
 	"github.com/spf13/viper"
@@ -41,7 +42,8 @@ func main() {
 	db.AutoMigrate(&domain.UserProfile{})
 
 	repo := mysql.NewUserRepository(db)
-	appService := application.NewUserApplicationService(repo)
+	publisher := messaging.NewOutboxPublisher(db)
+	appService := application.NewUserApplicationService(repo, publisher)
 
 	grpcSrv := grpc.NewServer()
 	grpc_server.NewServer(grpcSrv, appService)

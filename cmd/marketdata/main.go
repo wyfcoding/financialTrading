@@ -77,7 +77,11 @@ func main() {
 
 	// 5. Repository & Application
 	repo := persistence.NewMarketDataRepository(db.RawDB())
-	serviceFacade := application.NewMarketDataService(repo, slog.Default())
+
+	// 创建事件发布者
+	eventPublisher := &dummyEventPublisher{}
+
+	serviceFacade := application.NewMarketDataService(repo, slog.Default(), eventPublisher)
 
 	// Kafka Consumer
 	kafkaCfg := &cfg.MessageQueue.Kafka
@@ -159,4 +163,21 @@ func main() {
 	if err := g.Wait(); err != nil {
 		slog.Error("server exited with error", "error", err)
 	}
+}
+
+// dummyEventPublisher 简单的事件发布者实现
+type dummyEventPublisher struct{}
+
+// Publish 发布一个普通事件
+func (p *dummyEventPublisher) Publish(ctx context.Context, topic string, key string, event any) error {
+	// 简单实现，仅记录日志
+	slog.Debug("Publishing event", "topic", topic, "key", key, "event", event)
+	return nil
+}
+
+// PublishInTx 在事务中发布事件
+func (p *dummyEventPublisher) PublishInTx(ctx context.Context, tx any, topic string, key string, event any) error {
+	// 简单实现，仅记录日志
+	slog.Debug("Publishing event in transaction", "topic", topic, "key", key, "event", event)
+	return nil
 }

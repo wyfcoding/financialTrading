@@ -14,9 +14,9 @@ type ConnectivityService struct {
 }
 
 // NewConnectivityService 构造函数。
-func NewConnectivityService(sm *fix.SessionManager, ec domain.ExecutionClient) *ConnectivityService {
+func NewConnectivityService(sm *fix.SessionManager, ec domain.ExecutionClient, publisher domain.EventPublisher) *ConnectivityService {
 	return &ConnectivityService{
-		Command: NewConnectivityCommandService(sm, ec),
+		Command: NewConnectivityCommandService(sm, ec, publisher),
 		Query:   NewConnectivityQueryService(sm),
 	}
 }

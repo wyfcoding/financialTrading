@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/connectivity/domain"
@@ -14,6 +15,7 @@ import (
 type ConnectivityCommandService struct {
 	sessionMgr *fix.SessionManager
 	execClient domain.ExecutionClient
+	publisher  domain.EventPublisher
 	quotes     map[string]*Quote
 	mu         sync.RWMutex
 }
@@ -27,10 +29,11 @@ type Quote struct {
 }
 
 // NewConnectivityCommandService 构造函数。
-func NewConnectivityCommandService(sm *fix.SessionManager, ec domain.ExecutionClient) *ConnectivityCommandService {
+func NewConnectivityCommandService(sm *fix.SessionManager, ec domain.ExecutionClient, publisher domain.EventPublisher) *ConnectivityCommandService {
 	return &ConnectivityCommandService{
 		sessionMgr: sm,
 		execClient: ec,
+		publisher:  publisher,
 		quotes:     make(map[string]*Quote),
 	}
 }
@@ -39,6 +42,18 @@ func NewConnectivityCommandService(sm *fix.SessionManager, ec domain.ExecutionCl
 func (s *ConnectivityCommandService) ProcessMessage(ctx context.Context, sessionID string, msg *fix.Message) error {
 	msgType := msg.Get(fix.TagMsgType)
 	slog.Info("Processing FIX message", "session", sessionID, "type", msgType)
+
+	// 发布 FIX 消息接收事件
+	clOrdID := msg.Get(fix.TagClOrdID)
+	symbol := msg.Get(fix.TagSymbol)
+	event := domain.FIXMessageReceivedEvent{
+		SessionID: sessionID,
+		MsgType:   msgType,
+		ClOrdID:   clOrdID,
+		Symbol:    symbol,
+		Timestamp: time.Now(),
+	}
+	s.publisher.Publish(ctx, "fix.message.received", sessionID, event)
 
 	switch msgType {
 	case "D": // NewOrderSingle
@@ -68,6 +83,18 @@ func (s *ConnectivityCommandService) handleNewOrder(ctx context.Context, session
 
 	slog.Info("FIX NewOrderReceived, routing to Execution", "clOrdID", clOrdID, "symbol", symbol)
 
+	// 发布 FIX 订单提交事件
+	submitEvent := domain.FIXOrderSubmittedEvent{
+		ClOrdID:   clOrdID,
+		UserID:    "INST_USER_001",
+		Symbol:    symbol,
+		Side:      internalSide,
+		Price:     price.String(),
+		Quantity:  qty.String(),
+		Timestamp: time.Now(),
+	}
+	s.publisher.Publish(ctx, "fix.order.submitted", clOrdID, submitEvent)
+
 	_, err := s.execClient.SubmitOrder(ctx, domain.FIXOrderCommand{
 		ClOrdID:  clOrdID,
 		UserID:   "INST_USER_001",
@@ -95,6 +122,16 @@ func (s *ConnectivityCommandService) UpdateQuote(symbol string, bid, ask, last f
 	}
 	s.mu.Unlock()
 	slog.Debug("MarketGateway: Quote updated", "symbol", symbol, "last", last)
+
+	// 发布市场数据更新事件
+	event := domain.MarketDataUpdatedEvent{
+		Symbol:    symbol,
+		BidPrice:  bid,
+		AskPrice:  ask,
+		LastPrice: last,
+		Timestamp: time.Now(),
+	}
+	s.publisher.Publish(context.Background(), "market.data.updated", symbol, event)
 }
 
 // GetQuote 获取行情快照
