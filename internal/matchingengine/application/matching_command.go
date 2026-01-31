@@ -125,39 +125,39 @@ func (m *MatchingCommandService) RecoverState(ctx context.Context) error {
 }
 
 // SubmitOrder 提交订单进行撮合
-func (m *MatchingCommandService) SubmitOrder(ctx context.Context, req *SubmitOrderRequest) (*domain.MatchingResult, error) {
+func (m *MatchingCommandService) SubmitOrder(ctx context.Context, cmd *SubmitOrderCommand) (*domain.MatchingResult, error) {
 	if m.engine.IsHalted() {
 		return nil, fmt.Errorf("matching engine is currently unavailable (halted)")
 	}
 	defer logging.LogDuration(ctx, "Order matching processing finished",
-		"order_id", req.OrderID,
-		"symbol", req.Symbol,
+		"order_id", cmd.OrderID,
+		"symbol", cmd.Symbol,
 	)()
 
-	price, err := decimal.NewFromString(req.Price)
+	price, err := decimal.NewFromString(cmd.Price)
 	if err != nil {
 		return nil, fmt.Errorf("invalid price: %w", err)
 	}
-	quantity, err := decimal.NewFromString(req.Quantity)
+	quantity, err := decimal.NewFromString(cmd.Quantity)
 	if err != nil {
 		return nil, fmt.Errorf("invalid quantity: %w", err)
 	}
 
 	displayQty := decimal.Zero
-	if req.IsIceberg && req.IcebergDisplayQuantity != "" {
-		displayQty, _ = decimal.NewFromString(req.IcebergDisplayQuantity)
+	if cmd.IsIceberg && cmd.IcebergDisplayQuantity != "" {
+		displayQty, _ = decimal.NewFromString(cmd.IcebergDisplayQuantity)
 	}
 
 	order := &types.Order{
-		OrderID:    req.OrderID,
-		Symbol:     req.Symbol,
-		Side:       types.Side(req.Side),
+		OrderID:    cmd.OrderID,
+		Symbol:     cmd.Symbol,
+		Side:       types.Side(cmd.Side),
 		Price:      price,
 		Quantity:   quantity,
-		UserID:     req.UserID,
-		IsIceberg:  req.IsIceberg,
+		UserID:     cmd.UserID,
+		IsIceberg:  cmd.IsIceberg,
 		DisplayQty: displayQty,
-		PostOnly:   req.PostOnly,
+		PostOnly:   cmd.PostOnly,
 		Timestamp:  time.Now().UnixNano(),
 	}
 

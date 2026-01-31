@@ -55,31 +55,44 @@ func (s *MatchingService) SetOrderClient(cli orderv1.OrderServiceClient) {
 
 // --- 写操作 (Delegates to Command) ---
 
-func (s *MatchingService) SubmitOrder(ctx context.Context, req *SubmitOrderRequest) (*domain.MatchingResult, error) {
-	return s.Command.SubmitOrder(ctx, req)
+// --- DTO Definitions ---
+
+// SubmitOrderCommand 提交订单命令 DTO
+type SubmitOrderCommand struct {
+	OrderID                string `json:"order_id"`
+	Symbol                 string `json:"symbol"`
+	Side                   string `json:"side"` // "buy" or "sell"
+	Price                  string `json:"price"`
+	Quantity               string `json:"quantity"`
+	UserID                 string `json:"user_id"`
+	IsIceberg              bool   `json:"is_iceberg"`
+	IcebergDisplayQuantity string `json:"iceberg_display_quantity"`
+	PostOnly               bool   `json:"post_only"`
 }
 
-// --- 读操作 (Delegates to Query) ---
-
-func (s *MatchingService) GetOrderBook(ctx context.Context, depth int) (*domain.OrderBookSnapshot, error) {
-	return s.Query.GetOrderBook(ctx, depth)
+type OrderBookDTO struct {
+	Symbol    string     `json:"symbol"`
+	Bids      []LevelDTO `json:"bids"`
+	Asks      []LevelDTO `json:"asks"`
+	Timestamp int64      `json:"timestamp"`
 }
 
-func (s *MatchingService) GetTrades(ctx context.Context, symbol string, limit int) ([]*domain.Trade, error) {
-	return s.Query.GetTrades(ctx, symbol, limit)
+type LevelDTO struct {
+	Price    string `json:"price"`
+	Quantity string `json:"quantity"`
 }
 
-// --- Legacy Compatibility Types ---
+type TradeDTO struct {
+	TradeID      string `json:"trade_id"`
+	MakerOrderID string `json:"maker_order_id"`
+	TakerOrderID string `json:"taker_order_id"`
+	Symbol       string `json:"symbol"`
+	Price        string `json:"price"`
+	Quantity     string `json:"quantity"`
+	Timestamp    int64  `json:"timestamp"`
+}
 
-// SubmitOrderRequest 提交订单请求 DTO
-type SubmitOrderRequest struct {
-	OrderID                string // 订单 ID
-	Symbol                 string // 交易对
-	Side                   string // 买卖方向
-	Price                  string // 价格
-	Quantity               string // 数量
-	UserID                 string // 所有人 ID
-	IsIceberg              bool   // 是否为冰山单
-	IcebergDisplayQuantity string // 冰山单显性规模
-	PostOnly               bool   // 是否为只做 Maker
+// SubmitOrder 提交订单
+func (s *MatchingService) SubmitOrder(ctx context.Context, cmd *SubmitOrderCommand) (*domain.MatchingResult, error) {
+	return s.Command.SubmitOrder(ctx, cmd)
 }

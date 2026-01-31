@@ -16,9 +16,12 @@ import (
 	quant_pb "github.com/wyfcoding/financialtrading/go-api/quant/v1"
 	"github.com/wyfcoding/financialtrading/internal/quant/application"
 	"github.com/wyfcoding/financialtrading/internal/quant/domain"
+	"github.com/wyfcoding/financialtrading/internal/quant/infrastructure/client"
 	"github.com/wyfcoding/financialtrading/internal/quant/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/quant/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/quant/interfaces/http"
+	"github.com/wyfcoding/pkg/config"
+	"github.com/wyfcoding/pkg/metrics"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -59,8 +62,26 @@ func main() {
 	strategyRepo := mysql.NewStrategyRepository(db)
 	backtestRepo := mysql.NewBacktestResultRepository(db)
 
+	// Metrics
+	metricsImpl := metrics.NewMetrics("quant")
+
+	// Clients
+	marketAddr := viper.GetString("services.marketdata.addr")
+	if marketAddr == "" {
+		marketAddr = "localhost:9090" // Default fallback
+	}
+	cbCfg := config.CircuitBreakerConfig{
+		Enabled:     true,
+		Timeout:     5000,
+		MaxRequests: 10,
+	}
+	marketCli, err := client.NewMarketDataClient(marketAddr, metricsImpl, cbCfg)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create market data client: %v", err))
+	}
+
 	// 5. Application
-	appService, err := application.NewQuantService(strategyRepo, backtestRepo, signalRepo, db)
+	appService, err := application.NewQuantService(strategyRepo, backtestRepo, signalRepo, marketCli, db)
 	if err != nil {
 		panic(fmt.Sprintf("failed to init quant service: %v", err))
 	}

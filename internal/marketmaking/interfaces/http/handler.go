@@ -8,10 +8,10 @@ import (
 )
 
 type MarketMakingHandler struct {
-	app *application.MarketMakingApplicationService
+	app *application.MarketMakingService
 }
 
-func NewMarketMakingHandler(app *application.MarketMakingApplicationService) *MarketMakingHandler {
+func NewMarketMakingHandler(app *application.MarketMakingService) *MarketMakingHandler {
 	return &MarketMakingHandler{app: app}
 }
 

@@ -15,10 +15,10 @@ import (
 
 type Handler struct {
 	marketmakingv1.UnimplementedMarketMakingServiceServer
-	app *application.MarketMakingApplicationService
+	app *application.MarketMakingService
 }
 
-func NewHandler(app *application.MarketMakingApplicationService) *Handler {
+func NewHandler(app *application.MarketMakingService) *Handler {
 	return &Handler{app: app}
 }
 

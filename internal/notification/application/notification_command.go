@@ -189,12 +189,3 @@ func (c *NotificationCommand) SendBatchNotification(ctx context.Context, cmd Bat
 
 	return notificationIDs, nil
 }
-
-// BatchSendNotificationCommand 批量发送通知命令
-type BatchSendNotificationCommand struct {
-	UserID     string
-	Channel    string
-	Recipients []string
-	Subject    string
-	Content    string
-}

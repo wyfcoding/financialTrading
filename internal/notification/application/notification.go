@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"time"
 
 	"github.com/wyfcoding/financialtrading/internal/notification/domain"
 	"github.com/wyfcoding/financialtrading/internal/notification/infrastructure/messaging"
@@ -91,4 +92,33 @@ type dummySender struct{}
 func (s *dummySender) Send(ctx context.Context, recipient, subject, content string) error {
 	// 简单实现，仅记录日志
 	return nil
+}
+
+// --- DTO Definitions ---
+
+type SendNotificationCommand struct {
+	UserID    string
+	Channel   string
+	Recipient string
+	Subject   string
+	Content   string
+}
+
+type BatchSendNotificationCommand struct {
+	UserID     string
+	Channel    string
+	Recipients []string
+	Subject    string
+	Content    string
+}
+
+type NotificationDTO struct {
+	ID        uint      `json:"id"`
+	UserID    string    `json:"user_id"`
+	Channel   string    `json:"channel"`
+	Recipient string    `json:"recipient"`
+	Subject   string    `json:"subject"`
+	Content   string    `json:"content"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
 }

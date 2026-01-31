@@ -30,7 +30,7 @@ func (m *mockEventPublisher) PublishOrderStatusChanged(event domain.OrderStatusC
 
 // OrderService 订单服务门面，整合命令和查询服务
 type OrderService struct {
-	Command   *OrderCommand
+	Command   *OrderCommandService
 	Query     *OrderQueryService
 	DTMServer string
 }
@@ -47,7 +47,7 @@ func NewOrderService(repo domain.OrderRepository, db interface{}) (*OrderService
 	}
 
 	// 创建命令服务
-	command := NewOrderCommand(repo, eventPublisher)
+	command := NewOrderCommandService(repo, eventPublisher)
 
 	// 创建查询服务
 	query := NewOrderQueryService(repo)
@@ -90,4 +90,43 @@ func (s *OrderService) ListOrders(ctx context.Context, userID string, status dom
 // SetDTMServer 设置 DTM 服务器地址
 func (s *OrderService) SetDTMServer(server string) {
 	s.DTMServer = server
+}
+
+// --- DTO Definitions ---
+
+type CreateOrderRequest struct {
+	UserID        string
+	Symbol        string
+	Side          string
+	OrderType     string
+	Price         string
+	Quantity      string
+	TimeInForce   string
+	StopPrice     string
+	ClientOrderID string
+
+	// Bracket support
+	TakeProfitPrice string
+	StopLossPrice   string
+
+	// OCO support
+	IsOCO         bool
+	LinkedOrderID string
+}
+
+type OrderDTO struct {
+	OrderID        string `json:"order_id"`
+	UserID         string `json:"user_id"`
+	Symbol         string `json:"symbol"`
+	Side           string `json:"side"`
+	OrderType      string `json:"order_type"`
+	Price          string `json:"price"`
+	Quantity       string `json:"quantity"`
+	FilledQuantity string `json:"filled_quantity"`
+	AveragePrice   string `json:"average_price"`
+	Status         string `json:"status"`
+	TimeInForce    string `json:"time_in_force"`
+	CreatedAt      int64  `json:"created_at"`
+	UpdatedAt      int64  `json:"updated_at"`
+	Remark         string `json:"remark"`
 }

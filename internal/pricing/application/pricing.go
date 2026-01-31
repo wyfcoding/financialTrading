@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
@@ -118,4 +119,15 @@ func (s *PricingService) GetOptionPrice(ctx context.Context, contract domain.Opt
 // ListPrices 列出多个符号的最新价格
 func (s *PricingService) ListPrices(ctx context.Context, symbols []string) ([]*PriceDTO, error) {
 	return s.Query.ListPrices(ctx, symbols)
+}
+
+// --- DTO Definitions ---
+
+type PriceDTO struct {
+	Symbol    string    `json:"symbol"`
+	Bid       float64   `json:"bid"`
+	Ask       float64   `json:"ask"`
+	Mid       float64   `json:"mid"`
+	Timestamp time.Time `json:"timestamp"`
+	Source    string    `json:"source"`
 }

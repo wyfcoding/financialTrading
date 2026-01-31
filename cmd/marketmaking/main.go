@@ -95,7 +95,7 @@ func main() {
 	// 创建事件发布者（简单实现）
 	eventPublisher := &simpleEventPublisher{}
 
-	appService := application.NewMarketMakingApplicationService(strategyRepo, orderCli, marketCli, eventPublisher)
+	appService := application.NewMarketMakingService(strategyRepo, orderCli, marketCli, eventPublisher)
 
 	// 6. Interfaces
 	grpcSrv := grpc.NewServer()

@@ -9,16 +9,16 @@ import (
 
 // PlaceOrderCommand 下单命令
 type PlaceOrderCommand struct {
-	UserID       string
-	Symbol       string
-	Side         string
-	Type         string
-	Price        float64
-	StopPrice    float64
-	Quantity     float64
-	TimeInForce  string
+	UserID        string
+	Symbol        string
+	Side          string
+	Type          string
+	Price         float64
+	StopPrice     float64
+	Quantity      float64
+	TimeInForce   string
 	ParentOrderID string
-	IsOCO        bool
+	IsOCO         bool
 }
 
 // CancelOrderCommand 取消订单命令
@@ -28,22 +28,22 @@ type CancelOrderCommand struct {
 	Reason  string
 }
 
-// OrderCommand 处理订单相关的命令操作
-type OrderCommand struct {
-	repo          domain.OrderRepository
+// OrderCommandService 处理订单相关的命令操作
+type OrderCommandService struct {
+	repo           domain.OrderRepository
 	eventPublisher domain.EventPublisher
 }
 
-// NewOrderCommand 创建新的 OrderCommand 实例
-func NewOrderCommand(repo domain.OrderRepository, eventPublisher domain.EventPublisher) *OrderCommand {
-	return &OrderCommand{
-		repo:          repo,
+// NewOrderCommandService 创建新的 OrderCommandService 实例
+func NewOrderCommandService(repo domain.OrderRepository, eventPublisher domain.EventPublisher) *OrderCommandService {
+	return &OrderCommandService{
+		repo:           repo,
 		eventPublisher: eventPublisher,
 	}
 }
 
 // PlaceOrder 下单
-func (c *OrderCommand) PlaceOrder(ctx context.Context, cmd PlaceOrderCommand) (string, error) {
+func (c *OrderCommandService) PlaceOrder(ctx context.Context, cmd PlaceOrderCommand) (string, error) {
 	// 创建订单
 	order := domain.NewOrder(
 		generateOrderID(),
@@ -64,12 +64,12 @@ func (c *OrderCommand) PlaceOrder(ctx context.Context, cmd PlaceOrderCommand) (s
 	if err := order.Validate(); err != nil {
 		// 发布订单被拒绝事件
 		rejectedEvent := domain.OrderRejectedEvent{
-			OrderID:     order.OrderID,
-			UserID:      order.UserID,
-			Symbol:      order.Symbol,
-			Reason:      err.Error(),
-			RejectedAt:  time.Now().Unix(),
-			OccurredOn:  time.Now(),
+			OrderID:    order.OrderID,
+			UserID:     order.UserID,
+			Symbol:     order.Symbol,
+			Reason:     err.Error(),
+			RejectedAt: time.Now().Unix(),
+			OccurredOn: time.Now(),
 		}
 
 		c.eventPublisher.PublishOrderRejected(rejectedEvent)
@@ -118,11 +118,11 @@ func (c *OrderCommand) PlaceOrder(ctx context.Context, cmd PlaceOrderCommand) (s
 
 	// 发布订单状态变更事件
 	statusChangedEvent := domain.OrderStatusChangedEvent{
-		OrderID:     order.OrderID,
-		OldStatus:   domain.StatusPending,
-		NewStatus:   domain.StatusValidated,
-		UpdatedAt:   time.Now().Unix(),
-		OccurredOn:  time.Now(),
+		OrderID:    order.OrderID,
+		OldStatus:  domain.StatusPending,
+		NewStatus:  domain.StatusValidated,
+		UpdatedAt:  time.Now().Unix(),
+		OccurredOn: time.Now(),
 	}
 
 	c.eventPublisher.PublishOrderStatusChanged(statusChangedEvent)
@@ -131,7 +131,7 @@ func (c *OrderCommand) PlaceOrder(ctx context.Context, cmd PlaceOrderCommand) (s
 }
 
 // CancelOrder 取消订单
-func (c *OrderCommand) CancelOrder(ctx context.Context, cmd CancelOrderCommand) error {
+func (c *OrderCommandService) CancelOrder(ctx context.Context, cmd CancelOrderCommand) error {
 	// 获取订单
 	order, err := c.repo.Get(ctx, cmd.OrderID)
 	if err != nil {
@@ -172,11 +172,11 @@ func (c *OrderCommand) CancelOrder(ctx context.Context, cmd CancelOrderCommand) 
 
 	// 发布订单状态变更事件
 	statusChangedEvent := domain.OrderStatusChangedEvent{
-		OrderID:     order.OrderID,
-		OldStatus:   oldStatus,
-		NewStatus:   domain.StatusCancelled,
-		UpdatedAt:   time.Now().Unix(),
-		OccurredOn:  time.Now(),
+		OrderID:    order.OrderID,
+		OldStatus:  oldStatus,
+		NewStatus:  domain.StatusCancelled,
+		UpdatedAt:  time.Now().Unix(),
+		OccurredOn: time.Now(),
 	}
 
 	c.eventPublisher.PublishOrderStatusChanged(statusChangedEvent)
@@ -185,7 +185,7 @@ func (c *OrderCommand) CancelOrder(ctx context.Context, cmd CancelOrderCommand) 
 }
 
 // UpdateOrderExecution 更新订单执行状态
-func (c *OrderCommand) UpdateOrderExecution(ctx context.Context, orderID string, filledQty, tradePrice float64) error {
+func (c *OrderCommandService) UpdateOrderExecution(ctx context.Context, orderID string, filledQty, tradePrice float64) error {
 	// 获取订单
 	order, err := c.repo.Get(ctx, orderID)
 	if err != nil {
@@ -206,15 +206,15 @@ func (c *OrderCommand) UpdateOrderExecution(ctx context.Context, orderID string,
 	case domain.StatusPartiallyFilled:
 		// 发布订单部分成交事件
 		partialEvent := domain.OrderPartiallyFilledEvent{
-			OrderID:         order.OrderID,
-			UserID:          order.UserID,
-			Symbol:          order.Symbol,
-			FilledQuantity:  order.FilledQuantity,
+			OrderID:           order.OrderID,
+			UserID:            order.UserID,
+			Symbol:            order.Symbol,
+			FilledQuantity:    order.FilledQuantity,
 			RemainingQuantity: order.Quantity - order.FilledQuantity,
-			TradePrice:      tradePrice,
-			AveragePrice:    order.AveragePrice,
-			FilledAt:        time.Now().Unix(),
-			OccurredOn:      time.Now(),
+			TradePrice:        tradePrice,
+			AveragePrice:      order.AveragePrice,
+			FilledAt:          time.Now().Unix(),
+			OccurredOn:        time.Now(),
 		}
 
 		c.eventPublisher.PublishOrderPartiallyFilled(partialEvent)
@@ -236,11 +236,11 @@ func (c *OrderCommand) UpdateOrderExecution(ctx context.Context, orderID string,
 
 	// 发布订单状态变更事件
 	statusChangedEvent := domain.OrderStatusChangedEvent{
-		OrderID:     order.OrderID,
-		OldStatus:   oldStatus,
-		NewStatus:   order.Status,
-		UpdatedAt:   time.Now().Unix(),
-		OccurredOn:  time.Now(),
+		OrderID:    order.OrderID,
+		OldStatus:  oldStatus,
+		NewStatus:  order.Status,
+		UpdatedAt:  time.Now().Unix(),
+		OccurredOn: time.Now(),
 	}
 
 	c.eventPublisher.PublishOrderStatusChanged(statusChangedEvent)
@@ -265,7 +265,7 @@ func randomString(n int) string {
 
 // 错误定义
 var (
-	ErrUnauthorized     = NewError("unauthorized", "unauthorized to cancel this order")
+	ErrUnauthorized       = NewError("unauthorized", "unauthorized to cancel this order")
 	ErrInvalidOrderStatus = NewError("invalid_order_status", "order status cannot be cancelled")
 )
 

@@ -11,11 +11,11 @@ import (
 
 // MarketMakingCommandService 做市命令服务
 type MarketMakingCommandService struct {
-	repo       domain.MarketMakingRepository
-	orderSvc   domain.OrderClient
-	marketSvc  domain.MarketDataClient
-	publisher  domain.EventPublisher
-	workers    map[string]context.CancelFunc
+	repo      domain.MarketMakingRepository
+	orderSvc  domain.OrderClient
+	marketSvc domain.MarketDataClient
+	publisher domain.EventPublisher
+	workers   map[string]context.CancelFunc
 }
 
 // NewMarketMakingCommandService 创建做市命令服务实例
@@ -26,11 +26,11 @@ func NewMarketMakingCommandService(
 	publisher domain.EventPublisher,
 ) *MarketMakingCommandService {
 	return &MarketMakingCommandService{
-		repo:       repo,
-		orderSvc:   orderSvc,
-		marketSvc:  marketSvc,
-		publisher:  publisher,
-		workers:    make(map[string]context.CancelFunc),
+		repo:      repo,
+		orderSvc:  orderSvc,
+		marketSvc: marketSvc,
+		publisher: publisher,
+		workers:   make(map[string]context.CancelFunc),
 	}
 }
 
@@ -95,14 +95,15 @@ func (s *MarketMakingCommandService) SetStrategy(ctx context.Context, cmd SetStr
 
 	// 发布状态变更事件
 	if oldStatus != strategy.Status {
-		if strategy.Status == domain.StrategyStatusActive {
+		switch strategy.Status {
+		case domain.StrategyStatusActive:
 			event := domain.StrategyActivatedEvent{
 				StrategyID: strategy.Symbol,
 				Symbol:     strategy.Symbol,
 				Timestamp:  time.Now(),
 			}
 			s.publisher.Publish(ctx, "marketmaking.strategy.activated", strategy.Symbol, event)
-		} else if strategy.Status == domain.StrategyStatusPaused {
+		case domain.StrategyStatusPaused:
 			event := domain.StrategyPausedEvent{
 				StrategyID: strategy.Symbol,
 				Symbol:     strategy.Symbol,
@@ -147,6 +148,12 @@ func (s *MarketMakingCommandService) runWorker(ctx context.Context, symbol strin
 
 	// 演示用固定参数
 	model := domain.NewAvellanedaStoikovModel(0.1, 0.02, 1.5)
+
+	// In-memory stats for this worker session (simplified)
+	// In a real production system, this state might need to be persistent or recovered.
+	var totalPnL decimal.Decimal
+	var totalVolume decimal.Decimal
+	var totalTrades int64
 
 	for {
 		select {
@@ -202,6 +209,34 @@ func (s *MarketMakingCommandService) runWorker(ctx context.Context, symbol strin
 				}
 				s.publisher.Publish(ctx, "marketmaking.quote.placed", symbol, event)
 			}
+
+			// 4. 模拟成交并更新 PnL (Simplified Simulation for demo)
+			// In reality, we would listen to TradeExecuted events to update PnL.
+			// Here we assume orders fill immediately for the sake of the loop example from manager.
+			// Re-using manager's logic: PnL = (Ask - Bid) * Qty / 2 approx per cycle if filled
+			// This is a heuristic.
+
+			// Assuming both filled:
+			filledQty := qty // * 2 sides?
+			trades := int64(2)
+
+			totalVolume = totalVolume.Add(filledQty.Mul(decimal.NewFromInt(2)))
+			totalTrades += trades
+
+			// PnL per cycle (approx):
+			pnl := ask.Sub(bid).Mul(filledQty).Div(decimal.NewFromInt(2))
+			totalPnL = totalPnL.Add(pnl)
+
+			// 5. Save Performance periodically or on every cycle
+			perf := &domain.MarketMakingPerformance{
+				Symbol:      symbol,
+				TotalPnL:    totalPnL,
+				TotalVolume: totalVolume,
+				TotalTrades: totalTrades,
+				EndTime:     time.Now(),
+			}
+			// Ignore error for non-critical stats save
+			_ = s.repo.SavePerformance(ctx, perf)
 		}
 	}
 }

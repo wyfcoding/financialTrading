@@ -11,22 +11,12 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/domain"
 )
 
-// StartSimulationCommand 开始模拟命令
-type StartSimulationCommand struct {
-	ScenarioID string
-}
-
-// StopSimulationCommand 停止模拟命令
-type StopSimulationCommand struct {
-	ScenarioID string
-}
-
 // MarketSimulationCommandService 市场模拟命令服务
 type MarketSimulationCommandService struct {
-	repo       domain.SimulationRepository
-	publisher  domain.EventPublisher
+	repo        domain.SimulationRepository
+	publisher   domain.EventPublisher
 	runningSims map[string]context.CancelFunc
-	mu         sync.Mutex
+	mu          sync.Mutex
 }
 
 // NewMarketSimulationCommandService 创建市场模拟命令服务实例
@@ -35,8 +25,8 @@ func NewMarketSimulationCommandService(
 	publisher domain.EventPublisher,
 ) *MarketSimulationCommandService {
 	return &MarketSimulationCommandService{
-		repo:       repo,
-		publisher:  publisher,
+		repo:        repo,
+		publisher:   publisher,
 		runningSims: make(map[string]context.CancelFunc),
 	}
 }

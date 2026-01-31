@@ -33,7 +33,7 @@ func (h *MatchingHandler) RegisterRoutes(router *gin.RouterGroup) {
 
 // SubmitOrder 处理订单提交请求并压入撮合引擎定序队列。
 func (h *MatchingHandler) SubmitOrder(c *gin.Context) {
-	var req application.SubmitOrderRequest
+	var req application.SubmitOrderCommand
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid request data", err.Error())
 		return

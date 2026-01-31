@@ -32,7 +32,7 @@ func (h *Handler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderRequest) (
 	start := time.Now()
 	slog.InfoContext(ctx, "grpc submit_order received", "order_id", req.OrderId, "symbol", req.Symbol)
 
-	result, err := h.app.Command.SubmitOrder(ctx, &application.SubmitOrderRequest{
+	result, err := h.app.Command.SubmitOrder(ctx, &application.SubmitOrderCommand{
 		OrderID:                req.OrderId,
 		Symbol:                 req.Symbol,
 		Side:                   req.Side,
