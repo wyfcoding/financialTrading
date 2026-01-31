@@ -36,7 +36,7 @@ type OrderService struct {
 }
 
 // NewOrderService 构造函数
-func NewOrderService(repo domain.OrderRepository, db interface{}) (*OrderService, error) {
+func NewOrderService(repo domain.OrderRepository, searchRepo domain.OrderSearchRepository, db interface{}) (*OrderService, error) {
 	// 创建事件发布者
 	var eventPublisher domain.EventPublisher
 	if gormDB, ok := db.(*gorm.DB); ok {
@@ -50,7 +50,7 @@ func NewOrderService(repo domain.OrderRepository, db interface{}) (*OrderService
 	command := NewOrderCommandService(repo, eventPublisher)
 
 	// 创建查询服务
-	query := NewOrderQueryService(repo)
+	query := NewOrderQueryService(repo, searchRepo)
 
 	return &OrderService{
 		Command: command,

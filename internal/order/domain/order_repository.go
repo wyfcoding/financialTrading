@@ -23,3 +23,11 @@ type OrderRepository interface {
 	// Delete 根据订单 ID 删除订单
 	Delete(ctx context.Context, orderID string) error
 }
+
+// OrderSearchRepository 订单搜索仓储接口 (基于 ES)
+type OrderSearchRepository interface {
+	// Index 索引订单
+	Index(ctx context.Context, order *Order) error
+	// Search 搜索订单
+	Search(ctx context.Context, query map[string]any, limit int) ([]*Order, error)
+}

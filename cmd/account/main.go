@@ -16,9 +16,12 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/account/application"
 	"github.com/wyfcoding/financialtrading/internal/account/domain"
 	"github.com/wyfcoding/financialtrading/internal/account/infrastructure/messaging"
+	"github.com/wyfcoding/financialtrading/internal/account/infrastructure/persistence"
 	"github.com/wyfcoding/financialtrading/internal/account/infrastructure/persistence/mysql"
+	"github.com/wyfcoding/financialtrading/internal/account/infrastructure/persistence/redis"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/account/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/account/interfaces/http"
+	"github.com/wyfcoding/pkg/cache"
 	"github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/database"
 	"github.com/wyfcoding/pkg/logging"
@@ -81,7 +84,16 @@ func main() {
 	outboxMgr := outbox.NewManager(db.RawDB(), nil)
 
 	// 5. 初始化仓储
-	accountRepo := mysql.NewAccountRepository(db.RawDB())
+	// Redis
+	redisCache, err := cache.NewRedisCache(&cfg.Data.Redis, cfg.CircuitBreaker, logger, metricsImpl)
+	if err != nil {
+		slog.Error("failed to init redis", "error", err)
+	}
+
+	mysqlRepo := mysql.NewAccountRepository(db.RawDB())
+	redisRepo := redis.NewAccountRedisRepository(redisCache.GetClient())
+	accountRepo := persistence.NewCompositeAccountRepository(mysqlRepo, redisRepo)
+
 	eventStore := mysql.NewEventStore(db.RawDB())
 	outboxPub := messaging.NewOutboxPublisher(outboxMgr)
 

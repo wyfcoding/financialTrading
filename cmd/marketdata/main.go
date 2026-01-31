@@ -16,7 +16,9 @@ import (
 	marketdatav1 "github.com/wyfcoding/financialtrading/go-api/marketdata/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/application"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/domain"
+	"github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/persistence"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/persistence/mysql"
+	persistence_redis "github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/persistence/redis"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/interfaces/events"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/marketdata/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/marketdata/interfaces/http"
@@ -25,6 +27,7 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 	"github.com/wyfcoding/pkg/messagequeue/kafka"
 	"github.com/wyfcoding/pkg/metrics"
+	"github.com/wyfcoding/pkg/redis"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -75,8 +78,20 @@ func main() {
 		}
 	}
 
-	// 5. Repository & Application
-	repo := mysql.NewMarketDataRepository(db.RawDB())
+	// 5. Redis
+	redisClient, redisCleanup, err := redis.NewClient(&cfg.Data.Redis, logger)
+	if err != nil {
+		slog.Error("failed to connect redis", "error", err)
+		os.Exit(1)
+	}
+	defer redisCleanup()
+
+	// 6. Repository & Application
+	mysqlRepo := mysql.NewMarketDataRepository(db.RawDB())
+	redisRepo := persistence_redis.NewQuoteRepository(redisClient)
+
+	// Combine into composite repository (standard CQRS pattern)
+	repo := persistence.NewCompositeMarketDataRepository(mysqlRepo, redisRepo)
 
 	// 创建事件发布者
 	eventPublisher := &dummyEventPublisher{}

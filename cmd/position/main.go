@@ -16,9 +16,13 @@ import (
 	pb "github.com/wyfcoding/financialtrading/go-api/position/v1"
 	"github.com/wyfcoding/financialtrading/internal/position/application"
 	"github.com/wyfcoding/financialtrading/internal/position/domain"
+	"github.com/wyfcoding/financialtrading/internal/position/infrastructure/persistence"
 	"github.com/wyfcoding/financialtrading/internal/position/infrastructure/persistence/mysql"
+	"github.com/wyfcoding/financialtrading/internal/position/infrastructure/persistence/redis"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/position/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/position/interfaces/http"
+	"github.com/wyfcoding/pkg/cache"
+	configpkg "github.com/wyfcoding/pkg/config"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -55,7 +59,19 @@ func main() {
 	}
 
 	// 4. Infrastructure & Domain
-	repo := mysql.NewPositionRepository(db)
+	// Redis
+	redisCfg := &configpkg.RedisConfig{
+		Addrs: []string{viper.GetString("redis.addr")},
+	}
+	cbCfg := configpkg.CircuitBreakerConfig{Enabled: false}
+	redisCache, err := cache.NewRedisCache(redisCfg, cbCfg, logger, nil)
+	if err != nil {
+		slog.Error("failed to init redis", "error", err)
+	}
+
+	mysqlRepo := mysql.NewPositionRepository(db)
+	redisRepo := redis.NewPositionRedisRepository(redisCache.GetClient())
+	repo := persistence.NewCompositePositionRepository(mysqlRepo, redisRepo)
 
 	// 5. Application
 	appService, err := application.NewPositionService(repo, db)

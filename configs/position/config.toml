@@ -12,3 +12,6 @@ format = "json"
 [kafka]
 brokers = ["localhost:9092"]
 topic_trade = "matching.trade"
+
+[redis]
+addr = "localhost:6379"

@@ -9,12 +9,16 @@ import (
 
 // OrderQueryService 处理所有订单相关的查询操作（Queries）。
 type OrderQueryService struct {
-	repo domain.OrderRepository
+	repo       domain.OrderRepository
+	searchRepo domain.OrderSearchRepository
 }
 
 // NewOrderQueryService 构造函数。
-func NewOrderQueryService(repo domain.OrderRepository) *OrderQueryService {
-	return &OrderQueryService{repo: repo}
+func NewOrderQueryService(repo domain.OrderRepository, searchRepo domain.OrderSearchRepository) *OrderQueryService {
+	return &OrderQueryService{
+		repo:       repo,
+		searchRepo: searchRepo,
+	}
 }
 
 func (s *OrderQueryService) GetOrder(ctx context.Context, orderID string) (*OrderDTO, error) {
@@ -36,6 +40,20 @@ func (s *OrderQueryService) ListOrders(ctx context.Context, userID string, statu
 		dtos = append(dtos, s.toDTO(o))
 	}
 	return dtos, total, nil
+}
+
+func (s *OrderQueryService) SearchOrders(ctx context.Context, query map[string]any, limit int) ([]*OrderDTO, error) {
+	orders, err := s.searchRepo.Search(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	dtos := make([]*OrderDTO, len(orders))
+	for i, o := range orders {
+		dtos[i] = s.toDTO(o)
+	}
+
+	return dtos, nil
 }
 
 func (s *OrderQueryService) toDTO(o *domain.Order) *OrderDTO {

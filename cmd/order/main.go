@@ -19,8 +19,12 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/order/application"
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
 	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/persistence/mysql"
+	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/search"
+	"github.com/wyfcoding/financialtrading/internal/order/interfaces/events"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/order/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/order/interfaces/http"
+	configpkg "github.com/wyfcoding/pkg/config"
+	search_pkg "github.com/wyfcoding/pkg/search"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -59,9 +63,22 @@ func main() {
 	// 4. Infrastructure & Domain
 	repo := mysql.NewOrderRepository(db)
 
+	// ES Initialization
+	esCfg := &search_pkg.Config{
+		ServiceName: "order-service",
+		ElasticsearchConfig: configpkg.ElasticsearchConfig{
+			Addresses: viper.GetStringSlice("elasticsearch.addresses"),
+		},
+	}
+	esClient, err := search_pkg.NewClient(esCfg, nil, nil)
+	if err != nil {
+		slog.Error("failed to connect elasticsearch", "error", err)
+	}
+	searchRepo := search.NewOrderSearchRepository(esClient)
+
 	// 5. Application
 	// Inject dependencies
-	orderService, err := application.NewOrderService(repo, db)
+	orderService, err := application.NewOrderService(repo, searchRepo, db)
 	if err != nil {
 		panic(fmt.Sprintf("failed to init order service: %v", err))
 	}
@@ -71,6 +88,10 @@ func main() {
 		orderService.SetDTMServer(dtmServer)
 	}
 	// TODO: SetRiskClient, SetAccountClient, SetPositionClient using gRPC connection pools
+
+	// 7. Event Handlers
+	searchHandler := events.NewOrderSearchHandler(searchRepo, repo)
+	searchHandler.Subscribe(context.Background(), nil)
 
 	// 6. Interfaces
 	// gRPC

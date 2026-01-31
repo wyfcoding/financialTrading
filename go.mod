@@ -15,6 +15,13 @@ require (
 	gorm.io/gorm v1.31.1
 )
 
+require github.com/redis/go-redis/v9 v9.17.3
+
+require (
+	github.com/elastic/elastic-transport-go/v8 v8.8.0 // indirect
+	github.com/elastic/go-elasticsearch/v9 v9.2.1 // indirect
+)
+
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/ClickHouse/ch-go v0.70.0 // indirect
