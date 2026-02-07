@@ -22,9 +22,16 @@ max_idle_conns = 10
 max_open_conns = 100
 conn_max_lifetime = "1h"
 
-[services]
-execution = "localhost:9081"
-marketdata = "localhost:9082"
+[data.redis]
+addrs = ["localhost:6379"]
+db = 0
+
+[messagequeue.kafka]
+brokers = ["localhost:9092"]
+topic = "financial.connectivity.events"
+
+[services.execution]
+grpc_addr = "localhost:9081"
 
 [fix]
 port = 9800

@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"log/slog"
-	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -16,25 +15,21 @@ type ConnectivityCommandService struct {
 	sessionMgr *fix.SessionManager
 	execClient domain.ExecutionClient
 	publisher  domain.EventPublisher
-	quotes     map[string]*Quote
-	mu         sync.RWMutex
-}
-
-// Quote 行情快照
-type Quote struct {
-	Symbol    string
-	BidPrice  float64
-	AskPrice  float64
-	LastPrice float64
+	quoteRepo  domain.QuoteRepository
 }
 
 // NewConnectivityCommandService 构造函数。
-func NewConnectivityCommandService(sm *fix.SessionManager, ec domain.ExecutionClient, publisher domain.EventPublisher) *ConnectivityCommandService {
+func NewConnectivityCommandService(
+	sm *fix.SessionManager,
+	ec domain.ExecutionClient,
+	publisher domain.EventPublisher,
+	quoteRepo domain.QuoteRepository,
+) *ConnectivityCommandService {
 	return &ConnectivityCommandService{
 		sessionMgr: sm,
 		execClient: ec,
 		publisher:  publisher,
-		quotes:     make(map[string]*Quote),
+		quoteRepo:  quoteRepo,
 	}
 }
 
@@ -53,7 +48,9 @@ func (s *ConnectivityCommandService) ProcessMessage(ctx context.Context, session
 		Symbol:    symbol,
 		Timestamp: time.Now(),
 	}
-	s.publisher.Publish(ctx, "fix.message.received", sessionID, event)
+	if s.publisher != nil {
+		_ = s.publisher.Publish(ctx, domain.FIXMessageReceivedEventType, sessionID, event)
+	}
 
 	switch msgType {
 	case "D": // NewOrderSingle
@@ -93,7 +90,9 @@ func (s *ConnectivityCommandService) handleNewOrder(ctx context.Context, session
 		Quantity:  qty.String(),
 		Timestamp: time.Now(),
 	}
-	s.publisher.Publish(ctx, "fix.order.submitted", clOrdID, submitEvent)
+	if s.publisher != nil {
+		_ = s.publisher.Publish(ctx, domain.FIXOrderSubmittedEventType, clOrdID, submitEvent)
+	}
 
 	_, err := s.execClient.SubmitOrder(ctx, domain.FIXOrderCommand{
 		ClOrdID:  clOrdID,
@@ -113,15 +112,18 @@ func (s *ConnectivityCommandService) handleMarketDataRequest(ctx context.Context
 
 // UpdateQuote 更新行情缓存
 func (s *ConnectivityCommandService) UpdateQuote(symbol string, bid, ask, last float64) {
-	s.mu.Lock()
-	s.quotes[symbol] = &Quote{
+	quote := &domain.Quote{
 		Symbol:    symbol,
 		BidPrice:  bid,
 		AskPrice:  ask,
 		LastPrice: last,
+		UpdatedAt: time.Now(),
 	}
-	s.mu.Unlock()
-	slog.Debug("MarketGateway: Quote updated", "symbol", symbol, "last", last)
+	if s.quoteRepo != nil {
+		if err := s.quoteRepo.Save(context.Background(), quote); err != nil {
+			slog.Warn("failed to save quote to redis", "symbol", symbol, "error", err)
+		}
+	}
 
 	// 发布市场数据更新事件
 	event := domain.MarketDataUpdatedEvent{
@@ -131,12 +133,7 @@ func (s *ConnectivityCommandService) UpdateQuote(symbol string, bid, ask, last f
 		LastPrice: last,
 		Timestamp: time.Now(),
 	}
-	s.publisher.Publish(context.Background(), "market.data.updated", symbol, event)
-}
-
-// GetQuote 获取行情快照
-func (s *ConnectivityCommandService) GetQuote(symbol string) *Quote {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.quotes[symbol]
+	if s.publisher != nil {
+		_ = s.publisher.Publish(context.Background(), domain.MarketDataUpdatedEventType, symbol, event)
+	}
 }

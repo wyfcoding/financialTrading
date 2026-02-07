@@ -5,22 +5,20 @@ import (
 
 	v1 "github.com/wyfcoding/financialtrading/go-api/connectivity/v1"
 	"github.com/wyfcoding/financialtrading/internal/connectivity/application"
-	"google.golang.org/grpc"
 )
 
 type Handler struct {
 	v1.UnimplementedConnectivityServiceServer
-	app *application.ConnectivityService
+	cmd   *application.ConnectivityCommandService
+	query *application.ConnectivityQueryService
 }
 
-func NewHandler(s *grpc.Server, app *application.ConnectivityService) *Handler {
-	h := &Handler{app: app}
-	v1.RegisterConnectivityServiceServer(s, h)
-	return h
+func NewHandler(cmd *application.ConnectivityCommandService, query *application.ConnectivityQueryService) *Handler {
+	return &Handler{cmd: cmd, query: query}
 }
 
 func (h *Handler) GetSessionStatus(ctx context.Context, req *v1.GetSessionStatusRequest) (*v1.GetSessionStatusResponse, error) {
-	sess, err := h.app.GetSessionStatus(ctx, req.SessionId)
+	sess, err := h.query.GetSessionStatus(ctx, req.SessionId)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +33,7 @@ func (h *Handler) GetSessionStatus(ctx context.Context, req *v1.GetSessionStatus
 }
 
 func (h *Handler) ListActiveSessions(ctx context.Context, req *v1.ListActiveSessionsRequest) (*v1.ListActiveSessionsResponse, error) {
-	sessions := h.app.ListSessions(ctx)
+	sessions := h.query.ListSessions(ctx)
 	var resp v1.ListActiveSessionsResponse
 	for _, s := range sessions {
 		resp.Sessions = append(resp.Sessions, &v1.GetSessionStatusResponse{

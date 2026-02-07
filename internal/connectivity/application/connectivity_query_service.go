@@ -4,17 +4,22 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/wyfcoding/financialtrading/internal/connectivity/domain"
 	"github.com/wyfcoding/pkg/connectivity/fix"
 )
 
 // ConnectivityQueryService 处理所有连接相关的查询操作（Queries）。
 type ConnectivityQueryService struct {
 	sessionMgr *fix.SessionManager
+	quoteRepo  domain.QuoteRepository
 }
 
 // NewConnectivityQueryService 构造函数。
-func NewConnectivityQueryService(sm *fix.SessionManager) *ConnectivityQueryService {
-	return &ConnectivityQueryService{sessionMgr: sm}
+func NewConnectivityQueryService(sm *fix.SessionManager, quoteRepo domain.QuoteRepository) *ConnectivityQueryService {
+	return &ConnectivityQueryService{
+		sessionMgr: sm,
+		quoteRepo:  quoteRepo,
+	}
 }
 
 // GetSessionStatus 获取会话状态
@@ -29,4 +34,12 @@ func (s *ConnectivityQueryService) GetSessionStatus(ctx context.Context, session
 // ListSessions 列出所有会话
 func (s *ConnectivityQueryService) ListSessions(ctx context.Context) []*fix.Session {
 	return s.sessionMgr.ListSessions()
+}
+
+// GetQuote 获取行情快照
+func (s *ConnectivityQueryService) GetQuote(ctx context.Context, symbol string) (*domain.Quote, error) {
+	if s.quoteRepo == nil {
+		return nil, nil
+	}
+	return s.quoteRepo.Get(ctx, symbol)
 }

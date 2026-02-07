@@ -2,6 +2,14 @@ package domain
 
 import "time"
 
+const (
+	FIXMessageReceivedEventType     = "connectivity.fix.message.received"
+	FIXOrderSubmittedEventType      = "connectivity.fix.order.submitted"
+	MarketDataUpdatedEventType      = "connectivity.market.data.updated"
+	FIXSessionConnectedEventType    = "connectivity.fix.session.connected"
+	FIXSessionDisconnectedEventType = "connectivity.fix.session.disconnected"
+)
+
 // FIXSessionConnectedEvent FIX 会话连接事件
 type FIXSessionConnectedEvent struct {
 	SessionID string    `json:"session_id"`

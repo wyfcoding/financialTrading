@@ -10,14 +10,21 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	connectivityv1 "github.com/wyfcoding/financialtrading/go-api/connectivity/v1"
 	"github.com/wyfcoding/financialtrading/internal/connectivity/application"
 	"github.com/wyfcoding/financialtrading/internal/connectivity/infrastructure/client"
-	grpc_server "github.com/wyfcoding/financialtrading/internal/connectivity/interfaces/grpc"
+	connectivityredis "github.com/wyfcoding/financialtrading/internal/connectivity/infrastructure/persistence/redis"
+	grpcserver "github.com/wyfcoding/financialtrading/internal/connectivity/interfaces/grpc"
+	"github.com/wyfcoding/pkg/cache"
 	"github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/connectivity/fix"
+	"github.com/wyfcoding/pkg/database"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
+	"github.com/wyfcoding/pkg/messagequeue/outbox"
 	"github.com/wyfcoding/pkg/metrics"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -36,47 +43,76 @@ func main() {
 	}
 
 	// 2. Logger
-	logCfg := &logging.Config{
-		Service: cfg.Server.Name,
-		Level:   cfg.Log.Level,
-	}
+	logCfg := &logging.Config{Service: cfg.Server.Name, Level: cfg.Log.Level}
 	logger := logging.NewFromConfig(logCfg)
 	slog.SetDefault(logger.Logger)
 
 	// 3. Metrics
-	// 3. Metrics
-	_ = metrics.NewMetrics(cfg.Server.Name)
+	metricsImpl := metrics.NewMetrics(cfg.Server.Name)
 
-	// 4. FIX Engine Initialization
+	// 4. Database (for Outbox)
+	db, err := database.NewDB(cfg.Data.Database, cfg.CircuitBreaker, logger, metricsImpl)
+	if err != nil {
+		slog.Error("failed to connect database", "error", err)
+		os.Exit(1)
+	}
+	if cfg.Server.Environment == "dev" {
+		if err := db.RawDB().AutoMigrate(&outbox.Message{}); err != nil {
+			slog.Error("failed to migrate database", "error", err)
+		}
+	}
+
+	// 5. Kafka & Outbox
+	kafkaProducer := kafka.NewProducer(&cfg.MessageQueue.Kafka, logger, metricsImpl)
+	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
+	pusher := func(ctx context.Context, topic, key string, payload []byte) error {
+		return kafkaProducer.PublishToTopic(ctx, topic, []byte(key), payload)
+	}
+	outboxProcessor := outbox.NewProcessor(outboxMgr, pusher, 100, 2*time.Second)
+
+	// 6. Redis
+	redisCache, err := cache.NewRedisCache(&cfg.Data.Redis, cfg.CircuitBreaker, logger, metricsImpl)
+	if err != nil {
+		slog.Error("failed to init redis", "error", err)
+	}
+	quoteRepo := connectivityredis.NewQuoteRedisRepository(redisCache.GetClient())
+
+	// 7. FIX Engine
 	sessionMgr := fix.NewSessionManager()
-	// 模拟预置一个会话
 	sessionMgr.AddSession(fix.NewSession("INST_001", "TRANS_GATEWAY", "INST_CLIENT"))
 
-	// 5. Application Services
+	// 8. Downstream Clients
 	execAddr := cfg.GetGRPCAddr("execution")
 	if execAddr == "" {
-		execAddr = "localhost:9081" // Fallback
+		execAddr = "localhost:9081"
 	}
 	execCli, _ := client.NewExecutionClient(execAddr)
 
-	// 创建事件发布者
-	eventPublisher := &dummyEventPublisher{}
+	// 9. Application Services
+	publisher := outbox.NewPublisher(outboxMgr)
+	commandSvc := application.NewConnectivityCommandService(sessionMgr, execCli, publisher, quoteRepo)
+	querySvc := application.NewConnectivityQueryService(sessionMgr, quoteRepo)
 
-	appService := application.NewConnectivityService(sessionMgr, execCli, eventPublisher)
-
-	// 6. gRPC Server
+	// 10. gRPC Server
 	grpcSrv := grpc.NewServer()
-	grpc_server.NewHandler(grpcSrv, appService)
+	connectivitySrv := grpcserver.NewHandler(commandSvc, querySvc)
+	connectivityv1.RegisterConnectivityServiceServer(grpcSrv, connectivitySrv)
 	reflection.Register(grpcSrv)
 
-	// 7. HTTP Server (System info)
+	// 11. HTTP Server
 	r := gin.New()
 	r.GET("/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "UP"}) })
 
-	// 8. Lifecycle Management
+	// 12. Lifecycle
 	g, ctx := errgroup.WithContext(context.Background())
 
-	// gRPC
+	g.Go(func() error {
+		outboxProcessor.Start()
+		<-ctx.Done()
+		outboxProcessor.Stop()
+		return nil
+	})
+
 	g.Go(func() error {
 		addr := fmt.Sprintf(":%d", cfg.Server.GRPC.Port)
 		lis, err := net.Listen("tcp", addr)
@@ -87,23 +123,22 @@ func main() {
 		return grpcSrv.Serve(lis)
 	})
 
-	// HTTP
 	g.Go(func() error {
 		addr := fmt.Sprintf(":%d", cfg.Server.HTTP.Port)
 		server := &http.Server{Addr: addr, Handler: r}
 		slog.Info("HTTP server starting", "addr", addr)
-		return server.ListenAndServe()
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return err
+		}
+		return nil
 	})
 
-	// 模拟 FIX TCP Server (及解析逻辑)
 	g.Go(func() error {
-		// 这里在实际生产中应该是一个 TCP Server，监听 9800 端口并使用 fix.Parse 解析报文
 		slog.Info("FIX Gateway simulator starting", "port", 9800)
 		<-ctx.Done()
 		return nil
 	})
 
-	// Graceful Shutdown
 	g.Go(func() error {
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -119,21 +154,4 @@ func main() {
 		slog.Error("Service exited with error", "error", err)
 		os.Exit(1)
 	}
-}
-
-// dummyEventPublisher 简单的事件发布者实现
-type dummyEventPublisher struct{}
-
-// Publish 发布一个普通事件
-func (p *dummyEventPublisher) Publish(ctx context.Context, topic string, key string, event any) error {
-	// 简单实现，仅记录日志
-	slog.Debug("Publishing event", "topic", topic, "key", key, "event", event)
-	return nil
-}
-
-// PublishInTx 在事务中发布事件
-func (p *dummyEventPublisher) PublishInTx(ctx context.Context, tx any, topic string, key string, event any) error {
-	// 简单实现，仅记录日志
-	slog.Debug("Publishing event in transaction", "topic", topic, "key", key, "event", event)
-	return nil
 }
