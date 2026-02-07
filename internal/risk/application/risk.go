@@ -5,6 +5,8 @@ import (
 	"log/slog"
 
 	"github.com/shopspring/decimal"
+	accountv1 "github.com/wyfcoding/financialtrading/go-api/account/v1"
+	positionv1 "github.com/wyfcoding/financialtrading/go-api/position/v1"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
 )
 
@@ -19,10 +21,12 @@ type RiskService struct {
 func NewRiskService(
 	repo domain.RiskRepository,
 	redisRepo domain.RiskRedisRepository,
+	accClient accountv1.AccountServiceClient,
+	posClient positionv1.PositionServiceClient,
 	logger *slog.Logger,
 ) *RiskService {
 	return &RiskService{
-		Command: NewRiskCommand(repo, redisRepo),
+		Command: NewRiskCommand(repo, redisRepo, accClient, posClient),
 		Query:   NewRiskQueryService(repo, redisRepo),
 		logger:  logger.With("module", "risk_service"),
 	}

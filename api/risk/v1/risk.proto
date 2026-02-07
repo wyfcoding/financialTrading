@@ -101,3 +101,14 @@ message RiskAlert {
 message GetRiskAlertsResponse {
   repeated RiskAlert alerts = 1;
 }
+
+message PositionLiquidationTriggeredEvent {
+  string user_id = 1;
+  string account_id = 2;
+  string symbol = 3;
+  string side = 4;
+  double quantity = 5;
+  double margin_level = 6;
+  string trigger_reason = 7;
+  int64 triggered_at = 8;
+}

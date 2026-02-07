@@ -18,6 +18,11 @@ const (
 	RiskLevelCritical RiskLevel = "CRITICAL"
 )
 
+const (
+	LimitTypeMaxPosition = "MAX_POSITION"
+	LimitTypeCreditLimit = "CREDIT_LIMIT"
+)
+
 // RiskAssessment 风险评估实体
 type RiskAssessment struct {
 	gorm.Model

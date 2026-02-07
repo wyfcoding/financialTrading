@@ -7,6 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
+	risk_pb "github.com/wyfcoding/financialtrading/go-api/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
 )
 
@@ -78,7 +79,18 @@ func (p *OutboxEventPublisher) PublishRiskLevelChanged(event domain.RiskLevelCha
 
 // PublishPositionLiquidationTriggered 发布强平触发事件
 func (p *OutboxEventPublisher) PublishPositionLiquidationTriggered(event domain.PositionLiquidationTriggeredEvent) error {
-	return p.publishEvent("PositionLiquidationTriggeredEvent", event)
+	// Map Domain Event to gRPC Message for external contract
+	pbEvent := &risk_pb.PositionLiquidationTriggeredEvent{
+		UserId:        event.UserID,
+		AccountId:     event.AccountID,
+		Symbol:        event.Symbol,
+		Side:          event.Side,
+		Quantity:      event.Quantity,
+		MarginLevel:   event.MarginLevel,
+		TriggerReason: event.TriggerReason,
+		TriggeredAt:   event.TriggeredAt,
+	}
+	return p.publishEvent("PositionLiquidationTriggeredEvent", pbEvent)
 }
 
 // publishEvent 通用事件发布方法

@@ -136,7 +136,7 @@ func (e *LiquidationEngine) CheckAccountRisk(ctx context.Context, acc *accountv1
 		// 触发强平事件
 		for _, pos := range posResp.Positions {
 			qty, _ := decimal.NewFromString(pos.Quantity)
-			event := &domain.PositionLiquidationTriggeredEvent{
+			event := domain.PositionLiquidationTriggeredEvent{
 				UserID:        acc.UserId,
 				AccountID:     acc.AccountId,
 				Symbol:        pos.Symbol,
@@ -149,7 +149,7 @@ func (e *LiquidationEngine) CheckAccountRisk(ctx context.Context, acc *accountv1
 			}
 
 			if e.publisher != nil {
-				if err := e.publisher.PublishPositionLiquidationTriggered(*event); err != nil {
+				if err := e.publisher.PublishPositionLiquidationTriggered(event); err != nil {
 					e.logger.Error("failed to publish liquidation event", "error", err)
 				}
 			}

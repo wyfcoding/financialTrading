@@ -126,7 +126,7 @@ func main() {
 	redisRepo := risk_redis.NewRiskRedisRepository(redisCache.GetClient())
 
 	// 5. Application
-	appService := application.NewRiskService(repo, redisRepo, logger.Logger)
+	appService := application.NewRiskService(repo, redisRepo, accClient, posClient, logger.Logger)
 
 	// Event Publisher (Outbox)
 	publisher := risk_messaging.NewOutboxEventPublisher(db)

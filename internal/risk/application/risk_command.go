@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	accountv1 "github.com/wyfcoding/financialtrading/go-api/account/v1"
+	positionv1 "github.com/wyfcoding/financialtrading/go-api/position/v1"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
 )
 
@@ -62,15 +64,24 @@ type UpdateRiskMetricsCommand struct {
 
 // RiskCommand 处理风险相关的命令操作
 type RiskCommand struct {
-	repo      domain.RiskRepository
-	redisRepo domain.RiskRedisRepository
+	repo           domain.RiskRepository
+	redisRepo      domain.RiskRedisRepository
+	accountClient  accountv1.AccountServiceClient
+	positionClient positionv1.PositionServiceClient
 }
 
 // NewRiskCommand 创建新的 RiskCommand 实例
-func NewRiskCommand(repo domain.RiskRepository, redisRepo domain.RiskRedisRepository) *RiskCommand {
+func NewRiskCommand(
+	repo domain.RiskRepository,
+	redisRepo domain.RiskRedisRepository,
+	accClient accountv1.AccountServiceClient,
+	posClient positionv1.PositionServiceClient,
+) *RiskCommand {
 	return &RiskCommand{
-		repo:      repo,
-		redisRepo: redisRepo,
+		repo:           repo,
+		redisRepo:      redisRepo,
+		accountClient:  accClient,
+		positionClient: posClient,
 	}
 }
 
@@ -80,18 +91,54 @@ func (c *RiskCommand) AssessRisk(ctx context.Context, cmd AssessRiskCommand) (*d
 	riskScore := calculateRiskScore(cmd.Symbol, cmd.Side, cmd.Quantity, cmd.Price)
 	riskLevel := determineRiskLevel(riskScore)
 	marginRequirement := calculateMarginRequirement(cmd.Symbol, cmd.Quantity, cmd.Price, riskLevel)
-
-	// 判断是否允许交易
-	// 由于 marginRequirement 是 interface{} 类型，这里需要根据实际类型进行转换
-	// 暂时假设返回的是 float64 类型
 	marginValue, ok := marginRequirement.(float64)
 	if !ok {
 		marginValue = 0
 	}
-	isAllowed := riskLevel != domain.RiskLevelCritical && marginValue < 100000 // 假设限额为 100000
+
+	// 判断是否允许交易
+	isAllowed := riskLevel != domain.RiskLevelCritical
 	reason := ""
-	if !isAllowed {
-		reason = "Risk level too high or margin requirement exceeds limit"
+
+	// 1. 检查最大持仓限额 (MAX_POSITION)
+	if isAllowed && c.positionClient != nil {
+		posLimit, _ := c.repo.GetLimitByUserIDAndType(ctx, cmd.UserID, domain.LimitTypeMaxPosition)
+		if posLimit != nil && !posLimit.LimitValue.IsZero() {
+			posResp, err := c.positionClient.GetPositions(ctx, &positionv1.GetPositionsRequest{UserId: cmd.UserID})
+			if err == nil {
+				symbolQty := decimal.Zero
+				for _, p := range posResp.Positions {
+					if p.Symbol == cmd.Symbol {
+						q, _ := decimal.NewFromString(p.Quantity)
+						symbolQty = symbolQty.Add(q)
+					}
+				}
+				if symbolQty.Add(decimal.NewFromFloat(cmd.Quantity)).GreaterThan(posLimit.LimitValue) {
+					isAllowed = false
+					reason = fmt.Sprintf("Exceeds maximum position limit for %s", cmd.Symbol)
+				}
+			}
+		}
+	}
+
+	// 2. 检查信用额度 (CREDIT_LIMIT)
+	if isAllowed && c.accountClient != nil {
+		creditLimit, _ := c.repo.GetLimitByUserIDAndType(ctx, cmd.UserID, domain.LimitTypeCreditLimit)
+		if creditLimit != nil && !creditLimit.LimitValue.IsZero() {
+			accResp, err := c.accountClient.GetAccount(ctx, &accountv1.GetAccountRequest{UserId: cmd.UserID})
+			if err == nil {
+				// 获取此账户的借款金额
+				borrowed, _ := decimal.NewFromString(accResp.Account.BorrowedAmount)
+				if borrowed.Add(decimal.NewFromFloat(marginValue)).GreaterThan(creditLimit.LimitValue) {
+					isAllowed = false
+					reason = "Exceeds total credit limit"
+				}
+			}
+		}
+	}
+
+	if !isAllowed && reason == "" {
+		reason = "Risk level too high or system limit reached"
 	}
 
 	// 创建风险评估
