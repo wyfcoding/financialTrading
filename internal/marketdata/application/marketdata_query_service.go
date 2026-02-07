@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/domain"
@@ -9,71 +10,96 @@ import (
 
 // MarketDataQueryService 处理所有市场数据查询操作（Queries）。
 type MarketDataQueryService struct {
-	repo domain.MarketDataRepository
+	repo              domain.MarketDataRepository
+	quoteReadRepo     domain.QuoteReadRepository
+	klineReadRepo     domain.KlineReadRepository
+	tradeReadRepo     domain.TradeReadRepository
+	orderBookReadRepo domain.OrderBookReadRepository
+	searchRepo        domain.MarketDataSearchRepository
 }
 
 // NewMarketDataQueryService 构造函数。
-func NewMarketDataQueryService(repo domain.MarketDataRepository) *MarketDataQueryService {
-	return &MarketDataQueryService{repo: repo}
+func NewMarketDataQueryService(
+	repo domain.MarketDataRepository,
+	quoteReadRepo domain.QuoteReadRepository,
+	klineReadRepo domain.KlineReadRepository,
+	tradeReadRepo domain.TradeReadRepository,
+	orderBookReadRepo domain.OrderBookReadRepository,
+	searchRepo domain.MarketDataSearchRepository,
+) *MarketDataQueryService {
+	return &MarketDataQueryService{
+		repo:              repo,
+		quoteReadRepo:     quoteReadRepo,
+		klineReadRepo:     klineReadRepo,
+		tradeReadRepo:     tradeReadRepo,
+		orderBookReadRepo: orderBookReadRepo,
+		searchRepo:        searchRepo,
+	}
 }
 
 // GetLatestQuote 获取最新报价
 func (s *MarketDataQueryService) GetLatestQuote(ctx context.Context, symbol string) (*QuoteDTO, error) {
+	if s.quoteReadRepo != nil {
+		if cached, err := s.quoteReadRepo.GetLatest(ctx, symbol); err == nil && cached != nil {
+			return toQuoteDTO(cached), nil
+		}
+	}
+
 	quote, err := s.repo.GetLatestQuote(ctx, symbol)
 	if err != nil || quote == nil {
 		return nil, err
 	}
-	return &QuoteDTO{
-		Symbol:    quote.Symbol,
-		BidPrice:  quote.BidPrice.String(),
-		AskPrice:  quote.AskPrice.String(),
-		BidSize:   quote.BidSize.String(),
-		AskSize:   quote.AskSize.String(),
-		LastPrice: quote.LastPrice.String(),
-		LastSize:  quote.LastSize.String(),
-		Timestamp: quote.Timestamp.UnixMilli(),
-	}, nil
+	if s.quoteReadRepo != nil {
+		_ = s.quoteReadRepo.Save(ctx, quote)
+	}
+	return toQuoteDTO(quote), nil
 }
 
 // GetKlines 获取K线数据
 func (s *MarketDataQueryService) GetKlines(ctx context.Context, symbol, interval string, limit int) ([]*KlineDTO, error) {
+	if s.klineReadRepo != nil {
+		if cached, err := s.klineReadRepo.List(ctx, symbol, interval, limit); err == nil && len(cached) > 0 {
+			return toKlineDTOs(cached), nil
+		}
+	}
+
 	klines, err := s.repo.GetKlines(ctx, symbol, interval, limit)
 	if err != nil {
 		return nil, err
 	}
-	dtos := make([]*KlineDTO, len(klines))
-	for i, k := range klines {
-		dtos[i] = &KlineDTO{
-			OpenTime:  k.OpenTime.UnixMilli(),
-			Open:      k.Open.String(),
-			High:      k.High.String(),
-			Low:       k.Low.String(),
-			Close:     k.Close.String(),
-			Volume:    k.Volume.String(),
-			CloseTime: k.CloseTime.UnixMilli(),
+	if s.klineReadRepo != nil {
+		for _, k := range klines {
+			_ = s.klineReadRepo.Save(ctx, k)
 		}
 	}
-	return dtos, nil
+	return toKlineDTOs(klines), nil
 }
 
 // GetTrades 获取成交数据
 func (s *MarketDataQueryService) GetTrades(ctx context.Context, symbol string, limit int) ([]*TradeDTO, error) {
+	if s.tradeReadRepo != nil {
+		if cached, err := s.tradeReadRepo.List(ctx, symbol, limit); err == nil && len(cached) > 0 {
+			return toTradeDTOs(cached), nil
+		}
+	}
+
+	if s.searchRepo != nil {
+		trades, _, err := s.searchRepo.SearchTrades(ctx, symbol, time.Time{}, time.Time{}, limit, 0)
+		if err == nil && len(trades) > 0 {
+			return toTradeDTOs(trades), nil
+		}
+	}
+
 	trades, err := s.repo.GetTrades(ctx, symbol, limit)
 	if err != nil {
 		return nil, err
 	}
-	dtos := make([]*TradeDTO, len(trades))
-	for i, t := range trades {
-		dtos[i] = &TradeDTO{
-			TradeID:   t.ID,
-			Symbol:    t.Symbol,
-			Price:     t.Price.String(),
-			Quantity:  t.Quantity.String(),
-			Side:      t.Side,
-			Timestamp: t.Timestamp.UnixMilli(),
+	if s.tradeReadRepo != nil {
+		for _, t := range trades {
+			_ = s.tradeReadRepo.Save(ctx, t)
 		}
 	}
-	return dtos, nil
+	return toTradeDTOs(trades), nil
 }
 
 // GetVolatility 计算波动率
@@ -87,49 +113,38 @@ func (s *MarketDataQueryService) GetVolatility(ctx context.Context, symbol strin
 	return decimal.NewFromFloat(0.25), nil
 }
 
+func (s *MarketDataQueryService) GetOrderBook(ctx context.Context, symbol string) (*OrderBookDTO, error) {
+	if s.orderBookReadRepo != nil {
+		if cached, err := s.orderBookReadRepo.Get(ctx, symbol); err == nil && cached != nil {
+			return toOrderBookDTO(cached), nil
+		}
+	}
+
+	ob, err := s.repo.GetOrderBook(ctx, symbol)
+	if err != nil || ob == nil {
+		return nil, err
+	}
+	if s.orderBookReadRepo != nil {
+		_ = s.orderBookReadRepo.Save(ctx, ob)
+	}
+	return toOrderBookDTO(ob), nil
+}
+
 // GetHistoricalQuotes 获取历史报价
 func (s *MarketDataQueryService) GetHistoricalQuotes(ctx context.Context, symbol string, startTime, endTime int64) ([]*QuoteDTO, error) {
-	// 实现查询历史行情逻辑
-	return nil, nil
-}
-
-// --- DTOs ---
-
-// QuoteDTO 行情数据 DTO
-type QuoteDTO struct {
-	Symbol    string `json:"symbol"`
-	BidPrice  string `json:"bid_price"`
-	AskPrice  string `json:"ask_price"`
-	BidSize   string `json:"bid_size"`
-	AskSize   string `json:"ask_size"`
-	LastPrice string `json:"last_price"`
-	LastSize  string `json:"last_size"`
-	Timestamp int64  `json:"timestamp"`
-	Source    string `json:"source"`
-}
-
-// KlineDTO K线数据 DTO
-type KlineDTO struct {
-	OpenTime  int64  `json:"open_time"`
-	Open      string `json:"open"`
-	High      string `json:"high"`
-	Low       string `json:"low"`
-	Close     string `json:"close"`
-	Volume    string `json:"volume"`
-	CloseTime int64  `json:"close_time"`
-}
-
-// TradeDTO 成交数据 DTO
-type TradeDTO struct {
-	TradeID   string `json:"trade_id"`
-	Symbol    string `json:"symbol"`
-	Price     string `json:"price"`
-	Quantity  string `json:"quantity"`
-	Side      string `json:"side"`
-	Timestamp int64  `json:"timestamp"`
-}
-
-// GetLatestQuoteRequest 获取最新行情请求 DTO
-type GetLatestQuoteRequest struct {
-	Symbol string `json:"symbol"`
+	if s.searchRepo == nil {
+		return nil, nil
+	}
+	var start, end time.Time
+	if startTime > 0 {
+		start = time.UnixMilli(startTime)
+	}
+	if endTime > 0 {
+		end = time.UnixMilli(endTime)
+	}
+	quotes, _, err := s.searchRepo.SearchQuotes(ctx, symbol, start, end, 1000, 0)
+	if err != nil {
+		return nil, err
+	}
+	return toQuoteDTOs(quotes), nil
 }

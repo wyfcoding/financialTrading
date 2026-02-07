@@ -16,14 +16,13 @@ import (
 // 负责处理与市场数据相关的 gRPC 请求
 type MarketDataHandler struct {
 	pb.UnimplementedMarketDataServiceServer
-	service *application.MarketDataService // 市场数据应用服务门面
+	query *application.MarketDataQueryService
 }
 
 // NewMarketDataHandler 创建 gRPC 处理器实例
-// service: 注入的市场数据应用服务
-func NewHandler(service *application.MarketDataService) *MarketDataHandler {
+func NewHandler(query *application.MarketDataQueryService) *MarketDataHandler {
 	return &MarketDataHandler{
-		service: service,
+		query: query,
 	}
 }
 
@@ -35,11 +34,7 @@ func (h *MarketDataHandler) GetLatestQuote(ctx context.Context, req *pb.GetLates
 		return nil, status.Error(codes.InvalidArgument, "symbol is required")
 	}
 
-	appReq := &application.GetLatestQuoteRequest{
-		Symbol: req.Symbol,
-	}
-
-	quoteDTO, err := h.service.GetLatestQuote(ctx, appReq)
+	quoteDTO, err := h.query.GetLatestQuote(ctx, req.Symbol)
 	if err != nil {
 		logging.Error(ctx, "Failed to get latest quote",
 			"symbol", req.Symbol,
@@ -48,6 +43,9 @@ func (h *MarketDataHandler) GetLatestQuote(ctx context.Context, req *pb.GetLates
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	if quoteDTO == nil {
+		return &pb.GetLatestQuoteResponse{Symbol: req.Symbol}, nil
+	}
 	return &pb.GetLatestQuoteResponse{
 		Symbol:    quoteDTO.Symbol,
 		BidPrice:  parseFloat(quoteDTO.BidPrice),
@@ -66,7 +64,7 @@ func (h *MarketDataHandler) GetKlines(ctx context.Context, req *pb.GetKlinesRequ
 		return nil, status.Error(codes.InvalidArgument, "symbol is required")
 	}
 
-	dtos, err := h.service.GetKlines(ctx, req.Symbol, req.Interval, int(req.Limit))
+	dtos, err := h.query.GetKlines(ctx, req.Symbol, req.Interval, int(req.Limit))
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -101,12 +99,44 @@ func (h *MarketDataHandler) GetOrderBook(ctx context.Context, req *pb.GetOrderBo
 		depth = 20
 	}
 
-	// 实现待补充（查询 Repository）
+	dto, err := h.query.GetOrderBook(ctx, req.Symbol)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if dto == nil {
+		return &pb.GetOrderBookResponse{
+			Symbol:    req.Symbol,
+			Bids:      make([]*pb.OrderBookLevel, 0),
+			Asks:      make([]*pb.OrderBookLevel, 0),
+			Timestamp: 0,
+		}, nil
+	}
+
+	bids := make([]*pb.OrderBookLevel, 0, len(dto.Bids))
+	for _, bid := range dto.Bids {
+		bids = append(bids, &pb.OrderBookLevel{
+			Price:    parseFloat(bid.Price),
+			Quantity: parseFloat(bid.Quantity),
+		})
+	}
+	asks := make([]*pb.OrderBookLevel, 0, len(dto.Asks))
+	for _, ask := range dto.Asks {
+		asks = append(asks, &pb.OrderBookLevel{
+			Price:    parseFloat(ask.Price),
+			Quantity: parseFloat(ask.Quantity),
+		})
+	}
+	if int(depth) < len(bids) {
+		bids = bids[:depth]
+	}
+	if int(depth) < len(asks) {
+		asks = asks[:depth]
+	}
 	return &pb.GetOrderBookResponse{
 		Symbol:    req.Symbol,
-		Bids:      make([]*pb.OrderBookLevel, 0),
-		Asks:      make([]*pb.OrderBookLevel, 0),
-		Timestamp: 0,
+		Bids:      bids,
+		Asks:      asks,
+		Timestamp: dto.Timestamp,
 	}, nil
 }
 
@@ -115,8 +145,7 @@ func (h *MarketDataHandler) SubscribeQuotes(req *pb.SubscribeQuotesRequest, stre
 	if len(req.Symbols) == 0 {
 		return status.Error(codes.InvalidArgument, "symbols is required")
 	}
-	// 实现待补充（需要实时推送机制）
-	return nil
+	return status.Error(codes.Unimplemented, "streaming quotes not implemented")
 }
 
 // GetTrades 获取交易历史
@@ -125,7 +154,7 @@ func (h *MarketDataHandler) GetTrades(ctx context.Context, req *pb.GetTradesRequ
 		return nil, status.Error(codes.InvalidArgument, "symbol is required")
 	}
 
-	dtos, err := h.service.GetTrades(ctx, req.Symbol, int(req.Limit))
+	dtos, err := h.query.GetTrades(ctx, req.Symbol, int(req.Limit))
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -150,7 +179,7 @@ func (h *MarketDataHandler) GetVolatility(ctx context.Context, req *pb.GetVolati
 		return nil, status.Error(codes.InvalidArgument, "symbol is required")
 	}
 
-	vol, err := h.service.GetVolatility(ctx, req.Symbol)
+	vol, err := h.query.GetVolatility(ctx, req.Symbol)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

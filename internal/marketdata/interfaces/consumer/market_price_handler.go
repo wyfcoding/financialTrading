@@ -1,4 +1,4 @@
-package events
+package consumer
 
 import (
 	"context"
@@ -8,15 +8,14 @@ import (
 	kafkago "github.com/segmentio/kafka-go"
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/application"
-	"github.com/wyfcoding/pkg/messagequeue/kafka"
 )
 
 type MarketDataEventHandler struct {
-	service *application.MarketDataService
+	command *application.MarketDataCommandService
 }
 
-func NewMarketDataEventHandler(service *application.MarketDataService) *MarketDataEventHandler {
-	return &MarketDataEventHandler{service: service}
+func NewMarketDataEventHandler(command *application.MarketDataCommandService) *MarketDataEventHandler {
+	return &MarketDataEventHandler{command: command}
 }
 
 func (h *MarketDataEventHandler) HandleMarketPrice(ctx context.Context, msg kafkago.Message) error {
@@ -32,9 +31,10 @@ func (h *MarketDataEventHandler) HandleMarketPrice(ctx context.Context, msg kafk
 	price, _ := decimal.NewFromString(event.Price)
 	slog.Info("Handling market price event", "symbol", event.Symbol, "price", price.String())
 
-	return h.service.SaveQuote(ctx, event.Symbol, decimal.Zero, decimal.Zero, decimal.Zero, decimal.Zero, price, decimal.Zero, event.Timestamp, "simulation")
-}
-
-func (h *MarketDataEventHandler) Subscribe(ctx context.Context, consumer *kafka.Consumer) {
-	consumer.Start(ctx, 1, h.HandleMarketPrice)
+	return h.command.SaveQuote(ctx, application.SaveQuoteCommand{
+		Symbol:    event.Symbol,
+		LastPrice: price,
+		Timestamp: event.Timestamp,
+		Source:    "simulation",
+	})
 }

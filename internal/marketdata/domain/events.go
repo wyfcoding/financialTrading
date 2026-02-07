@@ -2,6 +2,13 @@ package domain
 
 import "time"
 
+const (
+	QuoteUpdatedEventType     = "marketdata.quote.updated"
+	KlineUpdatedEventType     = "marketdata.kline.updated"
+	TradeExecutedEventType    = "marketdata.trade.executed"
+	OrderBookUpdatedEventType = "marketdata.orderbook.updated"
+)
+
 // QuoteUpdatedEvent 报价更新事件
 type QuoteUpdatedEvent struct {
 	Symbol    string    `json:"symbol"`

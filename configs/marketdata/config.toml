@@ -33,7 +33,7 @@ write_timeout = "3s"
 
 [messagequeue.kafka]
 brokers = ["localhost:9092"]
-topic = "financial.marketdata.events"
+topic = "market.price"
 
 [tracing]
 enabled = false

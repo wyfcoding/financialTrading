@@ -9,11 +9,11 @@ import (
 )
 
 type MarketDataHandler struct {
-	app *application.MarketDataService
+	query *application.MarketDataQueryService
 }
 
-func NewMarketDataHandler(app *application.MarketDataService) *MarketDataHandler {
-	return &MarketDataHandler{app: app}
+func NewMarketDataHandler(query *application.MarketDataQueryService) *MarketDataHandler {
+	return &MarketDataHandler{query: query}
 }
 
 func (h *MarketDataHandler) RegisterRoutes(r *gin.RouterGroup) {
@@ -22,6 +22,8 @@ func (h *MarketDataHandler) RegisterRoutes(r *gin.RouterGroup) {
 		v1.GET("/quote", h.GetLatestQuote)
 		v1.GET("/klines", h.GetKlines)
 		v1.GET("/trades", h.GetTrades)
+		v1.GET("/orderbook", h.GetOrderBook)
+		v1.GET("/volatility", h.GetVolatility)
 	}
 }
 
@@ -32,7 +34,7 @@ func (h *MarketDataHandler) GetLatestQuote(c *gin.Context) {
 		return
 	}
 
-	dto, err := h.app.Query.GetLatestQuote(c.Request.Context(), symbol)
+	dto, err := h.query.GetLatestQuote(c.Request.Context(), symbol)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -55,7 +57,7 @@ func (h *MarketDataHandler) GetKlines(c *gin.Context) {
 		}
 	}
 
-	dtos, err := h.app.Query.GetKlines(c.Request.Context(), symbol, interval, limit)
+	dtos, err := h.query.GetKlines(c.Request.Context(), symbol, interval, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -73,10 +75,44 @@ func (h *MarketDataHandler) GetTrades(c *gin.Context) {
 		}
 	}
 
-	dtos, err := h.app.Query.GetTrades(c.Request.Context(), symbol, limit)
+	dtos, err := h.query.GetTrades(c.Request.Context(), symbol, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"symbol": symbol, "trades": dtos})
+}
+
+func (h *MarketDataHandler) GetOrderBook(c *gin.Context) {
+	symbol := c.Query("symbol")
+	if symbol == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "symbol is required"})
+		return
+	}
+
+	dto, err := h.query.GetOrderBook(c.Request.Context(), symbol)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if dto == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "orderbook not found"})
+		return
+	}
+	c.JSON(http.StatusOK, dto)
+}
+
+func (h *MarketDataHandler) GetVolatility(c *gin.Context) {
+	symbol := c.Query("symbol")
+	if symbol == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "symbol is required"})
+		return
+	}
+
+	vol, err := h.query.GetVolatility(c.Request.Context(), symbol)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"symbol": symbol, "volatility": vol.InexactFloat64()})
 }
