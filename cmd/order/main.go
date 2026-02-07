@@ -17,8 +17,8 @@ import (
 	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/application"
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
+	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/persistence/elasticsearch"
 	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/persistence/mysql"
-	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/search"
 	"github.com/wyfcoding/financialtrading/internal/order/interfaces/events"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/order/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/order/interfaces/http"
@@ -96,7 +96,7 @@ func main() {
 	if err != nil {
 		slog.Error("failed to connect elasticsearch", "error", err)
 	}
-	searchRepo := search.NewOrderSearchRepository(esClient)
+	searchRepo := elasticsearch.NewOrderSearchRepository(esClient)
 
 	// 6. Application
 	orderService, err := application.NewOrderService(repo, searchRepo, db)

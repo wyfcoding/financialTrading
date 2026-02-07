@@ -20,9 +20,9 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/execution/domain"
 	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure"
 	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/client"
+	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/persistence/elasticsearch"
 	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/persistence/mysql"
 	executionredis "github.com/wyfcoding/financialtrading/internal/execution/infrastructure/persistence/redis"
-	"github.com/wyfcoding/financialtrading/internal/execution/infrastructure/search"
 	executionconsumer "github.com/wyfcoding/financialtrading/internal/execution/interfaces/consumer"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/execution/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/execution/interfaces/http"
@@ -117,7 +117,7 @@ func main() {
 	if err != nil {
 		slog.Error("failed to init elasticsearch", "error", err)
 	}
-	tradeSearchRepo := search.NewTradeSearchRepository(esClient, "trades")
+	tradeSearchRepo := elasticsearch.NewTradeSearchRepository(esClient, "trades")
 
 	redisCache, err := cache.NewRedisCache(&cfg.Data.Redis, cfg.CircuitBreaker, logger, metricsImpl)
 	if err != nil {

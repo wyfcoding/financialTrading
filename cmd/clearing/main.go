@@ -17,9 +17,9 @@ import (
 	clearingv1 "github.com/wyfcoding/financialtrading/go-api/clearing/v1"
 	"github.com/wyfcoding/financialtrading/internal/clearing/application"
 	"github.com/wyfcoding/financialtrading/internal/clearing/domain"
+	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/persistence/elasticsearch"
 	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/persistence/mysql"
 	clearingredis "github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/persistence/redis"
-	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/search"
 	clearingconsumer "github.com/wyfcoding/financialtrading/internal/clearing/interfaces/consumer"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/clearing/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/clearing/interfaces/http"
@@ -101,7 +101,7 @@ func main() {
 	if err != nil {
 		slog.Error("failed to init elasticsearch", "error", err)
 	}
-	searchRepo := search.NewSettlementSearchRepository(esClient, "settlements")
+	searchRepo := elasticsearch.NewSettlementSearchRepository(esClient, "settlements")
 
 	redisCache, err := cache.NewRedisCache(&cfg.Data.Redis, cfg.CircuitBreaker, logger, metricsImpl)
 	if err != nil {

@@ -1,14 +1,14 @@
-package search
+package elasticsearch
 
 import (
 	"context"
 	"encoding/json"
 
-	"github.com/wyfcoding/financialtrading/internal/clearing/domain"
+	"github.com/wyfcoding/financialtrading/internal/execution/domain"
 	search_pkg "github.com/wyfcoding/pkg/search"
 )
 
-type settlementSearchRepository struct {
+type tradeSearchRepository struct {
 	client *search_pkg.Client
 	index  string
 }
@@ -25,21 +25,21 @@ type esSearchResponse struct {
 	} `json:"hits"`
 }
 
-func NewSettlementSearchRepository(client *search_pkg.Client, index string) domain.SettlementSearchRepository {
+func NewTradeSearchRepository(client *search_pkg.Client, index string) domain.TradeSearchRepository {
 	if index == "" {
-		index = "settlements"
+		index = "trades"
 	}
-	return &settlementSearchRepository{
+	return &tradeSearchRepository{
 		client: client,
 		index:  index,
 	}
 }
 
-func (r *settlementSearchRepository) Index(ctx context.Context, settlement *domain.Settlement) error {
-	return r.client.Index(ctx, r.index, settlement.SettlementID, settlement)
+func (r *tradeSearchRepository) Index(ctx context.Context, trade *domain.Trade) error {
+	return r.client.Index(ctx, r.index, trade.TradeID, trade)
 }
 
-func (r *settlementSearchRepository) Search(ctx context.Context, userID, symbol string, limit, offset int) ([]*domain.Settlement, int64, error) {
+func (r *tradeSearchRepository) Search(ctx context.Context, userID, symbol string, limit, offset int) ([]*domain.Trade, int64, error) {
 	query := map[string]interface{}{
 		"query": map[string]interface{}{
 			"bool": map[string]interface{}{
@@ -64,18 +64,18 @@ func (r *settlementSearchRepository) Search(ctx context.Context, userID, symbol 
 		return nil, 0, err
 	}
 
-	settlements := make([]*domain.Settlement, 0, len(resp.Hits.Hits))
+	trades := make([]*domain.Trade, 0, len(resp.Hits.Hits))
 	for _, hit := range resp.Hits.Hits {
-		var s domain.Settlement
-		if err := json.Unmarshal(hit.Source, &s); err != nil {
+		var trade domain.Trade
+		if err := json.Unmarshal(hit.Source, &trade); err != nil {
 			continue
 		}
-		settlements = append(settlements, &s)
+		trades = append(trades, &trade)
 	}
 
-	return settlements, resp.Hits.Total.Value, nil
+	return trades, resp.Hits.Total.Value, nil
 }
 
-func (r *settlementSearchRepository) Delete(ctx context.Context, id string) error {
-	return r.client.Delete(ctx, r.index, id)
+func (r *tradeSearchRepository) Delete(ctx context.Context, tradeID string) error {
+	return r.client.Delete(ctx, r.index, tradeID)
 }
