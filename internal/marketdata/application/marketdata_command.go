@@ -18,6 +18,7 @@ type MarketDataCommandService struct {
 	logger      *slog.Logger
 	broadcaster Broadcaster
 	publisher   domain.EventPublisher
+	history     *HistoryService
 }
 
 // Broadcaster 广播接口
@@ -26,11 +27,12 @@ type Broadcaster interface {
 }
 
 // NewMarketDataCommandService 构造函数。
-func NewMarketDataCommandService(repo domain.MarketDataRepository, logger *slog.Logger, publisher domain.EventPublisher) *MarketDataCommandService {
+func NewMarketDataCommandService(repo domain.MarketDataRepository, logger *slog.Logger, publisher domain.EventPublisher, history *HistoryService) *MarketDataCommandService {
 	return &MarketDataCommandService{
 		repo:      repo,
 		logger:    logger,
 		publisher: publisher,
+		history:   history,
 	}
 }
 
@@ -107,6 +109,10 @@ func (s *MarketDataCommandService) SaveTrade(ctx context.Context, trade *domain.
 	return s.repo.WithTx(ctx, func(txCtx context.Context) error {
 		if err := s.repo.SaveTrade(txCtx, trade); err != nil {
 			return err
+		}
+
+		if s.history != nil {
+			s.history.RecordTrade(trade.Symbol, trade.Price, trade.Timestamp)
 		}
 
 		if s.publisher == nil {

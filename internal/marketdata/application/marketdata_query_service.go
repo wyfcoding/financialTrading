@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -16,6 +17,7 @@ type MarketDataQueryService struct {
 	tradeReadRepo     domain.TradeReadRepository
 	orderBookReadRepo domain.OrderBookReadRepository
 	searchRepo        domain.MarketDataSearchRepository
+	history           *HistoryService
 }
 
 // NewMarketDataQueryService 构造函数。
@@ -26,6 +28,7 @@ func NewMarketDataQueryService(
 	tradeReadRepo domain.TradeReadRepository,
 	orderBookReadRepo domain.OrderBookReadRepository,
 	searchRepo domain.MarketDataSearchRepository,
+	history *HistoryService,
 ) *MarketDataQueryService {
 	return &MarketDataQueryService{
 		repo:              repo,
@@ -34,6 +37,7 @@ func NewMarketDataQueryService(
 		tradeReadRepo:     tradeReadRepo,
 		orderBookReadRepo: orderBookReadRepo,
 		searchRepo:        searchRepo,
+		history:           history,
 	}
 }
 
@@ -108,7 +112,7 @@ func (s *MarketDataQueryService) GetVolatility(ctx context.Context, symbol strin
 	const periods = 24
 	klines, err := s.repo.GetKlines(ctx, symbol, interval, periods)
 	if err != nil || len(klines) < 2 {
-		return decimal.NewFromFloat(0.2), nil // 20% default floor
+		return s.estimateVolatilityFromHistory(ctx, symbol), nil
 	}
 	return decimal.NewFromFloat(0.25), nil
 }
@@ -147,4 +151,33 @@ func (s *MarketDataQueryService) GetHistoricalQuotes(ctx context.Context, symbol
 		return nil, err
 	}
 	return toQuoteDTOs(quotes), nil
+}
+
+func (s *MarketDataQueryService) estimateVolatilityFromHistory(ctx context.Context, symbol string) decimal.Decimal {
+	base := decimal.NewFromFloat(0.2)
+	if s.history == nil {
+		return base
+	}
+	quote, _ := s.repo.GetLatestQuote(ctx, symbol)
+	if quote == nil || quote.LastPrice.IsZero() {
+		return base
+	}
+
+	band := quote.LastPrice.Mul(decimal.NewFromFloat(0.01)) // 1% 价格带
+	low := quote.LastPrice.Sub(band)
+	high := quote.LastPrice.Add(band)
+	count := s.history.QueryVolumeAtTime(symbol, time.Now(), low, high)
+	if count <= 0 {
+		return base
+	}
+
+	adj := 1.0 / math.Sqrt(float64(count))
+	vol := base.Mul(decimal.NewFromFloat(adj))
+	if vol.LessThan(decimal.NewFromFloat(0.05)) {
+		vol = decimal.NewFromFloat(0.05)
+	}
+	if vol.GreaterThan(decimal.NewFromFloat(1.0)) {
+		vol = decimal.NewFromFloat(1.0)
+	}
+	return vol
 }

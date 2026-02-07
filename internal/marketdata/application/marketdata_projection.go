@@ -13,6 +13,7 @@ type MarketDataProjectionService struct {
 	klineReadRepo     domain.KlineReadRepository
 	tradeReadRepo     domain.TradeReadRepository
 	orderBookReadRepo domain.OrderBookReadRepository
+	searchRepo        domain.MarketDataSearchRepository
 	logger            *slog.Logger
 }
 
@@ -21,6 +22,7 @@ func NewMarketDataProjectionService(
 	klineReadRepo domain.KlineReadRepository,
 	tradeReadRepo domain.TradeReadRepository,
 	orderBookReadRepo domain.OrderBookReadRepository,
+	searchRepo domain.MarketDataSearchRepository,
 	logger *slog.Logger,
 ) *MarketDataProjectionService {
 	return &MarketDataProjectionService{
@@ -28,6 +30,7 @@ func NewMarketDataProjectionService(
 		klineReadRepo:     klineReadRepo,
 		tradeReadRepo:     tradeReadRepo,
 		orderBookReadRepo: orderBookReadRepo,
+		searchRepo:        searchRepo,
 		logger:            logger,
 	}
 }
@@ -39,6 +42,12 @@ func (s *MarketDataProjectionService) ProjectQuote(ctx context.Context, quote *d
 	if err := s.quoteReadRepo.Save(ctx, quote); err != nil {
 		s.logger.WarnContext(ctx, "failed to project quote", "error", err, "symbol", quote.Symbol)
 		return err
+	}
+	if s.searchRepo != nil {
+		if err := s.searchRepo.IndexQuote(ctx, quote); err != nil {
+			s.logger.WarnContext(ctx, "failed to index quote", "error", err, "symbol", quote.Symbol)
+			return err
+		}
 	}
 	return nil
 }
@@ -61,6 +70,12 @@ func (s *MarketDataProjectionService) ProjectTrade(ctx context.Context, trade *d
 	if err := s.tradeReadRepo.Save(ctx, trade); err != nil {
 		s.logger.WarnContext(ctx, "failed to project trade", "error", err, "symbol", trade.Symbol, "trade_id", trade.ID)
 		return err
+	}
+	if s.searchRepo != nil {
+		if err := s.searchRepo.IndexTrade(ctx, trade); err != nil {
+			s.logger.WarnContext(ctx, "failed to index trade", "error", err, "symbol", trade.Symbol, "trade_id", trade.ID)
+			return err
+		}
 	}
 	return nil
 }

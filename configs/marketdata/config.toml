@@ -31,6 +31,11 @@ min_idle_conns = 5
 read_timeout = "3s"
 write_timeout = "3s"
 
+[data.elasticsearch]
+addresses = ["http://localhost:9200"]
+username = ""
+password = ""
+
 [messagequeue.kafka]
 brokers = ["localhost:9092"]
 topic = "market.price"

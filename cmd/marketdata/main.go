@@ -17,6 +17,7 @@ import (
 	marketdatav1 "github.com/wyfcoding/financialtrading/go-api/marketdata/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/application"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/domain"
+	"github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/persistence/elasticsearch"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/persistence/mysql"
 	redisrepo "github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/persistence/redis"
 	mdconsumer "github.com/wyfcoding/financialtrading/internal/marketdata/interfaces/consumer"
@@ -29,6 +30,7 @@ import (
 	"github.com/wyfcoding/pkg/messagequeue/kafka"
 	"github.com/wyfcoding/pkg/messagequeue/outbox"
 	"github.com/wyfcoding/pkg/metrics"
+	search_pkg "github.com/wyfcoding/pkg/search"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -99,11 +101,24 @@ func main() {
 	orderBookReadRepo := redisrepo.NewOrderBookRedisRepository(redisClient)
 
 	publisher := outbox.NewPublisher(outboxMgr)
+	var searchRepo domain.MarketDataSearchRepository
+	esCfg := &search_pkg.Config{
+		ServiceName:         cfg.Server.Name,
+		ElasticsearchConfig: cfg.Data.Elasticsearch,
+		BreakerConfig:       cfg.CircuitBreaker,
+	}
+	esClient, err := search_pkg.NewClient(esCfg, logger, metricsImpl)
+	if err != nil {
+		slog.Error("failed to init elasticsearch", "error", err)
+	} else {
+		searchRepo = elasticsearch.NewMarketDataSearchRepository(esClient, "", "")
+	}
 
 	// 8. Application Services
-	commandSvc := application.NewMarketDataCommandService(mysqlRepo, logger.Logger, publisher)
-	querySvc := application.NewMarketDataQueryService(mysqlRepo, quoteReadRepo, klineReadRepo, tradeReadRepo, orderBookReadRepo)
-	projectionSvc := application.NewMarketDataProjectionService(quoteReadRepo, klineReadRepo, tradeReadRepo, orderBookReadRepo, logger.Logger)
+	historySvc := application.NewHistoryService()
+	commandSvc := application.NewMarketDataCommandService(mysqlRepo, logger.Logger, publisher, historySvc)
+	querySvc := application.NewMarketDataQueryService(mysqlRepo, quoteReadRepo, klineReadRepo, tradeReadRepo, orderBookReadRepo, searchRepo, historySvc)
+	projectionSvc := application.NewMarketDataProjectionService(quoteReadRepo, klineReadRepo, tradeReadRepo, orderBookReadRepo, searchRepo, logger.Logger)
 
 	// 9. Kafka Consumers (Projection)
 	projectionHandler := mdconsumer.NewMarketDataProjectionHandler(projectionSvc, logger.Logger)
