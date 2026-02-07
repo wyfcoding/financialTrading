@@ -16,6 +16,6 @@ WORKDIR /app
 COPY --from=builder /app/matchingengine .
 COPY --from=builder /app/configs/matchingengine/config.toml ./configs/matchingengine/
 
-EXPOSE 9085
+EXPOSE 8085 9085
 
 CMD ["./matchingengine", "-config", "configs/matchingengine/config.toml"]

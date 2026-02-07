@@ -19,6 +19,9 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
+            - name: http
+              containerPort: {{ .Values.service.httpPort }}
+              protocol: TCP
             - name: grpc
               containerPort: {{ .Values.service.grpcPort }}
               protocol: TCP
