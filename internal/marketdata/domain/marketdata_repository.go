@@ -62,3 +62,9 @@ type MarketDataSearchRepository interface {
 	SearchQuotes(ctx context.Context, symbol string, startTime, endTime time.Time, limit, offset int) ([]*Quote, int64, error)
 	SearchTrades(ctx context.Context, symbol string, startTime, endTime time.Time, limit, offset int) ([]*Trade, int64, error)
 }
+
+// HistoryAnalyzer 提供价格分布历史分析能力（技术实现细节在基础设施层）。
+type HistoryAnalyzer interface {
+	RecordTrade(price int, timestamp int64)
+	QueryVolumeAtTime(timestamp int64, low, high int) int
+}

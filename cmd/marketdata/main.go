@@ -17,6 +17,7 @@ import (
 	marketdatav1 "github.com/wyfcoding/financialtrading/go-api/marketdata/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/application"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/domain"
+	"github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/analysis"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/persistence/elasticsearch"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/persistence/mysql"
 	redisrepo "github.com/wyfcoding/financialtrading/internal/marketdata/infrastructure/persistence/redis"
@@ -115,7 +116,8 @@ func main() {
 	}
 
 	// 8. Application Services
-	historySvc := application.NewHistoryService()
+	historyAnalyzer := analysis.NewPSTHistoryAnalyzer(1_000_000)
+	historySvc := application.NewHistoryService(historyAnalyzer)
 	commandSvc := application.NewMarketDataCommandService(mysqlRepo, logger.Logger, publisher, historySvc)
 	querySvc := application.NewMarketDataQueryService(mysqlRepo, quoteReadRepo, klineReadRepo, tradeReadRepo, orderBookReadRepo, searchRepo, historySvc)
 	projectionSvc := application.NewMarketDataProjectionService(quoteReadRepo, klineReadRepo, tradeReadRepo, orderBookReadRepo, searchRepo, logger.Logger)
