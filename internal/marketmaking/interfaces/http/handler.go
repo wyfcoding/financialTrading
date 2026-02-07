@@ -8,11 +8,12 @@ import (
 )
 
 type MarketMakingHandler struct {
-	app *application.MarketMakingService
+	cmd   *application.MarketMakingCommandService
+	query *application.MarketMakingQueryService
 }
 
-func NewMarketMakingHandler(app *application.MarketMakingService) *MarketMakingHandler {
-	return &MarketMakingHandler{app: app}
+func NewMarketMakingHandler(cmd *application.MarketMakingCommandService, query *application.MarketMakingQueryService) *MarketMakingHandler {
+	return &MarketMakingHandler{cmd: cmd, query: query}
 }
 
 func (h *MarketMakingHandler) RegisterRoutes(r *gin.RouterGroup) {
@@ -21,6 +22,7 @@ func (h *MarketMakingHandler) RegisterRoutes(r *gin.RouterGroup) {
 		v1.POST("/strategy", h.SetStrategy)
 		v1.GET("/strategy", h.GetStrategy)
 		v1.GET("/performance", h.GetPerformance)
+		v1.GET("/strategies", h.ListStrategies)
 	}
 }
 
@@ -31,7 +33,7 @@ func (h *MarketMakingHandler) SetStrategy(c *gin.Context) {
 		return
 	}
 
-	id, err := h.app.SetStrategy(c.Request.Context(), cmd)
+	id, err := h.cmd.SetStrategy(c.Request.Context(), cmd)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -46,7 +48,7 @@ func (h *MarketMakingHandler) GetStrategy(c *gin.Context) {
 		return
 	}
 
-	dto, err := h.app.GetStrategy(c.Request.Context(), symbol)
+	dto, err := h.query.GetStrategy(c.Request.Context(), symbol)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -60,10 +62,19 @@ func (h *MarketMakingHandler) GetStrategy(c *gin.Context) {
 
 func (h *MarketMakingHandler) GetPerformance(c *gin.Context) {
 	symbol := c.Query("symbol")
-	dto, err := h.app.GetPerformance(c.Request.Context(), symbol)
+	dto, err := h.query.GetPerformance(c.Request.Context(), symbol)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, dto)
+}
+
+func (h *MarketMakingHandler) ListStrategies(c *gin.Context) {
+	dtos, err := h.query.ListStrategies(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"strategies": dtos})
 }

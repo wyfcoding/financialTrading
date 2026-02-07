@@ -10,19 +10,27 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	marketmakingv1 "github.com/wyfcoding/financialtrading/go-api/marketmaking/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/application"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/client"
+	"github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/persistence/elasticsearch"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/persistence/mysql"
+	redisrepo "github.com/wyfcoding/financialtrading/internal/marketmaking/infrastructure/persistence/redis"
+	mmconsumer "github.com/wyfcoding/financialtrading/internal/marketmaking/interfaces/consumer"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/marketmaking/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/marketmaking/interfaces/http"
+	"github.com/wyfcoding/pkg/cache"
 	"github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/database"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
+	"github.com/wyfcoding/pkg/messagequeue/outbox"
 	"github.com/wyfcoding/pkg/metrics"
+	search_pkg "github.com/wyfcoding/pkg/search"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -40,16 +48,7 @@ func main() {
 	}
 
 	// 2. Logger
-	logCfg := &logging.Config{
-		Service:    cfg.Server.Name,
-		Module:     "marketmaking",
-		Level:      cfg.Log.Level,
-		File:       cfg.Log.File,
-		MaxSize:    cfg.Log.MaxSize,
-		MaxBackups: cfg.Log.MaxBackups,
-		MaxAge:     cfg.Log.MaxAge,
-		Compress:   cfg.Log.Compress,
-	}
+	logCfg := &logging.Config{Service: cfg.Server.Name, Level: cfg.Log.Level}
 	logger := logging.NewFromConfig(logCfg)
 	slog.SetDefault(logger.Logger)
 
@@ -67,15 +66,47 @@ func main() {
 	}
 
 	if cfg.Server.Environment == "dev" {
-		// 自动迁移数据库模型
-		if err := db.RawDB().AutoMigrate(&domain.QuoteStrategy{}, &domain.MarketMakingPerformance{}); err != nil {
+		if err := db.RawDB().AutoMigrate(&mysql.StrategyModel{}, &mysql.PerformanceModel{}, &outbox.Message{}); err != nil {
 			slog.Error("failed to migrate database", "error", err)
 		}
 	}
 
-	strategyRepo := mysql.NewMarketMakingRepository(db.RawDB())
+	// 5. Kafka & Outbox
+	kafkaProducer := kafka.NewProducer(&cfg.MessageQueue.Kafka, logger, metricsImpl)
+	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
+	pusher := func(ctx context.Context, topic, key string, payload []byte) error {
+		return kafkaProducer.PublishToTopic(ctx, topic, []byte(key), payload)
+	}
+	outboxProcessor := outbox.NewProcessor(outboxMgr, pusher, 100, 2*time.Second)
 
-	// Clients
+	// 6. Redis
+	redisCache, err := cache.NewRedisCache(&cfg.Data.Redis, cfg.CircuitBreaker, logger, metricsImpl)
+	if err != nil {
+		slog.Error("failed to init redis", "error", err)
+		os.Exit(1)
+	}
+	redisClient := redisCache.GetClient()
+
+	// 7. Repositories
+	repo := mysql.NewMarketMakingRepository(db.RawDB())
+	strategyReadRepo := redisrepo.NewStrategyRedisRepository(redisClient)
+	performanceReadRepo := redisrepo.NewPerformanceRedisRepository(redisClient)
+
+	publisher := outbox.NewPublisher(outboxMgr)
+	var searchRepo domain.MarketMakingSearchRepository
+	esCfg := &search_pkg.Config{
+		ServiceName:         cfg.Server.Name,
+		ElasticsearchConfig: cfg.Data.Elasticsearch,
+		BreakerConfig:       cfg.CircuitBreaker,
+	}
+	esClient, err := search_pkg.NewClient(esCfg, logger, metricsImpl)
+	if err != nil {
+		slog.Error("failed to init elasticsearch", "error", err)
+	} else {
+		searchRepo = elasticsearch.NewMarketMakingSearchRepository(esClient, "", "")
+	}
+
+	// 8. Clients
 	orderAddr := cfg.GetGRPCAddr("order")
 	orderCli, err := client.NewOrderClient(orderAddr, metricsImpl, cfg.CircuitBreaker)
 	if err != nil {
@@ -90,34 +121,51 @@ func main() {
 		os.Exit(1)
 	}
 
-	// 5. Application
+	// 9. Application
+	commandSvc := application.NewMarketMakingCommandService(repo, orderCli, marketCli, publisher)
+	querySvc := application.NewMarketMakingQueryService(repo, strategyReadRepo, performanceReadRepo, searchRepo)
+	projectionSvc := application.NewMarketMakingProjectionService(repo, strategyReadRepo, performanceReadRepo, searchRepo, logger.Logger)
 
-	// 创建事件发布者（简单实现）
-	eventPublisher := &simpleEventPublisher{}
+	projectionHandler := mmconsumer.NewProjectionHandler(projectionSvc, logger.Logger)
+	projectionTopics := []string{
+		domain.StrategyCreatedEventType,
+		domain.StrategyUpdatedEventType,
+		domain.StrategyActivatedEventType,
+		domain.StrategyPausedEventType,
+		domain.PerformanceUpdatedEventType,
+	}
+	for _, topic := range projectionTopics {
+		consumerCfg := cfg.MessageQueue.Kafka
+		consumerCfg.Topic = topic
+		if consumerCfg.GroupID == "" {
+			consumerCfg.GroupID = "marketmaking-projection-group"
+		}
+		consumer := kafka.NewConsumer(&consumerCfg, logger, metricsImpl)
+		consumer.Start(context.Background(), 3, projectionHandler.Handle)
+	}
 
-	appService := application.NewMarketMakingService(strategyRepo, orderCli, marketCli, eventPublisher)
-
-	// 6. Interfaces
+	// 10. Interfaces
 	grpcSrv := grpc.NewServer()
-
-	// MarketMaking Service
-	mmHandler := grpcserver.NewHandler(appService)
+	mmHandler := grpcserver.NewHandler(commandSvc, querySvc)
 	marketmakingv1.RegisterMarketMakingServiceServer(grpcSrv, mmHandler)
-
 	reflection.Register(grpcSrv)
 
 	gin.SetMode(gin.ReleaseMode)
-	if cfg.Server.Environment == "dev" {
-		gin.SetMode(gin.DebugMode)
-	}
 	r := gin.New()
 	r.Use(gin.Recovery())
 
-	httpHandler := httpserver.NewMarketMakingHandler(appService)
+	httpHandler := httpserver.NewMarketMakingHandler(commandSvc, querySvc)
 	httpHandler.RegisterRoutes(r.Group("/api"))
 
-	// 7. Start
+	// 11. Start
 	g, ctx := errgroup.WithContext(context.Background())
+
+	g.Go(func() error {
+		outboxProcessor.Start()
+		<-ctx.Done()
+		outboxProcessor.Stop()
+		return nil
+	})
 
 	g.Go(func() error {
 		addr := fmt.Sprintf(":%d", cfg.Server.GRPC.Port)
@@ -155,21 +203,4 @@ func main() {
 	if err := g.Wait(); err != nil {
 		slog.Error("server exited with error", "error", err)
 	}
-}
-
-// simpleEventPublisher 简单的事件发布者实现
-type simpleEventPublisher struct{}
-
-// Publish 发布一个普通事件
-func (p *simpleEventPublisher) Publish(ctx context.Context, topic string, key string, event any) error {
-	// 简单实现，仅记录日志
-	slog.Debug("Publishing event", "topic", topic, "key", key, "event", event)
-	return nil
-}
-
-// PublishInTx 在事务中发布事件
-func (p *simpleEventPublisher) PublishInTx(ctx context.Context, tx any, topic string, key string, event any) error {
-	// 简单实现，仅记录日志
-	slog.Debug("Publishing event in transaction", "topic", topic, "key", key, "event", event)
-	return nil
 }

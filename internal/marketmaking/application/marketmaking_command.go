@@ -3,10 +3,12 @@ package application
 import (
 	"context"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
+	"github.com/wyfcoding/pkg/contextx"
 )
 
 // MarketMakingCommandService 做市命令服务
@@ -15,7 +17,9 @@ type MarketMakingCommandService struct {
 	orderSvc  domain.OrderClient
 	marketSvc domain.MarketDataClient
 	publisher domain.EventPublisher
-	workers   map[string]context.CancelFunc
+
+	mu      sync.Mutex
+	workers map[string]context.CancelFunc
 }
 
 // NewMarketMakingCommandService 创建做市命令服务实例
@@ -56,61 +60,76 @@ func (s *MarketMakingCommandService) SetStrategy(ctx context.Context, cmd SetStr
 	}
 
 	oldStatus := strategy.Status
-	if strings.ToUpper(cmd.Status) == "ACTIVE" {
+	if strings.ToUpper(cmd.Status) == string(domain.StrategyStatusActive) {
 		strategy.Activate()
-	} else if strings.ToUpper(cmd.Status) == "PAUSED" {
+	} else if strings.ToUpper(cmd.Status) == string(domain.StrategyStatusPaused) {
 		strategy.Pause()
 	}
 
-	if err := s.repo.SaveStrategy(ctx, strategy); err != nil {
+	// 保存 + Outbox
+	err = s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.repo.SaveStrategy(txCtx, strategy); err != nil {
+			return err
+		}
+		if s.publisher == nil {
+			return nil
+		}
+		if isNew {
+			event := domain.StrategyCreatedEvent{
+				StrategyID:   strategy.Symbol,
+				Symbol:       strategy.Symbol,
+				Spread:       strategy.Spread.String(),
+				MinOrderSize: strategy.MinOrderSize.String(),
+				MaxOrderSize: strategy.MaxOrderSize.String(),
+				MaxPosition:  strategy.MaxPosition.String(),
+				Status:       string(strategy.Status),
+				Timestamp:    time.Now(),
+			}
+			if err := s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.StrategyCreatedEventType, strategy.Symbol, event); err != nil {
+				return err
+			}
+		} else {
+			event := domain.StrategyUpdatedEvent{
+				StrategyID:   strategy.Symbol,
+				Symbol:       strategy.Symbol,
+				Spread:       strategy.Spread.String(),
+				MinOrderSize: strategy.MinOrderSize.String(),
+				MaxOrderSize: strategy.MaxOrderSize.String(),
+				MaxPosition:  strategy.MaxPosition.String(),
+				Status:       string(strategy.Status),
+				Timestamp:    time.Now(),
+			}
+			if err := s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.StrategyUpdatedEventType, strategy.Symbol, event); err != nil {
+				return err
+			}
+		}
+
+		if oldStatus != strategy.Status {
+			switch strategy.Status {
+			case domain.StrategyStatusActive:
+				event := domain.StrategyActivatedEvent{
+					StrategyID: strategy.Symbol,
+					Symbol:     strategy.Symbol,
+					Timestamp:  time.Now(),
+				}
+				if err := s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.StrategyActivatedEventType, strategy.Symbol, event); err != nil {
+					return err
+				}
+			case domain.StrategyStatusPaused:
+				event := domain.StrategyPausedEvent{
+					StrategyID: strategy.Symbol,
+					Symbol:     strategy.Symbol,
+					Timestamp:  time.Now(),
+				}
+				if err := s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.StrategyPausedEventType, strategy.Symbol, event); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		return "", err
-	}
-
-	// 发布策略事件
-	if isNew {
-		event := domain.StrategyCreatedEvent{
-			StrategyID:   strategy.Symbol,
-			Symbol:       strategy.Symbol,
-			Spread:       strategy.Spread.String(),
-			MinOrderSize: strategy.MinOrderSize.String(),
-			MaxOrderSize: strategy.MaxOrderSize.String(),
-			MaxPosition:  strategy.MaxPosition.String(),
-			Status:       string(strategy.Status),
-			Timestamp:    time.Now(),
-		}
-		s.publisher.Publish(ctx, "marketmaking.strategy.created", strategy.Symbol, event)
-	} else {
-		event := domain.StrategyUpdatedEvent{
-			StrategyID:   strategy.Symbol,
-			Symbol:       strategy.Symbol,
-			Spread:       strategy.Spread.String(),
-			MinOrderSize: strategy.MinOrderSize.String(),
-			MaxOrderSize: strategy.MaxOrderSize.String(),
-			MaxPosition:  strategy.MaxPosition.String(),
-			Status:       string(strategy.Status),
-			Timestamp:    time.Now(),
-		}
-		s.publisher.Publish(ctx, "marketmaking.strategy.updated", strategy.Symbol, event)
-	}
-
-	// 发布状态变更事件
-	if oldStatus != strategy.Status {
-		switch strategy.Status {
-		case domain.StrategyStatusActive:
-			event := domain.StrategyActivatedEvent{
-				StrategyID: strategy.Symbol,
-				Symbol:     strategy.Symbol,
-				Timestamp:  time.Now(),
-			}
-			s.publisher.Publish(ctx, "marketmaking.strategy.activated", strategy.Symbol, event)
-		case domain.StrategyStatusPaused:
-			event := domain.StrategyPausedEvent{
-				StrategyID: strategy.Symbol,
-				Symbol:     strategy.Symbol,
-				Timestamp:  time.Now(),
-			}
-			s.publisher.Publish(ctx, "marketmaking.strategy.paused", strategy.Symbol, event)
-		}
 	}
 
 	// 管理运行工人
@@ -125,6 +144,8 @@ func (s *MarketMakingCommandService) SetStrategy(ctx context.Context, cmd SetStr
 
 // startWorker 启动做市工人
 func (s *MarketMakingCommandService) startWorker(symbol string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if _, ok := s.workers[symbol]; ok {
 		return
 	}
@@ -135,6 +156,8 @@ func (s *MarketMakingCommandService) startWorker(symbol string) {
 
 // stopWorker 停止做市工人
 func (s *MarketMakingCommandService) stopWorker(symbol string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if cancel, ok := s.workers[symbol]; ok {
 		cancel()
 		delete(s.workers, symbol)
@@ -150,7 +173,6 @@ func (s *MarketMakingCommandService) runWorker(ctx context.Context, symbol strin
 	model := domain.NewAvellanedaStoikovModel(0.1, 0.02, 1.5)
 
 	// In-memory stats for this worker session (simplified)
-	// In a real production system, this state might need to be persistent or recovered.
 	var totalPnL decimal.Decimal
 	var totalVolume decimal.Decimal
 	var totalTrades int64
@@ -180,7 +202,7 @@ func (s *MarketMakingCommandService) runWorker(ctx context.Context, symbol strin
 
 			// 下单买盘
 			orderID, err := s.orderSvc.PlaceOrder(ctx, symbol, "BUY", bid, qty)
-			if err == nil {
+			if err == nil && s.publisher != nil {
 				// 发布做市报价下单事件
 				event := domain.MarketMakingQuotePlacedEvent{
 					StrategyID: symbol,
@@ -191,12 +213,12 @@ func (s *MarketMakingCommandService) runWorker(ctx context.Context, symbol strin
 					OrderID:    orderID,
 					Timestamp:  time.Now(),
 				}
-				s.publisher.Publish(ctx, "marketmaking.quote.placed", symbol, event)
+				_ = s.publisher.Publish(ctx, domain.QuotePlacedEventType, symbol, event)
 			}
 
 			// 下单卖盘
 			orderID, err = s.orderSvc.PlaceOrder(ctx, symbol, "SELL", ask, qty)
-			if err == nil {
+			if err == nil && s.publisher != nil {
 				// 发布做市报价下单事件
 				event := domain.MarketMakingQuotePlacedEvent{
 					StrategyID: symbol,
@@ -207,27 +229,19 @@ func (s *MarketMakingCommandService) runWorker(ctx context.Context, symbol strin
 					OrderID:    orderID,
 					Timestamp:  time.Now(),
 				}
-				s.publisher.Publish(ctx, "marketmaking.quote.placed", symbol, event)
+				_ = s.publisher.Publish(ctx, domain.QuotePlacedEventType, symbol, event)
 			}
 
 			// 4. 模拟成交并更新 PnL (Simplified Simulation for demo)
-			// In reality, we would listen to TradeExecuted events to update PnL.
-			// Here we assume orders fill immediately for the sake of the loop example from manager.
-			// Re-using manager's logic: PnL = (Ask - Bid) * Qty / 2 approx per cycle if filled
-			// This is a heuristic.
-
-			// Assuming both filled:
-			filledQty := qty // * 2 sides?
+			filledQty := qty
 			trades := int64(2)
 
 			totalVolume = totalVolume.Add(filledQty.Mul(decimal.NewFromInt(2)))
 			totalTrades += trades
 
-			// PnL per cycle (approx):
 			pnl := ask.Sub(bid).Mul(filledQty).Div(decimal.NewFromInt(2))
 			totalPnL = totalPnL.Add(pnl)
 
-			// 5. Save Performance periodically or on every cycle
 			perf := &domain.MarketMakingPerformance{
 				Symbol:      symbol,
 				TotalPnL:    totalPnL,
@@ -235,8 +249,27 @@ func (s *MarketMakingCommandService) runWorker(ctx context.Context, symbol strin
 				TotalTrades: totalTrades,
 				EndTime:     time.Now(),
 			}
-			// Ignore error for non-critical stats save
-			_ = s.repo.SavePerformance(ctx, perf)
+			_ = s.savePerformance(ctx, perf)
 		}
 	}
+}
+
+func (s *MarketMakingCommandService) savePerformance(ctx context.Context, perf *domain.MarketMakingPerformance) error {
+	return s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.repo.SavePerformance(txCtx, perf); err != nil {
+			return err
+		}
+		if s.publisher == nil {
+			return nil
+		}
+		event := domain.MarketMakingPerformanceUpdatedEvent{
+			Symbol:      perf.Symbol,
+			TotalPnL:    perf.TotalPnL.String(),
+			TotalVolume: perf.TotalVolume.String(),
+			TotalTrades: perf.TotalTrades,
+			SharpeRatio: perf.SharpeRatio.String(),
+			Timestamp:   time.Now(),
+		}
+		return s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.PerformanceUpdatedEventType, perf.Symbol, event)
+	})
 }

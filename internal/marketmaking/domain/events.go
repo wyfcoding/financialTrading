@@ -2,6 +2,15 @@ package domain
 
 import "time"
 
+const (
+	StrategyCreatedEventType    = "marketmaking.strategy.created"
+	StrategyUpdatedEventType    = "marketmaking.strategy.updated"
+	StrategyActivatedEventType  = "marketmaking.strategy.activated"
+	StrategyPausedEventType     = "marketmaking.strategy.paused"
+	QuotePlacedEventType        = "marketmaking.quote.placed"
+	PerformanceUpdatedEventType = "marketmaking.performance.updated"
+)
+
 // StrategyCreatedEvent 做市策略创建事件
 type StrategyCreatedEvent struct {
 	StrategyID   string    `json:"strategy_id"`

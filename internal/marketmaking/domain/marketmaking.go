@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"gorm.io/gorm"
 )
 
 type StrategyStatus string
@@ -18,7 +17,9 @@ const (
 
 // QuoteStrategy define a market making quote strategy
 type QuoteStrategy struct {
-	gorm.Model
+	ID           uint            `json:"id"`
+	CreatedAt    time.Time       `json:"created_at"`
+	UpdatedAt    time.Time       `json:"updated_at"`
 	Symbol       string          `json:"symbol"`
 	Spread       decimal.Decimal `json:"spread"`
 	MinOrderSize decimal.Decimal `json:"min_order_size"`
@@ -28,7 +29,9 @@ type QuoteStrategy struct {
 }
 
 type MarketMakingPerformance struct {
-	gorm.Model
+	ID          uint            `json:"id"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
 	Symbol      string          `json:"symbol"`
 	TotalPnL    decimal.Decimal `json:"total_pnl"`
 	TotalVolume decimal.Decimal `json:"total_volume"`

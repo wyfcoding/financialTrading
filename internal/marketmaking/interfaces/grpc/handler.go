@@ -15,11 +15,12 @@ import (
 
 type Handler struct {
 	marketmakingv1.UnimplementedMarketMakingServiceServer
-	app *application.MarketMakingService
+	cmd   *application.MarketMakingCommandService
+	query *application.MarketMakingQueryService
 }
 
-func NewHandler(app *application.MarketMakingService) *Handler {
-	return &Handler{app: app}
+func NewHandler(cmd *application.MarketMakingCommandService, query *application.MarketMakingQueryService) *Handler {
+	return &Handler{cmd: cmd, query: query}
 }
 
 func (h *Handler) SetStrategy(ctx context.Context, req *marketmakingv1.SetStrategyRequest) (*marketmakingv1.SetStrategyResponse, error) {
@@ -32,7 +33,7 @@ func (h *Handler) SetStrategy(ctx context.Context, req *marketmakingv1.SetStrate
 		Status:       req.Status,
 	}
 
-	id, err := h.app.SetStrategy(ctx, cmd)
+	id, err := h.cmd.SetStrategy(ctx, cmd)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -40,7 +41,7 @@ func (h *Handler) SetStrategy(ctx context.Context, req *marketmakingv1.SetStrate
 }
 
 func (h *Handler) GetStrategy(ctx context.Context, req *marketmakingv1.GetStrategyRequest) (*marketmakingv1.GetStrategyResponse, error) {
-	dto, err := h.app.GetStrategy(ctx, req.Symbol)
+	dto, err := h.query.GetStrategy(ctx, req.Symbol)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -64,7 +65,7 @@ func (h *Handler) GetStrategy(ctx context.Context, req *marketmakingv1.GetStrate
 }
 
 func (h *Handler) GetPerformance(ctx context.Context, req *marketmakingv1.GetPerformanceRequest) (*marketmakingv1.GetPerformanceResponse, error) {
-	dto, err := h.app.GetPerformance(ctx, req.Symbol)
+	dto, err := h.query.GetPerformance(ctx, req.Symbol)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -74,7 +75,7 @@ func (h *Handler) GetPerformance(ctx context.Context, req *marketmakingv1.GetPer
 			Symbol:      dto.Symbol,
 			TotalPnl:    dto.TotalPnL,
 			TotalVolume: dto.TotalVolume,
-			TotalTrades: dto.TotalTrades, // DTO is int32
+			TotalTrades: dto.TotalTrades,
 			SharpeRatio: dto.SharpeRatio,
 		},
 	}, nil
