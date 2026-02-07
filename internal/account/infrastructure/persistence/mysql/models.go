@@ -16,6 +16,9 @@ type AccountModel struct {
 	Balance          decimal.Decimal `gorm:"column:balance;type:decimal(32,18);default:0;not null;comment:总余额"`
 	AvailableBalance decimal.Decimal `gorm:"column:available_balance;type:decimal(32,18);default:0;not null;comment:可用余额"`
 	FrozenBalance    decimal.Decimal `gorm:"column:frozen_balance;type:decimal(32,18);default:0;not null;comment:冻结余额"`
+	BorrowedAmount   decimal.Decimal `gorm:"column:borrowed_amount;type:decimal(32,18);default:0;not null;comment:借款金额"`
+	LockedCollateral decimal.Decimal `gorm:"column:locked_collateral;type:decimal(32,18);default:0;not null;comment:锁定质押物"`
+	AccruedInterest  decimal.Decimal `gorm:"column:accrued_interest;type:decimal(32,18);default:0;not null;comment:累计利息"`
 	Version          int64           `gorm:"column:version;not null;default:0;comment:聚合版本"`
 }
 
@@ -63,6 +66,9 @@ func toAccountModel(account *domain.Account) *AccountModel {
 		Balance:          account.Balance,
 		AvailableBalance: account.AvailableBalance,
 		FrozenBalance:    account.FrozenBalance,
+		BorrowedAmount:   account.BorrowedAmount,
+		LockedCollateral: account.LockedCollateral,
+		AccruedInterest:  account.AccruedInterest,
 		Version:          account.Version(),
 	}
 }
@@ -82,6 +88,9 @@ func toAccount(model *AccountModel) *domain.Account {
 		Balance:          model.Balance,
 		AvailableBalance: model.AvailableBalance,
 		FrozenBalance:    model.FrozenBalance,
+		BorrowedAmount:   model.BorrowedAmount,
+		LockedCollateral: model.LockedCollateral,
+		AccruedInterest:  model.AccruedInterest,
 	}
 	acc.SetID(acc.AccountID)
 	acc.SetVersion(model.Version)

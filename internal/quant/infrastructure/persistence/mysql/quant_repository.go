@@ -1,4 +1,3 @@
-// Package mysql 提供了量化策略和回测结果仓储接口的 MySQL GORM 实现。
 package mysql
 
 import (
@@ -6,146 +5,164 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/quant/domain"
+	"github.com/wyfcoding/pkg/contextx"
 	"gorm.io/gorm"
 )
 
-// StrategyModel 策略数据库模型
-type StrategyModel struct {
-	gorm.Model
-	ID          string `gorm:"column:id;type:varchar(32);primaryKey"`
-	Name        string `gorm:"column:name;type:varchar(100);not null"`
-	Description string `gorm:"column:description;type:text"`
-	Script      string `gorm:"column:script;type:text"`
-	Status      string `gorm:"column:status;type:varchar(20);default:'ACTIVE'"`
-}
+// --- Strategy Repository ---
 
-func (StrategyModel) TableName() string { return "strategies" }
-
-// BacktestResultModel 回测结果数据库模型
-type BacktestResultModel struct {
-	gorm.Model
-	ID          string `gorm:"column:id;type:varchar(32);primaryKey"`
-	StrategyID  string `gorm:"column:strategy_id;type:varchar(32);index;not null"`
-	Symbol      string `gorm:"column:symbol;type:varchar(32);not null"`
-	StartTime   int64  `gorm:"column:start_time;type:bigint"`
-	EndTime     int64  `gorm:"column:end_time;type:bigint"`
-	TotalReturn string `gorm:"column:total_return;type:decimal(32,18)"`
-	MaxDrawdown string `gorm:"column:max_drawdown;type:decimal(32,18)"`
-	SharpeRatio string `gorm:"column:sharpe_ratio;type:decimal(32,18)"`
-	TotalTrades int    `gorm:"column:total_trades;type:int"`
-	Status      string `gorm:"column:status;type:varchar(20);default:'RUNNING'"`
-}
-
-func (BacktestResultModel) TableName() string { return "backtest_results" }
-
-type strategyRepositoryImpl struct {
+type strategyRepository struct {
 	db *gorm.DB
 }
 
 func NewStrategyRepository(db *gorm.DB) domain.StrategyRepository {
-	return &strategyRepositoryImpl{db: db}
+	return &strategyRepository{db: db}
 }
 
-func (r *strategyRepositoryImpl) Save(ctx context.Context, s *domain.Strategy) error {
-	m := &StrategyModel{
-		ID:          s.ID,
-		Name:        s.Name,
-		Description: s.Description,
-		Script:      s.Script,
-		Status:      string(s.Status),
-	}
-	m.Model = s.Model
-	err := r.db.WithContext(ctx).Save(m).Error
-	if err == nil {
-		s.Model = m.Model
-	}
-	return err
+func (r *strategyRepository) BeginTx(ctx context.Context) any {
+	return r.db.WithContext(ctx).Begin()
 }
 
-func (r *strategyRepositoryImpl) GetByID(ctx context.Context, id string) (*domain.Strategy, error) {
-	var m StrategyModel
-	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&m).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
+func (r *strategyRepository) CommitTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Commit().Error
+}
+
+func (r *strategyRepository) RollbackTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Rollback().Error
+}
+
+func (r *strategyRepository) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		txCtx := contextx.WithTx(ctx, tx)
+		return fn(txCtx)
+	})
+}
+
+func (r *strategyRepository) Save(ctx context.Context, s *domain.Strategy) error {
+	model := toStrategyModel(s)
+	if model == nil {
+		return nil
+	}
+	db := r.getDB(ctx).WithContext(ctx)
+	if err := db.Save(model).Error; err != nil {
+		return err
+	}
+	s.CreatedAt = model.CreatedAt
+	s.UpdatedAt = model.UpdatedAt
+	return nil
+}
+
+func (r *strategyRepository) GetByID(ctx context.Context, id string) (*domain.Strategy, error) {
+	var model StrategyModel
+	err := r.getDB(ctx).WithContext(ctx).Where("id = ?", id).First(&model).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
 		return nil, err
 	}
-	return &domain.Strategy{
-		Model:       m.Model,
-		ID:          m.ID,
-		Name:        m.Name,
-		Description: m.Description,
-		Script:      m.Script,
-		Status:      domain.StrategyStatus(m.Status),
-	}, nil
+	return toStrategy(&model), nil
 }
 
-type backtestResultRepositoryImpl struct {
+func (r *strategyRepository) Delete(ctx context.Context, id string) error {
+	return r.getDB(ctx).WithContext(ctx).Where("id = ?", id).Delete(&StrategyModel{}).Error
+}
+
+func (r *strategyRepository) getDB(ctx context.Context) *gorm.DB {
+	if tx := contextx.GetTx(ctx); tx != nil {
+		if gormTx, ok := tx.(*gorm.DB); ok {
+			return gormTx
+		}
+	}
+	return r.db
+}
+
+// --- Backtest Repository ---
+
+type backtestResultRepository struct {
 	db *gorm.DB
 }
 
 func NewBacktestResultRepository(db *gorm.DB) domain.BacktestResultRepository {
-	return &backtestResultRepositoryImpl{db: db}
+	return &backtestResultRepository{db: db}
 }
 
-func (r *backtestResultRepositoryImpl) Save(ctx context.Context, res *domain.BacktestResult) error {
-	m := &BacktestResultModel{
-		ID:          res.ID,
-		StrategyID:  res.StrategyID,
-		Symbol:      res.Symbol,
-		StartTime:   res.StartTime,
-		EndTime:     res.EndTime,
-		TotalReturn: res.TotalReturn.String(),
-		MaxDrawdown: res.MaxDrawdown.String(),
-		SharpeRatio: res.SharpeRatio.String(),
-		TotalTrades: res.TotalTrades,
-		Status:      string(res.Status),
-	}
-	m.Model = res.Model
-	err := r.db.WithContext(ctx).Save(m).Error
-	if err == nil {
-		res.Model = m.Model
-	}
-	return err
+func (r *backtestResultRepository) BeginTx(ctx context.Context) any {
+	return r.db.WithContext(ctx).Begin()
 }
 
-func (r *backtestResultRepositoryImpl) GetByID(ctx context.Context, id string) (*domain.BacktestResult, error) {
-	var m BacktestResultModel
-	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&m).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
+func (r *backtestResultRepository) CommitTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Commit().Error
+}
+
+func (r *backtestResultRepository) RollbackTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Rollback().Error
+}
+
+func (r *backtestResultRepository) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		txCtx := contextx.WithTx(ctx, tx)
+		return fn(txCtx)
+	})
+}
+
+func (r *backtestResultRepository) Save(ctx context.Context, res *domain.BacktestResult) error {
+	model := toBacktestResultModel(res)
+	if model == nil {
+		return nil
+	}
+	db := r.getDB(ctx).WithContext(ctx)
+	if err := db.Save(model).Error; err != nil {
+		return err
+	}
+	res.CreatedAt = model.CreatedAt
+	res.UpdatedAt = model.UpdatedAt
+	return nil
+}
+
+func (r *backtestResultRepository) GetByID(ctx context.Context, id string) (*domain.BacktestResult, error) {
+	var model BacktestResultModel
+	err := r.getDB(ctx).WithContext(ctx).Where("id = ?", id).First(&model).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
 		return nil, err
 	}
-	totalReturn, err := decimal.NewFromString(m.TotalReturn)
+	result, err := toBacktestResult(&model)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse total return: %w", err)
+		return nil, fmt.Errorf("failed to parse backtest result: %w", err)
 	}
-	maxDrawdown, err := decimal.NewFromString(m.MaxDrawdown)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse max drawdown: %w", err)
-	}
-	sharpeRatio, err := decimal.NewFromString(m.SharpeRatio)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse sharpe ratio: %w", err)
-	}
-
-	return &domain.BacktestResult{
-		Model:       m.Model,
-		ID:          m.ID,
-		StrategyID:  m.StrategyID,
-		Symbol:      m.Symbol,
-		StartTime:   m.StartTime,
-		EndTime:     m.EndTime,
-		TotalReturn: totalReturn,
-		MaxDrawdown: maxDrawdown,
-		SharpeRatio: sharpeRatio,
-		TotalTrades: m.TotalTrades,
-		Status:      domain.BacktestStatus(m.Status),
-	}, nil
+	return result, nil
 }
+
+func (r *backtestResultRepository) getDB(ctx context.Context) *gorm.DB {
+	if tx := contextx.GetTx(ctx); tx != nil {
+		if gormTx, ok := tx.(*gorm.DB); ok {
+			return gormTx
+		}
+	}
+	return r.db
+}
+
+// --- Signal Repository ---
 
 type signalRepository struct {
 	db *gorm.DB
@@ -155,15 +172,68 @@ func NewSignalRepository(db *gorm.DB) domain.SignalRepository {
 	return &signalRepository{db: db}
 }
 
+func (r *signalRepository) BeginTx(ctx context.Context) any {
+	return r.db.WithContext(ctx).Begin()
+}
+
+func (r *signalRepository) CommitTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Commit().Error
+}
+
+func (r *signalRepository) RollbackTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Rollback().Error
+}
+
+func (r *signalRepository) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		txCtx := contextx.WithTx(ctx, tx)
+		return fn(txCtx)
+	})
+}
+
 func (r *signalRepository) Save(ctx context.Context, signal *domain.Signal) error {
-	return r.db.WithContext(ctx).Create(signal).Error
+	model := toSignalModel(signal)
+	if model == nil {
+		return nil
+	}
+	db := r.getDB(ctx).WithContext(ctx)
+	if err := db.Create(model).Error; err != nil {
+		return err
+	}
+	signal.ID = model.ID
+	signal.CreatedAt = model.CreatedAt
+	signal.UpdatedAt = model.UpdatedAt
+	return nil
 }
 
 func (r *signalRepository) GetLatest(ctx context.Context, symbol string, indicator domain.IndicatorType, period int) (*domain.Signal, error) {
-	var signal domain.Signal
-	err := r.db.WithContext(ctx).
-		Where("symbol = ? AND indicator = ? AND period = ?", symbol, indicator, period).
+	var model SignalModel
+	err := r.getDB(ctx).WithContext(ctx).
+		Where("symbol = ? AND indicator = ? AND period = ?", symbol, string(indicator), period).
 		Order("timestamp desc").
-		First(&signal).Error
-	return &signal, err
+		First(&model).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return toSignal(&model), nil
+}
+
+func (r *signalRepository) getDB(ctx context.Context) *gorm.DB {
+	if tx := contextx.GetTx(ctx); tx != nil {
+		if gormTx, ok := tx.(*gorm.DB); ok {
+			return gormTx
+		}
+	}
+	return r.db
 }

@@ -16,6 +16,22 @@ func NewIndicatorService() *IndicatorService {
 	return &IndicatorService{}
 }
 
+// CalculateSMA 计算简单移动平均 (Simple Moving Average)
+func (s *IndicatorService) CalculateSMA(prices []decimal.Decimal, period int) (decimal.Decimal, error) {
+	if len(prices) < period {
+		return decimal.Zero, fmt.Errorf("not enough data points for SMA calculation")
+	}
+	if period <= 0 {
+		return decimal.Zero, fmt.Errorf("invalid period")
+	}
+	sum := decimal.Zero
+	recent := prices[len(prices)-period:]
+	for _, p := range recent {
+		sum = sum.Add(p)
+	}
+	return sum.Div(decimal.NewFromInt(int64(period))), nil
+}
+
 // CalculateRSI 计算相对强弱指数 (Relative Strength Index)
 // prices: 价格序列，按时间升序排列（最新的在最后）
 // period: 计算周期，通常为 14

@@ -10,115 +10,165 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
-	quant_pb "github.com/wyfcoding/financialtrading/go-api/quant/v1"
+	quantpb "github.com/wyfcoding/financialtrading/go-api/quant/v1"
 	"github.com/wyfcoding/financialtrading/internal/quant/application"
+	"github.com/wyfcoding/financialtrading/internal/quant/arbitrage"
 	"github.com/wyfcoding/financialtrading/internal/quant/domain"
 	"github.com/wyfcoding/financialtrading/internal/quant/infrastructure/client"
+	"github.com/wyfcoding/financialtrading/internal/quant/infrastructure/persistence/elasticsearch"
 	"github.com/wyfcoding/financialtrading/internal/quant/infrastructure/persistence/mysql"
-	grpc_server "github.com/wyfcoding/financialtrading/internal/quant/interfaces/grpc"
-	http_server "github.com/wyfcoding/financialtrading/internal/quant/interfaces/http"
+	redisrepo "github.com/wyfcoding/financialtrading/internal/quant/infrastructure/persistence/redis"
+	grpcserver "github.com/wyfcoding/financialtrading/internal/quant/interfaces/grpc"
+	httpserver "github.com/wyfcoding/financialtrading/internal/quant/interfaces/http"
+	"github.com/wyfcoding/pkg/cache"
 	"github.com/wyfcoding/pkg/config"
+	"github.com/wyfcoding/pkg/database"
+	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
+	"github.com/wyfcoding/pkg/messagequeue/outbox"
 	"github.com/wyfcoding/pkg/metrics"
+	search_pkg "github.com/wyfcoding/pkg/search"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	gorm_mysql "gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
+var configPath = flag.String("config", "configs/quant/config.toml", "config file path")
+
 func main() {
-	var configPath string
-	flag.StringVar(&configPath, "config", "configs/quant/config.toml", "path to config file")
 	flag.Parse()
 
 	// 1. Config
-	viper.SetConfigFile(configPath)
-	viper.AutomaticEnv()
-	if err := viper.ReadInConfig(); err != nil {
-		panic(fmt.Sprintf("read config failed: %v", err))
+	var cfg config.Config
+	if err := config.Load(*configPath, &cfg); err != nil {
+		panic(fmt.Sprintf("failed to load config: %v", err))
 	}
 
 	// 2. Logger
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	logCfg := &logging.Config{Service: cfg.Server.Name, Level: cfg.Log.Level}
+	logger := logging.NewFromConfig(logCfg)
+	slog.SetDefault(logger.Logger)
 
-	// 3. Database
-	dsn := viper.GetString("database.source")
-	db, err := gorm.Open(gorm_mysql.Open(dsn), &gorm.Config{})
+	// 3. Metrics
+	metricsImpl := metrics.NewMetrics(cfg.Server.Name)
+	if cfg.Metrics.Enabled {
+		go metricsImpl.ExposeHTTP(cfg.Metrics.Port)
+	}
+
+	// 4. Infrastructure
+	db, err := database.NewDB(cfg.Data.Database, cfg.CircuitBreaker, logger, metricsImpl)
 	if err != nil {
-		panic(fmt.Sprintf("connect db failed: %v", err))
+		slog.Error("failed to connect database", "error", err)
+		os.Exit(1)
 	}
 
-	// Auto Migrate
-	if err := db.AutoMigrate(&domain.Strategy{}, &domain.BacktestResult{}, &domain.Signal{}); err != nil {
-		panic(fmt.Sprintf("migrate db failed: %v", err))
+	if cfg.Server.Environment == "dev" {
+		if err := db.RawDB().AutoMigrate(
+			&mysql.StrategyModel{},
+			&mysql.BacktestResultModel{},
+			&mysql.SignalModel{},
+			&outbox.Message{},
+		); err != nil {
+			slog.Error("failed to migrate database", "error", err)
+		}
 	}
 
-	// 4. Infrastructure & Domain
-	signalRepo := mysql.NewSignalRepository(db)
-	strategyRepo := mysql.NewStrategyRepository(db)
-	backtestRepo := mysql.NewBacktestResultRepository(db)
-
-	// Metrics
-	metricsImpl := metrics.NewMetrics("quant")
-
-	// Clients
-	marketAddr := viper.GetString("services.marketdata.addr")
-	if marketAddr == "" {
-		marketAddr = "localhost:9090" // Default fallback
+	// 5. Kafka & Outbox
+	kafkaProducer := kafka.NewProducer(&cfg.MessageQueue.Kafka, logger, metricsImpl)
+	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
+	pusher := func(ctx context.Context, topic, key string, payload []byte) error {
+		return kafkaProducer.PublishToTopic(ctx, topic, []byte(key), payload)
 	}
-	cbCfg := config.CircuitBreakerConfig{
-		Enabled:     true,
-		Timeout:     5000,
-		MaxRequests: 10,
-	}
-	marketCli, err := client.NewMarketDataClient(marketAddr, metricsImpl, cbCfg)
+	outboxProcessor := outbox.NewProcessor(outboxMgr, pusher, 100, 2*time.Second)
+
+	// 6. Redis
+	redisCache, err := cache.NewRedisCache(&cfg.Data.Redis, cfg.CircuitBreaker, logger, metricsImpl)
 	if err != nil {
-		panic(fmt.Sprintf("failed to create market data client: %v", err))
+		slog.Error("failed to init redis", "error", err)
+		os.Exit(1)
 	}
+	redisClient := redisCache.GetClient()
 
-	// 5. Application
-	appService, err := application.NewQuantService(strategyRepo, backtestRepo, signalRepo, marketCli, db)
+	// 7. Repositories
+	strategyRepo := mysql.NewStrategyRepository(db.RawDB())
+	backtestRepo := mysql.NewBacktestResultRepository(db.RawDB())
+	signalRepo := mysql.NewSignalRepository(db.RawDB())
+
+	strategyReadRepo := redisrepo.NewStrategyRedisRepository(redisClient)
+	backtestReadRepo := redisrepo.NewBacktestRedisRepository(redisClient)
+	signalReadRepo := redisrepo.NewSignalRedisRepository(redisClient)
+
+	publisher := outbox.NewPublisher(outboxMgr)
+
+	var searchRepo domain.QuantSearchRepository
+	esCfg := &search_pkg.Config{
+		ServiceName:         cfg.Server.Name,
+		ElasticsearchConfig: cfg.Data.Elasticsearch,
+		BreakerConfig:       cfg.CircuitBreaker,
+	}
+	esClient, err := search_pkg.NewClient(esCfg, logger, metricsImpl)
 	if err != nil {
-		panic(fmt.Sprintf("failed to init quant service: %v", err))
+		slog.Error("failed to init elasticsearch", "error", err)
+	} else {
+		searchRepo = elasticsearch.NewQuantSearchRepository(esClient, "", "")
 	}
 
-	// 6. Interfaces
-	// gRPC
+	// 8. Clients
+	marketAddr := cfg.GetGRPCAddr("marketdata")
+	marketCli, err := client.NewMarketDataClient(marketAddr, metricsImpl, cfg.CircuitBreaker)
+	if err != nil {
+		slog.Error("failed to create market data client", "error", err)
+		os.Exit(1)
+	}
+	marketGrpcCli, err := client.NewMarketDataGRPCClient(marketAddr, metricsImpl, cfg.CircuitBreaker)
+	if err != nil {
+		slog.Error("failed to create market data grpc client", "error", err)
+		os.Exit(1)
+	}
+	arbEngine := arbitrage.NewEngine(marketGrpcCli)
+
+	// 9. Application
+	commandSvc := application.NewQuantCommandService(strategyRepo, backtestRepo, signalRepo, marketCli, publisher)
+	querySvc := application.NewQuantQueryService(strategyRepo, strategyReadRepo, backtestRepo, backtestReadRepo, signalRepo, signalReadRepo, searchRepo, arbEngine)
+
+	// 10. Interfaces
 	grpcSrv := grpc.NewServer()
-	quantHandler := grpc_server.NewHandler(appService)
-	quant_pb.RegisterQuantServiceServer(grpcSrv, quantHandler)
+	quantHandler := grpcserver.NewHandler(commandSvc, querySvc)
+	quantpb.RegisterQuantServiceServer(grpcSrv, quantHandler)
 	reflection.Register(grpcSrv)
 
-	// HTTP
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
-	hHandler := http_server.NewQuantHandler(appService)
-	hHandler.RegisterRoutes(r.Group("/api"))
 
-	// 7. Start
+	httpHandler := httpserver.NewQuantHandler(commandSvc, querySvc)
+	httpHandler.RegisterRoutes(r.Group("/api"))
+
+	// 11. Start
 	g, ctx := errgroup.WithContext(context.Background())
 
-	grpcPort := viper.GetString("server.grpc_port")
 	g.Go(func() error {
-		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+		outboxProcessor.Start()
+		<-ctx.Done()
+		outboxProcessor.Stop()
+		return nil
+	})
+
+	g.Go(func() error {
+		addr := fmt.Sprintf(":%d", cfg.Server.GRPC.Port)
+		lis, err := net.Listen("tcp", addr)
 		if err != nil {
 			return err
 		}
-		slog.Info("Starting gRPC server", "port", grpcPort)
+		slog.Info("gRPC server starting", "addr", addr)
 		return grpcSrv.Serve(lis)
 	})
 
-	httpPort := viper.GetString("server.http_port")
-	if httpPort == "" {
-		httpPort = "8083" // Default for quant?
-	}
 	g.Go(func() error {
-		addr := fmt.Sprintf(":%s", httpPort)
+		addr := fmt.Sprintf(":%d", cfg.Server.HTTP.Port)
 		server := &http.Server{Addr: addr, Handler: r}
 		slog.Info("HTTP server starting", "addr", addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -127,7 +177,6 @@ func main() {
 		return nil
 	})
 
-	// 8. Graceful Shutdown
 	g.Go(func() error {
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

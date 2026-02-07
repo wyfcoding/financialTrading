@@ -3,8 +3,6 @@ package domain
 import (
 	"math"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 type IndicatorType string
@@ -18,16 +16,16 @@ const (
 )
 
 type Signal struct {
-	gorm.Model
-	Symbol    string        `gorm:"column:symbol;type:varchar(20);index;not null"`
-	Indicator IndicatorType `gorm:"column:indicator;type:varchar(10);not null"`
-	Period    int           `gorm:"column:period;not null"`
-	Value     float64       `gorm:"column:value;type:decimal(20,8)"`
-	Timestamp time.Time     `gorm:"column:timestamp;index"`
-}
-
-func (Signal) TableName() string {
-	return "signals"
+	ID         uint          `json:"id"`
+	CreatedAt  time.Time     `json:"created_at"`
+	UpdatedAt  time.Time     `json:"updated_at"`
+	StrategyID string        `json:"strategy_id"`
+	Symbol     string        `json:"symbol"`
+	Indicator  IndicatorType `json:"indicator"`
+	Period     int           `json:"period"`
+	Value      float64       `json:"value"`
+	Confidence float64       `json:"confidence"`
+	Timestamp  time.Time     `json:"timestamp"`
 }
 
 // IndicatorLogic contains pure domain logic for calculations

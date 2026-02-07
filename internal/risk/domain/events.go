@@ -95,3 +95,17 @@ type RiskLevelChangedEvent struct {
 	ChangedAt    int64
 	OccurredOn   time.Time
 }
+
+// PositionLiquidationTriggeredEvent 仓位强平触发事件
+type PositionLiquidationTriggeredEvent struct {
+	UserID        string
+	AccountID     string
+	Symbol        string
+	Side          string
+	Quantity      float64
+	MarginLevel   float64
+	TriggerPrice  float64
+	TriggerReason string
+	TriggeredAt   int64
+	OccurredOn    time.Time
+}

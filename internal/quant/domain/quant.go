@@ -1,30 +1,28 @@
-// 包 量化服务的领域模型
 package domain
 
 import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"gorm.io/gorm"
 )
 
 // StrategyStatus 策略状态
 type StrategyStatus string
 
 const (
-	StrategyStatusActive   StrategyStatus = "ACTIVE"   // 活跃
-	StrategyStatusInactive StrategyStatus = "INACTIVE" // 非活跃
+	StrategyStatusActive   StrategyStatus = "ACTIVE"
+	StrategyStatusInactive StrategyStatus = "INACTIVE"
 )
 
 // Strategy 策略实体
-// 定义量化交易策略
 type Strategy struct {
-	gorm.Model
-	ID          string         `gorm:"column:id;type:varchar(32);primaryKey"`
-	Name        string         `gorm:"column:name;type:varchar(100);not null"`
-	Description string         `gorm:"column:description;type:text"`
-	Script      string         `gorm:"column:script;type:text"`
-	Status      StrategyStatus `gorm:"column:status;type:varchar(20);default:'ACTIVE'"`
+	ID          string         `json:"id"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Script      string         `json:"script"`
+	Status      StrategyStatus `json:"status"`
 }
 
 // BacktestStatus 回测状态
@@ -38,22 +36,22 @@ const (
 
 // BacktestResult 回测结果实体
 type BacktestResult struct {
-	gorm.Model
-	ID          string          `gorm:"column:id;type:varchar(32);primaryKey"`
-	StrategyID  string          `gorm:"column:strategy_id;type:varchar(32);index;not null"`
-	Symbol      string          `gorm:"column:symbol;type:varchar(32);not null"`
-	StartTime   int64           `gorm:"column:start_time;type:bigint"`
-	EndTime     int64           `gorm:"column:end_time;type:bigint"`
-	TotalReturn decimal.Decimal `gorm:"column:total_return;type:decimal(32,18)"`
-	MaxDrawdown decimal.Decimal `gorm:"column:max_drawdown;type:decimal(32,18)"`
-	SharpeRatio decimal.Decimal `gorm:"column:sharpe_ratio;type:decimal(32,18)"`
-	TotalTrades int             `gorm:"column:total_trades;type:int"`
-	Status      BacktestStatus  `gorm:"column:status;type:varchar(20);default:'RUNNING'"`
+	ID            string          `json:"id"`
+	CreatedAt     time.Time       `json:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
+	StrategyID    string          `json:"strategy_id"`
+	Symbol        string          `json:"symbol"`
+	StartTime     int64           `json:"start_time"`
+	EndTime       int64           `json:"end_time"`
+	TotalReturn   decimal.Decimal `json:"total_return"`
+	MaxDrawdown   decimal.Decimal `json:"max_drawdown"`
+	SharpeRatio   decimal.Decimal `json:"sharpe_ratio"`
+	TotalTrades   int             `json:"total_trades"`
+	WinningTrades int             `json:"winning_trades"`
+	Status        BacktestStatus  `json:"status"`
 }
 
 // MilliToTime 将毫秒转换为 time.Time
 func MilliToTime(milli int64) time.Time {
 	return time.UnixMilli(milli)
 }
-
-// End of domain file

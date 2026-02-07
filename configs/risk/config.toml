@@ -17,6 +17,8 @@ format = "json"
 
 [services]
 marketdata = "127.0.0.1:9092"
+account = "127.0.0.1:9091"
+position = "127.0.0.1:9094"
 
 [tracing]
 sampler_type = "ratio"

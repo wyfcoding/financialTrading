@@ -309,3 +309,27 @@ func (s *ExecutionCommandService) processActiveAlgoOrders(ctx context.Context) {
 		})
 	}
 }
+
+// HandleLiquidation 处理强平触发事件，执行市价成交。
+func (s *ExecutionCommandService) HandleLiquidation(ctx context.Context, userID, symbol, side string, qty float64) error {
+	var orderSide orderv1.OrderSide
+	// 强平需要执行反向操作
+	if side == "buy" || side == "BUY" {
+		orderSide = orderv1.OrderSide_SELL
+	} else {
+		orderSide = orderv1.OrderSide_BUY
+	}
+
+	_, err := s.orderClient.CreateOrder(ctx, &orderv1.CreateOrderRequest{
+		UserId:   userID,
+		Symbol:   symbol,
+		Side:     orderSide,
+		Type:     orderv1.OrderType_MARKET,
+		Quantity: qty,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create liquidation market order: %w", err)
+	}
+
+	return nil
+}

@@ -28,6 +28,9 @@ type Account struct {
 	Balance          decimal.Decimal `gorm:"column:balance;type:decimal(32,18);default:0;not null;comment:总余额"`
 	AvailableBalance decimal.Decimal `gorm:"column:available_balance;type:decimal(32,18);default:0;not null;comment:可用余额"`
 	FrozenBalance    decimal.Decimal `gorm:"column:frozen_balance;type:decimal(32,18);default:0;not null;comment:冻结余额"`
+	BorrowedAmount   decimal.Decimal `gorm:"column:borrowed_amount;type:decimal(32,18);default:0;not null;comment:借款金额"`
+	LockedCollateral decimal.Decimal `gorm:"column:locked_collateral;type:decimal(32,18);default:0;not null;comment:锁定质押物"`
+	AccruedInterest  decimal.Decimal `gorm:"column:accrued_interest;type:decimal(32,18);default:0;not null;comment:累计利息"`
 }
 
 func (Account) TableName() string {
@@ -44,6 +47,9 @@ func NewAccount(accountID, userID, currency string, accType AccountType) *Accoun
 		Balance:          decimal.Zero,
 		AvailableBalance: decimal.Zero,
 		FrozenBalance:    decimal.Zero,
+		BorrowedAmount:   decimal.Zero,
+		LockedCollateral: decimal.Zero,
+		AccruedInterest:  decimal.Zero,
 	}
 	a.SetID(accountID)
 
@@ -79,6 +85,16 @@ func (a *Account) Apply(event eventsourcing.DomainEvent) {
 	case *FrozenFundsDeductedEvent:
 		a.Balance = a.Balance.Sub(e.Amount)
 		a.FrozenBalance = a.FrozenBalance.Sub(e.Amount)
+	case *MarginFundsBorrowedEvent:
+		a.Balance = e.Balance
+		a.AvailableBalance = a.AvailableBalance.Add(e.Amount)
+		a.BorrowedAmount = a.BorrowedAmount.Add(e.Amount)
+	case *MarginFundsRepaidEvent:
+		a.Balance = e.Balance
+		a.AvailableBalance = a.AvailableBalance.Sub(e.Amount)
+		a.BorrowedAmount = a.BorrowedAmount.Sub(e.Amount)
+	case *InterestAccruedEvent:
+		a.AccruedInterest = e.Total
 	}
 }
 
@@ -141,4 +157,43 @@ func (a *Account) Withdraw(amount decimal.Decimal) bool {
 		return true
 	}
 	return false
+}
+
+// Borrow 借款 (仅限杠杆账户)
+func (a *Account) Borrow(amount decimal.Decimal) bool {
+	if a.AccountType != AccountTypeMargin {
+		return false
+	}
+	a.ApplyChange(&MarginFundsBorrowedEvent{
+		AccountID: a.AccountID,
+		Amount:    amount,
+		Balance:   a.Balance.Add(amount),
+	})
+	return true
+}
+
+// Repay 还款
+func (a *Account) Repay(amount decimal.Decimal) bool {
+	// 优先偿还本金，剩余偿还利息（逻辑可根据业务调整）
+	if a.AvailableBalance.GreaterThanOrEqual(amount) {
+		a.ApplyChange(&MarginFundsRepaidEvent{
+			AccountID: a.AccountID,
+			Amount:    amount,
+			Balance:   a.Balance.Sub(amount),
+		})
+		return true
+	}
+	return false
+}
+
+// AccrueInterest 计息
+func (a *Account) AccrueInterest(rate decimal.Decimal) {
+	if a.BorrowedAmount.IsPositive() {
+		interest := a.BorrowedAmount.Mul(rate)
+		a.ApplyChange(&InterestAccruedEvent{
+			AccountID: a.AccountID,
+			Amount:    interest,
+			Total:     a.AccruedInterest.Add(interest),
+		})
+	}
 }

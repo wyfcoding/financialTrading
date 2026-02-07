@@ -16,6 +16,6 @@ WORKDIR /app
 COPY --from=builder /app/quant .
 COPY --from=builder /app/configs/quant/config.toml ./configs/quant/
 
-EXPOSE 9091
+EXPOSE 8080 9091
 
 CMD ["./quant", "-config", "configs/quant/config.toml"]

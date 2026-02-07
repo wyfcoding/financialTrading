@@ -18,6 +18,7 @@ type AccountRepository interface {
 	Save(ctx context.Context, account *Account) error
 	Get(ctx context.Context, id string) (*Account, error)
 	GetByUserID(ctx context.Context, userID string) ([]*Account, error)
+	List(ctx context.Context, accType AccountType, limit, offset int) ([]*Account, error)
 
 	// ExecWithBarrier 用于TCC/Saga的屏障执行
 	ExecWithBarrier(ctx context.Context, barrier any, fn func(ctx context.Context) error) error

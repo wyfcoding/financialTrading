@@ -34,6 +34,8 @@ type Position struct {
 	Quantity          float64         `json:"quantity"`
 	AverageEntryPrice float64         `json:"average_entry_price"`
 	RealizedPnL       float64         `json:"realized_pnl"`
+	UnrealizedPnL     float64         `json:"unrealized_pnl"`
+	MarginRequirement float64         `json:"margin_requirement"`
 	Method            CostBasisMethod `json:"method"`
 	Lots              []PositionLot   `json:"lots,omitempty"`
 }

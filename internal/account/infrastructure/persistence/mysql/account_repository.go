@@ -74,6 +74,9 @@ func (r *accountRepository) Save(ctx context.Context, account *domain.Account) e
 			"balance":           account.Balance,
 			"available_balance": account.AvailableBalance,
 			"frozen_balance":    account.FrozenBalance,
+			"borrowed_amount":   account.BorrowedAmount,
+			"locked_collateral": account.LockedCollateral,
+			"accrued_interest":  account.AccruedInterest,
 			"version":           currentVersion + 1,
 		})
 
@@ -103,6 +106,22 @@ func (r *accountRepository) Get(ctx context.Context, id string) (*domain.Account
 func (r *accountRepository) GetByUserID(ctx context.Context, userID string) ([]*domain.Account, error) {
 	var models []*AccountModel
 	if err := r.getDB(ctx).WithContext(ctx).Where("user_id = ?", userID).Find(&models).Error; err != nil {
+		return nil, err
+	}
+	accounts := make([]*domain.Account, len(models))
+	for i, m := range models {
+		accounts[i] = toAccount(m)
+	}
+	return accounts, nil
+}
+
+func (r *accountRepository) List(ctx context.Context, accType domain.AccountType, limit, offset int) ([]*domain.Account, error) {
+	var models []*AccountModel
+	query := r.getDB(ctx).WithContext(ctx)
+	if accType != "" {
+		query = query.Where("account_type = ?", accType)
+	}
+	if err := query.Limit(limit).Offset(offset).Find(&models).Error; err != nil {
 		return nil, err
 	}
 	accounts := make([]*domain.Account, len(models))

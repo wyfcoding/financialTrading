@@ -31,6 +31,24 @@ type FreezeCommand struct {
 	Reason    string
 }
 
+// BorrowFundsCommand 借款命令
+type BorrowFundsCommand struct {
+	AccountID string
+	Amount    decimal.Decimal
+}
+
+// RepayFundsCommand 还款命令
+type RepayFundsCommand struct {
+	AccountID string
+	Amount    decimal.Decimal
+}
+
+// AccrueInterestCommand 计息命令
+type AccrueInterestCommand struct {
+	AccountID string
+	Rate      decimal.Decimal
+}
+
 // AccountCommandService 处理账户相关的写操作。
 type AccountCommandService struct {
 	repo       domain.AccountRepository
@@ -55,16 +73,8 @@ func NewAccountCommandService(
 
 // CreateAccount 处理开户
 func (s *AccountCommandService) CreateAccount(ctx context.Context, cmd CreateAccountCommand) (*AccountDTO, error) {
-	// 生成 ID (在应用层生成符合 Clean Architecture)
 	accountID := fmt.Sprintf("ACC-%d", idgen.GenID())
-
-	// 创建领域对象
-	account := domain.NewAccount(
-		accountID,
-		cmd.UserID,
-		cmd.Currency,
-		domain.AccountType(cmd.AccountType),
-	)
+	account := domain.NewAccount(accountID, cmd.UserID, cmd.Currency, domain.AccountType(cmd.AccountType))
 
 	err := s.repo.WithTx(ctx, func(txCtx context.Context) error {
 		if err := s.repo.Save(txCtx, account); err != nil {
@@ -127,6 +137,108 @@ func (s *AccountCommandService) Deposit(ctx context.Context, cmd DepositCommand)
 	})
 }
 
+// BorrowFunds 处理借款
+func (s *AccountCommandService) BorrowFunds(ctx context.Context, cmd BorrowFundsCommand) error {
+	return s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		account, err := s.repo.Get(txCtx, cmd.AccountID)
+		if err != nil {
+			return err
+		}
+		if account == nil {
+			return fmt.Errorf("account not found: %s", cmd.AccountID)
+		}
+
+		if success := account.Borrow(cmd.Amount); !success {
+			return fmt.Errorf("borrowing failed (only margin accounts can borrow)")
+		}
+
+		if err := s.repo.Save(txCtx, account); err != nil {
+			return err
+		}
+		if err := s.eventStore.Save(txCtx, account.AccountID, account.GetUncommittedEvents(), account.Version()); err != nil {
+			return err
+		}
+		account.MarkCommitted()
+
+		if s.publisher == nil {
+			return nil
+		}
+		tx := contextx.GetTx(txCtx)
+		return s.publisher.PublishInTx(ctx, tx, domain.AccountBorrowedEventType, fmt.Sprintf("BRW-%d", idgen.GenID()), map[string]any{
+			"account_id": account.AccountID,
+			"amount":     cmd.Amount.String(),
+			"balance":    account.Balance.String(),
+		})
+	})
+}
+
+// RepayFunds 处理还款
+func (s *AccountCommandService) RepayFunds(ctx context.Context, cmd RepayFundsCommand) error {
+	return s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		account, err := s.repo.Get(txCtx, cmd.AccountID)
+		if err != nil {
+			return err
+		}
+		if account == nil {
+			return fmt.Errorf("account not found: %s", cmd.AccountID)
+		}
+
+		if success := account.Repay(cmd.Amount); !success {
+			return fmt.Errorf("insufficient balance for repayment")
+		}
+
+		if err := s.repo.Save(txCtx, account); err != nil {
+			return err
+		}
+		if err := s.eventStore.Save(txCtx, account.AccountID, account.GetUncommittedEvents(), account.Version()); err != nil {
+			return err
+		}
+		account.MarkCommitted()
+
+		if s.publisher == nil {
+			return nil
+		}
+		tx := contextx.GetTx(txCtx)
+		return s.publisher.PublishInTx(ctx, tx, domain.AccountRepaidEventType, fmt.Sprintf("RPY-%d", idgen.GenID()), map[string]any{
+			"account_id": account.AccountID,
+			"amount":     cmd.Amount.String(),
+			"balance":    account.Balance.String(),
+		})
+	})
+}
+
+// AccrueInterest 处理计息
+func (s *AccountCommandService) AccrueInterest(ctx context.Context, cmd AccrueInterestCommand) error {
+	return s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		account, err := s.repo.Get(txCtx, cmd.AccountID)
+		if err != nil {
+			return err
+		}
+		if account == nil {
+			return fmt.Errorf("account not found: %s", cmd.AccountID)
+		}
+
+		account.AccrueInterest(cmd.Rate)
+
+		if err := s.repo.Save(txCtx, account); err != nil {
+			return err
+		}
+		if err := s.eventStore.Save(txCtx, account.AccountID, account.GetUncommittedEvents(), account.Version()); err != nil {
+			return err
+		}
+		account.MarkCommitted()
+
+		if s.publisher == nil {
+			return nil
+		}
+		tx := contextx.GetTx(txCtx)
+		return s.publisher.PublishInTx(ctx, tx, domain.AccountInterestAccruedEventType, fmt.Sprintf("INT-%d", idgen.GenID()), map[string]any{
+			"account_id":       account.AccountID,
+			"accrued_interest": account.AccruedInterest.String(),
+		})
+	})
+}
+
 func (s *AccountCommandService) toDTO(a *domain.Account) *AccountDTO {
 	return &AccountDTO{
 		AccountID:        a.AccountID,
@@ -136,6 +248,9 @@ func (s *AccountCommandService) toDTO(a *domain.Account) *AccountDTO {
 		Balance:          a.Balance.String(),
 		AvailableBalance: a.AvailableBalance.String(),
 		FrozenBalance:    a.FrozenBalance.String(),
+		BorrowedAmount:   a.BorrowedAmount.String(),
+		LockedCollateral: a.LockedCollateral.String(),
+		AccruedInterest:  a.AccruedInterest.String(),
 		CreatedAt:        a.CreatedAt.Unix(),
 		UpdatedAt:        a.UpdatedAt.Unix(),
 		Version:          a.Version(),

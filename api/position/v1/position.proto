@@ -38,8 +38,9 @@ message Position {
   string current_price = 7;
   string unrealized_pnl = 8;
   string realized_pnl = 9;
-  int64 opened_at = 10;
-  int64 closed_at = 11;
+  string margin_requirement = 10;
+  int64 opened_at = 11;
+  int64 closed_at = 12;
 }
 
 message GetPositionResponse {

@@ -45,6 +45,9 @@ service AccountService {
   rpc TccConfirmFreeze(TccFreezeRequest) returns (TccFreezeResponse);
   // TCC Cancel: 取消冻结 (Frozen -> Available)
   rpc TccCancelFreeze(TccFreezeRequest) returns (TccFreezeResponse);
+
+  // 批量获取账户。
+  rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse);
 }
 
 // TCC 冻结请求
@@ -88,10 +91,18 @@ message AccountResponse {
   string balance = 5;
   // 可用余额。
   string available_balance = 6;
+  // 冻结余额。
+  string frozen_balance = 7;
+  // 借款金额。
+  string borrowed_amount = 8;
+  // 锁定质押物。
+  string locked_collateral = 9;
+  // 累计利息。
+  string accrued_interest = 10;
   // 创建时间戳。
-  int64 created_at = 7;
+  int64 created_at = 11;
   // 更新时间戳。
-  int64 updated_at = 8;
+  int64 updated_at = 12;
 }
 
 // 资金事务记录。
@@ -248,4 +259,17 @@ message GetTransactionHistoryRequest {
 message GetTransactionHistoryResponse {
   // 流水列表。
   repeated Transaction transactions = 1;
+}
+
+// 批量获取账户请求。
+message ListAccountsRequest {
+  string account_type = 1;
+  int32 page_size = 2;
+  int32 page_token = 3;
+}
+
+// 批量获取账户结果。
+message ListAccountsResponse {
+  repeated AccountResponse accounts = 1;
+  int32 next_page_token = 2;
 }

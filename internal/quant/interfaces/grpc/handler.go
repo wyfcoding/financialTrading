@@ -16,18 +16,19 @@ import (
 // 负责处理与量化策略和回测相关的 gRPC 请求
 type Handler struct {
 	pb.UnimplementedQuantServiceServer
-	app *application.QuantService // 量化应用服务
+	command *application.QuantCommandService
+	query   *application.QuantQueryService
 }
 
 // NewHandler 创建 gRPC 处理器实例
 // app: 注入的量化应用服务
-func NewHandler(app *application.QuantService) *Handler {
-	return &Handler{app: app}
+func NewHandler(command *application.QuantCommandService, query *application.QuantQueryService) *Handler {
+	return &Handler{command: command, query: query}
 }
 
 // GetSignal 获取信号 (Legacy)
 func (h *Handler) GetSignal(ctx context.Context, req *pb.GetSignalRequest) (*pb.GetSignalResponse, error) {
-	dto, err := h.app.GetSignal(ctx, req.Symbol, mapIndicator(req.Indicator), int(req.Period))
+	dto, err := h.query.GetSignal(ctx, req.Symbol, mapIndicator(req.Indicator), int(req.Period))
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -49,7 +50,7 @@ func (h *Handler) CreateStrategy(ctx context.Context, req *pb.CreateStrategyRequ
 		Description: req.Description,
 		Script:      req.Script,
 	}
-	strategy, err := h.app.CreateStrategy(ctx, cmd)
+	strategy, err := h.command.CreateStrategy(ctx, cmd)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create strategy: %v", err)
 	}
@@ -58,7 +59,7 @@ func (h *Handler) CreateStrategy(ctx context.Context, req *pb.CreateStrategyRequ
 
 // GetStrategy 获取策略
 func (h *Handler) GetStrategy(ctx context.Context, req *pb.GetStrategyRequest) (*pb.GetStrategyResponse, error) {
-	strategy, err := h.app.GetStrategy(ctx, req.Id)
+	strategy, err := h.query.GetStrategy(ctx, req.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get strategy: %v", err)
 	}
@@ -78,7 +79,7 @@ func (h *Handler) RunBacktest(ctx context.Context, req *pb.RunBacktestRequest) (
 		StartTime:  req.StartTime.AsTime().UnixMilli(),
 		EndTime:    req.EndTime.AsTime().UnixMilli(),
 	}
-	result, err := h.app.RunBacktest(ctx, cmd)
+	result, err := h.command.RunBacktest(ctx, cmd)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to run backtest: %v", err)
 	}
@@ -87,7 +88,7 @@ func (h *Handler) RunBacktest(ctx context.Context, req *pb.RunBacktestRequest) (
 
 // GetBacktestResult 获取回测结果
 func (h *Handler) GetBacktestResult(ctx context.Context, req *pb.GetBacktestResultRequest) (*pb.GetBacktestResultResponse, error) {
-	result, err := h.app.GetBacktestResult(ctx, req.Id)
+	result, err := h.query.GetBacktestResult(ctx, req.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get backtest result: %v", err)
 	}
@@ -130,16 +131,17 @@ func toProtoBacktestResult(r *domain.BacktestResult) *pb.BacktestResult {
 	sr, _ := r.SharpeRatio.Float64()
 
 	return &pb.BacktestResult{
-		Id:          r.ID,
-		StrategyId:  r.StrategyID,
-		Symbol:      r.Symbol,
-		StartTime:   timestamppb.New(domain.MilliToTime(r.StartTime)),
-		EndTime:     timestamppb.New(domain.MilliToTime(r.EndTime)),
-		TotalReturn: tr,
-		MaxDrawdown: md,
-		SharpeRatio: sr,
-		TotalTrades: int32(r.TotalTrades),
-		Status:      string(r.Status),
-		CreatedAt:   timestamppb.New(r.CreatedAt),
+		Id:            r.ID,
+		StrategyId:    r.StrategyID,
+		Symbol:        r.Symbol,
+		StartTime:     timestamppb.New(domain.MilliToTime(r.StartTime)),
+		EndTime:       timestamppb.New(domain.MilliToTime(r.EndTime)),
+		TotalReturn:   tr,
+		MaxDrawdown:   md,
+		SharpeRatio:   sr,
+		TotalTrades:   int32(r.TotalTrades),
+		WinningTrades: int32(r.WinningTrades),
+		Status:        string(r.Status),
+		CreatedAt:     timestamppb.New(r.CreatedAt),
 	}
 }

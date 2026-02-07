@@ -244,17 +244,18 @@ func (h *Handler) toProtoPosition(dto *application.PositionDTO) *pb.Position {
 	}
 
 	return &pb.Position{
-		PositionId:    dto.PositionID,
-		UserId:        dto.UserID,
-		Symbol:        dto.Symbol,
-		Side:          dto.Side,
-		Quantity:      dto.Quantity,
-		EntryPrice:    dto.EntryPrice,
-		CurrentPrice:  dto.CurrentPrice,
-		UnrealizedPnl: dto.UnrealizedPnL,
-		RealizedPnl:   dto.RealizedPnL,
-		OpenedAt:      dto.OpenedAt,
-		ClosedAt:      closedAt,
+		PositionId:        dto.PositionID,
+		UserId:            dto.UserID,
+		Symbol:            dto.Symbol,
+		Side:              dto.Side,
+		Quantity:          dto.Quantity,
+		EntryPrice:        dto.EntryPrice,
+		CurrentPrice:      dto.CurrentPrice,
+		UnrealizedPnl:     dto.UnrealizedPnL,
+		RealizedPnl:       dto.RealizedPnL,
+		MarginRequirement: dto.MarginRequirement,
+		OpenedAt:          dto.OpenedAt,
+		ClosedAt:          closedAt,
 	}
 }
 

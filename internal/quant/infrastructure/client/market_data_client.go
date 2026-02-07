@@ -38,6 +38,15 @@ func NewMarketDataClientFromConn(conn *grpc.ClientConn) domain.MarketDataClient 
 	}
 }
 
+// NewMarketDataGRPCClient 创建原生 gRPC 客户端（供套利引擎使用）
+func NewMarketDataGRPCClient(target string, m *metrics.Metrics, cbCfg config.CircuitBreakerConfig) (market_data.MarketDataServiceClient, error) {
+	conn, err := grpcclient.NewClientFactory(logging.Default(), m, cbCfg).NewClient(target)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create market data grpc client: %w", err)
+	}
+	return market_data.NewMarketDataServiceClient(conn), nil
+}
+
 // GetHistoricalData 获取历史价格数据
 func (c *MarketDataClientImpl) GetHistoricalData(ctx context.Context, symbol string) ([]decimal.Decimal, error) {
 	req := &market_data.GetKlinesRequest{

@@ -17,11 +17,14 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/spf13/viper"
+	accountv1 "github.com/wyfcoding/financialtrading/go-api/account/v1"
 	marketdatav1 "github.com/wyfcoding/financialtrading/go-api/marketdata/v1"
+	positionv1 "github.com/wyfcoding/financialtrading/go-api/position/v1"
 	risk_pb "github.com/wyfcoding/financialtrading/go-api/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/risk/application"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
 	risk_client "github.com/wyfcoding/financialtrading/internal/risk/infrastructure/client"
+	risk_messaging "github.com/wyfcoding/financialtrading/internal/risk/infrastructure/messaging"
 	"github.com/wyfcoding/financialtrading/internal/risk/infrastructure/persistence/mysql"
 	risk_redis "github.com/wyfcoding/financialtrading/internal/risk/infrastructure/persistence/redis"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/risk/interfaces/grpc"
@@ -68,13 +71,27 @@ func main() {
 	// 4. Infrastructure & Domain
 	repo := mysql.NewRiskRepository(db)
 
-	// MarketData Client
+	// Clients
 	mdAddr := viper.GetString("services.marketdata")
 	mdConn, err := grpc.Dial(mdAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		panic(fmt.Sprintf("failed to connect to marketdata: %v", err))
 	}
 	mdClient := risk_client.NewGRPCMarketDataClient(marketdatav1.NewMarketDataServiceClient(mdConn))
+
+	accAddr := viper.GetString("services.account")
+	accConn, err := grpc.Dial(accAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		panic(fmt.Sprintf("failed to connect to account: %v", err))
+	}
+	accClient := accountv1.NewAccountServiceClient(accConn)
+
+	posAddr := viper.GetString("services.position")
+	posConn, err := grpc.Dial(posAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		panic(fmt.Sprintf("failed to connect to position: %v", err))
+	}
+	posClient := positionv1.NewPositionServiceClient(posConn)
 
 	// Margin Calculator
 	_ = domain.NewVolatilityAdjustedMarginCalculator(
@@ -111,6 +128,17 @@ func main() {
 	// 5. Application
 	appService := application.NewRiskService(repo, redisRepo, logger.Logger)
 
+	// Event Publisher (Outbox)
+	publisher := risk_messaging.NewOutboxEventPublisher(db)
+
+	// Liquidation Engine
+	liqEngine := application.NewLiquidationEngine(
+		accClient,
+		posClient,
+		publisher,
+		logger.Logger,
+	)
+
 	// 6. Interfaces
 	// gRPC
 	grpcSrv := grpc.NewServer()
@@ -142,6 +170,12 @@ func main() {
 
 	// 7. Start
 	g, ctx := errgroup.WithContext(context.Background())
+
+	// Liquidation Engine
+	g.Go(func() error {
+		liqEngine.Start(ctx)
+		return nil
+	})
 
 	grpcPort := viper.GetString("server.grpc_port")
 	g.Go(func() error {

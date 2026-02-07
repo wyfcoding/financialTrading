@@ -227,6 +227,26 @@ func (h *Handler) TccCancelFreeze(ctx context.Context, req *pb.TccFreezeRequest)
 	return &pb.TccFreezeResponse{Success: true}, nil
 }
 
+// ListAccounts 处理批量查询账户的请求。
+func (h *Handler) ListAccounts(ctx context.Context, req *pb.ListAccountsRequest) (*pb.ListAccountsResponse, error) {
+	start := time.Now()
+	dtos, nextPageToken, err := h.query.ListAccounts(ctx, req.AccountType, int(req.PageSize), int(req.PageToken))
+	if err != nil {
+		slog.ErrorContext(ctx, "grpc list_accounts failed", "error", err, "duration", time.Since(start))
+		return nil, status.Errorf(codes.Internal, "failed to list accounts: %v", err)
+	}
+
+	accounts := make([]*pb.AccountResponse, len(dtos))
+	for i, d := range dtos {
+		accounts[i] = h.toProto(d)
+	}
+
+	return &pb.ListAccountsResponse{
+		Accounts:      accounts,
+		NextPageToken: int32(nextPageToken),
+	}, nil
+}
+
 func (h *Handler) toProto(dto *application.AccountDTO) *pb.AccountResponse {
 	return &pb.AccountResponse{
 		AccountId:        dto.AccountID,
@@ -235,6 +255,10 @@ func (h *Handler) toProto(dto *application.AccountDTO) *pb.AccountResponse {
 		Currency:         dto.Currency,
 		Balance:          dto.Balance,
 		AvailableBalance: dto.AvailableBalance,
+		FrozenBalance:    dto.FrozenBalance,
+		BorrowedAmount:   dto.BorrowedAmount,
+		LockedCollateral: dto.LockedCollateral,
+		AccruedInterest:  dto.AccruedInterest,
 		CreatedAt:        dto.CreatedAt,
 		UpdatedAt:        dto.UpdatedAt,
 	}

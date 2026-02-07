@@ -25,4 +25,7 @@ type EventPublisher interface {
 
 	// PublishRiskLevelChanged 发布风险等级变更事件
 	PublishRiskLevelChanged(event RiskLevelChangedEvent) error
+
+	// PublishPositionLiquidationTriggered 发布强平触发事件
+	PublishPositionLiquidationTriggered(event PositionLiquidationTriggeredEvent) error
 }

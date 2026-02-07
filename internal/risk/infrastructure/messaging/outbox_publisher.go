@@ -76,6 +76,11 @@ func (p *OutboxEventPublisher) PublishRiskLevelChanged(event domain.RiskLevelCha
 	return p.publishEvent("RiskLevelChangedEvent", event)
 }
 
+// PublishPositionLiquidationTriggered 发布强平触发事件
+func (p *OutboxEventPublisher) PublishPositionLiquidationTriggered(event domain.PositionLiquidationTriggeredEvent) error {
+	return p.publishEvent("PositionLiquidationTriggeredEvent", event)
+}
+
 // publishEvent 通用事件发布方法
 func (p *OutboxEventPublisher) publishEvent(eventType string, event interface{}) error {
 	// 序列化事件数据

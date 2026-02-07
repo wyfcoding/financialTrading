@@ -6,13 +6,46 @@ import (
 )
 
 const (
-	AccountCreatedEventType   = "account.created"
-	AccountDepositedEventType = "account.deposited"
-	AccountWithdrawnEventType = "account.withdrawn"
-	AccountFrozenEventType    = "account.frozen"
-	AccountUnfrozenEventType  = "account.unfrozen"
-	AccountDeductedEventType  = "account.deducted"
+	AccountCreatedEventType         = "account.created"
+	AccountDepositedEventType       = "account.deposited"
+	AccountWithdrawnEventType       = "account.withdrawn"
+	AccountFrozenEventType          = "account.frozen"
+	AccountUnfrozenEventType        = "account.unfrozen"
+	AccountDeductedEventType        = "account.deducted"
+	AccountBorrowedEventType        = "account.borrowed"
+	AccountRepaidEventType          = "account.repaid"
+	AccountInterestAccruedEventType = "account.interest"
 )
+
+// MarginFundsBorrowedEvent 借款事件
+type MarginFundsBorrowedEvent struct {
+	eventsourcing.BaseEvent
+	AccountID string
+	Amount    decimal.Decimal
+	Balance   decimal.Decimal
+}
+
+func (e *MarginFundsBorrowedEvent) EventType() string { return "MarginFundsBorrowed" }
+
+// MarginFundsRepaidEvent 还款事件
+type MarginFundsRepaidEvent struct {
+	eventsourcing.BaseEvent
+	AccountID string
+	Amount    decimal.Decimal
+	Balance   decimal.Decimal
+}
+
+func (e *MarginFundsRepaidEvent) EventType() string { return "MarginFundsRepaid" }
+
+// InterestAccruedEvent 利息计提事件
+type InterestAccruedEvent struct {
+	eventsourcing.BaseEvent
+	AccountID string
+	Amount    decimal.Decimal
+	Total     decimal.Decimal
+}
+
+func (e *InterestAccruedEvent) EventType() string { return "InterestAccrued" }
 
 // AccountCreatedEvent 开户事件
 type AccountCreatedEvent struct {

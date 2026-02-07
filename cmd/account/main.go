@@ -87,6 +87,7 @@ func main() {
 	// 7. 初始化应用服务
 	commandSvc := application.NewAccountCommandService(mysqlRepo, eventStore, publisher, logger.Logger)
 	queryService := application.NewAccountQueryService(mysqlRepo, redisRepo)
+	interestJob := application.NewInterestAccrualJob(commandSvc, queryService, logger.Logger)
 
 	// 7.1 Projection Consumers (Account Events -> Redis)
 	projectionSvc := application.NewAccountProjectionService(mysqlRepo, redisRepo, logger.Logger)
@@ -126,11 +127,16 @@ func main() {
 	// 9. 启动服务
 	g, ctx := errgroup.WithContext(context.Background())
 
-	// Outbox
 	g.Go(func() error {
 		outboxProcessor.Start()
 		<-ctx.Done()
 		outboxProcessor.Stop()
+		return nil
+	})
+
+	// Interest Accrual Job
+	g.Go(func() error {
+		interestJob.Start(ctx)
 		return nil
 	})
 

@@ -16,6 +16,9 @@ type AccountDTO struct {
 	Balance          string
 	AvailableBalance string
 	FrozenBalance    string
+	BorrowedAmount   string
+	LockedCollateral string
+	AccruedInterest  string
 	CreatedAt        int64
 	UpdatedAt        int64
 	Version          int64
@@ -74,6 +77,25 @@ func (q *AccountQueryService) GetBalance(ctx context.Context, userID, currency s
 	return nil, fmt.Errorf("account not found")
 }
 
+func (q *AccountQueryService) ListAccounts(ctx context.Context, accType string, pageSize, pageToken int) ([]*AccountDTO, int, error) {
+	accounts, err := q.repo.List(ctx, domain.AccountType(accType), pageSize, pageToken)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	dtos := make([]*AccountDTO, len(accounts))
+	for i, acc := range accounts {
+		dtos[i] = q.toDTO(acc)
+	}
+
+	nextPageToken := 0
+	if len(accounts) == pageSize {
+		nextPageToken = pageToken + pageSize
+	}
+
+	return dtos, nextPageToken, nil
+}
+
 func (q *AccountQueryService) toDTO(a *domain.Account) *AccountDTO {
 	return &AccountDTO{
 		AccountID:        a.AccountID,
@@ -83,6 +105,9 @@ func (q *AccountQueryService) toDTO(a *domain.Account) *AccountDTO {
 		Balance:          a.Balance.String(),
 		AvailableBalance: a.AvailableBalance.String(),
 		FrozenBalance:    a.FrozenBalance.String(),
+		BorrowedAmount:   a.BorrowedAmount.String(),
+		LockedCollateral: a.LockedCollateral.String(),
+		AccruedInterest:  a.AccruedInterest.String(),
 		CreatedAt:        a.CreatedAt.Unix(),
 		UpdatedAt:        a.UpdatedAt.Unix(),
 		Version:          a.Version(),

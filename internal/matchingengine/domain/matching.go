@@ -412,13 +412,13 @@ type OrderBookLevel struct {
 }
 
 type OrderBookSnapshot struct {
-	ID        uint             `json:"id"`
-	CreatedAt time.Time        `json:"created_at"`
-	UpdatedAt time.Time        `json:"updated_at"`
-	Symbol    string           `json:"symbol"`
+	ID        uint              `json:"id"`
+	CreatedAt time.Time         `json:"created_at"`
+	UpdatedAt time.Time         `json:"updated_at"`
+	Symbol    string            `json:"symbol"`
 	Bids      []*OrderBookLevel `json:"bids"`
 	Asks      []*OrderBookLevel `json:"asks"`
-	Timestamp int64            `json:"timestamp"`
+	Timestamp int64             `json:"timestamp"`
 }
 
 // AuctionEngine 拍卖引擎
@@ -446,4 +446,249 @@ type AuctionResult struct {
 	ImbalanceSide    string
 	ImbalanceQty     decimal.Decimal
 	Trades           []*types.Trade
+}
+
+// SubmitOrder 提交订单到拍卖引擎
+func (e *AuctionEngine) SubmitOrder(order *types.Order) {
+	var book *algorithm.SkipList[float64, *OrderLevel]
+	var key float64
+
+	if order.Side == "BUY" {
+		book = e.Bids
+		key = -order.Price.InexactFloat64() // Bids sort descending
+	} else {
+		book = e.Asks
+		key = order.Price.InexactFloat64() // Asks sort ascending
+	}
+
+	level, ok := book.Search(key)
+	if !ok {
+		level = NewOrderLevel(order.Price)
+		book.Insert(key, level)
+	}
+	level.Orders.PushBack(order)
+}
+
+// CalculateEquilibriumPrice 计算平衡价格
+func (e *AuctionEngine) CalculateEquilibriumPrice() (*AuctionResult, error) {
+	// 1. 收集所有独立价格点
+	priceMap := make(map[string]decimal.Decimal)
+	var prices []decimal.Decimal
+
+	itB := e.Bids.Iterator()
+	for {
+		_, lv, ok := itB.Next()
+		if !ok {
+			break
+		}
+		if _, exists := priceMap[lv.Price.String()]; !exists {
+			priceMap[lv.Price.String()] = lv.Price
+			prices = append(prices, lv.Price)
+		}
+	}
+
+	itA := e.Asks.Iterator()
+	for {
+		_, lv, ok := itA.Next()
+		if !ok {
+			break
+		}
+		if _, exists := priceMap[lv.Price.String()]; !exists {
+			priceMap[lv.Price.String()] = lv.Price
+			prices = append(prices, lv.Price)
+		}
+	}
+
+	if len(prices) == 0 {
+		return nil, fmt.Errorf("no orders in book")
+	}
+
+	// 2. 对每个价格点计算累积买单和卖单数量
+	var bestPrice decimal.Decimal
+	var maxVol decimal.Decimal
+	minImbalance := decimal.NewFromInt(1000000000) // Max Value
+
+	// 简单的 O(N^2) 实现，生产环境应优化为 O(N) 累积数组
+	// 这里为了准确性遍历计算
+	for _, p := range prices {
+		// Buy Qty: Sum(Bid.Qty) where Bid.Price >= p
+		buyQty := decimal.Zero
+		itB := e.Bids.Iterator()
+		for {
+			_, lv, ok := itB.Next()
+			if !ok {
+				break
+			}
+			if lv.Price.GreaterThanOrEqual(p) {
+				for el := lv.Orders.Front(); el != nil; el = el.Next() {
+					buyQty = buyQty.Add(el.Value.(*types.Order).Quantity)
+				}
+			}
+		}
+
+		// Sell Qty: Sum(Ask.Qty) where Ask.Price <= p
+		sellQty := decimal.Zero
+		itA := e.Asks.Iterator()
+		for {
+			_, lv, ok := itA.Next()
+			if !ok {
+				break
+			}
+			if lv.Price.LessThanOrEqual(p) {
+				for el := lv.Orders.Front(); el != nil; el = el.Next() {
+					sellQty = sellQty.Add(el.Value.(*types.Order).Quantity)
+				}
+			}
+		}
+
+		execVol := decimal.Min(buyQty, sellQty)
+		imbalance := buyQty.Sub(sellQty).Abs()
+
+		// 3. 选择最大成交量
+		if execVol.GreaterThan(maxVol) {
+			maxVol = execVol
+			bestPrice = p
+			minImbalance = imbalance
+		} else if execVol.Equal(maxVol) {
+			// 4. 最小不平衡量
+			if imbalance.LessThan(minImbalance) {
+				minImbalance = imbalance
+				bestPrice = p
+			} else if imbalance.Equal(minImbalance) {
+				// 5. 市场压力 (简单取均值或离中间价近的，这里取较高价以促进成交)
+				// 实际规则可能更复杂
+				if p.GreaterThan(bestPrice) {
+					bestPrice = p
+				}
+			}
+		}
+	}
+
+	if maxVol.IsZero() {
+		return nil, fmt.Errorf("no matchable volume")
+	}
+
+	return &AuctionResult{
+		EquilibriumPrice: bestPrice,
+		MatchedQuantity:  maxVol,
+	}, nil
+}
+
+// Match 执行撮合
+func (e *AuctionEngine) Match() (*AuctionResult, error) {
+	res, err := e.CalculateEquilibriumPrice()
+	if err != nil {
+		return nil, err
+	}
+
+	ep := res.EquilibriumPrice
+	e.Logger.Info("auction equilibrium price calculated", "ep", ep, "vol", res.MatchedQuantity)
+
+	// 收集所有可成交订单
+	// Bids: Price >= EP
+	// Asks: Price <= EP
+	var buyOrders []*types.Order
+	var sellOrders []*types.Order
+
+	// 提取买单 (按价格优先，时间优先)
+	itB := e.Bids.Iterator()
+	for {
+		_, lv, ok := itB.Next()
+		if !ok {
+			break
+		}
+		if lv.Price.GreaterThanOrEqual(ep) {
+			for el := lv.Orders.Front(); el != nil; el = el.Next() {
+				buyOrders = append(buyOrders, el.Value.(*types.Order))
+			}
+		}
+	}
+
+	// 提取卖单 (按价格优先，时间优先)
+	itA := e.Asks.Iterator()
+	for {
+		_, lv, ok := itA.Next()
+		if !ok {
+			break
+		}
+		if lv.Price.LessThanOrEqual(ep) {
+			for el := lv.Orders.Front(); el != nil; el = el.Next() {
+				sellOrders = append(sellOrders, el.Value.(*types.Order))
+			}
+		}
+	}
+
+	// 执行匹配
+	// 双指针匹配
+	bIdx, sIdx := 0, 0
+	for bIdx < len(buyOrders) && sIdx < len(sellOrders) {
+		buyOrd := buyOrders[bIdx]
+		sellOrd := sellOrders[sIdx]
+
+		qty := decimal.Min(buyOrd.Quantity, sellOrd.Quantity)
+		if qty.IsZero() {
+			if buyOrd.Quantity.IsZero() {
+				bIdx++
+			}
+			if sellOrd.Quantity.IsZero() {
+				sIdx++
+			}
+			continue
+		}
+
+		trade := &types.Trade{
+			TradeID:     generateTradeID(),
+			Symbol:      e.Symbol,
+			Price:       ep, // 统一按 EP 成交
+			Quantity:    qty,
+			BuyOrderID:  buyOrd.OrderID,
+			SellOrderID: sellOrd.OrderID,
+			Timestamp:   time.Now().UnixNano(),
+		}
+		res.Trades = append(res.Trades, trade)
+
+		// 更新订单/Book
+		buyOrd.Quantity = buyOrd.Quantity.Sub(qty)
+		sellOrd.Quantity = sellOrd.Quantity.Sub(qty)
+
+		if buyOrd.Quantity.IsZero() {
+			e.removeOrder(buyOrd) // 辅助函数移除
+			bIdx++
+		}
+		if sellOrd.Quantity.IsZero() {
+			e.removeOrder(sellOrd)
+			sIdx++
+		}
+	}
+
+	res.MatchedQuantity = decimal.Zero
+	for _, t := range res.Trades {
+		res.MatchedQuantity = res.MatchedQuantity.Add(t.Quantity)
+	}
+
+	// 计算剩余 Imbalance
+	return res, nil
+}
+
+func (e *AuctionEngine) removeOrder(order *types.Order) {
+	var book *algorithm.SkipList[float64, *OrderLevel]
+	key := order.Price.InexactFloat64()
+	if order.Side == "BUY" {
+		book = e.Bids
+		key = -key
+	} else {
+		book = e.Asks
+	}
+
+	if lv, ok := book.Search(key); ok {
+		for el := lv.Orders.Front(); el != nil; el = el.Next() {
+			if el.Value.(*types.Order).OrderID == order.OrderID {
+				lv.Orders.Remove(el)
+				if lv.Orders.Len() == 0 {
+					book.Delete(key)
+				}
+				return
+			}
+		}
+	}
 }
