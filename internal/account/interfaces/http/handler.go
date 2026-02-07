@@ -10,13 +10,12 @@ import (
 )
 
 type AccountHandler struct {
-	app *application.AccountService
+	cmd   *application.AccountCommandService
+	query *application.AccountQueryService
 }
 
-func NewAccountHandler(app *application.AccountService) *AccountHandler {
-	return &AccountHandler{
-		app: app,
-	}
+func NewAccountHandler(cmd *application.AccountCommandService, query *application.AccountQueryService) *AccountHandler {
+	return &AccountHandler{cmd: cmd, query: query}
 }
 
 func (h *AccountHandler) RegisterRoutes(r *gin.RouterGroup) {
@@ -42,7 +41,7 @@ func (h *AccountHandler) CreateAccount(c *gin.Context) {
 		Currency:    req.Currency,
 	}
 
-	dto, err := h.app.Command.CreateAccount(c.Request.Context(), cmd)
+	dto, err := h.cmd.CreateAccount(c.Request.Context(), cmd)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -54,7 +53,7 @@ func (h *AccountHandler) CreateAccount(c *gin.Context) {
 // GetAccount HTTP Handler
 func (h *AccountHandler) GetAccount(c *gin.Context) {
 	id := c.Param("id")
-	dto, err := h.app.Query.GetAccount(c.Request.Context(), id)
+	dto, err := h.query.GetAccount(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -76,7 +75,7 @@ func (h *AccountHandler) Deposit(c *gin.Context) {
 		Amount:    amount,
 	}
 
-	if err := h.app.Command.Deposit(c.Request.Context(), cmd); err != nil {
+	if err := h.cmd.Deposit(c.Request.Context(), cmd); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

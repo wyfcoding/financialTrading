@@ -16,10 +16,9 @@ import (
 	accountv1 "github.com/wyfcoding/financialtrading/go-api/account/v1"
 	"github.com/wyfcoding/financialtrading/internal/account/application"
 	"github.com/wyfcoding/financialtrading/internal/account/domain"
-	"github.com/wyfcoding/financialtrading/internal/account/infrastructure/messaging"
-	"github.com/wyfcoding/financialtrading/internal/account/infrastructure/persistence"
 	"github.com/wyfcoding/financialtrading/internal/account/infrastructure/persistence/mysql"
 	"github.com/wyfcoding/financialtrading/internal/account/infrastructure/persistence/redis"
+	accountconsumer "github.com/wyfcoding/financialtrading/internal/account/interfaces/consumer"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/account/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/account/interfaces/http"
 	"github.com/wyfcoding/pkg/cache"
@@ -46,10 +45,7 @@ func main() {
 	}
 
 	// 2. 初始化日志
-	logCfg := &logging.Config{
-		Service: cfg.Server.Name,
-		Level:   cfg.Log.Level,
-	}
+	logCfg := &logging.Config{Service: cfg.Server.Name, Level: cfg.Log.Level}
 	logger := logging.NewFromConfig(logCfg)
 	slog.SetDefault(logger.Logger)
 
@@ -64,7 +60,7 @@ func main() {
 	}
 
 	if cfg.Server.Environment == "dev" {
-		if err := db.RawDB().AutoMigrate(&domain.Account{}, &mysql.EventPO{}, &mysql.TransactionPO{}, &outbox.Message{}); err != nil {
+		if err := db.RawDB().AutoMigrate(&mysql.AccountModel{}, &mysql.EventPO{}, &mysql.TransactionPO{}, &outbox.Message{}); err != nil {
 			slog.Error("failed to migrate database", "error", err)
 		}
 	}
@@ -85,26 +81,46 @@ func main() {
 
 	mysqlRepo := mysql.NewAccountRepository(db.RawDB())
 	redisRepo := redis.NewAccountRedisRepository(redisCache.GetClient())
-	accountRepo := persistence.NewCompositeAccountRepository(mysqlRepo, redisRepo)
-
 	eventStore := mysql.NewEventStore(db.RawDB())
-	outboxPub := messaging.NewOutboxPublisher(outboxMgr)
+	publisher := outbox.NewPublisher(outboxMgr)
 
 	// 7. 初始化应用服务
-	commandSvc := application.NewAccountCommandService(accountRepo, eventStore, outboxPub, db.RawDB())
-	queryService := application.NewAccountQueryService(accountRepo)
-	appService := application.NewAccountService(commandSvc, queryService)
+	commandSvc := application.NewAccountCommandService(mysqlRepo, eventStore, publisher, logger.Logger)
+	queryService := application.NewAccountQueryService(mysqlRepo, redisRepo)
+
+	// 7.1 Projection Consumers (Account Events -> Redis)
+	projectionSvc := application.NewAccountProjectionService(mysqlRepo, redisRepo, logger.Logger)
+	projectionHandler := accountconsumer.NewAccountProjectionHandler(projectionSvc, logger.Logger)
+	projectionTopics := []string{
+		domain.AccountCreatedEventType,
+		domain.AccountDepositedEventType,
+		domain.AccountWithdrawnEventType,
+		domain.AccountFrozenEventType,
+		domain.AccountUnfrozenEventType,
+		domain.AccountDeductedEventType,
+	}
+	projectionConsumers := make([]*kafka.Consumer, 0, len(projectionTopics))
+	for _, topic := range projectionTopics {
+		consumerCfg := cfg.MessageQueue.Kafka
+		consumerCfg.Topic = topic
+		if consumerCfg.GroupID == "" {
+			consumerCfg.GroupID = "account-projection-group"
+		}
+		consumer := kafka.NewConsumer(&consumerCfg, logger, metricsImpl)
+		consumer.Start(context.Background(), 3, projectionHandler.Handle)
+		projectionConsumers = append(projectionConsumers, consumer)
+	}
 
 	// 8. 初始化接口层
 	grpcSrv := grpc.NewServer()
-	accountSrv := grpcserver.NewHandler(appService)
+	accountSrv := grpcserver.NewHandler(commandSvc, queryService)
 	accountv1.RegisterAccountServiceServer(grpcSrv, accountSrv)
 	reflection.Register(grpcSrv)
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
-	httpHandler := httpserver.NewAccountHandler(appService)
+	httpHandler := httpserver.NewAccountHandler(commandSvc, queryService)
 	httpHandler.RegisterRoutes(r.Group("/api"))
 
 	// 9. 启动服务
@@ -149,6 +165,11 @@ func main() {
 			slog.Info("context cancelled, shutting down...")
 		}
 		grpcSrv.GracefulStop()
+		for _, c := range projectionConsumers {
+			if c != nil {
+				c.Close()
+			}
+		}
 		return nil
 	})
 

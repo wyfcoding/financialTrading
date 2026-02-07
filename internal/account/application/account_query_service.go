@@ -33,14 +33,20 @@ type TransactionDTO struct {
 
 // AccountQueryService 处理账户相关的读操作。
 type AccountQueryService struct {
-	repo domain.AccountRepository
+	repo     domain.AccountRepository
+	readRepo domain.AccountReadRepository
 }
 
-func NewAccountQueryService(repo domain.AccountRepository) *AccountQueryService {
-	return &AccountQueryService{repo: repo}
+func NewAccountQueryService(repo domain.AccountRepository, readRepo domain.AccountReadRepository) *AccountQueryService {
+	return &AccountQueryService{repo: repo, readRepo: readRepo}
 }
 
 func (q *AccountQueryService) GetAccount(ctx context.Context, accountID string) (*AccountDTO, error) {
+	if q.readRepo != nil {
+		if cached, err := q.readRepo.Get(ctx, accountID); err == nil && cached != nil {
+			return q.toDTO(cached), nil
+		}
+	}
 	account, err := q.repo.Get(ctx, accountID)
 	if err != nil {
 		return nil, err
@@ -48,11 +54,13 @@ func (q *AccountQueryService) GetAccount(ctx context.Context, accountID string) 
 	if account == nil {
 		return nil, fmt.Errorf("account not found")
 	}
+	if q.readRepo != nil {
+		_ = q.readRepo.Save(ctx, account)
+	}
 	return q.toDTO(account), nil
 }
 
 func (q *AccountQueryService) GetBalance(ctx context.Context, userID, currency string) (*AccountDTO, error) {
-	// 简单的查询逻辑，实际可能需要专门的 Read Model 优化
 	accounts, err := q.repo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, err

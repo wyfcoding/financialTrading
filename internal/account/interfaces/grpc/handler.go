@@ -17,14 +17,13 @@ import (
 // Handler 实现了 AccountService 的 gRPC 服务端接口，负责处理资金账户相关的远程调用。
 type Handler struct {
 	pb.UnimplementedAccountServiceServer
-	app *application.AccountService
+	cmd   *application.AccountCommandService
+	query *application.AccountQueryService
 }
 
 // NewHandler 构造一个新的账户 gRPC 处理器实例。
-func NewHandler(app *application.AccountService) *Handler {
-	return &Handler{
-		app: app,
-	}
+func NewHandler(cmd *application.AccountCommandService, query *application.AccountQueryService) *Handler {
+	return &Handler{cmd: cmd, query: query}
 }
 
 // CreateAccount 处理创建新账户的请求。
@@ -32,7 +31,7 @@ func (h *Handler) CreateAccount(ctx context.Context, req *pb.CreateAccountReques
 	start := time.Now()
 	slog.InfoContext(ctx, "grpc create_account received", "user_id", req.UserId, "currency", req.Currency)
 
-	dto, err := h.app.Command.CreateAccount(ctx, application.CreateAccountCommand{
+	dto, err := h.cmd.CreateAccount(ctx, application.CreateAccountCommand{
 		UserID:      req.UserId,
 		AccountType: req.AccountType,
 		Currency:    req.Currency,
@@ -43,9 +42,7 @@ func (h *Handler) CreateAccount(ctx context.Context, req *pb.CreateAccountReques
 	}
 
 	slog.InfoContext(ctx, "grpc create_account successful", "user_id", req.UserId, "account_id", dto.AccountID, "duration", time.Since(start))
-	return &pb.CreateAccountResponse{
-		Account: h.toProto(dto),
-	}, nil
+	return &pb.CreateAccountResponse{Account: h.toProto(dto)}, nil
 }
 
 // GetAccount 获取指定账户的详细信息。
@@ -53,16 +50,14 @@ func (h *Handler) GetAccount(ctx context.Context, req *pb.GetAccountRequest) (*p
 	start := time.Now()
 	slog.DebugContext(ctx, "grpc get_account received", "account_id", req.AccountId)
 
-	dto, err := h.app.Query.GetAccount(ctx, req.AccountId)
+	dto, err := h.query.GetAccount(ctx, req.AccountId)
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc get_account failed", "account_id", req.AccountId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get account: %v", err)
 	}
 
 	slog.DebugContext(ctx, "grpc get_account successful", "account_id", req.AccountId, "duration", time.Since(start))
-	return &pb.GetAccountResponse{
-		Account: h.toProto(dto),
-	}, nil
+	return &pb.GetAccountResponse{Account: h.toProto(dto)}, nil
 }
 
 // Deposit 执行账户资金充值操作。
@@ -76,22 +71,14 @@ func (h *Handler) Deposit(ctx context.Context, req *pb.DepositRequest) (*pb.Depo
 		return nil, status.Errorf(codes.InvalidArgument, "invalid amount: %v", err)
 	}
 
-	err = h.app.Command.Deposit(ctx, application.DepositCommand{
-		AccountID: req.AccountId,
-		Amount:    amount,
-	})
+	err = h.cmd.Deposit(ctx, application.DepositCommand{AccountID: req.AccountId, Amount: amount})
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc deposit failed", "account_id", req.AccountId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to deposit: %v", err)
 	}
 
 	slog.InfoContext(ctx, "grpc deposit successful", "account_id", req.AccountId, "duration", time.Since(start))
-	return &pb.DepositResponse{
-		AccountId: req.AccountId,
-		Status:    "SUCCESS",
-		Amount:    req.Amount,
-		Timestamp: 0,
-	}, nil
+	return &pb.DepositResponse{AccountId: req.AccountId, Status: "SUCCESS", Amount: req.Amount, Timestamp: 0}, nil
 }
 
 // GetBalance 获取指定账户的余额详情快照。
@@ -99,7 +86,7 @@ func (h *Handler) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*p
 	start := time.Now()
 	slog.DebugContext(ctx, "grpc get_balance received", "account_id", req.AccountId)
 
-	dto, err := h.app.Query.GetAccount(ctx, req.AccountId)
+	dto, err := h.query.GetAccount(ctx, req.AccountId)
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc get_balance failed", "account_id", req.AccountId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get balance: %v", err)
@@ -125,7 +112,7 @@ func (h *Handler) SagaDeductFrozen(ctx context.Context, req *pb.SagaAccountReque
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid amount format: %v", err)
 	}
-	if err := h.app.Command.SagaDeductFrozen(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
+	if err := h.cmd.SagaDeductFrozen(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
 		slog.ErrorContext(ctx, "saga_deduct_frozen execution failed", "user_id", req.UserId, "error", err)
 		return nil, status.Errorf(codes.Aborted, "SagaDeductFrozen failed: %v", err)
 	}
@@ -142,7 +129,7 @@ func (h *Handler) SagaRefundFrozen(ctx context.Context, req *pb.SagaAccountReque
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid amount format: %v", err)
 	}
-	if err := h.app.Command.SagaRefundFrozen(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
+	if err := h.cmd.SagaRefundFrozen(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
 		slog.ErrorContext(ctx, "saga_refund_frozen execution failed", "user_id", req.UserId, "error", err)
 		return nil, status.Errorf(codes.Internal, "SagaRefundFrozen failed: %v", err)
 	}
@@ -159,7 +146,7 @@ func (h *Handler) SagaAddBalance(ctx context.Context, req *pb.SagaAccountRequest
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid amount format: %v", err)
 	}
-	if err := h.app.Command.SagaAddBalance(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
+	if err := h.cmd.SagaAddBalance(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
 		slog.ErrorContext(ctx, "saga_add_balance execution failed", "user_id", req.UserId, "error", err)
 		return nil, status.Errorf(codes.Aborted, "SagaAddBalance failed: %v", err)
 	}
@@ -176,7 +163,7 @@ func (h *Handler) SagaSubBalance(ctx context.Context, req *pb.SagaAccountRequest
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid amount format: %v", err)
 	}
-	if err := h.app.Command.SagaSubBalance(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
+	if err := h.cmd.SagaSubBalance(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
 		slog.ErrorContext(ctx, "saga_sub_balance execution failed", "user_id", req.UserId, "error", err)
 		return nil, status.Errorf(codes.Internal, "SagaSubBalance failed: %v", err)
 	}
@@ -195,15 +182,14 @@ func (h *Handler) TccTryFreeze(ctx context.Context, req *pb.TccFreezeRequest) (*
 		return nil, status.Errorf(codes.InvalidArgument, "invalid amount: %v", err)
 	}
 
-	if err := h.app.Command.TccTryFreeze(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
+	if err := h.cmd.TccTryFreeze(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
 		slog.ErrorContext(ctx, "tcc_try_freeze execution failed", "user_id", req.UserId, "error", err)
 		return nil, status.Errorf(codes.Aborted, "TccTryFreeze failed: %v", err)
 	}
-
 	return &pb.TccFreezeResponse{Success: true}, nil
 }
 
-// TccConfirmFreeze 执行 TCC 模式第二阶段：确认冻结完成。
+// TccConfirmFreeze 执行 TCC 模式第二阶段：确认冻结。
 func (h *Handler) TccConfirmFreeze(ctx context.Context, req *pb.TccFreezeRequest) (*pb.TccFreezeResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
@@ -215,15 +201,14 @@ func (h *Handler) TccConfirmFreeze(ctx context.Context, req *pb.TccFreezeRequest
 		return nil, status.Errorf(codes.InvalidArgument, "invalid amount: %v", err)
 	}
 
-	if err := h.app.Command.TccConfirmFreeze(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
+	if err := h.cmd.TccConfirmFreeze(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
 		slog.ErrorContext(ctx, "tcc_confirm_freeze execution failed", "user_id", req.UserId, "error", err)
-		return nil, status.Errorf(codes.Internal, "TccConfirmFreeze failed: %v", err)
+		return nil, status.Errorf(codes.Aborted, "TccConfirmFreeze failed: %v", err)
 	}
-
 	return &pb.TccFreezeResponse{Success: true}, nil
 }
 
-// TccCancelFreeze 执行 TCC 模式第三阶段：取消并释放冻结资金。
+// TccCancelFreeze 执行 TCC 模式第三阶段：取消冻结。
 func (h *Handler) TccCancelFreeze(ctx context.Context, req *pb.TccFreezeRequest) (*pb.TccFreezeResponse, error) {
 	barrier, err := dtmgrpc.BarrierFromGrpc(ctx)
 	if err != nil {
@@ -235,18 +220,14 @@ func (h *Handler) TccCancelFreeze(ctx context.Context, req *pb.TccFreezeRequest)
 		return nil, status.Errorf(codes.InvalidArgument, "invalid amount: %v", err)
 	}
 
-	if err := h.app.Command.TccCancelFreeze(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
+	if err := h.cmd.TccCancelFreeze(ctx, barrier, req.UserId, req.Currency, amount); err != nil {
 		slog.ErrorContext(ctx, "tcc_cancel_freeze execution failed", "user_id", req.UserId, "error", err)
-		return nil, status.Errorf(codes.Internal, "TccCancelFreeze failed: %v", err)
+		return nil, status.Errorf(codes.Aborted, "TccCancelFreeze failed: %v", err)
 	}
-
 	return &pb.TccFreezeResponse{Success: true}, nil
 }
 
 func (h *Handler) toProto(dto *application.AccountDTO) *pb.AccountResponse {
-	if dto == nil {
-		return nil
-	}
 	return &pb.AccountResponse{
 		AccountId:        dto.AccountID,
 		UserId:           dto.UserID,

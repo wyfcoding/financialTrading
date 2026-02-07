@@ -9,7 +9,6 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/account/domain"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/idgen"
-	"gorm.io/gorm"
 )
 
 // CreateAccountCommand 开户命令
@@ -37,20 +36,20 @@ type AccountCommandService struct {
 	repo       domain.AccountRepository
 	eventStore domain.EventStore
 	publisher  domain.EventPublisher
-	db         *gorm.DB // 用于开启事务 (Infrastructure Leak, but pragmatic for Go)
+	logger     *slog.Logger
 }
 
 func NewAccountCommandService(
 	repo domain.AccountRepository,
 	eventStore domain.EventStore,
 	publisher domain.EventPublisher,
-	db *gorm.DB,
+	logger *slog.Logger,
 ) *AccountCommandService {
 	return &AccountCommandService{
 		repo:       repo,
 		eventStore: eventStore,
 		publisher:  publisher,
-		db:         db,
+		logger:     logger,
 	}
 }
 
@@ -67,27 +66,28 @@ func (s *AccountCommandService) CreateAccount(ctx context.Context, cmd CreateAcc
 		domain.AccountType(cmd.AccountType),
 	)
 
-	// 事务保存
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		txCtx := contextx.WithTx(ctx, tx) // 传递事务上下文
-
+	err := s.repo.WithTx(ctx, func(txCtx context.Context) error {
 		if err := s.repo.Save(txCtx, account); err != nil {
 			return err
 		}
-
 		if err := s.eventStore.Save(txCtx, account.AccountID, account.GetUncommittedEvents(), account.Version()); err != nil {
 			return err
 		}
 		account.MarkCommitted()
 
-		// 发送集成事件 (Outbox Pattern)
-		return s.publisher.PublishInTx(ctx, tx, "account.created", accountID, map[string]any{
-			"account_id": accountID, "user_id": cmd.UserID, "currency": cmd.Currency,
+		if s.publisher == nil {
+			return nil
+		}
+		tx := contextx.GetTx(txCtx)
+		return s.publisher.PublishInTx(ctx, tx, domain.AccountCreatedEventType, accountID, map[string]any{
+			"account_id": accountID,
+			"user_id":    cmd.UserID,
+			"currency":   cmd.Currency,
 		})
 	})
 
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to create account", "error", err)
+		s.logger.ErrorContext(ctx, "failed to create account", "error", err)
 		return nil, err
 	}
 
@@ -96,10 +96,7 @@ func (s *AccountCommandService) CreateAccount(ctx context.Context, cmd CreateAcc
 
 // Deposit 处理充值
 func (s *AccountCommandService) Deposit(ctx context.Context, cmd DepositCommand) error {
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		txCtx := contextx.WithTx(ctx, tx)
-
-		// 1. Load
+	return s.repo.WithTx(ctx, func(txCtx context.Context) error {
 		account, err := s.repo.Get(txCtx, cmd.AccountID)
 		if err != nil {
 			return err
@@ -108,10 +105,8 @@ func (s *AccountCommandService) Deposit(ctx context.Context, cmd DepositCommand)
 			return fmt.Errorf("account not found: %s", cmd.AccountID)
 		}
 
-		// 2. Do Domain Logic
 		account.Deposit(cmd.Amount)
 
-		// 3. Save
 		if err := s.repo.Save(txCtx, account); err != nil {
 			return err
 		}
@@ -120,9 +115,14 @@ func (s *AccountCommandService) Deposit(ctx context.Context, cmd DepositCommand)
 		}
 		account.MarkCommitted()
 
-		// Integration Event
-		return s.publisher.PublishInTx(ctx, tx, "account.deposited", fmt.Sprintf("DEP-%d", idgen.GenID()), map[string]any{
-			"account_id": account.AccountID, "amount": cmd.Amount.String(), "balance": account.Balance.String(),
+		if s.publisher == nil {
+			return nil
+		}
+		tx := contextx.GetTx(txCtx)
+		return s.publisher.PublishInTx(ctx, tx, domain.AccountDepositedEventType, fmt.Sprintf("DEP-%d", idgen.GenID()), map[string]any{
+			"account_id": account.AccountID,
+			"amount":     cmd.Amount.String(),
+			"balance":    account.Balance.String(),
 		})
 	})
 }
@@ -144,9 +144,7 @@ func (s *AccountCommandService) toDTO(a *domain.Account) *AccountDTO {
 
 // Freeze 处理冻结
 func (s *AccountCommandService) Freeze(ctx context.Context, cmd FreezeCommand) error {
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		txCtx := contextx.WithTx(ctx, tx)
-
+	return s.repo.WithTx(ctx, func(txCtx context.Context) error {
 		account, err := s.repo.Get(txCtx, cmd.AccountID)
 		if err != nil {
 			return err
@@ -166,20 +164,27 @@ func (s *AccountCommandService) Freeze(ctx context.Context, cmd FreezeCommand) e
 			return err
 		}
 		account.MarkCommitted()
-		return nil
+
+		if s.publisher == nil {
+			return nil
+		}
+		tx := contextx.GetTx(txCtx)
+		return s.publisher.PublishInTx(ctx, tx, domain.AccountFrozenEventType, fmt.Sprintf("FRZ-%d", idgen.GenID()), map[string]any{
+			"account_id": account.AccountID,
+			"amount":     cmd.Amount.String(),
+			"reason":     cmd.Reason,
+		})
 	})
 }
 
 // SagaDeductFrozen Saga 接口: 从冻结金额中扣除
 func (s *AccountCommandService) SagaDeductFrozen(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
-	// 使用 Repo 的 Barrier 支持
-	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		accounts, err := s.repo.GetByUserID(ctx, userID)
+	return s.repo.ExecWithBarrier(ctx, barrier, func(txCtx context.Context) error {
+		accounts, err := s.repo.GetByUserID(txCtx, userID)
 		if err != nil {
 			return err
 		}
 
-		// 查找对应币种账户
 		var targetAccount *domain.Account
 		for _, acc := range accounts {
 			if acc.Currency == currency {
@@ -191,28 +196,31 @@ func (s *AccountCommandService) SagaDeductFrozen(ctx context.Context, barrier an
 			return fmt.Errorf("account not found for user %s currency %s", userID, currency)
 		}
 
-		// Domain Logic
 		if success := targetAccount.DeductFrozen(amount); !success {
 			return fmt.Errorf("insufficient frozen balance")
 		}
 
-		// Save
-		if err := s.repo.Save(ctx, targetAccount); err != nil {
+		if err := s.repo.Save(txCtx, targetAccount); err != nil {
 			return err
 		}
 
-		// Outbox Event inside barrier transaction
-		tx, _ := contextx.GetTx(ctx).(*gorm.DB)
-		return s.publisher.PublishInTx(ctx, tx, "account.deducted", fmt.Sprintf("SAGA-DED-%s", userID), map[string]any{
-			"type": "SAGA_DEDUCT", "user_id": userID, "amount": amount.String(),
+		if s.publisher == nil {
+			return nil
+		}
+		tx := contextx.GetTx(txCtx)
+		return s.publisher.PublishInTx(ctx, tx, domain.AccountDeductedEventType, fmt.Sprintf("SAGA-DED-%s", userID), map[string]any{
+			"type":       "SAGA_DEDUCT",
+			"account_id": targetAccount.AccountID,
+			"user_id":    userID,
+			"amount":     amount.String(),
 		})
 	})
 }
 
 // SagaRefundFrozen Saga 补偿接口: 退回冻结金额
 func (s *AccountCommandService) SagaRefundFrozen(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
-	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		accounts, err := s.repo.GetByUserID(ctx, userID)
+	return s.repo.ExecWithBarrier(ctx, barrier, func(txCtx context.Context) error {
+		accounts, err := s.repo.GetByUserID(txCtx, userID)
 		if err != nil {
 			return err
 		}
@@ -228,19 +236,31 @@ func (s *AccountCommandService) SagaRefundFrozen(ctx context.Context, barrier an
 			return fmt.Errorf("account not found for user %s currency %s", userID, currency)
 		}
 
-		// Domain Logic: Refund = Unfreeze
 		if success := targetAccount.Unfreeze(amount); !success {
 			return fmt.Errorf("failed to unfreeze for refund")
 		}
 
-		return s.repo.Save(ctx, targetAccount)
+		if err := s.repo.Save(txCtx, targetAccount); err != nil {
+			return err
+		}
+
+		if s.publisher == nil {
+			return nil
+		}
+		tx := contextx.GetTx(txCtx)
+		return s.publisher.PublishInTx(ctx, tx, domain.AccountUnfrozenEventType, fmt.Sprintf("SAGA-REF-%s", userID), map[string]any{
+			"type":       "SAGA_REFUND",
+			"account_id": targetAccount.AccountID,
+			"user_id":    userID,
+			"amount":     amount.String(),
+		})
 	})
 }
 
 // SagaAddBalance Saga 接口: 增加余额
 func (s *AccountCommandService) SagaAddBalance(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
-	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		accounts, err := s.repo.GetByUserID(ctx, userID)
+	return s.repo.ExecWithBarrier(ctx, barrier, func(txCtx context.Context) error {
+		accounts, err := s.repo.GetByUserID(txCtx, userID)
 		if err != nil {
 			return err
 		}
@@ -257,14 +277,27 @@ func (s *AccountCommandService) SagaAddBalance(ctx context.Context, barrier any,
 		}
 
 		targetAccount.Deposit(amount)
-		return s.repo.Save(ctx, targetAccount)
+		if err := s.repo.Save(txCtx, targetAccount); err != nil {
+			return err
+		}
+
+		if s.publisher == nil {
+			return nil
+		}
+		tx := contextx.GetTx(txCtx)
+		return s.publisher.PublishInTx(ctx, tx, domain.AccountDepositedEventType, fmt.Sprintf("SAGA-ADD-%s", userID), map[string]any{
+			"type":       "SAGA_ADD",
+			"account_id": targetAccount.AccountID,
+			"user_id":    userID,
+			"amount":     amount.String(),
+		})
 	})
 }
 
 // SagaSubBalance Saga 补偿接口: 扣减余额
 func (s *AccountCommandService) SagaSubBalance(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
-	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		accounts, err := s.repo.GetByUserID(ctx, userID)
+	return s.repo.ExecWithBarrier(ctx, barrier, func(txCtx context.Context) error {
+		accounts, err := s.repo.GetByUserID(txCtx, userID)
 		if err != nil {
 			return err
 		}
@@ -283,14 +316,27 @@ func (s *AccountCommandService) SagaSubBalance(ctx context.Context, barrier any,
 		if success := targetAccount.Withdraw(amount); !success {
 			return fmt.Errorf("insufficient balance for compensation")
 		}
-		return s.repo.Save(ctx, targetAccount)
+		if err := s.repo.Save(txCtx, targetAccount); err != nil {
+			return err
+		}
+
+		if s.publisher == nil {
+			return nil
+		}
+		tx := contextx.GetTx(txCtx)
+		return s.publisher.PublishInTx(ctx, tx, domain.AccountWithdrawnEventType, fmt.Sprintf("SAGA-SUB-%s", userID), map[string]any{
+			"type":       "SAGA_SUB",
+			"account_id": targetAccount.AccountID,
+			"user_id":    userID,
+			"amount":     amount.String(),
+		})
 	})
 }
 
 // TccTryFreeze TCC Try: 尝试冻结
 func (s *AccountCommandService) TccTryFreeze(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
-	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		accounts, err := s.repo.GetByUserID(ctx, userID)
+	return s.repo.ExecWithBarrier(ctx, barrier, func(txCtx context.Context) error {
+		accounts, err := s.repo.GetByUserID(txCtx, userID)
 		if err != nil {
 			return err
 		}
@@ -309,14 +355,25 @@ func (s *AccountCommandService) TccTryFreeze(ctx context.Context, barrier any, u
 		if success := targetAccount.Freeze(amount, "TCC Freeze"); !success {
 			return fmt.Errorf("insufficient balance for TCC freeze")
 		}
-		return s.repo.Save(ctx, targetAccount)
+		if err := s.repo.Save(txCtx, targetAccount); err != nil {
+			return err
+		}
+
+		if s.publisher == nil {
+			return nil
+		}
+		tx := contextx.GetTx(txCtx)
+		return s.publisher.PublishInTx(ctx, tx, domain.AccountFrozenEventType, fmt.Sprintf("TCC-TRY-%s", userID), map[string]any{
+			"type":       "TCC_TRY",
+			"account_id": targetAccount.AccountID,
+			"user_id":    userID,
+			"amount":     amount.String(),
+		})
 	})
 }
 
 // TccConfirmFreeze TCC Confirm: 确认冻结
 func (s *AccountCommandService) TccConfirmFreeze(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
-	// Confirm in TCC usually doesn't need to do much if Try already froze it,
-	// unless we want to move from frozen to somewhere else or just log.
 	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
 		return nil
 	})
@@ -324,8 +381,8 @@ func (s *AccountCommandService) TccConfirmFreeze(ctx context.Context, barrier an
 
 // TccCancelFreeze TCC Cancel: 取消冻结
 func (s *AccountCommandService) TccCancelFreeze(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
-	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		accounts, err := s.repo.GetByUserID(ctx, userID)
+	return s.repo.ExecWithBarrier(ctx, barrier, func(txCtx context.Context) error {
+		accounts, err := s.repo.GetByUserID(txCtx, userID)
 		if err != nil {
 			return err
 		}
@@ -344,6 +401,19 @@ func (s *AccountCommandService) TccCancelFreeze(ctx context.Context, barrier any
 		if success := targetAccount.Unfreeze(amount); !success {
 			return fmt.Errorf("failed to unfreeze for TCC cancel")
 		}
-		return s.repo.Save(ctx, targetAccount)
+		if err := s.repo.Save(txCtx, targetAccount); err != nil {
+			return err
+		}
+
+		if s.publisher == nil {
+			return nil
+		}
+		tx := contextx.GetTx(txCtx)
+		return s.publisher.PublishInTx(ctx, tx, domain.AccountUnfrozenEventType, fmt.Sprintf("TCC-CANCEL-%s", userID), map[string]any{
+			"type":       "TCC_CANCEL",
+			"account_id": targetAccount.AccountID,
+			"user_id":    userID,
+			"amount":     amount.String(),
+		})
 	})
 }

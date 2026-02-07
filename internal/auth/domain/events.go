@@ -2,6 +2,15 @@ package domain
 
 import "time"
 
+const (
+	UserRegisteredEventType = "auth.user.registered"
+	UserLoggedInEventType   = "auth.user.logged_in"
+
+	APIKeyCreatedEventType   = "auth.api_key.created"
+	APIKeyValidatedEventType = "auth.api_key.validated"
+	APIKeyVerifiedEventType  = "auth.api_key.verified"
+)
+
 // UserRegisteredEvent 用户注册事件
 type UserRegisteredEvent struct {
 	UserID    uint      `json:"user_id"`

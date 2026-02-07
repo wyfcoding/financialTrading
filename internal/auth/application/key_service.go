@@ -18,14 +18,14 @@ func NewAPIKeyService(repo domain.APIKeyRepository) *APIKeyService {
 }
 
 // CreateKey 为用户创建一个新的 API Key。
-// 返回 (key, secret, error)。注意：secret 仅在此时返回明文。
-func (s *APIKeyService) CreateKey(ctx context.Context, userID, label, scopes string) (string, string, error) {
+// 返回 (apiKey, secret, error)。注意：secret 仅在此时返回明文。
+func (s *APIKeyService) CreateKey(ctx context.Context, userID, label, scopes string) (*domain.APIKey, string, error) {
 	key := fmt.Sprintf("AK%s", idgen.GenShortID(22))
 	secret := idgen.GenShortID(32)
 
 	hash, err := security.HashPassword(secret)
 	if err != nil {
-		return "", "", err
+		return nil, "", err
 	}
 
 	ak := &domain.APIKey{
@@ -38,10 +38,10 @@ func (s *APIKeyService) CreateKey(ctx context.Context, userID, label, scopes str
 	}
 
 	if err := s.repo.Save(ctx, ak); err != nil {
-		return "", "", err
+		return nil, "", err
 	}
 
-	return key, secret, nil
+	return ak, secret, nil
 }
 
 func (s *APIKeyService) ValidateKey(ctx context.Context, key, secret string) (*domain.APIKey, error) {

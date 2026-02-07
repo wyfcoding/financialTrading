@@ -1,9 +1,10 @@
 package domain
 
 import (
+	"time"
+
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/pkg/eventsourcing"
-	"gorm.io/gorm"
 )
 
 // AccountType 账户类型
@@ -16,8 +17,10 @@ const (
 
 // Account 账户聚合根
 type Account struct {
-	gorm.Model
 	eventsourcing.AggregateRoot
+	ID               uint
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 	AccountID        string          `gorm:"column:account_id;type:varchar(32);uniqueIndex;not null;comment:账户ID"`
 	UserID           string          `gorm:"column:user_id;type:varchar(32);index;not null;comment:用户ID"`
 	AccountType      AccountType     `gorm:"column:account_type;type:varchar(20);not null;comment:账户类型"`

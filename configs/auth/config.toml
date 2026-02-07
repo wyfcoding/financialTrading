@@ -1,17 +1,36 @@
 [server]
-grpc_port = 9095
-http_port = 8085
+name = "auth-service"
+environment = "dev"
 
-[database]
-driver = "mysql"
-source = "root:root@tcp(127.0.0.1:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+[server.http]
+port = 8085
+timeout = "10s"
 
-[redis]
-addr = "localhost:6379"
-password = ""
-db = 0
-pool_size = 100
+[server.grpc]
+port = 9095
+timeout = "10s"
 
 [log]
 level = "info"
 format = "json"
+output = "stdout"
+
+[data.database]
+driver = "mysql"
+dsn = "root:password@tcp(localhost:3306)/financial_auth?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 10
+max_open_conns = 100
+conn_max_lifetime = "1h"
+
+[data.redis]
+addrs = ["localhost:6379"]
+db = 0
+
+[messagequeue.kafka]
+brokers = ["localhost:9092"]
+topic = "financial.auth.events"
+
+[tracing]
+enabled = false
+service_name = "auth-service"
+otlp_endpoint = "localhost:4317"

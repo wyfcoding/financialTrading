@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
-	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/account/domain"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/eventsourcing"
@@ -22,19 +22,55 @@ func NewAccountRepository(db *gorm.DB) domain.AccountRepository {
 	return &accountRepository{db: db}
 }
 
+// --- tx helpers ---
+
+func (r *accountRepository) BeginTx(ctx context.Context) any {
+	return r.db.WithContext(ctx).Begin()
+}
+
+func (r *accountRepository) CommitTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Commit().Error
+}
+
+func (r *accountRepository) RollbackTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Rollback().Error
+}
+
+func (r *accountRepository) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		txCtx := contextx.WithTx(ctx, tx)
+		return fn(txCtx)
+	})
+}
+
+// Save 保存账户（带乐观锁）
 func (r *accountRepository) Save(ctx context.Context, account *domain.Account) error {
 	db := r.getDB(ctx)
 
-	// 使用 gorm.Model 的 ID 判断新老对象
-	if account.Model.ID == 0 {
-		return db.Create(account).Error
+	// 新建账户
+	if account.ID == 0 {
+		model := toAccountModel(account)
+		if err := db.WithContext(ctx).Create(model).Error; err != nil {
+			return err
+		}
+		account.ID = model.ID
+		account.CreatedAt = model.CreatedAt
+		account.UpdatedAt = model.UpdatedAt
+		return nil
 	}
 
-	// 乐观锁更新 (使用 AggregateRoot.Version())
 	currentVersion := account.Version()
-	result := db.Model(&domain.Account{}).
+	result := db.WithContext(ctx).Model(&AccountModel{}).
 		Where("account_id = ? AND version = ?", account.AccountID, currentVersion).
-		Updates(map[string]interface{}{
+		Updates(map[string]any{
 			"balance":           account.Balance,
 			"available_balance": account.AvailableBalance,
 			"frozen_balance":    account.FrozenBalance,
@@ -49,29 +85,29 @@ func (r *accountRepository) Save(ctx context.Context, account *domain.Account) e
 	}
 
 	account.SetVersion(currentVersion + 1)
+	account.UpdatedAt = time.Now()
 	return nil
 }
 
 func (r *accountRepository) Get(ctx context.Context, id string) (*domain.Account, error) {
-	var acc domain.Account
-	if err := r.getDB(ctx).Where("account_id = ?", id).First(&acc).Error; err != nil {
+	var model AccountModel
+	if err := r.getDB(ctx).WithContext(ctx).Where("account_id = ?", id).First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	// 设置聚合 ID
-	acc.SetID(acc.AccountID)
-	return &acc, nil
+	return toAccount(&model), nil
 }
 
 func (r *accountRepository) GetByUserID(ctx context.Context, userID string) ([]*domain.Account, error) {
-	var accounts []*domain.Account
-	if err := r.getDB(ctx).Where("user_id = ?", userID).Find(&accounts).Error; err != nil {
+	var models []*AccountModel
+	if err := r.getDB(ctx).WithContext(ctx).Where("user_id = ?", userID).Find(&models).Error; err != nil {
 		return nil, err
 	}
-	for _, acc := range accounts {
-		acc.SetID(acc.AccountID)
+	accounts := make([]*domain.Account, len(models))
+	for i, m := range models {
+		accounts[i] = toAccount(m)
 	}
 	return accounts, nil
 }
@@ -132,34 +168,4 @@ func (s *eventStore) getDB(ctx context.Context) *gorm.DB {
 		return tx
 	}
 	return s.db
-}
-
-// --- 持久化对象 (Infrastructure POs) ---
-
-// TransactionPO 交易流水
-type TransactionPO struct {
-	gorm.Model
-	TransactionID string          `gorm:"column:transaction_id;type:varchar(32);uniqueIndex;not null;comment:交易ID"`
-	AccountID     string          `gorm:"column:account_id;type:varchar(32);index;not null;comment:账户ID"`
-	Type          string          `gorm:"column:type;type:varchar(20);not null;comment:类型"`
-	Amount        decimal.Decimal `gorm:"column:amount;type:decimal(32,18);not null;comment:金额"`
-	Status        string          `gorm:"column:status;type:varchar(20);not null;comment:状态"`
-	Timestamp     int64           `gorm:"column:timestamp;not null;comment:时间戳"`
-}
-
-func (TransactionPO) TableName() string {
-	return "transactions"
-}
-
-// EventPO 事件存储对象
-type EventPO struct {
-	gorm.Model
-	AggregateID string `gorm:"column:aggregate_id;type:varchar(32);index;not null;comment:聚合ID"`
-	EventType   string `gorm:"column:event_type;type:varchar(50);not null;comment:事件类型"`
-	Payload     string `gorm:"column:payload;type:json;not null;comment:事件负载"`
-	OccurredAt  int64  `gorm:"column:occurred_at;not null;comment:发生时间"`
-}
-
-func (EventPO) TableName() string {
-	return "account_events"
 }

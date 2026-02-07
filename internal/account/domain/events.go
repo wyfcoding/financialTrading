@@ -5,6 +5,15 @@ import (
 	"github.com/wyfcoding/pkg/eventsourcing"
 )
 
+const (
+	AccountCreatedEventType   = "account.created"
+	AccountDepositedEventType = "account.deposited"
+	AccountWithdrawnEventType = "account.withdrawn"
+	AccountFrozenEventType    = "account.frozen"
+	AccountUnfrozenEventType  = "account.unfrozen"
+	AccountDeductedEventType  = "account.deducted"
+)
+
 // AccountCreatedEvent 开户事件
 type AccountCreatedEvent struct {
 	eventsourcing.BaseEvent
