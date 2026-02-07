@@ -6,15 +6,13 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/wyfcoding/pkg/algorithm/types"
-
 	"github.com/shopspring/decimal"
 	clearingv1 "github.com/wyfcoding/financialtrading/go-api/clearing/v1"
 	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
+	"github.com/wyfcoding/pkg/algorithm/types"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/logging"
-	"gorm.io/gorm"
 )
 
 // MatchingCommandService 处理所有撮合引擎相关的写入操作（Commands）。
@@ -26,7 +24,6 @@ type MatchingCommandService struct {
 	clearingCli   clearingv1.ClearingServiceClient
 	orderCli      orderv1.OrderServiceClient
 	logger        *slog.Logger
-	db            *gorm.DB
 }
 
 // NewMatchingCommandService 构造函数。
@@ -35,7 +32,6 @@ func NewMatchingCommandService(
 	engine *domain.DisruptionEngine,
 	tradeRepo domain.TradeRepository,
 	orderBookRepo domain.OrderBookRepository,
-	db *gorm.DB,
 	publisher domain.EventPublisher,
 	logger *slog.Logger,
 ) *MatchingCommandService {
@@ -43,10 +39,17 @@ func NewMatchingCommandService(
 		engine:        engine,
 		tradeRepo:     tradeRepo,
 		orderBookRepo: orderBookRepo,
-		db:            db,
 		publisher:     publisher,
 		logger:        logger.With("module", "matching_command_service", "symbol", symbol),
 	}
+}
+
+// StartEngine 启动撮合引擎
+func (m *MatchingCommandService) StartEngine() error {
+	if m.engine == nil {
+		return fmt.Errorf("engine is nil")
+	}
+	return m.engine.Start()
 }
 
 // SetClearingClient 设置清算服务客户端。
@@ -180,9 +183,7 @@ func (m *MatchingCommandService) SubmitOrder(ctx context.Context, cmd *SubmitOrd
 func (m *MatchingCommandService) processPostMatching(trades []*types.Trade) {
 	m.logger.Debug("starting reliable post-matching processing", "count", len(trades))
 
-	err := m.db.Transaction(func(tx *gorm.DB) error {
-		ctx := contextx.WithTx(context.Background(), tx)
-
+	err := m.tradeRepo.WithTx(context.Background(), func(txCtx context.Context) error {
 		for _, t := range trades {
 			domainTrade := &domain.Trade{
 				TradeID:     t.TradeID,
@@ -193,24 +194,25 @@ func (m *MatchingCommandService) processPostMatching(trades []*types.Trade) {
 				Quantity:    t.Quantity.InexactFloat64(),
 				Timestamp:   time.Unix(0, t.Timestamp),
 			}
-			if err := m.tradeRepo.Save(ctx, domainTrade); err != nil {
+			if err := m.tradeRepo.Save(txCtx, domainTrade); err != nil {
 				return fmt.Errorf("failed to persist trade %s: %w", t.TradeID, err)
 			}
 
-			event := map[string]any{
-				"trade_id":      t.TradeID,
-				"buy_order_id":  t.BuyOrderID,
-				"sell_order_id": t.SellOrderID,
-				"buy_user_id":   t.BuyUserID,
-				"sell_user_id":  t.SellUserID,
-				"symbol":        t.Symbol,
-				"quantity":      t.Quantity.String(),
-				"price":         t.Price.String(),
-				"executed_at":   t.Timestamp,
-			}
-
-			if err := m.publisher.PublishInTx(ctx, tx, "trade.executed", t.TradeID, event); err != nil {
-				return fmt.Errorf("failed to publish outbox event for trade %s: %w", t.TradeID, err)
+			if m.publisher != nil {
+				event := map[string]any{
+					"trade_id":      t.TradeID,
+					"buy_order_id":  t.BuyOrderID,
+					"sell_order_id": t.SellOrderID,
+					"buy_user_id":   t.BuyUserID,
+					"sell_user_id":  t.SellUserID,
+					"symbol":        t.Symbol,
+					"quantity":      t.Quantity.String(),
+					"price":         t.Price.String(),
+					"executed_at":   t.Timestamp,
+				}
+				if err := m.publisher.PublishInTx(txCtx, contextx.GetTx(txCtx), domain.TradeExecutedEventType, t.TradeID, event); err != nil {
+					return fmt.Errorf("failed to publish outbox event for trade %s: %w", t.TradeID, err)
+				}
 			}
 		}
 		return nil
@@ -227,5 +229,16 @@ func (m *MatchingCommandService) processPostMatching(trades []*types.Trade) {
 // SaveSnapshot 触发快照
 func (m *MatchingCommandService) SaveSnapshot(ctx context.Context, depth int) error {
 	snapshot := m.engine.GetOrderBookSnapshot(depth)
-	return m.orderBookRepo.SaveSnapshot(ctx, snapshot)
+	if err := m.orderBookRepo.SaveSnapshot(ctx, snapshot); err != nil {
+		return err
+	}
+	if m.publisher != nil {
+		event := map[string]any{
+			"symbol":    snapshot.Symbol,
+			"timestamp": snapshot.Timestamp,
+			"depth":     depth,
+		}
+		return m.publisher.Publish(ctx, domain.OrderBookSnapshotEventType, snapshot.Symbol, event)
+	}
+	return nil
 }

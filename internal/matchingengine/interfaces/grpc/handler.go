@@ -1,4 +1,3 @@
-// 包  gRPC 处理器实现
 package grpc
 
 import (
@@ -17,14 +16,13 @@ import (
 // Handler 实现了 gRPC 服务端接口。
 type Handler struct {
 	pb.UnimplementedMatchingEngineServiceServer
-	app *application.MatchingService // 关联的门面服务
+	cmd   *application.MatchingCommandService
+	query *application.MatchingQueryService
 }
 
 // NewHandler 构造新的 gRPC 处理器实例。
-func NewHandler(app *application.MatchingService) *Handler {
-	return &Handler{
-		app: app,
-	}
+func NewHandler(cmd *application.MatchingCommandService, query *application.MatchingQueryService) *Handler {
+	return &Handler{cmd: cmd, query: query}
 }
 
 // SubmitOrder 处理通过 gRPC 提交的订单请求。
@@ -32,7 +30,7 @@ func (h *Handler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderRequest) (
 	start := time.Now()
 	slog.InfoContext(ctx, "grpc submit_order received", "order_id", req.OrderId, "symbol", req.Symbol)
 
-	result, err := h.app.Command.SubmitOrder(ctx, &application.SubmitOrderCommand{
+	result, err := h.cmd.SubmitOrder(ctx, &application.SubmitOrderCommand{
 		OrderID:                req.OrderId,
 		Symbol:                 req.Symbol,
 		Side:                   req.Side,
@@ -74,7 +72,7 @@ func (h *Handler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderRequest) (
 // GetOrderBook 返回当前内存订单簿的聚合深度快照。
 func (h *Handler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequest) (*pb.GetOrderBookResponse, error) {
 	start := time.Now()
-	snapshot, err := h.app.Query.GetOrderBook(ctx, int(req.Depth))
+	snapshot, err := h.query.GetOrderBook(ctx, int(req.Depth))
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc get_order_book failed", "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get order book: %v", err)
@@ -108,7 +106,7 @@ func (h *Handler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequest)
 // GetTrades 获取指定交易对的最近成交历史记录。
 func (h *Handler) GetTrades(ctx context.Context, req *pb.GetTradesRequest) (*pb.GetTradesResponse, error) {
 	start := time.Now()
-	trades, err := h.app.Query.GetTrades(ctx, req.Symbol, int(req.Limit))
+	trades, err := h.query.GetTrades(ctx, req.Symbol, int(req.Limit))
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc get_trades failed", "symbol", req.Symbol, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get trades: %v", err)

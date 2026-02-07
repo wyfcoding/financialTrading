@@ -6,6 +6,11 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+const (
+	TradeExecutedEventType      = "matching.trade.executed"
+	OrderBookSnapshotEventType  = "matching.orderbook.snapshot"
+)
+
 // MatchingEvent 撮合引擎领域事件接口
 type MatchingEvent interface {
 	EventType() string

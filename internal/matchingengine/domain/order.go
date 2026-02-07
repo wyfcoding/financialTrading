@@ -3,8 +3,6 @@ package domain
 import (
 	"sync"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 type OrderSide int
@@ -22,22 +20,22 @@ const (
 )
 
 // Order represents an internal order in the matching engine
+// 持久化映射在基础设施层完成
+
 type Order struct {
-	gorm.Model
-	OrderID   string    `gorm:"column:order_id;type:varchar(32);uniqueIndex;not null;comment:订单ID"`
-	Symbol    string    `gorm:"column:symbol;type:varchar(20);index;not null;comment:标的"`
-	Side      OrderSide `gorm:"column:side;type:tinyint;not null;comment:方向"`
-	Type      OrderType `gorm:"column:type;type:tinyint;not null;comment:类型"`
-	Price     float64   `gorm:"column:price;type:double;not null;comment:价格"`
-	Quantity  float64   `gorm:"column:quantity;type:double;not null;comment:数量"`
-	Timestamp time.Time `gorm:"column:timestamp;not null;comment:时间"`
+	ID        uint      `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 
-	// Working state
-	FilledQty float64 `gorm:"column:filled_qty;type:double;default:0;comment:已成交量"`
-}
+	OrderID   string    `json:"order_id"`
+	Symbol    string    `json:"symbol"`
+	Side      OrderSide `json:"side"`
+	Type      OrderType `json:"type"`
+	Price     float64   `json:"price"`
+	Quantity  float64   `json:"quantity"`
+	Timestamp time.Time `json:"timestamp"`
 
-func (Order) TableName() string {
-	return "matching_orders"
+	FilledQty float64 `json:"filled_qty"`
 }
 
 // RemainingQty returns the remaining quantity to be filled
@@ -51,19 +49,19 @@ func (o *Order) IsFilled() bool {
 }
 
 // Trade represents a successful match
-type Trade struct {
-	gorm.Model
-	TradeID     string    `gorm:"column:trade_id;type:varchar(32);uniqueIndex;not null;comment:成交ID"`
-	BuyOrderID  string    `gorm:"column:buy_order_id;type:varchar(32);index;not null;comment:买方订单ID"`
-	SellOrderID string    `gorm:"column:sell_order_id;type:varchar(32);index;not null;comment:卖方订单ID"`
-	Symbol      string    `gorm:"column:symbol;type:varchar(20);index;not null;comment:标的"`
-	Price       float64   `gorm:"column:price;type:double;not null;comment:价格"`
-	Quantity    float64   `gorm:"column:quantity;type:double;not null;comment:数量"`
-	Timestamp   time.Time `gorm:"column:timestamp;not null;comment:时间"`
-}
+// 持久化映射在基础设施层完成
 
-func (Trade) TableName() string {
-	return "matching_trades"
+type Trade struct {
+	ID          uint      `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	TradeID     string    `json:"trade_id"`
+	BuyOrderID  string    `json:"buy_order_id"`
+	SellOrderID string    `json:"sell_order_id"`
+	Symbol      string    `json:"symbol"`
+	Price       float64   `json:"price"`
+	Quantity    float64   `json:"quantity"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 var orderPool = sync.Pool{

@@ -12,7 +12,6 @@ import (
 	"github.com/wyfcoding/pkg/algorithm/types"
 
 	"github.com/shopspring/decimal"
-	"gorm.io/gorm"
 )
 
 // OrderLevel 表示同一价格档位下的订单集合，保证时间优先 (FIFO)
@@ -408,16 +407,18 @@ type MatchingResult struct {
 }
 
 type OrderBookLevel struct {
-	Price    decimal.Decimal `gorm:"type:decimal(32,18);not null"`
-	Quantity decimal.Decimal `gorm:"type:decimal(32,18);not null"`
+	Price    decimal.Decimal `json:"price"`
+	Quantity decimal.Decimal `json:"quantity"`
 }
 
 type OrderBookSnapshot struct {
-	gorm.Model
-	Symbol    string            `gorm:"column:symbol;type:varchar(20);index;not null"`
-	Bids      []*OrderBookLevel `gorm:"column:bids;type:json"`
-	Asks      []*OrderBookLevel `gorm:"column:asks;type:json"`
-	Timestamp int64             `gorm:"column:timestamp;not null"`
+	ID        uint             `json:"id"`
+	CreatedAt time.Time        `json:"created_at"`
+	UpdatedAt time.Time        `json:"updated_at"`
+	Symbol    string           `json:"symbol"`
+	Bids      []*OrderBookLevel `json:"bids"`
+	Asks      []*OrderBookLevel `json:"asks"`
+	Timestamp int64            `json:"timestamp"`
 }
 
 // AuctionEngine 拍卖引擎

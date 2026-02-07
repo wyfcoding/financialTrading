@@ -13,13 +13,12 @@ import (
 
 // MatchingHandler 负责处理 HTTP 请求
 type MatchingHandler struct {
-	app *application.MatchingService
+	cmd   *application.MatchingCommandService
+	query *application.MatchingQueryService
 }
 
-func NewMatchingHandler(app *application.MatchingService) *MatchingHandler {
-	return &MatchingHandler{
-		app: app,
-	}
+func NewMatchingHandler(cmd *application.MatchingCommandService, query *application.MatchingQueryService) *MatchingHandler {
+	return &MatchingHandler{cmd: cmd, query: query}
 }
 
 func (h *MatchingHandler) RegisterRoutes(router *gin.RouterGroup) {
@@ -39,7 +38,7 @@ func (h *MatchingHandler) SubmitOrder(c *gin.Context) {
 		return
 	}
 
-	result, err := h.app.Command.SubmitOrder(c.Request.Context(), &req)
+	result, err := h.cmd.SubmitOrder(c.Request.Context(), &req)
 	if err != nil {
 		logging.Error(c.Request.Context(), "failed to submit order", "error", err)
 		response.Error(c, err)
@@ -58,7 +57,7 @@ func (h *MatchingHandler) GetOrderBook(c *gin.Context) {
 		return
 	}
 
-	snapshot, err := h.app.Query.GetOrderBook(c.Request.Context(), depth)
+	snapshot, err := h.query.GetOrderBook(c.Request.Context(), depth)
 	if err != nil {
 		logging.Error(c.Request.Context(), "failed to get order book snapshot", "error", err)
 		response.Error(c, err)
@@ -83,7 +82,7 @@ func (h *MatchingHandler) GetTrades(c *gin.Context) {
 		return
 	}
 
-	trades, err := h.app.Query.GetTrades(c.Request.Context(), symbol, limit)
+	trades, err := h.query.GetTrades(c.Request.Context(), symbol, limit)
 	if err != nil {
 		logging.Error(c.Request.Context(), "failed to get trade history", "symbol", symbol, "error", err)
 		response.Error(c, err)
