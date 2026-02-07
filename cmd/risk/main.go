@@ -144,14 +144,14 @@ func main() {
 	}
 	mdClient := riskclient.NewGRPCMarketDataClient(marketdatav1.NewMarketDataServiceClient(mdConn))
 
-	_ = domain.NewVolatilityAdjustedMarginCalculator(
+	marginCalc := domain.NewVolatilityAdjustedMarginCalculator(
 		decimal.NewFromFloat(0.05),
 		decimal.NewFromFloat(2.0),
 		mdClient,
 	)
 
 	// 9. Application
-	commandSvc := application.NewRiskCommandService(repo, readRepo, accClient, posClient, publisher)
+	commandSvc := application.NewRiskCommandService(repo, readRepo, accClient, posClient, publisher, marginCalc)
 	querySvc := application.NewRiskQueryService(repo, readRepo, searchRepo)
 	projectionSvc := application.NewRiskProjectionService(repo, readRepo, searchRepo, logger.Logger)
 

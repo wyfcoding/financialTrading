@@ -30,6 +30,8 @@ func (h *RiskHandler) RegisterRoutes(router *gin.RouterGroup) {
 		api.GET("/metrics", h.GetRiskMetrics)
 		api.GET("/limits", h.CheckRiskLimit)
 		api.GET("/alerts", h.GetRiskAlerts)
+		api.POST("/portfolio-risk", h.CalculatePortfolioRisk)
+		api.POST("/monte-carlo", h.CalculateMonteCarloRisk)
 	}
 }
 
@@ -134,4 +136,40 @@ func (h *RiskHandler) GetRiskAlerts(c *gin.Context) {
 	}
 
 	response.Success(c, alerts)
+}
+
+// CalculatePortfolioRisk 组合风险计算
+func (h *RiskHandler) CalculatePortfolioRisk(c *gin.Context) {
+	var req application.CalculatePortfolioRiskRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
+		return
+	}
+
+	result, err := h.query.CalculatePortfolioRisk(c.Request.Context(), &req)
+	if err != nil {
+		logging.Error(c.Request.Context(), "Failed to calculate portfolio risk", "error", err)
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
+		return
+	}
+
+	response.Success(c, result)
+}
+
+// CalculateMonteCarloRisk Monte Carlo 风险计算
+func (h *RiskHandler) CalculateMonteCarloRisk(c *gin.Context) {
+	var req application.MonteCarloRiskRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
+		return
+	}
+
+	result, err := h.query.CalculateMonteCarloRisk(c.Request.Context(), &req)
+	if err != nil {
+		logging.Error(c.Request.Context(), "Failed to calculate monte carlo risk", "error", err)
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
+		return
+	}
+
+	response.Success(c, result)
 }

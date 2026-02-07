@@ -156,3 +156,80 @@ func (h *Handler) GetRiskAlerts(ctx context.Context, req *pb.GetRiskAlertsReques
 
 	return &pb.GetRiskAlertsResponse{Alerts: pbAlerts}, nil
 }
+
+// CalculatePortfolioRisk 组合风险计算
+func (h *Handler) CalculatePortfolioRisk(ctx context.Context, req *pb.CalculatePortfolioRiskRequest) (*pb.CalculatePortfolioRiskResponse, error) {
+	assets := make([]application.PortfolioAssetDTO, 0, len(req.Assets))
+	for _, a := range req.Assets {
+		assets = append(assets, application.PortfolioAssetDTO{
+			Symbol:         a.Symbol,
+			Position:       a.Position,
+			CurrentPrice:   a.CurrentPrice,
+			Volatility:     a.Volatility,
+			ExpectedReturn: a.ExpectedReturn,
+		})
+	}
+
+	corr := make([][]float64, 0, len(req.CorrelationMatrix))
+	for _, row := range req.CorrelationMatrix {
+		corr = append(corr, row.Values)
+	}
+
+	result, err := h.query.CalculatePortfolioRisk(ctx, &application.CalculatePortfolioRiskRequest{
+		Assets:          assets,
+		CorrelationData: corr,
+		TimeHorizon:     req.TimeHorizon,
+		Simulations:     int(req.Simulations),
+		ConfidenceLevel: req.ConfidenceLevel,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to calculate portfolio risk: %v", err)
+	}
+	if result == nil {
+		return &pb.CalculatePortfolioRiskResponse{}, nil
+	}
+
+	greeks := make(map[string]*pb.PortfolioGreeks, len(result.Greeks))
+	for k, v := range result.Greeks {
+		greeks[k] = &pb.PortfolioGreeks{
+			Delta: v.Delta,
+			Gamma: v.Gamma,
+			Vega:  v.Vega,
+			Theta: v.Theta,
+		}
+	}
+
+	return &pb.CalculatePortfolioRiskResponse{
+		TotalValue:      result.TotalValue,
+		VarValue:        result.VaR,
+		EsValue:         result.ES,
+		ComponentVar:    result.ComponentVaR,
+		Diversification: result.Diversification,
+		StressTests:     result.StressTests,
+		Greeks:          greeks,
+	}, nil
+}
+
+// CalculateMonteCarloRisk 单资产 Monte Carlo 风险计算
+func (h *Handler) CalculateMonteCarloRisk(ctx context.Context, req *pb.MonteCarloRiskRequest) (*pb.MonteCarloRiskResponse, error) {
+	result, err := h.query.CalculateMonteCarloRisk(ctx, &application.MonteCarloRiskRequest{
+		S:          req.S,
+		Mu:         req.Mu,
+		Sigma:      req.Sigma,
+		T:          req.T,
+		Iterations: int(req.Iterations),
+		Steps:      int(req.Steps),
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to calculate monte carlo risk: %v", err)
+	}
+	if result == nil {
+		return &pb.MonteCarloRiskResponse{}, nil
+	}
+	return &pb.MonteCarloRiskResponse{
+		Var_95: result.VaR95,
+		Var_99: result.VaR99,
+		Es_95:  result.ES95,
+		Es_99:  result.ES99,
+	}, nil
+}

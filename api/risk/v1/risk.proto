@@ -15,6 +15,10 @@ service RiskService {
   rpc GetRiskMetrics(GetRiskMetricsRequest) returns (GetRiskMetricsResponse) {};
   rpc CheckRiskLimit(CheckRiskLimitRequest) returns (CheckRiskLimitResponse) {};
   rpc GetRiskAlerts(GetRiskAlertsRequest) returns (GetRiskAlertsResponse) {};
+
+  // Portfolio & Monte Carlo Risk Analytics
+  rpc CalculatePortfolioRisk(CalculatePortfolioRiskRequest) returns (CalculatePortfolioRiskResponse) {};
+  rpc CalculateMonteCarloRisk(MonteCarloRiskRequest) returns (MonteCarloRiskResponse) {};
 }
 
 message CheckRiskRequest {
@@ -111,4 +115,61 @@ message PositionLiquidationTriggeredEvent {
   double margin_level = 6;
   string trigger_reason = 7;
   int64 triggered_at = 8;
+}
+
+// --- Portfolio Risk ---
+
+message PortfolioAsset {
+  string symbol = 1;
+  string position = 2; // Decimal string
+  string current_price = 3; // Decimal string
+  double volatility = 4;
+  double expected_return = 5;
+}
+
+message CorrelationRow {
+  repeated double values = 1;
+}
+
+message CalculatePortfolioRiskRequest {
+  repeated PortfolioAsset assets = 1;
+  repeated CorrelationRow correlation_matrix = 2;
+  double time_horizon = 3;
+  int32 simulations = 4;
+  double confidence_level = 5;
+}
+
+message PortfolioGreeks {
+  string delta = 1;
+  string gamma = 2;
+  string vega = 3;
+  string theta = 4;
+}
+
+message CalculatePortfolioRiskResponse {
+  string total_value = 1;
+  string var_value = 2;
+  string es_value = 3;
+  map<string, string> component_var = 4;
+  string diversification = 5;
+  map<string, string> stress_tests = 6;
+  map<string, PortfolioGreeks> greeks = 7;
+}
+
+// --- Monte Carlo Risk ---
+
+message MonteCarloRiskRequest {
+  double s = 1;
+  double mu = 2;
+  double sigma = 3;
+  double t = 4;
+  int32 iterations = 5;
+  int32 steps = 6;
+}
+
+message MonteCarloRiskResponse {
+  string var_95 = 1;
+  string var_99 = 2;
+  string es_95 = 3;
+  string es_99 = 4;
 }

@@ -1,7 +1,6 @@
 package application
 
 import (
-	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
 )
 
@@ -147,11 +146,38 @@ type PortfolioAssetDTO struct {
 
 // CalculatePortfolioRiskResponse 组合风险计算响应 DTO
 type CalculatePortfolioRiskResponse struct {
-	TotalValue      string            `json:"total_value"`
-	VaR             string            `json:"var"`
-	ES              string            `json:"es"`
-	ComponentVaR    map[string]string `json:"component_var"`
-	Diversification string            `json:"diversification"`
+	TotalValue      string                        `json:"total_value"`
+	VaR             string                        `json:"var"`
+	ES              string                        `json:"es"`
+	ComponentVaR    map[string]string             `json:"component_var"`
+	Diversification string                        `json:"diversification"`
+	StressTests     map[string]string             `json:"stress_tests"`
+	Greeks          map[string]PortfolioGreeksDTO `json:"greeks"`
+}
+
+type PortfolioGreeksDTO struct {
+	Delta string `json:"delta"`
+	Gamma string `json:"gamma"`
+	Vega  string `json:"vega"`
+	Theta string `json:"theta"`
+}
+
+// MonteCarloRiskRequest Monte Carlo 风险模拟请求
+type MonteCarloRiskRequest struct {
+	S          float64 `json:"s"`
+	Mu         float64 `json:"mu"`
+	Sigma      float64 `json:"sigma"`
+	T          float64 `json:"t"`
+	Iterations int     `json:"iterations"`
+	Steps      int     `json:"steps"`
+}
+
+// MonteCarloRiskResponse Monte Carlo 风险模拟响应
+type MonteCarloRiskResponse struct {
+	VaR95 string `json:"var_95"`
+	VaR99 string `json:"var_99"`
+	ES95  string `json:"es_95"`
+	ES99  string `json:"es_99"`
 }
 
 func toRiskAssessmentDTO(a *domain.RiskAssessment) *RiskAssessmentDTO {
@@ -251,12 +277,4 @@ func toCircuitBreakerDTO(cb *domain.CircuitBreaker) *CircuitBreakerDTO {
 		CreatedAt:     cb.CreatedAt.Unix(),
 		UpdatedAt:     cb.UpdatedAt.Unix(),
 	}
-}
-
-func parseDecimal(value string) decimal.Decimal {
-	dec, err := decimal.NewFromString(value)
-	if err != nil {
-		return decimal.Zero
-	}
-	return dec
 }

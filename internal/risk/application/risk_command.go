@@ -20,6 +20,7 @@ type RiskCommandService struct {
 	accountClient  accountv1.AccountServiceClient
 	positionClient positionv1.PositionServiceClient
 	publisher      domain.EventPublisher
+	marginCalc     domain.MarginCalculator
 }
 
 // NewRiskCommandService 创建新的 RiskCommandService 实例
@@ -29,6 +30,7 @@ func NewRiskCommandService(
 	accClient accountv1.AccountServiceClient,
 	posClient positionv1.PositionServiceClient,
 	publisher domain.EventPublisher,
+	marginCalc domain.MarginCalculator,
 ) *RiskCommandService {
 	return &RiskCommandService{
 		repo:           repo,
@@ -36,6 +38,7 @@ func NewRiskCommandService(
 		accountClient:  accClient,
 		positionClient: posClient,
 		publisher:      publisher,
+		marginCalc:     marginCalc,
 	}
 }
 
@@ -49,6 +52,12 @@ func (s *RiskCommandService) AssessRisk(ctx context.Context, cmd AssessRiskComma
 	riskScore := calculateRiskScore(cmd.Symbol, cmd.Side, cmd.Quantity, cmd.Price)
 	riskLevel := determineRiskLevel(riskScore)
 	marginRequirement := calculateMarginRequirement(cmd.Symbol, cmd.Quantity, cmd.Price, riskLevel)
+	if s.marginCalc != nil {
+		positionValue := decimal.NewFromFloat(cmd.Quantity).Mul(decimal.NewFromFloat(cmd.Price))
+		if mr, err := s.marginCalc.CalculateRequiredMargin(ctx, cmd.Symbol, positionValue); err == nil && !mr.IsZero() {
+			marginRequirement = mr
+		}
+	}
 
 	isAllowed := riskLevel != domain.RiskLevelCritical
 	reason := ""
