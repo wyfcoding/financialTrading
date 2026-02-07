@@ -7,7 +7,6 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/pkg/eventsourcing"
-	"gorm.io/gorm"
 )
 
 type TradeSide string
@@ -47,24 +46,22 @@ type PriceLevel struct {
 }
 
 type AlgoOrder struct {
-	gorm.Model
 	eventsourcing.AggregateRoot
-	AlgoID            string          `gorm:"column:algo_id;type:varchar(64);uniqueIndex;not null;comment:算法订单ID" json:"algo_id"`
-	UserID            string          `gorm:"column:user_id;type:varchar(64);not null;comment:用户ID" json:"user_id"`
-	Symbol            string          `gorm:"column:symbol;type:varchar(20);not null;comment:标的" json:"symbol"`
-	Side              TradeSide       `gorm:"column:side;type:varchar(10);not null;comment:方向" json:"side"`
-	TotalQuantity     decimal.Decimal `gorm:"column:total_quantity;type:decimal(20,8);not null;comment:总量" json:"total_quantity"`
-	ExecutedQuantity  decimal.Decimal `gorm:"column:executed_qty;type:decimal(20,8);default:0;comment:已成交量" json:"executed_qty"`
-	ParticipationRate decimal.Decimal `gorm:"column:participation_rate;type:decimal(10,4);default:0;comment:参与率" json:"participation_rate"`
-	AlgoType          AlgoType        `gorm:"column:algo_type;type:varchar(20);not null;comment:算法类型" json:"algo_type"`
-	StartTime         time.Time       `gorm:"column:start_time;not null;comment:开始时间" json:"start_time"`
-	EndTime           time.Time       `gorm:"column:end_time;not null;comment:结束时间" json:"end_time"`
-	Status            string          `gorm:"column:status;type:varchar(20);default:'PENDING';comment:状态" json:"status"`
-	StrategyParams    string          `gorm:"column:strategy_params;type:text;comment:策略参数" json:"strategy_params"`
-}
-
-func (AlgoOrder) TableName() string {
-	return "algo_orders"
+	ID                uint            `json:"id"`
+	CreatedAt         time.Time       `json:"created_at"`
+	UpdatedAt         time.Time       `json:"updated_at"`
+	AlgoID            string          `json:"algo_id"`
+	UserID            string          `json:"user_id"`
+	Symbol            string          `json:"symbol"`
+	Side              TradeSide       `json:"side"`
+	TotalQuantity     decimal.Decimal `json:"total_quantity"`
+	ExecutedQuantity  decimal.Decimal `json:"executed_quantity"`
+	ParticipationRate decimal.Decimal `json:"participation_rate"`
+	AlgoType          AlgoType        `json:"algo_type"`
+	StartTime         time.Time       `json:"start_time"`
+	EndTime           time.Time       `json:"end_time"`
+	Status            string          `json:"status"`
+	StrategyParams    string          `json:"strategy_params"`
 }
 
 func NewAlgoOrder(id, userID, symbol string, side TradeSide, totalQty decimal.Decimal, algoType AlgoType, start, end time.Time, params string) *AlgoOrder {

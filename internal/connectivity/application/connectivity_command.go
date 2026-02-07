@@ -14,6 +14,7 @@ import (
 type ConnectivityCommandService struct {
 	sessionMgr *fix.SessionManager
 	execClient domain.ExecutionClient
+	mdClient   domain.MarketDataClient
 	publisher  domain.EventPublisher
 	quoteRepo  domain.QuoteRepository
 }
@@ -22,12 +23,14 @@ type ConnectivityCommandService struct {
 func NewConnectivityCommandService(
 	sm *fix.SessionManager,
 	ec domain.ExecutionClient,
+	mdClient domain.MarketDataClient,
 	publisher domain.EventPublisher,
 	quoteRepo domain.QuoteRepository,
 ) *ConnectivityCommandService {
 	return &ConnectivityCommandService{
 		sessionMgr: sm,
 		execClient: ec,
+		mdClient:   mdClient,
 		publisher:  publisher,
 		quoteRepo:  quoteRepo,
 	}
@@ -78,7 +81,7 @@ func (s *ConnectivityCommandService) handleNewOrder(ctx context.Context, session
 		internalSide = "SELL"
 	}
 
-	slog.Info("FIX NewOrderReceived, routing to Execution", "clOrdID", clOrdID, "symbol", symbol)
+	slog.Info("FIX NewOrderReceived, routing to Execution", "session", sessionID, "clOrdID", clOrdID, "symbol", symbol)
 
 	// 发布 FIX 订单提交事件
 	submitEvent := domain.FIXOrderSubmittedEvent{
@@ -106,7 +109,22 @@ func (s *ConnectivityCommandService) handleNewOrder(ctx context.Context, session
 }
 
 func (s *ConnectivityCommandService) handleMarketDataRequest(ctx context.Context, sessionID string, msg *fix.Message) error {
-	slog.Info("FIX MarketDataRequestReceived", "session", sessionID)
+	symbol := msg.Get(fix.TagSymbol)
+	sender := msg.Get(fix.TagSenderCompID)
+	target := msg.Get(fix.TagTargetCompID)
+	slog.InfoContext(ctx, "FIX MarketDataRequestReceived", "session", sessionID, "symbol", symbol, "sender", sender, "target", target)
+	if s.mdClient == nil {
+		return nil
+	}
+	quote, err := s.mdClient.GetLatestQuote(ctx, symbol)
+	if err != nil {
+		slog.WarnContext(ctx, "failed to fetch latest quote", "symbol", symbol, "error", err)
+		return err
+	}
+	if quote == nil {
+		return nil
+	}
+	s.UpdateQuote(quote.Symbol, quote.BidPrice, quote.AskPrice, quote.LastPrice)
 	return nil
 }
 

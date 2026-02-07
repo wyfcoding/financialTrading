@@ -18,3 +18,8 @@ type FIXOrderCommand struct {
 type ExecutionClient interface {
 	SubmitOrder(ctx context.Context, cmd FIXOrderCommand) (string, error)
 }
+
+// MarketDataClient 行情服务客户端
+type MarketDataClient interface {
+	GetLatestQuote(ctx context.Context, symbol string) (*Quote, error)
+}

@@ -16,13 +16,15 @@ import (
 // Handler 实现了 gRPC 服务端接口。
 type Handler struct {
 	pb.UnimplementedExecutionServiceServer
-	app *application.ExecutionService // 关联的执行门面服务
+	cmd   *application.ExecutionCommandService
+	query *application.ExecutionQueryService
 }
 
 // NewHandler 构造新的执行 gRPC 处理器实例。
-func NewHandler(app *application.ExecutionService) *Handler {
+func NewHandler(cmd *application.ExecutionCommandService, query *application.ExecutionQueryService) *Handler {
 	return &Handler{
-		app: app,
+		cmd:   cmd,
+		query: query,
 	}
 }
 
@@ -34,7 +36,7 @@ func (h *Handler) ExecuteOrder(ctx context.Context, req *pb.ExecuteOrderRequest)
 	price, _ := decimal.NewFromString(req.Price)
 	qty, _ := decimal.NewFromString(req.Quantity)
 
-	dto, err := h.app.Command.ExecuteOrder(ctx, application.ExecuteOrderCommand{
+	dto, err := h.cmd.ExecuteOrder(ctx, application.ExecuteOrderCommand{
 		OrderID:  req.OrderId,
 		UserID:   req.UserId,
 		Symbol:   req.Symbol,
@@ -63,7 +65,7 @@ func (h *Handler) GetExecutionHistory(ctx context.Context, req *pb.GetExecutionH
 	start := time.Now()
 	slog.DebugContext(ctx, "grpc get_execution_history received", "user_id", req.UserId)
 
-	dtos, err := h.app.ListExecutions(ctx, req.UserId)
+	dtos, _, err := h.query.ListExecutions(ctx, req.UserId, "", 100, 0)
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc get_execution_history failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get execution history: %v", err)
@@ -94,7 +96,7 @@ func (h *Handler) SubmitAlgoOrder(ctx context.Context, req *pb.SubmitAlgoOrderRe
 	}
 
 	qty, _ := decimal.NewFromString(req.TotalQuantity)
-	algoID, err := h.app.Command.SubmitAlgoOrder(ctx, application.SubmitAlgoCommand{
+	algoID, err := h.cmd.SubmitAlgoOrder(ctx, application.SubmitAlgoCommand{
 		UserID:    req.UserId,
 		Symbol:    req.Symbol,
 		Side:      req.Side,
@@ -122,7 +124,7 @@ func (h *Handler) SubmitSOROrder(ctx context.Context, req *pb.SubmitSOROrderRequ
 	}
 
 	qty, _ := decimal.NewFromString(req.TotalQuantity)
-	sorID, err := h.app.Command.SubmitSOROrder(ctx, application.SubmitAlgoCommand{
+	sorID, err := h.cmd.SubmitSOROrder(ctx, application.SubmitAlgoCommand{
 		UserID:    req.UserId,
 		Symbol:    req.Symbol,
 		Side:      req.Side,

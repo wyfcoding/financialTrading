@@ -10,8 +10,6 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/execution/domain"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/idgen"
-	"github.com/wyfcoding/pkg/metrics"
-	"gorm.io/gorm"
 )
 
 // ExecutionCommandService 处理所有执行相关的写入操作（Commands）。
@@ -24,8 +22,6 @@ type ExecutionCommandService struct {
 	orderClient    orderv1.OrderServiceClient
 	marketData     domain.MarketDataProvider
 	volumeProvider domain.VolumeProfileProvider
-	metrics        *metrics.Metrics
-	db             *gorm.DB
 }
 
 // NewExecutionCommandService 构造函数。
@@ -38,8 +34,6 @@ func NewExecutionCommandService(
 	orderClient orderv1.OrderServiceClient,
 	marketData domain.MarketDataProvider,
 	volumeProvider domain.VolumeProfileProvider,
-	metrics *metrics.Metrics,
-	db *gorm.DB,
 ) *ExecutionCommandService {
 	return &ExecutionCommandService{
 		tradeRepo:      tradeRepo,
@@ -50,8 +44,6 @@ func NewExecutionCommandService(
 		orderClient:    orderClient,
 		marketData:     marketData,
 		volumeProvider: volumeProvider,
-		metrics:        metrics,
-		db:             db,
 	}
 }
 
@@ -68,8 +60,7 @@ func (s *ExecutionCommandService) ExecuteOrder(ctx context.Context, cmd ExecuteO
 		cmd.Quantity,
 	)
 
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		txCtx := contextx.WithTx(ctx, tx)
+	err := s.tradeRepo.WithTx(ctx, func(txCtx context.Context) error {
 		if err := s.tradeRepo.Save(txCtx, trade); err != nil {
 			return err
 		}
@@ -80,8 +71,11 @@ func (s *ExecutionCommandService) ExecuteOrder(ctx context.Context, cmd ExecuteO
 		}
 		trade.MarkCommitted()
 
+		if s.publisher == nil {
+			return nil
+		}
 		// 发布集成事件 (Outbox Pattern)
-		return s.publisher.PublishInTx(ctx, tx, "trade.executed", trade.TradeID, map[string]any{
+		return s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.TradeExecutedEventType, trade.TradeID, map[string]any{
 			"trade_id": trade.TradeID,
 			"order_id": trade.OrderID,
 			"symbol":   trade.Symbol,
@@ -123,8 +117,7 @@ func (s *ExecutionCommandService) SubmitAlgoOrder(ctx context.Context, cmd Submi
 		cmd.Params,
 	)
 
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		txCtx := contextx.WithTx(ctx, tx)
+	err := s.algoRepo.WithTx(ctx, func(txCtx context.Context) error {
 		if err := s.algoRepo.Save(txCtx, algoOrder); err != nil {
 			return err
 		}
@@ -136,7 +129,19 @@ func (s *ExecutionCommandService) SubmitAlgoOrder(ctx context.Context, cmd Submi
 		algoOrder.MarkCommitted()
 
 		// 缓存实时状态
-		return s.redisRepo.Save(txCtx, algoOrder)
+		if err := s.redisRepo.Save(txCtx, algoOrder); err != nil {
+			return err
+		}
+
+		if s.publisher == nil {
+			return nil
+		}
+		return s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.AlgoOrderStartedEventType, algoOrder.AlgoID, map[string]any{
+			"algo_id":   algoOrder.AlgoID,
+			"user_id":   algoOrder.UserID,
+			"symbol":    algoOrder.Symbol,
+			"algo_type": string(algoOrder.AlgoType),
+		})
 	})
 
 	if err != nil {
@@ -292,8 +297,7 @@ func (s *ExecutionCommandService) processActiveAlgoOrders(ctx context.Context) {
 			})
 		}
 
-		_ = s.db.Transaction(func(tx *gorm.DB) error {
-			txCtx := contextx.WithTx(ctx, tx)
+		_ = s.algoRepo.WithTx(ctx, func(txCtx context.Context) error {
 			if err := s.algoRepo.Save(txCtx, order); err != nil {
 				return err
 			}

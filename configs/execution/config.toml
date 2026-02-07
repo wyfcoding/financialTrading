@@ -23,10 +23,8 @@ max_open_conns = 100
 conn_max_lifetime = "1h"
 
 [data.redis]
-addr = "localhost:6379"
-password = ""
+addrs = ["localhost:6379"]
 db = 0
-pool_size = 100
 
 [data.elasticsearch]
 addresses = ["http://localhost:9200"]

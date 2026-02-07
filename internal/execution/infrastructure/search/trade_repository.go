@@ -25,10 +25,13 @@ type esSearchResponse struct {
 	} `json:"hits"`
 }
 
-func NewTradeSearchRepository(client *search_pkg.Client) domain.TradeSearchRepository {
+func NewTradeSearchRepository(client *search_pkg.Client, index string) domain.TradeSearchRepository {
+	if index == "" {
+		index = "trades"
+	}
 	return &tradeSearchRepository{
 		client: client,
-		index:  "trades",
+		index:  index,
 	}
 }
 

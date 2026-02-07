@@ -14,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	connectivityv1 "github.com/wyfcoding/financialtrading/go-api/connectivity/v1"
+	marketdatav1 "github.com/wyfcoding/financialtrading/go-api/marketdata/v1"
 	"github.com/wyfcoding/financialtrading/internal/connectivity/application"
 	"github.com/wyfcoding/financialtrading/internal/connectivity/infrastructure/client"
 	connectivityredis "github.com/wyfcoding/financialtrading/internal/connectivity/infrastructure/persistence/redis"
@@ -28,6 +29,7 @@ import (
 	"github.com/wyfcoding/pkg/metrics"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -88,9 +90,20 @@ func main() {
 	}
 	execCli, _ := client.NewExecutionClient(execAddr)
 
+	mdAddr := cfg.GetGRPCAddr("marketdata")
+	if mdAddr == "" {
+		mdAddr = "localhost:9082"
+	}
+	mdConn, err := grpc.Dial(mdAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		slog.Error("failed to connect marketdata service", "error", err)
+		os.Exit(1)
+	}
+	mdClient := client.NewMarketDataClient(marketdatav1.NewMarketDataServiceClient(mdConn))
+
 	// 9. Application Services
 	publisher := outbox.NewPublisher(outboxMgr)
-	commandSvc := application.NewConnectivityCommandService(sessionMgr, execCli, publisher, quoteRepo)
+	commandSvc := application.NewConnectivityCommandService(sessionMgr, execCli, mdClient, publisher, quoteRepo)
 	querySvc := application.NewConnectivityQueryService(sessionMgr, quoteRepo)
 
 	// 10. gRPC Server

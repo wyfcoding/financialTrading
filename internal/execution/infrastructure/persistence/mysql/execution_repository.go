@@ -20,33 +20,93 @@ func NewTradeRepository(db *gorm.DB) domain.TradeRepository {
 	return &tradeRepository{db: db}
 }
 
-func (r *tradeRepository) Save(ctx context.Context, t *domain.Trade) error {
-	db := r.getDB(ctx)
-	if t.Model.ID == 0 {
-		return db.Create(t).Error
-	}
-	return db.Save(t).Error
+// --- tx helpers ---
+
+func (r *tradeRepository) BeginTx(ctx context.Context) any {
+	return r.db.WithContext(ctx).Begin()
 }
 
-func (r *tradeRepository) GetByOrderID(ctx context.Context, orderID string) (*domain.Trade, error) {
-	var trade domain.Trade
-	if err := r.getDB(ctx).Where("order_id = ?", orderID).First(&trade).Error; err != nil {
+func (r *tradeRepository) CommitTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Commit().Error
+}
+
+func (r *tradeRepository) RollbackTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Rollback().Error
+}
+
+func (r *tradeRepository) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		txCtx := contextx.WithTx(ctx, tx)
+		return fn(txCtx)
+	})
+}
+
+func (r *tradeRepository) Save(ctx context.Context, t *domain.Trade) error {
+	db := r.getDB(ctx)
+	model := toTradeModel(t)
+	if model.ID == 0 {
+		if err := db.WithContext(ctx).Create(model).Error; err != nil {
+			return err
+		}
+		t.ID = model.ID
+		t.CreatedAt = model.CreatedAt
+		t.UpdatedAt = model.UpdatedAt
+		return nil
+	}
+	return db.WithContext(ctx).
+		Model(&TradeModel{}).
+		Where("id = ?", model.ID).
+		Updates(map[string]any{
+			"trade_id":    model.TradeID,
+			"order_id":    model.OrderID,
+			"user_id":     model.UserID,
+			"symbol":      model.Symbol,
+			"side":        model.Side,
+			"price":       model.ExecutedPrice,
+			"quantity":    model.ExecutedQuantity,
+			"executed_at": model.ExecutedAt,
+			"status":      model.Status,
+		}).Error
+}
+
+func (r *tradeRepository) Get(ctx context.Context, tradeID string) (*domain.Trade, error) {
+	var model TradeModel
+	if err := r.getDB(ctx).WithContext(ctx).Where("trade_id = ?", tradeID).First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	trade.SetID(trade.TradeID)
-	return &trade, nil
+	return toTrade(&model), nil
+}
+
+func (r *tradeRepository) GetByOrderID(ctx context.Context, orderID string) (*domain.Trade, error) {
+	var model TradeModel
+	if err := r.getDB(ctx).WithContext(ctx).Where("order_id = ?", orderID).First(&model).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return toTrade(&model), nil
 }
 
 func (r *tradeRepository) List(ctx context.Context, userID string) ([]*domain.Trade, error) {
-	var trades []*domain.Trade
-	if err := r.getDB(ctx).Where("user_id = ?", userID).Find(&trades).Error; err != nil {
+	var models []*TradeModel
+	if err := r.getDB(ctx).WithContext(ctx).Where("user_id = ?", userID).Find(&models).Error; err != nil {
 		return nil, err
 	}
-	for _, t := range trades {
-		t.SetID(t.TradeID)
+	trades := make([]*domain.Trade, len(models))
+	for i, m := range models {
+		trades[i] = toTrade(m)
 	}
 	return trades, nil
 }
@@ -67,33 +127,85 @@ func NewAlgoOrderRepository(db *gorm.DB) domain.AlgoOrderRepository {
 	return &algoOrderRepository{db: db}
 }
 
+// --- tx helpers ---
+
+func (r *algoOrderRepository) BeginTx(ctx context.Context) any {
+	return r.db.WithContext(ctx).Begin()
+}
+
+func (r *algoOrderRepository) CommitTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Commit().Error
+}
+
+func (r *algoOrderRepository) RollbackTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Rollback().Error
+}
+
+func (r *algoOrderRepository) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		txCtx := contextx.WithTx(ctx, tx)
+		return fn(txCtx)
+	})
+}
+
 func (r *algoOrderRepository) Save(ctx context.Context, o *domain.AlgoOrder) error {
 	db := r.getDB(ctx)
-	if o.Model.ID == 0 {
-		return db.Create(o).Error
+	model := toAlgoOrderModel(o)
+	if model.ID == 0 {
+		if err := db.WithContext(ctx).Create(model).Error; err != nil {
+			return err
+		}
+		o.ID = model.ID
+		o.CreatedAt = model.CreatedAt
+		o.UpdatedAt = model.UpdatedAt
+		return nil
 	}
-	return db.Save(o).Error
+	return db.WithContext(ctx).
+		Model(&AlgoOrderModel{}).
+		Where("id = ?", model.ID).
+		Updates(map[string]any{
+			"algo_id":            model.AlgoID,
+			"user_id":            model.UserID,
+			"symbol":             model.Symbol,
+			"side":               model.Side,
+			"total_quantity":     model.TotalQuantity,
+			"executed_qty":       model.ExecutedQuantity,
+			"participation_rate": model.ParticipationRate,
+			"algo_type":          model.AlgoType,
+			"start_time":         model.StartTime,
+			"end_time":           model.EndTime,
+			"status":             model.Status,
+			"strategy_params":    model.StrategyParams,
+		}).Error
 }
 
 func (r *algoOrderRepository) Get(ctx context.Context, algoID string) (*domain.AlgoOrder, error) {
-	var order domain.AlgoOrder
-	if err := r.getDB(ctx).Where("algo_id = ?", algoID).First(&order).Error; err != nil {
+	var model AlgoOrderModel
+	if err := r.getDB(ctx).WithContext(ctx).Where("algo_id = ?", algoID).First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	order.SetID(order.AlgoID)
-	return &order, nil
+	return toAlgoOrder(&model), nil
 }
 
 func (r *algoOrderRepository) ListActive(ctx context.Context) ([]*domain.AlgoOrder, error) {
-	var orders []*domain.AlgoOrder
-	if err := r.getDB(ctx).Where("status = ?", "RUNNING").Find(&orders).Error; err != nil {
+	var models []*AlgoOrderModel
+	if err := r.getDB(ctx).WithContext(ctx).Where("status = ?", "RUNNING").Find(&models).Error; err != nil {
 		return nil, err
 	}
-	for _, o := range orders {
-		o.SetID(o.AlgoID)
+	orders := make([]*domain.AlgoOrder, len(models))
+	for i, m := range models {
+		orders[i] = toAlgoOrder(m)
 	}
 	return orders, nil
 }
@@ -118,7 +230,10 @@ func NewEventStore(db *gorm.DB) domain.EventStore {
 func (s *eventStore) Save(ctx context.Context, aggregateID string, events []eventsourcing.DomainEvent, expectedVersion int64) error {
 	db := s.getDB(ctx)
 	for _, event := range events {
-		payload, _ := json.Marshal(event)
+		payload, err := json.Marshal(event)
+		if err != nil {
+			return err
+		}
 		po := &EventPO{
 			AggregateID: aggregateID,
 			EventType:   event.EventType(),
@@ -141,16 +256,4 @@ func (s *eventStore) getDB(ctx context.Context) *gorm.DB {
 		return tx
 	}
 	return s.db
-}
-
-type EventPO struct {
-	gorm.Model
-	AggregateID string `gorm:"column:aggregate_id;type:varchar(64);index;not null"`
-	EventType   string `gorm:"column:event_type;type:varchar(50);not null"`
-	Payload     string `gorm:"column:payload;type:json;not null"`
-	OccurredAt  int64  `gorm:"column:occurred_at;not null"`
-}
-
-func (EventPO) TableName() string {
-	return "execution_events"
 }

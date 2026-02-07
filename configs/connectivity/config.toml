@@ -33,6 +33,9 @@ topic = "financial.connectivity.events"
 [services.execution]
 grpc_addr = "localhost:9081"
 
+[services.marketdata]
+grpc_addr = "localhost:9082"
+
 [fix]
 port = 9800
 sender_comp_id = "TRANS_GATEWAY"
