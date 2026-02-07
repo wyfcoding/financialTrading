@@ -1,31 +1,13 @@
 package domain
 
-// EventPublisher 事件发布者接口
+import "context"
+
+// EventPublisher 定义了领域事件发布的接口
 type EventPublisher interface {
-	// PublishRiskAssessmentCreated 发布风险评估创建事件
-	PublishRiskAssessmentCreated(event RiskAssessmentCreatedEvent) error
+	// Publish 发布一个普通事件
+	Publish(ctx context.Context, topic string, key string, event any) error
 
-	// PublishRiskLimitExceeded 发布风险限额超出事件
-	PublishRiskLimitExceeded(event RiskLimitExceededEvent) error
-
-	// PublishCircuitBreakerFired 发布熔断触发事件
-	PublishCircuitBreakerFired(event CircuitBreakerFiredEvent) error
-
-	// PublishCircuitBreakerReset 发布熔断重置事件
-	PublishCircuitBreakerReset(event CircuitBreakerResetEvent) error
-
-	// PublishRiskAlertGenerated 发布风险告警生成事件
-	PublishRiskAlertGenerated(event RiskAlertGeneratedEvent) error
-
-	// PublishMarginCall 发布追加保证金通知事件
-	PublishMarginCall(event MarginCallEvent) error
-
-	// PublishRiskMetricsUpdated 发布风险指标更新事件
-	PublishRiskMetricsUpdated(event RiskMetricsUpdatedEvent) error
-
-	// PublishRiskLevelChanged 发布风险等级变更事件
-	PublishRiskLevelChanged(event RiskLevelChangedEvent) error
-
-	// PublishPositionLiquidationTriggered 发布强平触发事件
-	PublishPositionLiquidationTriggered(event PositionLiquidationTriggeredEvent) error
+	// PublishInTx 在事务中发布事件，核心用于 Outbox 模式
+	// tx 通常是 *gorm.DB 实例
+	PublishInTx(ctx context.Context, tx any, topic string, key string, event any) error
 }

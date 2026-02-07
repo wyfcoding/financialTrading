@@ -9,102 +9,55 @@ import (
 	accountv1 "github.com/wyfcoding/financialtrading/go-api/account/v1"
 	positionv1 "github.com/wyfcoding/financialtrading/go-api/position/v1"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
+	"github.com/wyfcoding/pkg/contextx"
+	"github.com/wyfcoding/pkg/idgen"
 )
 
-// AssessRiskCommand 风险评估命令
-type AssessRiskCommand struct {
-	AssessmentID string
-	UserID       string
-	Symbol       string
-	Side         string
-	Quantity     float64
-	Price        float64
-}
-
-// UpdateRiskLimitCommand 更新风险限额命令
-type UpdateRiskLimitCommand struct {
-	LimitID      string
-	UserID       string
-	LimitType    string
-	LimitValue   float64
-	CurrentValue float64
-}
-
-// TriggerCircuitBreakerCommand 触发熔断命令
-type TriggerCircuitBreakerCommand struct {
-	UserID         string
-	TriggerReason  string
-	AutoResetAfter int64 // 秒
-}
-
-// ResetCircuitBreakerCommand 重置熔断命令
-type ResetCircuitBreakerCommand struct {
-	UserID      string
-	ResetReason string
-}
-
-// GenerateRiskAlertCommand 生成风险告警命令
-type GenerateRiskAlertCommand struct {
-	AlertID   string
-	UserID    string
-	AlertType string
-	Severity  string
-	Message   string
-}
-
-// UpdateRiskMetricsCommand 更新风险指标命令
-type UpdateRiskMetricsCommand struct {
-	UserID      string
-	VaR95       float64
-	VaR99       float64
-	MaxDrawdown float64
-	SharpeRatio float64
-	Correlation float64
-}
-
-// RiskCommand 处理风险相关的命令操作
-type RiskCommand struct {
+// RiskCommandService 处理风险相关的命令操作（Commands）。
+type RiskCommandService struct {
 	repo           domain.RiskRepository
-	redisRepo      domain.RiskRedisRepository
+	readRepo       domain.RiskReadRepository
 	accountClient  accountv1.AccountServiceClient
 	positionClient positionv1.PositionServiceClient
+	publisher      domain.EventPublisher
 }
 
-// NewRiskCommand 创建新的 RiskCommand 实例
-func NewRiskCommand(
+// NewRiskCommandService 创建新的 RiskCommandService 实例
+func NewRiskCommandService(
 	repo domain.RiskRepository,
-	redisRepo domain.RiskRedisRepository,
+	readRepo domain.RiskReadRepository,
 	accClient accountv1.AccountServiceClient,
 	posClient positionv1.PositionServiceClient,
-) *RiskCommand {
-	return &RiskCommand{
+	publisher domain.EventPublisher,
+) *RiskCommandService {
+	return &RiskCommandService{
 		repo:           repo,
-		redisRepo:      redisRepo,
+		readRepo:       readRepo,
 		accountClient:  accClient,
 		positionClient: posClient,
+		publisher:      publisher,
 	}
 }
 
 // AssessRisk 风险评估
-func (c *RiskCommand) AssessRisk(ctx context.Context, cmd AssessRiskCommand) (*domain.RiskAssessment, error) {
-	// 计算风险分数和等级
+func (s *RiskCommandService) AssessRisk(ctx context.Context, cmd AssessRiskCommand) (*RiskAssessmentDTO, error) {
+	assessmentID := cmd.AssessmentID
+	if assessmentID == "" {
+		assessmentID = fmt.Sprintf("RA-%d", idgen.GenID())
+	}
+
 	riskScore := calculateRiskScore(cmd.Symbol, cmd.Side, cmd.Quantity, cmd.Price)
 	riskLevel := determineRiskLevel(riskScore)
 	marginRequirement := calculateMarginRequirement(cmd.Symbol, cmd.Quantity, cmd.Price, riskLevel)
-	marginValue, ok := marginRequirement.(float64)
-	if !ok {
-		marginValue = 0
-	}
 
-	// 判断是否允许交易
 	isAllowed := riskLevel != domain.RiskLevelCritical
 	reason := ""
 
 	// 1. 检查最大持仓限额 (MAX_POSITION)
-	if isAllowed && c.positionClient != nil {
-		posLimit, _ := c.repo.GetLimitByUserIDAndType(ctx, cmd.UserID, domain.LimitTypeMaxPosition)
+	if isAllowed && s.positionClient != nil {
+		posLimit, _ := s.repo.GetLimitByUserIDAndType(ctx, cmd.UserID, domain.LimitTypeMaxPosition)
 		if posLimit != nil && !posLimit.LimitValue.IsZero() {
-			posResp, err := c.positionClient.GetPositions(ctx, &positionv1.GetPositionsRequest{UserId: cmd.UserID})
+			posResp, err := s.positionClient.GetPositions(ctx, &positionv1.GetPositionsRequest{UserId: cmd.UserID})
 			if err == nil {
 				symbolQty := decimal.Zero
 				for _, p := range posResp.Positions {
@@ -122,14 +75,13 @@ func (c *RiskCommand) AssessRisk(ctx context.Context, cmd AssessRiskCommand) (*d
 	}
 
 	// 2. 检查信用额度 (CREDIT_LIMIT)
-	if isAllowed && c.accountClient != nil {
-		creditLimit, _ := c.repo.GetLimitByUserIDAndType(ctx, cmd.UserID, domain.LimitTypeCreditLimit)
+	if isAllowed && s.accountClient != nil {
+		creditLimit, _ := s.repo.GetLimitByUserIDAndType(ctx, cmd.UserID, domain.LimitTypeCreditLimit)
 		if creditLimit != nil && !creditLimit.LimitValue.IsZero() {
-			accResp, err := c.accountClient.GetAccount(ctx, &accountv1.GetAccountRequest{UserId: cmd.UserID})
-			if err == nil {
-				// 获取此账户的借款金额
+			accResp, err := s.accountClient.GetAccount(ctx, &accountv1.GetAccountRequest{UserId: cmd.UserID})
+			if err == nil && accResp != nil && accResp.Account != nil {
 				borrowed, _ := decimal.NewFromString(accResp.Account.BorrowedAmount)
-				if borrowed.Add(decimal.NewFromFloat(marginValue)).GreaterThan(creditLimit.LimitValue) {
+				if borrowed.Add(marginRequirement).GreaterThan(creditLimit.LimitValue) {
 					isAllowed = false
 					reason = "Exceeds total credit limit"
 				}
@@ -141,9 +93,8 @@ func (c *RiskCommand) AssessRisk(ctx context.Context, cmd AssessRiskCommand) (*d
 		reason = "Risk level too high or system limit reached"
 	}
 
-	// 创建风险评估
 	assessment := &domain.RiskAssessment{
-		ID:                cmd.AssessmentID,
+		ID:                assessmentID,
 		UserID:            cmd.UserID,
 		Symbol:            cmd.Symbol,
 		Side:              cmd.Side,
@@ -151,37 +102,84 @@ func (c *RiskCommand) AssessRisk(ctx context.Context, cmd AssessRiskCommand) (*d
 		Price:             decimal.NewFromFloat(cmd.Price),
 		RiskLevel:         riskLevel,
 		RiskScore:         decimal.NewFromFloat(riskScore),
-		MarginRequirement: decimal.NewFromFloat(marginValue),
+		MarginRequirement: marginRequirement,
 		IsAllowed:         isAllowed,
 		Reason:            reason,
 	}
 
-	// 保存风险评估
-	if err := c.repo.SaveAssessment(ctx, assessment); err != nil {
+	var alertToPublish *domain.RiskAlert
+
+	err := s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.repo.SaveAssessment(txCtx, assessment); err != nil {
+			return err
+		}
+
+		if s.publisher != nil {
+			event := domain.RiskAssessmentCreatedEvent{
+				AssessmentID:      assessment.ID,
+				UserID:            assessment.UserID,
+				Symbol:            assessment.Symbol,
+				Side:              assessment.Side,
+				Quantity:          assessment.Quantity.InexactFloat64(),
+				Price:             assessment.Price.InexactFloat64(),
+				RiskLevel:         assessment.RiskLevel,
+				RiskScore:         assessment.RiskScore.InexactFloat64(),
+				MarginRequirement: assessment.MarginRequirement.InexactFloat64(),
+				IsAllowed:         assessment.IsAllowed,
+				Reason:            assessment.Reason,
+				CreatedAt:         time.Now().Unix(),
+				OccurredOn:        time.Now(),
+			}
+			if err := s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.RiskAssessmentCreatedEventType, assessment.ID, event); err != nil {
+				return err
+			}
+		}
+
+		if riskLevel == domain.RiskLevelHigh || riskLevel == domain.RiskLevelCritical {
+			alertToPublish = &domain.RiskAlert{
+				ID:        fmt.Sprintf("ALERT-%d", idgen.GenID()),
+				UserID:    cmd.UserID,
+				AlertType: "RiskAssessment",
+				Severity:  string(riskLevel),
+				Message:   "High risk assessment for " + cmd.Symbol + ": " + reason,
+			}
+			if err := s.repo.SaveAlert(txCtx, alertToPublish); err != nil {
+				return err
+			}
+			if s.publisher != nil {
+				alertEvent := domain.RiskAlertGeneratedEvent{
+					AlertID:     alertToPublish.ID,
+					UserID:      alertToPublish.UserID,
+					AlertType:   alertToPublish.AlertType,
+					Severity:    alertToPublish.Severity,
+					Message:     alertToPublish.Message,
+					GeneratedAt: time.Now().Unix(),
+					OccurredOn:  time.Now(),
+				}
+				if err := s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.RiskAlertGeneratedEventType, alertToPublish.ID, alertEvent); err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 
-	// 如果风险等级为 HIGH 或 CRITICAL，生成告警
-	if riskLevel == domain.RiskLevelHigh || riskLevel == domain.RiskLevelCritical {
-		alertCmd := GenerateRiskAlertCommand{
-			AlertID:   "ALERT_" + time.Now().Format("20060102150405"),
-			UserID:    cmd.UserID,
-			AlertType: "RiskAssessment",
-			Severity:  string(riskLevel),
-			Message:   "High risk assessment for " + cmd.Symbol + ": " + reason,
-		}
-
-		c.GenerateRiskAlert(ctx, alertCmd)
-	}
-
-	return assessment, nil
+	return toRiskAssessmentDTO(assessment), nil
 }
 
 // UpdateRiskLimit 更新风险限额
-func (c *RiskCommand) UpdateRiskLimit(ctx context.Context, cmd UpdateRiskLimitCommand) (*domain.RiskLimit, error) {
-	// 创建或更新风险限额
+func (s *RiskCommandService) UpdateRiskLimit(ctx context.Context, cmd UpdateRiskLimitCommand) (*RiskLimitDTO, error) {
+	limitID := cmd.LimitID
+	if limitID == "" {
+		limitID = fmt.Sprintf("RL-%d", idgen.GenID())
+	}
+
 	limit := &domain.RiskLimit{
-		ID:           cmd.LimitID,
+		ID:           limitID,
 		UserID:       cmd.UserID,
 		LimitType:    cmd.LimitType,
 		LimitValue:   decimal.NewFromFloat(cmd.LimitValue),
@@ -189,37 +187,90 @@ func (c *RiskCommand) UpdateRiskLimit(ctx context.Context, cmd UpdateRiskLimitCo
 		IsExceeded:   cmd.CurrentValue > cmd.LimitValue,
 	}
 
-	// 保存风险限额
-	if err := c.repo.SaveLimit(ctx, limit); err != nil {
+	var exceededAlert *domain.RiskAlert
+
+	err := s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.repo.SaveLimit(txCtx, limit); err != nil {
+			return err
+		}
+		if s.publisher != nil {
+			updateEvent := domain.RiskLimitUpdatedEvent{
+				LimitID:      limit.ID,
+				UserID:       limit.UserID,
+				LimitType:    limit.LimitType,
+				LimitValue:   limit.LimitValue.InexactFloat64(),
+				CurrentValue: limit.CurrentValue.InexactFloat64(),
+				IsExceeded:   limit.IsExceeded,
+				UpdatedAt:    time.Now().Unix(),
+				OccurredOn:   time.Now(),
+			}
+			if err := s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.RiskLimitUpdatedEventType, limit.ID, updateEvent); err != nil {
+				return err
+			}
+		}
+
+		if limit.IsExceeded {
+			exceededBy := limit.CurrentValue.Sub(limit.LimitValue)
+			exceededEvent := domain.RiskLimitExceededEvent{
+				LimitID:      limit.ID,
+				UserID:       limit.UserID,
+				LimitType:    limit.LimitType,
+				LimitValue:   limit.LimitValue.InexactFloat64(),
+				CurrentValue: limit.CurrentValue.InexactFloat64(),
+				ExceededBy:   exceededBy.InexactFloat64(),
+				OccurredAt:   time.Now().Unix(),
+				OccurredOn:   time.Now(),
+			}
+			if s.publisher != nil {
+				if err := s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.RiskLimitExceededEventType, limit.ID, exceededEvent); err != nil {
+					return err
+				}
+			}
+
+			exceededAlert = &domain.RiskAlert{
+				ID:        fmt.Sprintf("ALERT-%d", idgen.GenID()),
+				UserID:    cmd.UserID,
+				AlertType: "RiskLimitExceeded",
+				Severity:  "HIGH",
+				Message:   "Risk limit exceeded for " + cmd.LimitType + ": current value " + floatToString(cmd.CurrentValue) + " exceeds limit " + floatToString(cmd.LimitValue),
+			}
+			if err := s.repo.SaveAlert(txCtx, exceededAlert); err != nil {
+				return err
+			}
+			if s.publisher != nil {
+				alertEvent := domain.RiskAlertGeneratedEvent{
+					AlertID:     exceededAlert.ID,
+					UserID:      exceededAlert.UserID,
+					AlertType:   exceededAlert.AlertType,
+					Severity:    exceededAlert.Severity,
+					Message:     exceededAlert.Message,
+					GeneratedAt: time.Now().Unix(),
+					OccurredOn:  time.Now(),
+				}
+				if err := s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.RiskAlertGeneratedEventType, exceededAlert.ID, alertEvent); err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 
-	// 同步缓存
-	_ = c.redisRepo.SaveLimit(ctx, cmd.UserID, limit)
-
-	// 如果超出限额，生成风险告警
-	if limit.IsExceeded {
-		// 生成风险告警
-		alertCmd := GenerateRiskAlertCommand{
-			AlertID:   "ALERT_" + time.Now().Format("20060102150405"),
-			UserID:    cmd.UserID,
-			AlertType: "RiskLimitExceeded",
-			Severity:  "HIGH",
-			Message:   "Risk limit exceeded for " + cmd.LimitType + ": current value " + floatToString(cmd.CurrentValue) + " exceeds limit " + floatToString(cmd.LimitValue),
-		}
-
-		c.GenerateRiskAlert(ctx, alertCmd)
+	if s.readRepo != nil {
+		_ = s.readRepo.SaveLimit(ctx, limit.UserID, limit)
 	}
 
-	return limit, nil
+	return toRiskLimitDTO(limit), nil
 }
 
 // TriggerCircuitBreaker 触发熔断
-func (c *RiskCommand) TriggerCircuitBreaker(ctx context.Context, cmd TriggerCircuitBreakerCommand) (*domain.CircuitBreaker, error) {
-	// 创建熔断
+func (s *RiskCommandService) TriggerCircuitBreaker(ctx context.Context, cmd TriggerCircuitBreakerCommand) (*CircuitBreakerDTO, error) {
 	now := time.Now()
 	autoResetAt := now.Add(time.Duration(cmd.AutoResetAfter) * time.Second)
-	circuitBreaker := &domain.CircuitBreaker{
+	cb := &domain.CircuitBreaker{
 		UserID:        cmd.UserID,
 		IsFired:       true,
 		TriggerReason: cmd.TriggerReason,
@@ -227,66 +278,106 @@ func (c *RiskCommand) TriggerCircuitBreaker(ctx context.Context, cmd TriggerCirc
 		AutoResetAt:   &autoResetAt,
 	}
 
-	// 保存熔断
-	if err := c.repo.SaveCircuitBreaker(ctx, circuitBreaker); err != nil {
-		return nil, err
-	}
-
-	// 同步缓存
-	_ = c.redisRepo.SaveCircuitBreaker(ctx, cmd.UserID, circuitBreaker)
-
-	// 生成风险告警
-	alertCmd := GenerateRiskAlertCommand{
-		AlertID:   "ALERT_" + time.Now().Format("20060102150405"),
+	alert := &domain.RiskAlert{
+		ID:        fmt.Sprintf("ALERT-%d", idgen.GenID()),
 		UserID:    cmd.UserID,
 		AlertType: "CircuitBreakerFired",
 		Severity:  "CRITICAL",
 		Message:   "Circuit breaker fired: " + cmd.TriggerReason + ", auto-reset at " + autoResetAt.Format("2006-01-02 15:04:05"),
 	}
 
-	c.GenerateRiskAlert(ctx, alertCmd)
+	err := s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.repo.SaveCircuitBreaker(txCtx, cb); err != nil {
+			return err
+		}
+		if err := s.repo.SaveAlert(txCtx, alert); err != nil {
+			return err
+		}
+		if s.publisher == nil {
+			return nil
+		}
 
-	return circuitBreaker, nil
+		firedEvent := domain.CircuitBreakerFiredEvent{
+			UserID:        cb.UserID,
+			TriggerReason: cb.TriggerReason,
+			FiredAt:       now.Unix(),
+			AutoResetAt:   autoResetAt.Unix(),
+			OccurredOn:    time.Now(),
+		}
+		if err := s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.CircuitBreakerFiredEventType, cb.UserID, firedEvent); err != nil {
+			return err
+		}
+
+		alertEvent := domain.RiskAlertGeneratedEvent{
+			AlertID:     alert.ID,
+			UserID:      alert.UserID,
+			AlertType:   alert.AlertType,
+			Severity:    alert.Severity,
+			Message:     alert.Message,
+			GeneratedAt: time.Now().Unix(),
+			OccurredOn:  time.Now(),
+		}
+		return s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.RiskAlertGeneratedEventType, alert.ID, alertEvent)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if s.readRepo != nil {
+		_ = s.readRepo.SaveCircuitBreaker(ctx, cb.UserID, cb)
+	}
+
+	return toCircuitBreakerDTO(cb), nil
 }
 
 // ResetCircuitBreaker 重置熔断
-func (c *RiskCommand) ResetCircuitBreaker(ctx context.Context, cmd ResetCircuitBreakerCommand) (*domain.CircuitBreaker, error) {
-	// 生成风险告警
-	alertCmd := GenerateRiskAlertCommand{
-		AlertID:   "ALERT_" + time.Now().Format("20060102150405"),
+func (s *RiskCommandService) ResetCircuitBreaker(ctx context.Context, cmd ResetCircuitBreakerCommand) (*CircuitBreakerDTO, error) {
+	now := time.Now()
+	alert := &domain.RiskAlert{
+		ID:        fmt.Sprintf("ALERT-%d", idgen.GenID()),
 		UserID:    cmd.UserID,
 		AlertType: "CircuitBreakerReset",
 		Severity:  "INFO",
 		Message:   "Circuit breaker reset: " + cmd.ResetReason,
 	}
 
-	c.GenerateRiskAlert(ctx, alertCmd)
+	err := s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.repo.SaveAlert(txCtx, alert); err != nil {
+			return err
+		}
+		if s.publisher == nil {
+			return nil
+		}
+		resetEvent := domain.CircuitBreakerResetEvent{
+			UserID:      cmd.UserID,
+			ResetReason: cmd.ResetReason,
+			ResetAt:     now.Unix(),
+			OccurredOn:  time.Now(),
+		}
+		if err := s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.CircuitBreakerResetEventType, cmd.UserID, resetEvent); err != nil {
+			return err
+		}
+
+		alertEvent := domain.RiskAlertGeneratedEvent{
+			AlertID:     alert.ID,
+			UserID:      alert.UserID,
+			AlertType:   alert.AlertType,
+			Severity:    alert.Severity,
+			Message:     alert.Message,
+			GeneratedAt: time.Now().Unix(),
+			OccurredOn:  time.Now(),
+		}
+		return s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.RiskAlertGeneratedEventType, alert.ID, alertEvent)
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	return nil, nil
 }
 
-// GenerateRiskAlert 生成风险告警
-func (c *RiskCommand) GenerateRiskAlert(ctx context.Context, cmd GenerateRiskAlertCommand) (*domain.RiskAlert, error) {
-	// 创建风险告警
-	alert := &domain.RiskAlert{
-		ID:        cmd.AlertID,
-		UserID:    cmd.UserID,
-		AlertType: cmd.AlertType,
-		Severity:  cmd.Severity,
-		Message:   cmd.Message,
-	}
-
-	// 保存风险告警
-	if err := c.repo.SaveAlert(ctx, alert); err != nil {
-		return nil, err
-	}
-
-	return alert, nil
-}
-
 // UpdateRiskMetrics 更新风险指标
-func (c *RiskCommand) UpdateRiskMetrics(ctx context.Context, cmd UpdateRiskMetricsCommand) (*domain.RiskMetrics, error) {
-	// 保存风险指标
+func (s *RiskCommandService) UpdateRiskMetrics(ctx context.Context, cmd UpdateRiskMetricsCommand) (*RiskMetricsDTO, error) {
 	metrics := &domain.RiskMetrics{
 		UserID:      cmd.UserID,
 		VaR95:       decimal.NewFromFloat(cmd.VaR95),
@@ -295,31 +386,100 @@ func (c *RiskCommand) UpdateRiskMetrics(ctx context.Context, cmd UpdateRiskMetri
 		SharpeRatio: decimal.NewFromFloat(cmd.SharpeRatio),
 		Correlation: decimal.NewFromFloat(cmd.Correlation),
 	}
-	if err := c.repo.SaveMetrics(ctx, metrics); err != nil {
+
+	err := s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		oldMetrics, _ := s.repo.GetMetrics(txCtx, cmd.UserID)
+		if err := s.repo.SaveMetrics(txCtx, metrics); err != nil {
+			return err
+		}
+		if s.publisher == nil {
+			return nil
+		}
+
+		oldVar95 := 0.0
+		oldMaxDrawdown := 0.0
+		oldSharpe := 0.0
+		if oldMetrics != nil {
+			oldVar95 = oldMetrics.VaR95.InexactFloat64()
+			oldMaxDrawdown = oldMetrics.MaxDrawdown.InexactFloat64()
+			oldSharpe = oldMetrics.SharpeRatio.InexactFloat64()
+		}
+
+		updateEvent := domain.RiskMetricsUpdatedEvent{
+			UserID:         metrics.UserID,
+			OldVaR95:       oldVar95,
+			NewVaR95:       metrics.VaR95.InexactFloat64(),
+			OldMaxDrawdown: oldMaxDrawdown,
+			NewMaxDrawdown: metrics.MaxDrawdown.InexactFloat64(),
+			OldSharpeRatio: oldSharpe,
+			NewSharpeRatio: metrics.SharpeRatio.InexactFloat64(),
+			UpdatedAt:      time.Now().Unix(),
+			OccurredOn:     time.Now(),
+		}
+		return s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.RiskMetricsUpdatedEventType, metrics.UserID, updateEvent)
+	})
+	if err != nil {
 		return nil, err
 	}
 
-	// 同步缓存
-	_ = c.redisRepo.SaveMetrics(ctx, cmd.UserID, metrics)
+	if s.readRepo != nil {
+		_ = s.readRepo.SaveMetrics(ctx, metrics.UserID, metrics)
+	}
 
-	return metrics, nil
+	return toRiskMetricsDTO(metrics), nil
+}
+
+// GenerateRiskAlert 生成风险告警
+func (s *RiskCommandService) GenerateRiskAlert(ctx context.Context, cmd GenerateRiskAlertCommand) (*RiskAlertDTO, error) {
+	alertID := cmd.AlertID
+	if alertID == "" {
+		alertID = fmt.Sprintf("ALERT-%d", idgen.GenID())
+	}
+
+	alert := &domain.RiskAlert{
+		ID:        alertID,
+		UserID:    cmd.UserID,
+		AlertType: cmd.AlertType,
+		Severity:  cmd.Severity,
+		Message:   cmd.Message,
+	}
+
+	err := s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.repo.SaveAlert(txCtx, alert); err != nil {
+			return err
+		}
+		if s.publisher == nil {
+			return nil
+		}
+		alertEvent := domain.RiskAlertGeneratedEvent{
+			AlertID:     alert.ID,
+			UserID:      alert.UserID,
+			AlertType:   alert.AlertType,
+			Severity:    alert.Severity,
+			Message:     alert.Message,
+			GeneratedAt: time.Now().Unix(),
+			OccurredOn:  time.Now(),
+		}
+		return s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.RiskAlertGeneratedEventType, alert.ID, alertEvent)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return toRiskAlertDTO(alert), nil
 }
 
 // 辅助函数：计算风险分数
 func calculateRiskScore(symbol, side string, quantity, price float64) float64 {
-	// 简化的风险分数计算逻辑
-	// 实际应用中需要更复杂的模型
 	value := quantity * price
-	riskScore := value / 10000 // 每 10000 价值对应 1 分风险分数
+	riskScore := value / 10000
 
-	// 根据交易方向调整风险分数
 	if side == "sell" {
-		riskScore *= 1.2 // 卖空风险更高
+		riskScore *= 1.2
 	}
 
-	// 根据标的调整风险分数
 	if symbol == "BTC/USD" || symbol == "ETH/USD" {
-		riskScore *= 1.5 // 加密货币风险更高
+		riskScore *= 1.5
 	}
 
 	return riskScore
@@ -340,37 +500,26 @@ func determineRiskLevel(riskScore float64) domain.RiskLevel {
 }
 
 // 辅助函数：计算保证金要求
-func calculateMarginRequirement(symbol string, quantity, price float64, riskLevel domain.RiskLevel) interface{} {
-	// 简化的保证金计算逻辑
-	value := quantity * price
-	marginRate := 0.1 // 默认 10% 保证金
+func calculateMarginRequirement(symbol string, quantity, price float64, riskLevel domain.RiskLevel) decimal.Decimal {
+	value := decimal.NewFromFloat(quantity).Mul(decimal.NewFromFloat(price))
+	marginRate := decimal.NewFromFloat(0.1)
 
-	// 根据风险等级调整保证金率
 	switch riskLevel {
 	case domain.RiskLevelLow:
-		marginRate = 0.05
+		marginRate = decimal.NewFromFloat(0.05)
 	case domain.RiskLevelMedium:
-		marginRate = 0.1
+		marginRate = decimal.NewFromFloat(0.1)
 	case domain.RiskLevelHigh:
-		marginRate = 0.2
+		marginRate = decimal.NewFromFloat(0.2)
 	case domain.RiskLevelCritical:
-		marginRate = 0.5
+		marginRate = decimal.NewFromFloat(0.5)
 	}
 
-	// 根据标的调整保证金率
 	if symbol == "BTC/USD" || symbol == "ETH/USD" {
-		marginRate *= 1.2
+		marginRate = marginRate.Mul(decimal.NewFromFloat(1.2))
 	}
 
-	marginRequirement := value * marginRate
-	return toDecimal(marginRequirement)
-}
-
-// 辅助函数：转换为 decimal.Decimal
-func toDecimal(value float64) interface{} {
-	// 这里需要根据实际的 decimal 库实现进行转换
-	// 暂时返回 float64，实际应用中需要转换为 decimal.Decimal
-	return value
+	return value.Mul(marginRate)
 }
 
 // 辅助函数：将 float64 转换为字符串

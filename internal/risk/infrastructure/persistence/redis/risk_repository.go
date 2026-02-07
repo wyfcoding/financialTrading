@@ -10,21 +10,24 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
 )
 
-type riskRedisRepository struct {
+type riskReadRepository struct {
 	client redis.UniversalClient
 	prefix string
 	ttl    time.Duration
 }
 
-func NewRiskRedisRepository(client redis.UniversalClient) domain.RiskRedisRepository {
-	return &riskRedisRepository{
+func NewRiskReadRepository(client redis.UniversalClient) domain.RiskReadRepository {
+	return &riskReadRepository{
 		client: client,
 		prefix: "risk:",
 		ttl:    1 * time.Hour,
 	}
 }
 
-func (r *riskRedisRepository) SaveLimit(ctx context.Context, userID string, limit *domain.RiskLimit) error {
+func (r *riskReadRepository) SaveLimit(ctx context.Context, userID string, limit *domain.RiskLimit) error {
+	if limit == nil {
+		return nil
+	}
 	key := fmt.Sprintf("%slimit:%s:%s", r.prefix, userID, limit.LimitType)
 	data, err := json.Marshal(limit)
 	if err != nil {
@@ -33,7 +36,7 @@ func (r *riskRedisRepository) SaveLimit(ctx context.Context, userID string, limi
 	return r.client.Set(ctx, key, data, r.ttl).Err()
 }
 
-func (r *riskRedisRepository) GetLimit(ctx context.Context, userID, limitType string) (*domain.RiskLimit, error) {
+func (r *riskReadRepository) GetLimit(ctx context.Context, userID, limitType string) (*domain.RiskLimit, error) {
 	key := fmt.Sprintf("%slimit:%s:%s", r.prefix, userID, limitType)
 	data, err := r.client.Get(ctx, key).Bytes()
 	if err == redis.Nil {
@@ -49,12 +52,15 @@ func (r *riskRedisRepository) GetLimit(ctx context.Context, userID, limitType st
 	return &limit, nil
 }
 
-func (r *riskRedisRepository) DeleteLimit(ctx context.Context, userID, limitType string) error {
+func (r *riskReadRepository) DeleteLimit(ctx context.Context, userID, limitType string) error {
 	key := fmt.Sprintf("%slimit:%s:%s", r.prefix, userID, limitType)
 	return r.client.Del(ctx, key).Err()
 }
 
-func (r *riskRedisRepository) SaveMetrics(ctx context.Context, userID string, metrics *domain.RiskMetrics) error {
+func (r *riskReadRepository) SaveMetrics(ctx context.Context, userID string, metrics *domain.RiskMetrics) error {
+	if metrics == nil {
+		return nil
+	}
 	key := fmt.Sprintf("%smetrics:%s", r.prefix, userID)
 	data, err := json.Marshal(metrics)
 	if err != nil {
@@ -63,7 +69,7 @@ func (r *riskRedisRepository) SaveMetrics(ctx context.Context, userID string, me
 	return r.client.Set(ctx, key, data, r.ttl).Err()
 }
 
-func (r *riskRedisRepository) GetMetrics(ctx context.Context, userID string) (*domain.RiskMetrics, error) {
+func (r *riskReadRepository) GetMetrics(ctx context.Context, userID string) (*domain.RiskMetrics, error) {
 	key := fmt.Sprintf("%smetrics:%s", r.prefix, userID)
 	data, err := r.client.Get(ctx, key).Bytes()
 	if err == redis.Nil {
@@ -79,12 +85,15 @@ func (r *riskRedisRepository) GetMetrics(ctx context.Context, userID string) (*d
 	return &metrics, nil
 }
 
-func (r *riskRedisRepository) DeleteMetrics(ctx context.Context, userID string) error {
+func (r *riskReadRepository) DeleteMetrics(ctx context.Context, userID string) error {
 	key := fmt.Sprintf("%smetrics:%s", r.prefix, userID)
 	return r.client.Del(ctx, key).Err()
 }
 
-func (r *riskRedisRepository) SaveCircuitBreaker(ctx context.Context, userID string, cb *domain.CircuitBreaker) error {
+func (r *riskReadRepository) SaveCircuitBreaker(ctx context.Context, userID string, cb *domain.CircuitBreaker) error {
+	if cb == nil {
+		return nil
+	}
 	key := fmt.Sprintf("%scb:%s", r.prefix, userID)
 	data, err := json.Marshal(cb)
 	if err != nil {
@@ -93,7 +102,7 @@ func (r *riskRedisRepository) SaveCircuitBreaker(ctx context.Context, userID str
 	return r.client.Set(ctx, key, data, r.ttl).Err()
 }
 
-func (r *riskRedisRepository) GetCircuitBreaker(ctx context.Context, userID string) (*domain.CircuitBreaker, error) {
+func (r *riskReadRepository) GetCircuitBreaker(ctx context.Context, userID string) (*domain.CircuitBreaker, error) {
 	key := fmt.Sprintf("%scb:%s", r.prefix, userID)
 	data, err := r.client.Get(ctx, key).Bytes()
 	if err == redis.Nil {
@@ -109,7 +118,7 @@ func (r *riskRedisRepository) GetCircuitBreaker(ctx context.Context, userID stri
 	return &cb, nil
 }
 
-func (r *riskRedisRepository) DeleteCircuitBreaker(ctx context.Context, userID string) error {
+func (r *riskReadRepository) DeleteCircuitBreaker(ctx context.Context, userID string) error {
 	key := fmt.Sprintf("%scb:%s", r.prefix, userID)
 	return r.client.Del(ctx, key).Err()
 }

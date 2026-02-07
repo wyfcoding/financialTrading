@@ -1,12 +1,11 @@
-// 包  gRPC 处理器实现
 package grpc
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
+	"github.com/shopspring/decimal"
 	pb "github.com/wyfcoding/financialtrading/go-api/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/risk/application"
 	"google.golang.org/grpc/codes"
@@ -17,38 +16,41 @@ import (
 // 负责处理与风险管理相关的 gRPC 请求
 type Handler struct {
 	pb.UnimplementedRiskServiceServer
-	service *application.RiskService // 风险应用服务
+	cmd   *application.RiskCommandService
+	query *application.RiskQueryService
 }
 
 // NewHandler 创建 gRPC 处理器实例
-// service: 注入的风险应用服务
-func NewHandler(service *application.RiskService) *Handler {
-	return &Handler{
-		service: service,
-	}
+func NewHandler(cmd *application.RiskCommandService, query *application.RiskQueryService) *Handler {
+	return &Handler{cmd: cmd, query: query}
 }
 
 // CheckRisk 检查交易风险 (Legacy, mapped to AssessRisk)
 func (h *Handler) CheckRisk(ctx context.Context, req *pb.CheckRiskRequest) (*pb.CheckRiskResponse, error) {
-	dto, err := h.service.AssessRisk(ctx, &application.AssessRiskRequest{
+	side := req.Side
+	if side == "" {
+		side = "buy"
+	}
+	dto, err := h.cmd.AssessRisk(ctx, application.AssessRiskCommand{
 		UserID:   req.UserId,
 		Symbol:   req.Symbol,
-		Side:     "buy", // Default side for legacy
-		Quantity: fmt.Sprintf("%.8f", req.Quantity),
-		Price:    fmt.Sprintf("%.8f", req.Price),
+		Side:     side,
+		Quantity: req.Quantity,
+		Price:    req.Price,
 	})
 	if err != nil {
 		return &pb.CheckRiskResponse{Passed: false, Reason: err.Error()}, nil
 	}
-	return &pb.CheckRiskResponse{
-		Passed: dto.IsAllowed,
-		Reason: dto.Reason,
-	}, nil
+	return &pb.CheckRiskResponse{Passed: dto.IsAllowed, Reason: dto.Reason}, nil
 }
 
 // SetRiskLimit 设置风险限额 (Legacy)
 func (h *Handler) SetRiskLimit(ctx context.Context, req *pb.SetRiskLimitRequest) (*pb.SetRiskLimitResponse, error) {
-	err := h.service.SetRiskLimit(ctx, req.UserId, "ORDER_SIZE", req.MaxOrderSize)
+	_, err := h.cmd.UpdateRiskLimit(ctx, application.UpdateRiskLimitCommand{
+		UserID:     req.UserId,
+		LimitType:  "ORDER_SIZE",
+		LimitValue: req.MaxOrderSize,
+	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -60,12 +62,21 @@ func (h *Handler) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest) (*p
 	start := time.Now()
 	slog.Info("gRPC AssessRisk received", "user_id", req.UserId, "symbol", req.Symbol, "side", req.Side)
 
-	dto, err := h.service.AssessRisk(ctx, &application.AssessRiskRequest{
+	qty, err := decimal.NewFromString(req.Quantity)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid quantity: %v", err)
+	}
+	price, err := decimal.NewFromString(req.Price)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid price: %v", err)
+	}
+
+	dto, err := h.cmd.AssessRisk(ctx, application.AssessRiskCommand{
 		UserID:   req.UserId,
 		Symbol:   req.Symbol,
 		Side:     req.Side,
-		Quantity: req.Quantity,
-		Price:    req.Price,
+		Quantity: qty.InexactFloat64(),
+		Price:    price.InexactFloat64(),
 	})
 	if err != nil {
 		slog.Error("gRPC AssessRisk failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
@@ -83,35 +94,43 @@ func (h *Handler) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest) (*p
 
 // GetRiskMetrics 获取风险指标
 func (h *Handler) GetRiskMetrics(ctx context.Context, req *pb.GetRiskMetricsRequest) (*pb.GetRiskMetricsResponse, error) {
-	metrics, err := h.service.GetRiskMetrics(ctx, req.UserId)
+	metrics, err := h.query.GetRiskMetrics(ctx, req.UserId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get risk metrics: %v", err)
+	}
+	if metrics == nil {
+		return &pb.GetRiskMetricsResponse{}, nil
 	}
 
 	return &pb.GetRiskMetricsResponse{
 		Metrics: &pb.RiskMetrics{
-			Var_95:      metrics.VaR95.String(),
-			Var_99:      metrics.VaR99.String(),
-			MaxDrawdown: metrics.MaxDrawdown.String(),
-			SharpeRatio: metrics.SharpeRatio.String(),
-			Correlation: metrics.Correlation.String(),
+			Var_95:      metrics.VaR95,
+			Var_99:      metrics.VaR99,
+			MaxDrawdown: metrics.MaxDrawdown,
+			SharpeRatio: metrics.SharpeRatio,
+			Correlation: metrics.Correlation,
 		},
 	}, nil
 }
 
 // CheckRiskLimit 检查风险限额
 func (h *Handler) CheckRiskLimit(ctx context.Context, req *pb.CheckRiskLimitRequest) (*pb.CheckRiskLimitResponse, error) {
-	limit, err := h.service.CheckRiskLimit(ctx, req.UserId, req.LimitType)
+	limit, err := h.query.CheckRiskLimit(ctx, req.UserId, req.LimitType)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to check risk limit: %v", err)
 	}
+	if limit == nil {
+		return &pb.CheckRiskLimitResponse{}, nil
+	}
 
-	remaining := limit.LimitValue.Sub(limit.CurrentValue)
+	limitValue, _ := decimal.NewFromString(limit.LimitValue)
+	currentValue, _ := decimal.NewFromString(limit.CurrentValue)
+	remaining := limitValue.Sub(currentValue)
 
 	return &pb.CheckRiskLimitResponse{
 		LimitType:    limit.LimitType,
-		LimitValue:   limit.LimitValue.String(),
-		CurrentValue: limit.CurrentValue.String(),
+		LimitValue:   limit.LimitValue,
+		CurrentValue: limit.CurrentValue,
 		Remaining:    remaining.String(),
 		IsExceeded:   limit.IsExceeded,
 	}, nil
@@ -119,7 +138,7 @@ func (h *Handler) CheckRiskLimit(ctx context.Context, req *pb.CheckRiskLimitRequ
 
 // GetRiskAlerts 获取风险告警
 func (h *Handler) GetRiskAlerts(ctx context.Context, req *pb.GetRiskAlertsRequest) (*pb.GetRiskAlertsResponse, error) {
-	alerts, err := h.service.GetRiskAlerts(ctx, req.UserId, 100)
+	alerts, err := h.query.GetRiskAlerts(ctx, req.UserId, 100)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get risk alerts: %v", err)
 	}
@@ -131,11 +150,9 @@ func (h *Handler) GetRiskAlerts(ctx context.Context, req *pb.GetRiskAlertsReques
 			AlertType: alert.AlertType,
 			Severity:  alert.Severity,
 			Message:   alert.Message,
-			Timestamp: alert.CreatedAt.Unix(),
+			Timestamp: alert.CreatedAt,
 		})
 	}
 
-	return &pb.GetRiskAlertsResponse{
-		Alerts: pbAlerts,
-	}, nil
+	return &pb.GetRiskAlertsResponse{Alerts: pbAlerts}, nil
 }

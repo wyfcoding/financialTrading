@@ -1,29 +1,55 @@
 [server]
-grpc_port = 9093
+name = "risk-service"
+environment = "dev"
 
-[database]
-driver = "mysql"
-source = "root:root@tcp(127.0.0.1:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+[server.http]
+port = 8087
+timeout = "10s"
 
-[redis]
-addr = "localhost:6379"
-password = ""
-db = 0
-pool_size = 100
+[server.grpc]
+port = 9093
+timeout = "10s"
 
 [log]
 level = "info"
 format = "json"
+output = "stdout"
 
-[services]
-marketdata = "127.0.0.1:9092"
-account = "127.0.0.1:9091"
-position = "127.0.0.1:9094"
+[data.database]
+driver = "mysql"
+dsn = "root:password@tcp(localhost:3306)/financial_risk?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 10
+max_open_conns = 100
+conn_max_lifetime = "1h"
+
+[data.redis]
+addrs = ["localhost:6379"]
+password = ""
+db = 0
+pool_size = 10
+min_idle_conns = 5
+read_timeout = "3s"
+write_timeout = "3s"
+
+[data.elasticsearch]
+addresses = ["http://localhost:9200"]
+username = ""
+password = ""
+
+[messagequeue.kafka]
+brokers = ["localhost:9092"]
+topic = "risk.events"
+
+[services.account]
+grpc_addr = "127.0.0.1:9091"
+
+[services.position]
+grpc_addr = "127.0.0.1:9094"
+
+[services.marketdata]
+grpc_addr = "127.0.0.1:9092"
 
 [tracing]
-sampler_type = "ratio"
-sampler_fraction = 0.01
-
-[message_queue]
-batch_size = 1000000
-linger_ms = 10
+enabled = false
+service_name = "risk-service"
+otlp_endpoint = "localhost:4317"

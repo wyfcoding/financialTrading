@@ -11,21 +11,18 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 )
 
-// HTTP 处理器
-// 负责处理与风险管理相关的 HTTP 请求
+// RiskHandler 负责处理与风险管理相关的 HTTP 请求
 type RiskHandler struct {
-	service *application.RiskService // 风险应用服务
+	cmd   *application.RiskCommandService
+	query *application.RiskQueryService
 }
 
-// 创建 HTTP 处理器
-// service: 注入的风险应用服务
-func NewRiskHandler(service *application.RiskService) *RiskHandler {
-	return &RiskHandler{
-		service: service,
-	}
+// NewRiskHandler 创建 HTTP 处理器
+func NewRiskHandler(cmd *application.RiskCommandService, query *application.RiskQueryService) *RiskHandler {
+	return &RiskHandler{cmd: cmd, query: query}
 }
 
-// 注册路由
+// RegisterRoutes 注册路由
 func (h *RiskHandler) RegisterRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api/v1/risk")
 	{
@@ -44,7 +41,25 @@ func (h *RiskHandler) AssessRisk(c *gin.Context) {
 		return
 	}
 
-	dto, err := h.service.AssessRisk(c.Request.Context(), &req)
+	qty, err := strconv.ParseFloat(req.Quantity, 64)
+	if err != nil {
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid quantity", "")
+		return
+	}
+	price, err := strconv.ParseFloat(req.Price, 64)
+	if err != nil {
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid price", "")
+		return
+	}
+	cmd := application.AssessRiskCommand{
+		UserID:   req.UserID,
+		Symbol:   req.Symbol,
+		Side:     req.Side,
+		Quantity: qty,
+		Price:    price,
+	}
+
+	dto, err := h.cmd.AssessRisk(c.Request.Context(), cmd)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to assess risk", "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -62,7 +77,7 @@ func (h *RiskHandler) GetRiskMetrics(c *gin.Context) {
 		return
 	}
 
-	metrics, err := h.service.GetRiskMetrics(c.Request.Context(), userID)
+	metrics, err := h.query.GetRiskMetrics(c.Request.Context(), userID)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get risk metrics", "user_id", userID, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -86,7 +101,7 @@ func (h *RiskHandler) CheckRiskLimit(c *gin.Context) {
 		return
 	}
 
-	limit, err := h.service.CheckRiskLimit(c.Request.Context(), userID, limitType)
+	limit, err := h.query.CheckRiskLimit(c.Request.Context(), userID, limitType)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to check risk limit", "user_id", userID, "limit_type", limitType, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -111,7 +126,7 @@ func (h *RiskHandler) GetRiskAlerts(c *gin.Context) {
 		return
 	}
 
-	alerts, err := h.service.GetRiskAlerts(c.Request.Context(), userID, limit)
+	alerts, err := h.query.GetRiskAlerts(c.Request.Context(), userID, limit)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get risk alerts", "user_id", userID, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")

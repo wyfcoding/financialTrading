@@ -33,8 +33,8 @@ func NewLiquidationEngine(
 		positionClient: posClient,
 		publisher:      publisher,
 		logger:         logger,
-		checkInterval:  10 * time.Second,          // 默认检查间隔
-		mmThreshold:    decimal.NewFromFloat(1.1), // 110%
+		checkInterval:  10 * time.Second,
+		mmThreshold:    decimal.NewFromFloat(1.1),
 	}
 }
 
@@ -60,7 +60,6 @@ func (e *LiquidationEngine) Start(ctx context.Context) error {
 
 // RunCycle 执行一次扫描。
 func (e *LiquidationEngine) RunCycle(ctx context.Context) error {
-	// 1. 获取所有杠杆账户 (分页扫描)
 	pageToken := int32(0)
 	for {
 		resp, err := e.accountClient.ListAccounts(ctx, &accountv1.ListAccountsRequest{
@@ -88,7 +87,6 @@ func (e *LiquidationEngine) RunCycle(ctx context.Context) error {
 
 // CheckAccountRisk 检查单个账户的强平风险。
 func (e *LiquidationEngine) CheckAccountRisk(ctx context.Context, acc *accountv1.AccountResponse) error {
-	// 2. 获取该用户的所有持仓
 	posResp, err := e.positionClient.GetPositions(ctx, &positionv1.GetPositionsRequest{
 		UserId: acc.UserId,
 	})
@@ -99,12 +97,8 @@ func (e *LiquidationEngine) CheckAccountRisk(ctx context.Context, acc *accountv1
 	totalUsedMargin := decimal.Zero
 	totalUnrealizedPnL := decimal.Zero
 
-	// 这里假设 AccountResponse 已经包含 margin 字段 (通过我们之前的 proto 更新)
 	balance, _ := decimal.NewFromString(acc.Balance)
 
-	// 简单计算：Equity = Balance + TotalUnrealizedPnL
-	// 实际上，UsedMargin 应该由 Position 服务或 Risk 服务根据当前价格实时计算
-	// 假设 Position 响应中包含 UsedMargin
 	for _, pos := range posResp.Positions {
 		marginReq, _ := decimal.NewFromString(pos.MarginRequirement)
 		unrealizedPnL, _ := decimal.NewFromString(pos.UnrealizedPnl)
@@ -126,14 +120,12 @@ func (e *LiquidationEngine) CheckAccountRisk(ctx context.Context, acc *accountv1
 		"used_margin", totalUsedMargin.String(),
 		"margin_level", marginLevel.String())
 
-	// 3. 判断是否触发强平
 	if marginLevel.LessThan(e.mmThreshold) {
 		e.logger.Warn("LIQUIDATION TRIGGERED",
 			"account_id", acc.AccountId,
 			"user_id", acc.UserId,
 			"margin_level", marginLevel.String())
 
-		// 触发强平事件
 		for _, pos := range posResp.Positions {
 			qty, _ := decimal.NewFromString(pos.Quantity)
 			event := domain.PositionLiquidationTriggeredEvent{
@@ -149,7 +141,7 @@ func (e *LiquidationEngine) CheckAccountRisk(ctx context.Context, acc *accountv1
 			}
 
 			if e.publisher != nil {
-				if err := e.publisher.PublishPositionLiquidationTriggered(event); err != nil {
+				if err := e.publisher.Publish(ctx, domain.PositionLiquidationTriggeredEventType, acc.UserId, event); err != nil {
 					e.logger.Error("failed to publish liquidation event", "error", err)
 				}
 			}
