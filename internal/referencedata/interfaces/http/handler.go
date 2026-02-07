@@ -11,20 +11,17 @@ import (
 	"github.com/wyfcoding/pkg/logging"
 )
 
-// HTTP 处理器
-// 负责处理与参考数据相关的 HTTP 请求
+// ReferenceDataHandler 负责处理与参考数据相关的 HTTP 请求
 type ReferenceDataHandler struct {
-	app *application.ReferenceDataService // 参考数据应用服务
+	query *application.ReferenceDataQueryService
 }
 
-// 创建 HTTP 处理器实例
-// app: 注入的参考数据应用服务
-func NewReferenceDataHandler(app *application.ReferenceDataService) *ReferenceDataHandler {
-	return &ReferenceDataHandler{app: app}
+// NewReferenceDataHandler 创建 HTTP 处理器实例
+func NewReferenceDataHandler(query *application.ReferenceDataQueryService) *ReferenceDataHandler {
+	return &ReferenceDataHandler{query: query}
 }
 
-// 注册路由
-// 将处理器方法绑定到 Gin 路由引擎
+// RegisterRoutes 注册路由
 func (h *ReferenceDataHandler) RegisterRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api/v1/referencedata")
 	{
@@ -43,7 +40,7 @@ func (h *ReferenceDataHandler) GetSymbol(c *gin.Context) {
 		return
 	}
 
-	symbol, err := h.app.GetSymbol(c.Request.Context(), id)
+	symbol, err := h.query.GetSymbol(c.Request.Context(), id)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get symbol", "id", id, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -77,7 +74,7 @@ func (h *ReferenceDataHandler) ListSymbols(c *gin.Context) {
 		return
 	}
 
-	symbols, err := h.app.ListSymbols(c.Request.Context(), exchangeID, status, limit, offset)
+	symbols, err := h.query.ListSymbols(c.Request.Context(), exchangeID, status, limit, offset)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to list symbols", "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -95,7 +92,7 @@ func (h *ReferenceDataHandler) GetExchange(c *gin.Context) {
 		return
 	}
 
-	exchange, err := h.app.GetExchange(c.Request.Context(), id)
+	exchange, err := h.query.GetExchange(c.Request.Context(), id)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get exchange", "id", id, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -126,7 +123,7 @@ func (h *ReferenceDataHandler) ListExchanges(c *gin.Context) {
 		return
 	}
 
-	exchanges, err := h.app.ListExchanges(c.Request.Context(), limit, offset)
+	exchanges, err := h.query.ListExchanges(c.Request.Context(), limit, offset)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to list exchanges", "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")

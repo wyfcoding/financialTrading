@@ -10,93 +10,170 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
-	ref_pb "github.com/wyfcoding/financialtrading/go-api/referencedata/v1"
+	referencedatav1 "github.com/wyfcoding/financialtrading/go-api/referencedata/v1"
 	"github.com/wyfcoding/financialtrading/internal/referencedata/application"
 	"github.com/wyfcoding/financialtrading/internal/referencedata/domain"
+	"github.com/wyfcoding/financialtrading/internal/referencedata/infrastructure/persistence/elasticsearch"
 	"github.com/wyfcoding/financialtrading/internal/referencedata/infrastructure/persistence/mysql"
-	grpc_server "github.com/wyfcoding/financialtrading/internal/referencedata/interfaces/grpc"
-	http_server "github.com/wyfcoding/financialtrading/internal/referencedata/interfaces/http"
+	redisrepo "github.com/wyfcoding/financialtrading/internal/referencedata/infrastructure/persistence/redis"
+	refconsumer "github.com/wyfcoding/financialtrading/internal/referencedata/interfaces/consumer"
+	grpcserver "github.com/wyfcoding/financialtrading/internal/referencedata/interfaces/grpc"
+	httpserver "github.com/wyfcoding/financialtrading/internal/referencedata/interfaces/http"
+	"github.com/wyfcoding/pkg/cache"
+	"github.com/wyfcoding/pkg/config"
+	"github.com/wyfcoding/pkg/database"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
+	"github.com/wyfcoding/pkg/messagequeue/outbox"
+	"github.com/wyfcoding/pkg/metrics"
+	search_pkg "github.com/wyfcoding/pkg/search"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	gorm_mysql "gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
+var configPath = flag.String("config", "configs/referencedata/config.toml", "config file path")
+
 func main() {
-	var configPath string
-	flag.StringVar(&configPath, "config", "configs/referencedata/config.toml", "path to config file")
 	flag.Parse()
 
 	// 1. Config
-	viper.SetConfigFile(configPath)
-	viper.AutomaticEnv()
-	if err := viper.ReadInConfig(); err != nil {
-		panic(fmt.Sprintf("read config failed: %v", err))
+	var cfg config.Config
+	if err := config.Load(*configPath, &cfg); err != nil {
+		panic(fmt.Sprintf("failed to load config: %v", err))
 	}
 
 	// 2. Logger
-	logger := logging.NewLogger("referencedata", "main", viper.GetString("log.level"))
+	logCfg := &logging.Config{Service: cfg.Server.Name, Level: cfg.Log.Level}
+	logger := logging.NewFromConfig(logCfg)
 	slog.SetDefault(logger.Logger)
 
-	// 3. Database
-	dsn := viper.GetString("database.source")
-	db, err := gorm.Open(gorm_mysql.Open(dsn), &gorm.Config{})
+	// 3. Metrics
+	metricsImpl := metrics.NewMetrics(cfg.Server.Name)
+	if cfg.Metrics.Enabled {
+		go metricsImpl.ExposeHTTP(cfg.Metrics.Port)
+	}
+
+	// 4. Infrastructure
+	db, err := database.NewDB(cfg.Data.Database, cfg.CircuitBreaker, logger, metricsImpl)
 	if err != nil {
-		panic(fmt.Sprintf("connect db failed: %v", err))
+		slog.Error("failed to connect database", "error", err)
+		os.Exit(1)
 	}
 
-	// Auto Migrate
-	if err := db.AutoMigrate(&domain.Symbol{}, &domain.Exchange{}); err != nil {
-		panic(fmt.Sprintf("migrate db failed: %v", err))
+	if cfg.Server.Environment == "dev" {
+		if err := db.RawDB().AutoMigrate(
+			&mysql.SymbolModel{},
+			&mysql.ExchangeModel{},
+			&mysql.InstrumentModel{},
+			&outbox.Message{},
+		); err != nil {
+			slog.Error("failed to migrate database", "error", err)
+		}
 	}
 
-	// 4. Infrastructure & Domain
-	repo := mysql.NewReferenceDataRepository(db)
+	// 5. Kafka & Outbox
+	kafkaProducer := kafka.NewProducer(&cfg.MessageQueue.Kafka, logger, metricsImpl)
+	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
+	pusher := func(ctx context.Context, topic, key string, payload []byte) error {
+		return kafkaProducer.PublishToTopic(ctx, topic, []byte(key), payload)
+	}
+	outboxProcessor := outbox.NewProcessor(outboxMgr, pusher, 100, 2*time.Second)
 
-	// 5. Application
-	appService, err := application.NewReferenceDataService(repo, db)
+	// 6. Redis
+	redisCache, err := cache.NewRedisCache(&cfg.Data.Redis, cfg.CircuitBreaker, logger, metricsImpl)
 	if err != nil {
-		panic(fmt.Sprintf("failed to init reference data service: %v", err))
+		slog.Error("failed to init redis", "error", err)
+		os.Exit(1)
+	}
+	redisClient := redisCache.GetClient()
+
+	// 7. Repositories
+	mysqlRepo := mysql.NewReferenceDataRepository(db.RawDB())
+	symbolReadRepo := redisrepo.NewSymbolRedisRepository(redisClient)
+	exchangeReadRepo := redisrepo.NewExchangeRedisRepository(redisClient)
+	instrumentReadRepo := redisrepo.NewInstrumentRedisRepository(redisClient)
+
+	publisher := outbox.NewPublisher(outboxMgr)
+
+	var searchRepo domain.ReferenceDataSearchRepository
+	esCfg := &search_pkg.Config{
+		ServiceName:         cfg.Server.Name,
+		ElasticsearchConfig: cfg.Data.Elasticsearch,
+		BreakerConfig:       cfg.CircuitBreaker,
+	}
+	esClient, err := search_pkg.NewClient(esCfg, logger, metricsImpl)
+	if err != nil {
+		slog.Error("failed to init elasticsearch", "error", err)
+	} else {
+		searchRepo = elasticsearch.NewReferenceDataSearchRepository(esClient, "", "", "")
 	}
 
-	// 6. Interfaces
-	// gRPC
+	// 8. Application Services
+	cmdSvc := application.NewReferenceDataCommandService(mysqlRepo, publisher)
+	querySvc := application.NewReferenceDataQueryService(mysqlRepo, symbolReadRepo, exchangeReadRepo, instrumentReadRepo, searchRepo)
+	projectionSvc := application.NewReferenceDataProjectionService(mysqlRepo, symbolReadRepo, exchangeReadRepo, instrumentReadRepo, searchRepo, logger.Logger)
+
+	// 9. Kafka Consumers (Projection)
+	projectionHandler := refconsumer.NewProjectionHandler(projectionSvc, logger.Logger)
+	projectionTopics := []string{
+		domain.SymbolCreatedEventType,
+		domain.SymbolUpdatedEventType,
+		domain.SymbolDeletedEventType,
+		domain.SymbolStatusChangedEventType,
+		domain.ExchangeCreatedEventType,
+		domain.ExchangeUpdatedEventType,
+		domain.ExchangeDeletedEventType,
+		domain.ExchangeStatusChangedEventType,
+	}
+	for _, topic := range projectionTopics {
+		consumerCfg := cfg.MessageQueue.Kafka
+		consumerCfg.Topic = topic
+		if consumerCfg.GroupID == "" {
+			consumerCfg.GroupID = "referencedata-projection-group"
+		}
+		consumer := kafka.NewConsumer(&consumerCfg, logger, metricsImpl)
+		consumer.Start(context.Background(), 2, projectionHandler.Handle)
+	}
+
+	// 10. Interfaces
 	grpcSrv := grpc.NewServer()
-	refDataHandler := grpc_server.NewHandler(appService)
-	ref_pb.RegisterReferenceDataServiceServer(grpcSrv, refDataHandler)
+	refHandler := grpcserver.NewHandler(cmdSvc, querySvc)
+	referencedatav1.RegisterReferenceDataServiceServer(grpcSrv, refHandler)
 	reflection.Register(grpcSrv)
 
-	// HTTP
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
-	hHandler := http_server.NewReferenceDataHandler(appService)
-	hHandler.RegisterRoutes(r.Group("/api"))
 
-	// 7. Start
+	httpHandler := httpserver.NewReferenceDataHandler(querySvc)
+	httpHandler.RegisterRoutes(r.Group("/api"))
+
+	// 11. Start
 	g, ctx := errgroup.WithContext(context.Background())
 
-	grpcPort := viper.GetString("server.grpc_port")
 	g.Go(func() error {
-		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+		outboxProcessor.Start()
+		<-ctx.Done()
+		outboxProcessor.Stop()
+		return nil
+	})
+
+	g.Go(func() error {
+		addr := fmt.Sprintf(":%d", cfg.Server.GRPC.Port)
+		lis, err := net.Listen("tcp", addr)
 		if err != nil {
 			return err
 		}
-		slog.Info("Starting gRPC server", "port", grpcPort)
+		slog.Info("gRPC server starting", "addr", addr)
 		return grpcSrv.Serve(lis)
 	})
 
-	httpPort := viper.GetString("server.http_port")
-	if httpPort == "" {
-		httpPort = "8086" // Default for referencedata?
-	}
 	g.Go(func() error {
-		addr := fmt.Sprintf(":%s", httpPort)
+		addr := fmt.Sprintf(":%d", cfg.Server.HTTP.Port)
 		server := &http.Server{Addr: addr, Handler: r}
 		slog.Info("HTTP server starting", "addr", addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -105,7 +182,6 @@ func main() {
 		return nil
 	})
 
-	// 8. Graceful Shutdown
 	g.Go(func() error {
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

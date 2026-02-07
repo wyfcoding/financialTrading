@@ -1,10 +1,46 @@
 [server]
-grpc_port = 9092
+name = "referencedata-service"
+environment = "dev"
 
-[database]
-driver = "mysql"
-source = "root:root@tcp(127.0.0.1:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+[server.http]
+port = 8086
+timeout = "10s"
+
+[server.grpc]
+port = 9092
+timeout = "10s"
 
 [log]
 level = "info"
 format = "json"
+output = "stdout"
+
+[data.database]
+driver = "mysql"
+dsn = "root:password@tcp(localhost:3306)/financial_referencedata?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 10
+max_open_conns = 100
+conn_max_lifetime = "1h"
+
+[data.redis]
+addrs = ["localhost:6379"]
+password = ""
+db = 0
+pool_size = 10
+min_idle_conns = 5
+read_timeout = "3s"
+write_timeout = "3s"
+
+[data.elasticsearch]
+addresses = ["http://localhost:9200"]
+username = ""
+password = ""
+
+[messagequeue.kafka]
+brokers = ["localhost:9092"]
+topic = "referencedata.events"
+
+[tracing]
+enabled = false
+service_name = "referencedata-service"
+otlp_endpoint = "localhost:4317"

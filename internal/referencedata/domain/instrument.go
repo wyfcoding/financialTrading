@@ -1,8 +1,6 @@
 package domain
 
-import (
-	"gorm.io/gorm"
-)
+import "time"
 
 type InstrumentType string
 
@@ -12,19 +10,19 @@ const (
 	Option InstrumentType = "OPTION"
 )
 
+// Instrument 合约/交易品种
+// 领域层仅包含业务字段，不依赖具体存储实现。
 type Instrument struct {
-	gorm.Model
-	Symbol        string         `gorm:"column:symbol;type:varchar(20);uniqueIndex;not null"`
-	BaseCurrency  string         `gorm:"column:base_currency;type:varchar(10);not null"`
-	QuoteCurrency string         `gorm:"column:quote_currency;type:varchar(10);not null"`
-	TickSize      float64        `gorm:"column:tick_size;type:decimal(20,8);not null"`
-	LotSize       float64        `gorm:"column:lot_size;type:decimal(20,8);not null"`
-	Type          InstrumentType `gorm:"column:type;type:varchar(10);not null"`
-	MaxLeverage   int            `gorm:"column:max_leverage;default:1"`
-}
-
-func (Instrument) TableName() string {
-	return "instruments"
+	ID            string         `json:"id"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	Symbol        string         `json:"symbol"`
+	BaseCurrency  string         `json:"base_currency"`
+	QuoteCurrency string         `json:"quote_currency"`
+	TickSize      float64        `json:"tick_size"`
+	LotSize       float64        `json:"lot_size"`
+	Type          InstrumentType `json:"type"`
+	MaxLeverage   int            `json:"max_leverage"`
 }
 
 func NewInstrument(symbol, base, quote string, tick, lot float64, typ InstrumentType) *Instrument {
@@ -35,6 +33,6 @@ func NewInstrument(symbol, base, quote string, tick, lot float64, typ Instrument
 		TickSize:      tick,
 		LotSize:       lot,
 		Type:          typ,
-		MaxLeverage:   1, // default
+		MaxLeverage:   1,
 	}
 }

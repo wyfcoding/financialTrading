@@ -1,28 +1,13 @@
 package domain
 
-// EventPublisher 事件发布者接口
+import "context"
+
+// EventPublisher 定义了领域事件发布的接口
 type EventPublisher interface {
-	// PublishSymbolCreated 发布交易对创建事件
-	PublishSymbolCreated(event SymbolCreatedEvent) error
+	// Publish 发布一个普通事件
+	Publish(ctx context.Context, topic string, key string, event any) error
 
-	// PublishSymbolUpdated 发布交易对更新事件
-	PublishSymbolUpdated(event SymbolUpdatedEvent) error
-
-	// PublishSymbolDeleted 发布交易对删除事件
-	PublishSymbolDeleted(event SymbolDeletedEvent) error
-
-	// PublishExchangeCreated 发布交易所创建事件
-	PublishExchangeCreated(event ExchangeCreatedEvent) error
-
-	// PublishExchangeUpdated 发布交易所更新事件
-	PublishExchangeUpdated(event ExchangeUpdatedEvent) error
-
-	// PublishExchangeDeleted 发布交易所删除事件
-	PublishExchangeDeleted(event ExchangeDeletedEvent) error
-
-	// PublishSymbolStatusChanged 发布交易对状态变更事件
-	PublishSymbolStatusChanged(event SymbolStatusChangedEvent) error
-
-	// PublishExchangeStatusChanged 发布交易所状态变更事件
-	PublishExchangeStatusChanged(event ExchangeStatusChangedEvent) error
+	// PublishInTx 在事务中发布事件，核心用于 Outbox 模式
+	// tx 通常是 *gorm.DB 实例
+	PublishInTx(ctx context.Context, tx any, topic string, key string, event any) error
 }
