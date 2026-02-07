@@ -2,6 +2,15 @@ package domain
 
 import "time"
 
+const (
+	SimulationCreatedEventType        = "marketsimulation.simulation.created"
+	SimulationStartedEventType        = "marketsimulation.simulation.started"
+	SimulationStoppedEventType        = "marketsimulation.simulation.stopped"
+	SimulationStatusUpdatedEventType  = "marketsimulation.status.updated"
+	MarketPriceGeneratedEventType     = "market.price"
+	SimulationPriceGeneratedEventType = "marketsimulation.price.generated"
+)
+
 // SimulationCreatedEvent 模拟创建事件
 type SimulationCreatedEvent struct {
 	ScenarioID   string    `json:"scenario_id"`
@@ -32,10 +41,10 @@ type SimulationStoppedEvent struct {
 
 // MarketSimulationPriceGeneratedEvent 市场模拟价格生成事件
 type MarketSimulationPriceGeneratedEvent struct {
-	ScenarioID string    `json:"scenario_id"`
-	Symbol     string    `json:"symbol"`
-	Price      string    `json:"price"`
-	Timestamp  time.Time `json:"timestamp"`
+	ScenarioID string `json:"scenario_id"`
+	Symbol     string `json:"symbol"`
+	Price      string `json:"price"`
+	Timestamp  int64  `json:"timestamp"`
 }
 
 // MarketSimulationStatusUpdatedEvent 市场模拟状态更新事件

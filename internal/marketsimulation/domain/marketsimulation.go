@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"gorm.io/gorm"
 )
 
 // SimulationType 模拟类型
@@ -31,40 +30,42 @@ const (
 
 // Simulation 模拟场景实体
 type Simulation struct {
-	gorm.Model
+	ID        uint      `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 	// ScenarioID 场景唯一标识
-	ScenarioID string `gorm:"column:scenario_id;type:varchar(32);uniqueIndex;not null" json:"scenario_id"`
+	ScenarioID string `json:"scenario_id"`
 	// Name 场景名称
-	Name string `gorm:"column:name;type:varchar(100);not null" json:"name"`
+	Name string `json:"name"`
 	// Description 场景描述
-	Description string `gorm:"column:description;type:text" json:"description"`
+	Description string `json:"description"`
 	// Symbol 模拟的交易对
-	Symbol string `gorm:"column:symbol;type:varchar(20);not null" json:"symbol"`
+	Symbol string `json:"symbol"`
 	// Type 模拟类型
-	Type SimulationType `gorm:"column:type;type:varchar(20);not null" json:"type"`
+	Type SimulationType `json:"type"`
 	// Parameters 模拟参数 (JSON字符串)
-	Parameters string `gorm:"column:parameters;type:text" json:"parameters"`
+	Parameters string `json:"parameters"`
 	// Status 模拟状态
-	Status SimulationStatus `gorm:"column:status;type:varchar(20);default:'STOPPED'" json:"status"`
+	Status SimulationStatus `json:"status"`
 	// StartTime 开始时间
-	StartTime time.Time `gorm:"column:start_time;type:datetime" json:"start_time"`
+	StartTime time.Time `json:"start_time"`
 	// EndTime 结束时间
-	EndTime time.Time `gorm:"column:end_time;type:datetime" json:"end_time"`
+	EndTime time.Time `json:"end_time"`
 
 	// Simulation Parameters (First Class Fields)
-	InitialPrice float64 `gorm:"column:initial_price;type:decimal(20,8)" json:"initial_price"`
-	Volatility   float64 `gorm:"column:volatility;type:decimal(10,4)" json:"volatility"`
-	Drift        float64 `gorm:"column:drift;type:decimal(10,4)" json:"drift"`
-	IntervalMs   int64   `gorm:"column:interval_ms;type:bigint" json:"interval_ms"`
+	InitialPrice float64 `json:"initial_price"`
+	Volatility   float64 `json:"volatility"`
+	Drift        float64 `json:"drift"`
+	IntervalMs   int64   `json:"interval_ms"`
 
 	// Heston & Jump specific
-	Kappa      float64 `gorm:"column:kappa;type:decimal(10,4)" json:"kappa"`
-	Theta      float64 `gorm:"column:theta;type:decimal(10,4)" json:"theta"`
-	VolOfVol   float64 `gorm:"column:vol_of_vol;type:decimal(10,4)" json:"vol_of_vol"`
-	Rho        float64 `gorm:"column:rho;type:decimal(10,4)" json:"rho"`
-	JumpLambda float64 `gorm:"column:jump_lambda;type:decimal(10,4)" json:"jump_lambda"`
-	JumpMu     float64 `gorm:"column:jump_mu;type:decimal(10,4)" json:"jump_mu"`
-	JumpSigma  float64 `gorm:"column:jump_sigma;type:decimal(10,4)" json:"jump_sigma"`
+	Kappa      float64 `json:"kappa"`
+	Theta      float64 `json:"theta"`
+	VolOfVol   float64 `json:"vol_of_vol"`
+	Rho        float64 `json:"rho"`
+	JumpLambda float64 `json:"jump_lambda"`
+	JumpMu     float64 `json:"jump_mu"`
+	JumpSigma  float64 `json:"jump_sigma"`
 }
 
 func NewSimulation(name, symbol string, initialPrice, volatility, drift float64, intervalMs int64) *Simulation {

@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -9,11 +10,13 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/domain"
+	"github.com/wyfcoding/pkg/contextx"
 )
 
 // MarketSimulationCommandService 市场模拟命令服务
 type MarketSimulationCommandService struct {
 	repo        domain.SimulationRepository
+	readRepo    domain.SimulationReadRepository
 	publisher   domain.EventPublisher
 	runningSims map[string]context.CancelFunc
 	mu          sync.Mutex
@@ -22,10 +25,12 @@ type MarketSimulationCommandService struct {
 // NewMarketSimulationCommandService 创建市场模拟命令服务实例
 func NewMarketSimulationCommandService(
 	repo domain.SimulationRepository,
+	readRepo domain.SimulationReadRepository,
 	publisher domain.EventPublisher,
 ) *MarketSimulationCommandService {
 	return &MarketSimulationCommandService{
 		repo:        repo,
+		readRepo:    readRepo,
 		publisher:   publisher,
 		runningSims: make(map[string]context.CancelFunc),
 	}
@@ -33,8 +38,13 @@ func NewMarketSimulationCommandService(
 
 // CreateSimulation 创建模拟
 func (s *MarketSimulationCommandService) CreateSimulation(ctx context.Context, cmd CreateSimulationCommand) (*SimulationDTO, error) {
+	applySimulationParams(&cmd)
 	sim := domain.NewSimulation(cmd.Name, cmd.Symbol, cmd.InitialPrice, cmd.Volatility, cmd.Drift, cmd.IntervalMs)
-	sim.Type = domain.SimulationType(cmd.Type)
+	if cmd.Type != "" {
+		sim.Type = domain.SimulationType(cmd.Type)
+	}
+	sim.Description = cmd.Description
+	sim.Parameters = cmd.Parameters
 	sim.Kappa = cmd.Kappa
 	sim.Theta = cmd.Theta
 	sim.VolOfVol = cmd.VolOfVol
@@ -43,24 +53,34 @@ func (s *MarketSimulationCommandService) CreateSimulation(ctx context.Context, c
 	sim.JumpMu = cmd.JumpMu
 	sim.JumpSigma = cmd.JumpSigma
 
-	if err := s.repo.Save(ctx, sim); err != nil {
+	err := s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.repo.Save(txCtx, sim); err != nil {
+			return err
+		}
+		if s.publisher != nil {
+			event := domain.SimulationCreatedEvent{
+				ScenarioID:   sim.ScenarioID,
+				Name:         sim.Name,
+				Symbol:       sim.Symbol,
+				Type:         string(sim.Type),
+				InitialPrice: sim.InitialPrice,
+				Volatility:   sim.Volatility,
+				Drift:        sim.Drift,
+				Timestamp:    time.Now(),
+			}
+			if err := s.publisher.PublishInTx(txCtx, contextx.GetTx(txCtx), domain.SimulationCreatedEventType, sim.ScenarioID, event); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
-
-	// 发布模拟创建事件
-	event := domain.SimulationCreatedEvent{
-		ScenarioID:   sim.ScenarioID,
-		Name:         sim.Name,
-		Symbol:       sim.Symbol,
-		Type:         string(sim.Type),
-		InitialPrice: sim.InitialPrice,
-		Volatility:   sim.Volatility,
-		Drift:        sim.Drift,
-		Timestamp:    time.Now(),
+	if s.readRepo != nil {
+		_ = s.readRepo.Save(ctx, sim)
 	}
-	s.publisher.Publish(ctx, "marketsimulation.simulation.created", sim.ScenarioID, event)
-
-	return s.toDTO(sim), nil
+	return toSimulationDTO(sim), nil
 }
 
 // StartSimulation 开始模拟
@@ -83,34 +103,42 @@ func (s *MarketSimulationCommandService) StartSimulation(ctx context.Context, cm
 	if err := sim.Start(); err != nil {
 		return err
 	}
-	if err := s.repo.Save(ctx, sim); err != nil {
+	err = s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.repo.Save(txCtx, sim); err != nil {
+			return err
+		}
+		if s.publisher != nil {
+			// 发布模拟开始事件
+			event := domain.SimulationStartedEvent{
+				ScenarioID: sim.ScenarioID,
+				Name:       sim.Name,
+				Symbol:     sim.Symbol,
+				Timestamp:  time.Now(),
+			}
+			if err := s.publisher.PublishInTx(txCtx, contextx.GetTx(txCtx), domain.SimulationStartedEventType, sim.ScenarioID, event); err != nil {
+				return err
+			}
+
+			// 发布状态更新事件
+			statusEvent := domain.MarketSimulationStatusUpdatedEvent{
+				ScenarioID: sim.ScenarioID,
+				Name:       sim.Name,
+				Symbol:     sim.Symbol,
+				Status:     string(sim.Status),
+				Timestamp:  time.Now(),
+			}
+			if err := s.publisher.PublishInTx(txCtx, contextx.GetTx(txCtx), domain.SimulationStatusUpdatedEventType, sim.ScenarioID, statusEvent); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		return err
 	}
 
-	// 发布模拟开始事件
-	event := domain.SimulationStartedEvent{
-		ScenarioID: sim.ScenarioID,
-		Name:       sim.Name,
-		Symbol:     sim.Symbol,
-		Timestamp:  time.Now(),
-	}
-	s.publisher.Publish(ctx, "marketsimulation.simulation.started", sim.ScenarioID, event)
-
-	// 发布状态更新事件
-	statusEvent := domain.MarketSimulationStatusUpdatedEvent{
-		ScenarioID: sim.ScenarioID,
-		Name:       sim.Name,
-		Symbol:     sim.Symbol,
-		Status:     string(sim.Status),
-		Timestamp:  time.Now(),
-	}
-	s.publisher.Publish(ctx, "marketsimulation.status.updated", sim.ScenarioID, statusEvent)
-
 	// Start background worker
-	workerCtx, cancel := context.WithCancel(context.Background())
-	s.runningSims[cmd.ScenarioID] = cancel
-
-	go s.runWorker(workerCtx, sim)
+	s.startWorker(sim)
 
 	slog.Info("Simulation started", "id", cmd.ScenarioID, "symbol", sim.Symbol)
 	return nil
@@ -133,33 +161,71 @@ func (s *MarketSimulationCommandService) StopSimulation(ctx context.Context, cmd
 		slog.Error("Failed to get simulation to stop", "id", cmd.ScenarioID, "error", err)
 		return err
 	}
+	if sim == nil {
+		return fmt.Errorf("simulation %s not found", cmd.ScenarioID)
+	}
 
 	sim.Stop()
-	if err := s.repo.Save(ctx, sim); err != nil {
+	err = s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.repo.Save(txCtx, sim); err != nil {
+			return err
+		}
+		if s.publisher != nil {
+			// 发布模拟停止事件
+			event := domain.SimulationStoppedEvent{
+				ScenarioID: sim.ScenarioID,
+				Name:       sim.Name,
+				Symbol:     sim.Symbol,
+				Timestamp:  time.Now(),
+			}
+			if err := s.publisher.PublishInTx(txCtx, contextx.GetTx(txCtx), domain.SimulationStoppedEventType, sim.ScenarioID, event); err != nil {
+				return err
+			}
+
+			// 发布状态更新事件
+			statusEvent := domain.MarketSimulationStatusUpdatedEvent{
+				ScenarioID: sim.ScenarioID,
+				Name:       sim.Name,
+				Symbol:     sim.Symbol,
+				Status:     string(sim.Status),
+				Timestamp:  time.Now(),
+			}
+			if err := s.publisher.PublishInTx(txCtx, contextx.GetTx(txCtx), domain.SimulationStatusUpdatedEventType, sim.ScenarioID, statusEvent); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		slog.Error("Failed to update simulation status", "id", cmd.ScenarioID, "error", err)
 		return err
 	}
-
-	// 发布模拟停止事件
-	event := domain.SimulationStoppedEvent{
-		ScenarioID: sim.ScenarioID,
-		Name:       sim.Name,
-		Symbol:     sim.Symbol,
-		Timestamp:  time.Now(),
+	if s.readRepo != nil {
+		_ = s.readRepo.Save(ctx, sim)
 	}
-	s.publisher.Publish(ctx, "marketsimulation.simulation.stopped", sim.ScenarioID, event)
-
-	// 发布状态更新事件
-	statusEvent := domain.MarketSimulationStatusUpdatedEvent{
-		ScenarioID: sim.ScenarioID,
-		Name:       sim.Name,
-		Symbol:     sim.Symbol,
-		Status:     string(sim.Status),
-		Timestamp:  time.Now(),
-	}
-	s.publisher.Publish(ctx, "marketsimulation.status.updated", sim.ScenarioID, statusEvent)
 
 	slog.Info("Simulation stopped", "id", cmd.ScenarioID)
+	return nil
+}
+
+// ResumeRunning 恢复运行中的模拟任务
+func (s *MarketSimulationCommandService) ResumeRunning(ctx context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	running, err := s.repo.ListRunning(ctx, 1000)
+	if err != nil {
+		return err
+	}
+	for _, sim := range running {
+		if sim == nil {
+			continue
+		}
+		if _, ok := s.runningSims[sim.ScenarioID]; ok {
+			continue
+		}
+		s.startWorker(sim)
+	}
 	return nil
 }
 
@@ -199,35 +265,96 @@ func (s *MarketSimulationCommandService) runWorker(ctx context.Context, simEntit
 				ScenarioID: simEntity.ScenarioID,
 				Symbol:     simEntity.Symbol,
 				Price:      priceDec.String(),
-				Timestamp:  time.Now(),
+				Timestamp:  time.Now().UnixMilli(),
 			}
-			s.publisher.Publish(context.Background(), "marketsimulation.price.generated", simEntity.Symbol, event)
+			if s.publisher != nil {
+				_ = s.publisher.Publish(context.Background(), domain.MarketPriceGeneratedEventType, simEntity.Symbol, event)
+			}
 
 			slog.Info("Tick", "symbol", simEntity.Symbol, "price", currentPrice)
 		}
 	}
 }
 
-// toDTO 将模拟实体转换为DTO
-func (s *MarketSimulationCommandService) toDTO(sim *domain.Simulation) *SimulationDTO {
-	return &SimulationDTO{
-		ID:           sim.ID,
-		ScenarioID:   sim.ScenarioID,
-		Name:         sim.Name,
-		Symbol:       sim.Symbol,
-		Type:         string(sim.Type),
-		InitialPrice: sim.InitialPrice,
-		Volatility:   sim.Volatility,
-		Drift:        sim.Drift,
-		IntervalMs:   sim.IntervalMs,
-		Status:       string(sim.Status),
-		CreatedAt:    sim.CreatedAt,
-		Kappa:        sim.Kappa,
-		Theta:        sim.Theta,
-		VolOfVol:     sim.VolOfVol,
-		Rho:          sim.Rho,
-		JumpLambda:   sim.JumpLambda,
-		JumpMu:       sim.JumpMu,
-		JumpSigma:    sim.JumpSigma,
+func (s *MarketSimulationCommandService) startWorker(simEntity *domain.Simulation) {
+	if simEntity == nil {
+		return
+	}
+	workerCtx, cancel := context.WithCancel(context.Background())
+	s.runningSims[simEntity.ScenarioID] = cancel
+	go s.runWorker(workerCtx, simEntity)
+}
+
+type simulationParams struct {
+	InitialPrice *float64 `json:"initial_price"`
+	Volatility   *float64 `json:"volatility"`
+	Drift        *float64 `json:"drift"`
+	IntervalMs   *int64   `json:"interval_ms"`
+	Kappa        *float64 `json:"kappa"`
+	Theta        *float64 `json:"theta"`
+	VolOfVol     *float64 `json:"vol_of_vol"`
+	Rho          *float64 `json:"rho"`
+	JumpLambda   *float64 `json:"jump_lambda"`
+	JumpMu       *float64 `json:"jump_mu"`
+	JumpSigma    *float64 `json:"jump_sigma"`
+}
+
+func applySimulationParams(cmd *CreateSimulationCommand) {
+	if cmd == nil {
+		return
+	}
+	// Defaults
+	if cmd.InitialPrice == 0 {
+		cmd.InitialPrice = 100.0
+	}
+	if cmd.Volatility == 0 {
+		cmd.Volatility = 0.2
+	}
+	if cmd.Drift == 0 {
+		cmd.Drift = 0.05
+	}
+	if cmd.IntervalMs == 0 {
+		cmd.IntervalMs = 1000
+	}
+
+	if cmd.Parameters == "" {
+		return
+	}
+	var params simulationParams
+	if err := json.Unmarshal([]byte(cmd.Parameters), &params); err != nil {
+		return
+	}
+	if params.InitialPrice != nil {
+		cmd.InitialPrice = *params.InitialPrice
+	}
+	if params.Volatility != nil {
+		cmd.Volatility = *params.Volatility
+	}
+	if params.Drift != nil {
+		cmd.Drift = *params.Drift
+	}
+	if params.IntervalMs != nil {
+		cmd.IntervalMs = *params.IntervalMs
+	}
+	if params.Kappa != nil {
+		cmd.Kappa = *params.Kappa
+	}
+	if params.Theta != nil {
+		cmd.Theta = *params.Theta
+	}
+	if params.VolOfVol != nil {
+		cmd.VolOfVol = *params.VolOfVol
+	}
+	if params.Rho != nil {
+		cmd.Rho = *params.Rho
+	}
+	if params.JumpLambda != nil {
+		cmd.JumpLambda = *params.JumpLambda
+	}
+	if params.JumpMu != nil {
+		cmd.JumpMu = *params.JumpMu
+	}
+	if params.JumpSigma != nil {
+		cmd.JumpSigma = *params.JumpSigma
 	}
 }

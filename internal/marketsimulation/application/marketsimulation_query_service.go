@@ -8,20 +8,28 @@ import (
 
 // MarketSimulationQueryService 市场模拟查询服务
 type MarketSimulationQueryService struct {
-	repo domain.SimulationRepository
+	repo     domain.SimulationRepository
+	readRepo domain.SimulationReadRepository
 }
 
 // NewMarketSimulationQueryService 创建市场模拟查询服务实例
 func NewMarketSimulationQueryService(
 	repo domain.SimulationRepository,
+	readRepo domain.SimulationReadRepository,
 ) *MarketSimulationQueryService {
 	return &MarketSimulationQueryService{
-		repo: repo,
+		repo:     repo,
+		readRepo: readRepo,
 	}
 }
 
 // GetSimulation 根据场景ID获取模拟
 func (s *MarketSimulationQueryService) GetSimulation(ctx context.Context, scenarioID string) (*SimulationDTO, error) {
+	if s.readRepo != nil {
+		if cached, err := s.readRepo.Get(ctx, scenarioID); err == nil && cached != nil {
+			return toSimulationDTO(cached), nil
+		}
+	}
 	sim, err := s.repo.Get(ctx, scenarioID)
 	if err != nil {
 		return nil, err
@@ -30,7 +38,10 @@ func (s *MarketSimulationQueryService) GetSimulation(ctx context.Context, scenar
 		return nil, nil
 	}
 
-	return s.toDTO(sim), nil
+	if s.readRepo != nil {
+		_ = s.readRepo.Save(ctx, sim)
+	}
+	return toSimulationDTO(sim), nil
 }
 
 // ListSimulations 列出所有模拟
@@ -40,34 +51,5 @@ func (s *MarketSimulationQueryService) ListSimulations(ctx context.Context) ([]*
 		return nil, err
 	}
 
-	dtos := make([]*SimulationDTO, len(sims))
-	for i, sim := range sims {
-		dtos[i] = s.toDTO(sim)
-	}
-
-	return dtos, nil
-}
-
-// toDTO 将模拟实体转换为DTO
-func (s *MarketSimulationQueryService) toDTO(sim *domain.Simulation) *SimulationDTO {
-	return &SimulationDTO{
-		ID:           sim.ID,
-		ScenarioID:   sim.ScenarioID,
-		Name:         sim.Name,
-		Symbol:       sim.Symbol,
-		Type:         string(sim.Type),
-		InitialPrice: sim.InitialPrice,
-		Volatility:   sim.Volatility,
-		Drift:        sim.Drift,
-		IntervalMs:   sim.IntervalMs,
-		Status:       string(sim.Status),
-		CreatedAt:    sim.CreatedAt,
-		Kappa:        sim.Kappa,
-		Theta:        sim.Theta,
-		VolOfVol:     sim.VolOfVol,
-		Rho:          sim.Rho,
-		JumpLambda:   sim.JumpLambda,
-		JumpMu:       sim.JumpMu,
-		JumpSigma:    sim.JumpSigma,
-	}
+	return toSimulationDTOs(sims), nil
 }
