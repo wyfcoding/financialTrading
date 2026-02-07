@@ -1,11 +1,56 @@
 [server]
-grpc_port = 9085
+name = "matchingengine-service"
+environment = "dev"
+
+[server.http]
+port = 8085
+timeout = "10s"
+
+[server.grpc]
+port = 9085
+timeout = "10s"
 
 [log]
 level = "info"
 format = "json"
+output = "stdout"
 
-[kafka]
+[data.database]
+driver = "mysql"
+dsn = "root:password@tcp(localhost:3306)/financial_matchingengine?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 10
+max_open_conns = 100
+conn_max_lifetime = "1h"
+
+[data.redis]
+addrs = ["localhost:6379"]
+password = ""
+db = 0
+pool_size = 10
+min_idle_conns = 5
+read_timeout = "3s"
+write_timeout = "3s"
+
+[data.elasticsearch]
+addresses = ["http://localhost:9200"]
+username = ""
+password = ""
+
+[messagequeue.kafka]
 brokers = ["localhost:9092"]
-topic_trade = "matching.trade"
-topic_order = "execution.order"
+topic = "financial.matching.events"
+group_id = "matching-projection-group"
+
+[services.order]
+grpc_addr = "localhost:50051"
+
+[services.clearing]
+grpc_addr = "localhost:50053"
+
+[matching]
+symbol = "BTC-USDT"
+
+[tracing]
+enabled = false
+service_name = "matchingengine-service"
+otlp_endpoint = "localhost:4317"
