@@ -1,17 +1,47 @@
 [server]
-grpc_port = 9088
+name = "order-service"
+environment = "dev"
 
-[database]
-driver = "mysql"
-source = "root:root@tcp(127.0.0.1:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+[server.http]
+port = 8088
+timeout = "10s"
+
+[server.grpc]
+port = 9088
+timeout = "10s"
 
 [log]
 level = "info"
 format = "json"
+output = "stdout"
 
-[kafka]
-brokers = ["localhost:9092"]
-topic_order = "execution.order"
+[data.database]
+driver = "mysql"
+dsn = "root:password@tcp(localhost:3306)/financial_order?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 10
+max_open_conns = 100
+conn_max_lifetime = "1h"
 
-[elasticsearch]
+[data.redis]
+addrs = ["localhost:6379"]
+password = ""
+db = 0
+pool_size = 10
+min_idle_conns = 5
+read_timeout = "3s"
+write_timeout = "3s"
+
+[data.elasticsearch]
 addresses = ["http://localhost:9200"]
+username = ""
+password = ""
+
+[messagequeue.kafka]
+brokers = ["localhost:9092"]
+topic = "order-events"
+group_id = "order-search-syncer"
+
+[tracing]
+enabled = false
+service_name = "order-service"
+otlp_endpoint = "localhost:4317"

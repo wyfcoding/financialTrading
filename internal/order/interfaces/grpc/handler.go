@@ -2,25 +2,25 @@ package grpc
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/shopspring/decimal"
 	pb "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/application"
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Handler struct {
 	pb.UnimplementedOrderServiceServer
-	app *application.OrderService
+	cmd   *application.OrderCommandService
+	query *application.OrderQueryService
 }
 
-func NewHandler(app *application.OrderService) *Handler {
-	return &Handler{
-		app: app,
-	}
+func NewHandler(cmd *application.OrderCommandService, query *application.OrderQueryService) *Handler {
+	return &Handler{cmd: cmd, query: query}
 }
 
 func (h *Handler) CreateOrder(ctx context.Context, req *pb.CreateOrderRequest) (*pb.CreateOrderResponse, error) {
@@ -33,9 +33,9 @@ func (h *Handler) CreateOrder(ctx context.Context, req *pb.CreateOrderRequest) (
 		Quantity: req.Quantity,
 	}
 
-	orderID, err := h.app.PlaceOrder(ctx, cmd)
+	orderID, err := h.cmd.PlaceOrder(ctx, cmd)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "place order failed: %v", err)
 	}
 
 	return &pb.CreateOrderResponse{
@@ -51,21 +51,20 @@ func (h *Handler) CancelOrder(ctx context.Context, req *pb.CancelOrderRequest) (
 		Reason:  "user request",
 	}
 
-	err := h.app.CancelOrder(ctx, cmd)
-	if err != nil {
-		return &pb.CancelOrderResponse{Success: false}, err
+	if err := h.cmd.CancelOrder(ctx, cmd); err != nil {
+		return &pb.CancelOrderResponse{Success: false}, status.Errorf(codes.Internal, "cancel order failed: %v", err)
 	}
 
 	return &pb.CancelOrderResponse{Success: true}, nil
 }
 
 func (h *Handler) GetOrder(ctx context.Context, req *pb.GetOrderRequest) (*pb.GetOrderResponse, error) {
-	dto, err := h.app.GetOrder(ctx, req.OrderId)
+	dto, err := h.query.GetOrder(ctx, req.OrderId)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "get order failed: %v", err)
 	}
 	if dto == nil {
-		return nil, fmt.Errorf("order not found")
+		return nil, status.Error(codes.NotFound, "order not found")
 	}
 	return &pb.GetOrderResponse{
 		Order: h.toProtoOrder(dto),
@@ -73,14 +72,14 @@ func (h *Handler) GetOrder(ctx context.Context, req *pb.GetOrderRequest) (*pb.Ge
 }
 
 func (h *Handler) ListOrders(ctx context.Context, req *pb.ListOrdersRequest) (*pb.ListOrdersResponse, error) {
-	var status domain.OrderStatus
+	var statusVal domain.OrderStatus
 	if req.Status != "" {
-		status = domain.OrderStatus(req.Status)
+		statusVal = domain.OrderStatus(req.Status)
 	}
 
-	dtos, _, err := h.app.ListOrders(ctx, req.UserId, status, int(req.Limit), int(req.Offset))
+	dtos, _, err := h.query.ListOrders(ctx, req.UserId, statusVal, int(req.Limit), int(req.Offset))
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "list orders failed: %v", err)
 	}
 
 	orders := make([]*pb.Order, 0, len(dtos))

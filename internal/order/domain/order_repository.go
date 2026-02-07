@@ -8,6 +8,11 @@ import (
 
 // OrderRepository 订单仓储接口
 type OrderRepository interface {
+	BeginTx(ctx context.Context) any
+	CommitTx(tx any) error
+	RollbackTx(tx any) error
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+
 	Save(ctx context.Context, order *Order) error
 	Get(ctx context.Context, orderID string) (*Order, error)
 	ListByUser(ctx context.Context, userID string, status OrderStatus, limit, offset int) ([]*Order, int64, error)
@@ -28,4 +33,10 @@ type EventStore interface {
 type OrderSearchRepository interface {
 	Index(ctx context.Context, order *Order) error
 	Search(ctx context.Context, query map[string]any, limit int) ([]*Order, error)
+}
+
+// OrderReadRepository 订单读模型缓存
+type OrderReadRepository interface {
+	Save(ctx context.Context, order *Order) error
+	Get(ctx context.Context, orderID string) (*Order, error)
 }

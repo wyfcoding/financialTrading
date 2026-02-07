@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/wyfcoding/pkg/eventsourcing"
-	"gorm.io/gorm"
 )
 
 type OrderType string
@@ -43,52 +42,58 @@ const (
 
 // Order represents an OMS order
 type Order struct {
-	gorm.Model
+	ID        uint      `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 	eventsourcing.AggregateRoot
-	OrderID        string      `gorm:"column:order_id;type:varchar(36);uniqueIndex;not null" json:"order_id"` // UUID
-	UserID         string      `gorm:"column:user_id;type:varchar(50);index;not null" json:"user_id"`
-	Symbol         string      `gorm:"column:symbol;type:varchar(20);not null" json:"symbol"`
-	Side           OrderSide   `gorm:"column:side;type:varchar(10);not null" json:"side"`
-	Type           OrderType   `gorm:"column:type;type:varchar(20);not null" json:"type"`
-	Price          float64     `gorm:"column:price;type:decimal(20,8)" json:"price"`
-	StopPrice      float64     `gorm:"column:stop_price;type:decimal(20,8)" json:"stop_price"`
-	Quantity       float64     `gorm:"column:quantity;type:decimal(20,8);not null" json:"quantity"`
-	FilledQuantity float64     `gorm:"column:filled_quantity;type:decimal(20,8);default:0" json:"filled_quantity"`
-	AveragePrice   float64     `gorm:"column:average_price;type:decimal(20,8);default:0" json:"average_price"`
-	Status         OrderStatus `gorm:"column:status;type:varchar(20);index;not null;default:'pending'" json:"status"`
-	TimeInForce    TimeInForce `gorm:"column:tif;type:varchar(10);default:'GTC'" json:"tif"`
+	OrderID        string      `json:"order_id"` // UUID
+	UserID         string      `json:"user_id"`
+	Symbol         string      `json:"symbol"`
+	Side           OrderSide   `json:"side"`
+	Type           OrderType   `json:"type"`
+	Price          float64     `json:"price"`
+	StopPrice      float64     `json:"stop_price"`
+	Quantity       float64     `json:"quantity"`
+	FilledQuantity float64     `json:"filled_quantity"`
+	AveragePrice   float64     `json:"average_price"`
+	Status         OrderStatus `json:"status"`
+	TimeInForce    TimeInForce `json:"time_in_force"`
 
 	// Complex Order Support
-	ParentOrderID string `gorm:"column:parent_id;type:varchar(36);index" json:"parent_id"` // For Bracket/OCO
-	IsOCO         bool   `gorm:"column:is_oco" json:"is_oco"`
+	ParentOrderID string `json:"parent_order_id"` // For Bracket/OCO
+	IsOCO         bool   `json:"is_oco"`
 }
 
-func (Order) TableName() string {
-	return "orders"
-}
-
-func NewOrder(id, userID, symbol string, side OrderSide, typ OrderType, price, qty float64) *Order {
+func NewOrder(id, userID, symbol string, side OrderSide, typ OrderType, price, qty float64, stopPrice float64, tif TimeInForce, parentID string, isOCO bool) *Order {
 	o := &Order{
-		OrderID:  id,
-		UserID:   userID,
-		Symbol:   symbol,
-		Side:     side,
-		Type:     typ,
-		Price:    price,
-		Quantity: qty,
-		Status:   StatusPending,
+		OrderID:       id,
+		UserID:        userID,
+		Symbol:        symbol,
+		Side:          side,
+		Type:          typ,
+		Price:         price,
+		StopPrice:     stopPrice,
+		Quantity:      qty,
+		Status:        StatusPending,
+		TimeInForce:   tif,
+		ParentOrderID: parentID,
+		IsOCO:         isOCO,
 	}
 	o.SetID(id)
 
 	o.ApplyChange(&OrderCreatedEvent{
-		OrderID:    id,
-		UserID:     userID,
-		Symbol:     symbol,
-		Side:       side,
-		Type:       typ,
-		Price:      price,
-		Quantity:   qty,
-		OccurredOn: time.Now(),
+		OrderID:       id,
+		UserID:        userID,
+		Symbol:        symbol,
+		Side:          side,
+		Type:          typ,
+		Price:         price,
+		StopPrice:     stopPrice,
+		Quantity:      qty,
+		TimeInForce:   tif,
+		ParentOrderID: parentID,
+		IsOCO:         isOCO,
+		OccurredOn:    time.Now(),
 	})
 	return o
 }
@@ -103,7 +108,11 @@ func (o *Order) Apply(event eventsourcing.DomainEvent) {
 		o.Side = e.Side
 		o.Type = e.Type
 		o.Price = e.Price
+		o.StopPrice = e.StopPrice
 		o.Quantity = e.Quantity
+		o.TimeInForce = e.TimeInForce
+		o.ParentOrderID = e.ParentOrderID
+		o.IsOCO = e.IsOCO
 		o.Status = StatusPending
 	case *OrderValidatedEvent:
 		o.Status = StatusValidated

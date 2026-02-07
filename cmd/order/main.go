@@ -13,16 +13,18 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
 	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/order/application"
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
 	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/persistence/elasticsearch"
 	"github.com/wyfcoding/financialtrading/internal/order/infrastructure/persistence/mysql"
+	redisrepo "github.com/wyfcoding/financialtrading/internal/order/infrastructure/persistence/redis"
 	"github.com/wyfcoding/financialtrading/internal/order/interfaces/events"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/order/interfaces/grpc"
 	http_server "github.com/wyfcoding/financialtrading/internal/order/interfaces/http"
-	configpkg "github.com/wyfcoding/pkg/config"
+	"github.com/wyfcoding/pkg/cache"
+	"github.com/wyfcoding/pkg/config"
+	"github.com/wyfcoding/pkg/database"
 	"github.com/wyfcoding/pkg/logging"
 	"github.com/wyfcoding/pkg/messagequeue/kafka"
 	"github.com/wyfcoding/pkg/messagequeue/outbox"
@@ -31,104 +33,108 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	gorm_mysql "gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
+var configPath = flag.String("config", "configs/order/config.toml", "config file path")
+
 func main() {
-	var configPath string
-	flag.StringVar(&configPath, "config", "configs/order/config.toml", "path to config file")
 	flag.Parse()
 
 	// 1. Config
-	viper.SetConfigFile(configPath)
-	viper.AutomaticEnv()
-	if err := viper.ReadInConfig(); err != nil {
-		panic(fmt.Sprintf("read config failed: %v", err))
+	var cfg config.Config
+	if err := config.Load(*configPath, &cfg); err != nil {
+		panic(fmt.Sprintf("failed to load config: %v", err))
 	}
 
 	// 2. Logger
-	logger := logging.NewFromConfig(&logging.Config{
-		Service: "order-service",
-		Level:   "info",
-	})
+	logCfg := &logging.Config{Service: cfg.Server.Name, Level: cfg.Log.Level}
+	logger := logging.NewFromConfig(logCfg)
 	slog.SetDefault(logger.Logger)
 
-	// 3. Database
-	dsn := viper.GetString("database.source")
-	db, err := gorm.Open(gorm_mysql.Open(dsn), &gorm.Config{})
+	// 3. Metrics
+	metricsImpl := metrics.NewMetrics(cfg.Server.Name)
+	if cfg.Metrics.Enabled {
+		go metricsImpl.ExposeHTTP(cfg.Metrics.Port)
+	}
+
+	// 4. Database (MySQL)
+	db, err := database.NewDB(cfg.Data.Database, cfg.CircuitBreaker, logger, metricsImpl)
 	if err != nil {
-		panic(fmt.Sprintf("connect db failed: %v", err))
+		slog.Error("failed to connect database", "error", err)
+		os.Exit(1)
 	}
 
-	// 4. Metrics & Kafka
-	metricsImpl := metrics.NewMetrics("order-service")
-
-	kafkaCfg := &configpkg.KafkaConfig{
-		Brokers: viper.GetStringSlice("kafka.brokers"),
-		Topic:   "order-events",
+	if cfg.Server.Environment == "dev" {
+		if err := db.RawDB().AutoMigrate(&mysql.OrderModel{}, &mysql.EventModel{}, &outbox.Message{}); err != nil {
+			slog.Error("failed to migrate database", "error", err)
+		}
 	}
-	kafkaProducer := kafka.NewProducer(kafkaCfg, logger, metricsImpl)
 
-	outboxMgr := outbox.NewManager(db, logger.Logger)
-	// 包装推送器以匹配签名
+	// 5. Kafka & Outbox
+	kafkaProducer := kafka.NewProducer(&cfg.MessageQueue.Kafka, logger, metricsImpl)
+	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
 	pusher := func(ctx context.Context, topic, key string, payload []byte) error {
 		return kafkaProducer.PublishToTopic(ctx, topic, []byte(key), payload)
 	}
 	outboxProcessor := outbox.NewProcessor(outboxMgr, pusher, 100, 2*time.Second)
 
-	// Auto Migrate
-	if err := db.AutoMigrate(&domain.Order{}, &outbox.Message{}); err != nil {
-		panic(fmt.Sprintf("migrate db failed: %v", err))
+	// 6. Redis
+	redisCache, err := cache.NewRedisCache(&cfg.Data.Redis, cfg.CircuitBreaker, logger, metricsImpl)
+	if err != nil {
+		slog.Error("failed to init redis", "error", err)
+		os.Exit(1)
 	}
+	redisClient := redisCache.GetClient()
 
-	// 5. Infrastructure & Domain
-	repo := mysql.NewOrderRepository(db)
+	// 7. Repositories
+	repo := mysql.NewOrderRepository(db.RawDB())
+	readRepo := redisrepo.NewOrderRedisRepository(redisClient)
+	publisher := outbox.NewPublisher(outboxMgr)
 
-	// ES Initialization
+	var searchRepo domain.OrderSearchRepository
 	esCfg := &search_pkg.Config{
-		ServiceName: "order-service",
-		ElasticsearchConfig: configpkg.ElasticsearchConfig{
-			Addresses: viper.GetStringSlice("elasticsearch.addresses"),
-		},
+		ServiceName:         cfg.Server.Name,
+		ElasticsearchConfig: cfg.Data.Elasticsearch,
+		BreakerConfig:       cfg.CircuitBreaker,
 	}
 	esClient, err := search_pkg.NewClient(esCfg, logger, metricsImpl)
 	if err != nil {
-		slog.Error("failed to connect elasticsearch", "error", err)
-	}
-	searchRepo := elasticsearch.NewOrderSearchRepository(esClient)
-
-	// 6. Application
-	orderService, err := application.NewOrderService(repo, searchRepo, db)
-	if err != nil {
-		panic(fmt.Sprintf("failed to init order service: %v", err))
+		slog.Error("failed to init elasticsearch", "error", err)
+	} else {
+		searchRepo = elasticsearch.NewOrderSearchRepository(esClient, "")
 	}
 
-	// 7. Event Handlers (Syncers)
-	consumerCfg := &configpkg.KafkaConfig{
-		Brokers: viper.GetStringSlice("kafka.brokers"),
-		Topic:   "order-events",
-		GroupID: "order-search-syncer",
-	}
-	kafkaConsumer := kafka.NewConsumer(consumerCfg, logger, metricsImpl)
-	searchHandler := events.NewOrderSearchHandler(searchRepo, repo, kafkaConsumer, 5)
+	// 8. Application
+	commandSvc := application.NewOrderCommandService(repo, mysql.NewEventStore(db.RawDB()), publisher)
+	querySvc := application.NewOrderQueryService(repo, readRepo, searchRepo)
 
-	// 8. Interfaces
+	// 9. Event Handlers (Search Sync)
+	if searchRepo != nil {
+		consumerCfg := cfg.MessageQueue.Kafka
+		consumerCfg.Topic = cfg.MessageQueue.Kafka.Topic
+		if consumerCfg.GroupID == "" {
+			consumerCfg.GroupID = "order-search-syncer"
+		}
+		kafkaConsumer := kafka.NewConsumer(&consumerCfg, logger, metricsImpl)
+		searchHandler := events.NewOrderSearchHandler(searchRepo, repo, kafkaConsumer, 5)
+		go searchHandler.Start(context.Background())
+	}
+
+	// 10. Interfaces
 	grpcSrv := grpc.NewServer()
-	h := grpc_server.NewHandler(orderService)
+	h := grpc_server.NewHandler(commandSvc, querySvc)
 	orderv1.RegisterOrderServiceServer(grpcSrv, h)
 	reflection.Register(grpcSrv)
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
-	hHandler := http_server.NewOrderHandler(orderService)
+	hHandler := http_server.NewOrderHandler(commandSvc, querySvc)
 	hHandler.RegisterRoutes(r.Group("/api"))
 
-	// 9. Start
+	// 11. Start
 	g, ctx := errgroup.WithContext(context.Background())
 
-	// Outbox Processor
 	g.Go(func() error {
 		outboxProcessor.Start()
 		<-ctx.Done()
@@ -136,28 +142,18 @@ func main() {
 		return nil
 	})
 
-	// Search Syncer
 	g.Go(func() error {
-		searchHandler.Start(ctx)
-		return nil
-	})
-
-	grpcPort := viper.GetString("server.grpc_port")
-	g.Go(func() error {
-		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+		addr := fmt.Sprintf(":%d", cfg.Server.GRPC.Port)
+		lis, err := net.Listen("tcp", addr)
 		if err != nil {
 			return err
 		}
-		slog.Info("Starting gRPC server", "port", grpcPort)
+		slog.Info("gRPC server starting", "addr", addr)
 		return grpcSrv.Serve(lis)
 	})
 
-	httpPort := viper.GetString("server.http_port")
-	if httpPort == "" {
-		httpPort = "8081"
-	}
 	g.Go(func() error {
-		addr := fmt.Sprintf(":%s", httpPort)
+		addr := fmt.Sprintf(":%d", cfg.Server.HTTP.Port)
 		server := &http.Server{Addr: addr, Handler: r}
 		slog.Info("HTTP server starting", "addr", addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -166,7 +162,6 @@ func main() {
 		return nil
 	})
 
-	// 10. Graceful Shutdown
 	g.Go(func() error {
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

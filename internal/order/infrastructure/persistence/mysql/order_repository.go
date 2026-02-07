@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
 	"github.com/wyfcoding/pkg/contextx"
@@ -20,84 +21,165 @@ func NewOrderRepository(db *gorm.DB) domain.OrderRepository {
 	return &orderRepository{db: db}
 }
 
-func (r *orderRepository) Save(ctx context.Context, order *domain.Order) error {
-	db := r.getDB(ctx)
-	if order.Model.ID == 0 {
-		return db.Create(order).Error
+// --- tx helpers ---
+
+func (r *orderRepository) BeginTx(ctx context.Context) any {
+	return r.db.WithContext(ctx).Begin()
+}
+
+func (r *orderRepository) CommitTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
 	}
-	// 乐观锁建议：通过 version 字段进行 Save
-	return db.Save(order).Error
+	return gormTx.Commit().Error
+}
+
+func (r *orderRepository) RollbackTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Rollback().Error
+}
+
+func (r *orderRepository) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		txCtx := contextx.WithTx(ctx, tx)
+		return fn(txCtx)
+	})
+}
+
+func (r *orderRepository) Save(ctx context.Context, order *domain.Order) error {
+	model := toOrderModel(order)
+	if model == nil {
+		return nil
+	}
+	db := r.getDB(ctx).WithContext(ctx)
+	if model.ID == 0 {
+		if err := db.Create(model).Error; err != nil {
+			return err
+		}
+		order.ID = model.ID
+		order.CreatedAt = model.CreatedAt
+		order.UpdatedAt = model.UpdatedAt
+		return nil
+	}
+	return db.Model(&OrderModel{}).
+		Where("order_id = ?", model.OrderID).
+		Updates(map[string]any{
+			"user_id":         model.UserID,
+			"symbol":          model.Symbol,
+			"side":            model.Side,
+			"type":            model.Type,
+			"price":           model.Price,
+			"stop_price":      model.StopPrice,
+			"quantity":        model.Quantity,
+			"filled_quantity": model.FilledQuantity,
+			"average_price":   model.AveragePrice,
+			"status":          model.Status,
+			"tif":             model.TimeInForce,
+			"parent_id":       model.ParentOrderID,
+			"is_oco":          model.IsOCO,
+			"updated_at":      time.Now(),
+		}).Error
 }
 
 func (r *orderRepository) Get(ctx context.Context, orderID string) (*domain.Order, error) {
-	var order domain.Order
-	if err := r.getDB(ctx).Where("order_id = ?", orderID).First(&order).Error; err != nil {
+	var model OrderModel
+	if err := r.getDB(ctx).WithContext(ctx).Where("order_id = ?", orderID).First(&model).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	order.SetID(orderID)
-	return &order, nil
+	order := toOrder(&model)
+	if order != nil {
+		order.SetID(order.OrderID)
+	}
+	return order, nil
 }
 
 func (r *orderRepository) ListByUser(ctx context.Context, userID string, status domain.OrderStatus, limit, offset int) ([]*domain.Order, int64, error) {
-	var orders []*domain.Order
+	var models []OrderModel
 	var total int64
-	db := r.getDB(ctx).Model(&domain.Order{}).Where("user_id = ?", userID)
+	query := r.getDB(ctx).WithContext(ctx).Model(&OrderModel{}).Where("user_id = ?", userID)
 	if status != "" {
-		db = db.Where("status = ?", status)
+		query = query.Where("status = ?", string(status))
 	}
-	if err := db.Count(&total).Error; err != nil {
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	if err := db.Limit(limit).Offset(offset).Order("created_at desc").Find(&orders).Error; err != nil {
+	if err := query.Limit(limit).Offset(offset).Order("created_at desc").Find(&models).Error; err != nil {
 		return nil, 0, err
 	}
-	for _, o := range orders {
-		o.SetID(o.OrderID)
+	orders := make([]*domain.Order, len(models))
+	for i := range models {
+		orders[i] = toOrder(&models[i])
+		if orders[i] != nil {
+			orders[i].SetID(orders[i].OrderID)
+		}
 	}
 	return orders, total, nil
 }
 
 func (r *orderRepository) ListBySymbol(ctx context.Context, symbol string, status domain.OrderStatus, limit, offset int) ([]*domain.Order, int64, error) {
-	var orders []*domain.Order
+	var models []OrderModel
 	var total int64
-	db := r.getDB(ctx).Model(&domain.Order{}).Where("symbol = ?", symbol)
+	query := r.getDB(ctx).WithContext(ctx).Model(&OrderModel{}).Where("symbol = ?", symbol)
 	if status != "" {
-		db = db.Where("status = ?", status)
+		query = query.Where("status = ?", string(status))
 	}
-	if err := db.Count(&total).Error; err != nil {
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	if err := db.Limit(limit).Offset(offset).Order("created_at desc").Find(&orders).Error; err != nil {
+	if err := query.Limit(limit).Offset(offset).Order("created_at desc").Find(&models).Error; err != nil {
 		return nil, 0, err
 	}
-	for _, o := range orders {
-		o.SetID(o.OrderID)
+	orders := make([]*domain.Order, len(models))
+	for i := range models {
+		orders[i] = toOrder(&models[i])
+		if orders[i] != nil {
+			orders[i].SetID(orders[i].OrderID)
+		}
 	}
 	return orders, total, nil
 }
 
 func (r *orderRepository) GetActiveOrdersBySymbol(ctx context.Context, symbol string) ([]*domain.Order, error) {
-	var orders []*domain.Order
-	err := r.getDB(ctx).Where("symbol = ? AND status IN ?", symbol, []domain.OrderStatus{domain.StatusPending, domain.StatusValidated, domain.StatusPartiallyFilled}).Find(&orders).Error
-	for _, o := range orders {
-		o.SetID(o.OrderID)
+	var models []OrderModel
+	statuses := []string{string(domain.StatusPending), string(domain.StatusValidated), string(domain.StatusPartiallyFilled)}
+	if err := r.getDB(ctx).WithContext(ctx).
+		Where("symbol = ? AND status IN ?", symbol, statuses).
+		Find(&models).Error; err != nil {
+		return nil, err
 	}
-	return orders, err
+	orders := make([]*domain.Order, len(models))
+	for i := range models {
+		orders[i] = toOrder(&models[i])
+		if orders[i] != nil {
+			orders[i].SetID(orders[i].OrderID)
+		}
+	}
+	return orders, nil
 }
 
 func (r *orderRepository) UpdateStatus(ctx context.Context, orderID string, status domain.OrderStatus) error {
-	return r.getDB(ctx).Model(&domain.Order{}).Where("order_id = ?", orderID).Update("status", status).Error
+	return r.getDB(ctx).WithContext(ctx).
+		Model(&OrderModel{}).
+		Where("order_id = ?", orderID).
+		Updates(map[string]any{"status": string(status), "updated_at": time.Now()}).Error
 }
 
 func (r *orderRepository) UpdateFilledQuantity(ctx context.Context, orderID string, filledQuantity float64) error {
-	return r.getDB(ctx).Model(&domain.Order{}).Where("order_id = ?", orderID).Update("filled_quantity", filledQuantity).Error
+	return r.getDB(ctx).WithContext(ctx).
+		Model(&OrderModel{}).
+		Where("order_id = ?", orderID).
+		Updates(map[string]any{"filled_quantity": filledQuantity, "updated_at": time.Now()}).Error
 }
 
 func (r *orderRepository) Delete(ctx context.Context, orderID string) error {
-	return r.getDB(ctx).Where("order_id = ?", orderID).Delete(&domain.Order{}).Error
+	return r.getDB(ctx).WithContext(ctx).Where("order_id = ?", orderID).Delete(&OrderModel{}).Error
 }
 
 func (r *orderRepository) getDB(ctx context.Context) *gorm.DB {
@@ -121,7 +203,7 @@ func (s *eventStore) Save(ctx context.Context, aggregateID string, events []even
 	db := s.getDB(ctx)
 	for _, event := range events {
 		payload, _ := json.Marshal(event)
-		po := &EventPO{
+		po := &EventModel{
 			AggregateID: aggregateID,
 			EventType:   event.EventType(),
 			Payload:     string(payload),
@@ -143,16 +225,4 @@ func (s *eventStore) getDB(ctx context.Context) *gorm.DB {
 		return tx
 	}
 	return s.db
-}
-
-type EventPO struct {
-	gorm.Model
-	AggregateID string `gorm:"column:aggregate_id;type:varchar(36);index;not null"`
-	EventType   string `gorm:"column:event_type;type:varchar(50);not null"`
-	Payload     string `gorm:"column:payload;type:json;not null"`
-	OccurredAt  int64  `gorm:"column:occurred_at;not null"`
-}
-
-func (EventPO) TableName() string {
-	return "order_events"
 }

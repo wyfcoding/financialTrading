@@ -14,10 +14,13 @@ type orderSearchRepository struct {
 }
 
 // NewOrderSearchRepository 创建订单搜索仓储实现。
-func NewOrderSearchRepository(client *search.Client) domain.OrderSearchRepository {
+func NewOrderSearchRepository(client *search.Client, index string) domain.OrderSearchRepository {
+	if index == "" {
+		index = "orders"
+	}
 	return &orderSearchRepository{
 		client: client,
-		index:  "orders",
+		index:  index,
 	}
 }
 

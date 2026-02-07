@@ -44,11 +44,10 @@ func (h *OrderSearchHandler) handleMessage(ctx context.Context, msg kafkago.Mess
 	}
 
 	orderID, ok := event["order_id"].(string)
-	if !ok {
-		return nil // skip or log
+	if !ok || orderID == "" {
+		return nil
 	}
 
-	// 回查主库获取聚合状态
 	order, err := h.orderRepo.Get(ctx, orderID)
 	if err != nil {
 		return err

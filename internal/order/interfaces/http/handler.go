@@ -3,28 +3,25 @@ package http
 import (
 	"net/http"
 
-	"github.com/wyfcoding/pkg/response"
-
 	"github.com/gin-gonic/gin"
 	"github.com/wyfcoding/financialtrading/internal/order/application"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/response"
 )
 
-// HTTP 处理器
+// OrderHandler HTTP 处理器
 // 负责处理与订单相关的 HTTP 请求
 type OrderHandler struct {
-	app *application.OrderService
+	cmd   *application.OrderCommandService
+	query *application.OrderQueryService
 }
 
 // 创建 HTTP 处理器实例
-func NewOrderHandler(app *application.OrderService) *OrderHandler {
-	return &OrderHandler{
-		app: app,
-	}
+func NewOrderHandler(cmd *application.OrderCommandService, query *application.OrderQueryService) *OrderHandler {
+	return &OrderHandler{cmd: cmd, query: query}
 }
 
 // 注册路由
-// 将处理器方法绑定到 Gin 路由引擎
 func (h *OrderHandler) RegisterRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api/v1/orders")
 	{
@@ -41,7 +38,7 @@ type CreateOrderRequest struct {
 	Symbol        string  `json:"symbol" binding:"required"`
 	Side          string  `json:"side" binding:"required"`
 	Type          string  `json:"type" binding:"required"`
-	Price         float64 `json:"price" binding:"required"`
+	Price         float64 `json:"price"`
 	StopPrice     float64 `json:"stop_price"`
 	Quantity      float64 `json:"quantity" binding:"required"`
 	TimeInForce   string  `json:"time_in_force"`
@@ -70,7 +67,7 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		IsOCO:         req.IsOCO,
 	}
 
-	orderID, err := h.app.PlaceOrder(c.Request.Context(), cmd)
+	orderID, err := h.cmd.PlaceOrder(c.Request.Context(), cmd)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to create order", "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -107,7 +104,7 @@ func (h *OrderHandler) CancelOrder(c *gin.Context) {
 		Reason:  req.Reason,
 	}
 
-	if err := h.app.CancelOrder(c.Request.Context(), cmd); err != nil {
+	if err := h.cmd.CancelOrder(c.Request.Context(), cmd); err != nil {
 		logging.Error(c.Request.Context(), "Failed to cancel order", "order_id", orderID, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
@@ -124,16 +121,14 @@ func (h *OrderHandler) GetOrder(c *gin.Context) {
 		return
 	}
 
-	userID := c.Query("user_id")
-	if userID == "" {
-		response.ErrorWithStatus(c, http.StatusBadRequest, "user_id is required", "")
-		return
-	}
-
-	dto, err := h.app.GetOrder(c.Request.Context(), orderID) // query typically doesn't need userID if it's broad
+	dto, err := h.query.GetOrder(c.Request.Context(), orderID)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get order", "order_id", orderID, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
+		return
+	}
+	if dto == nil {
+		response.ErrorWithStatus(c, http.StatusNotFound, "order not found", "")
 		return
 	}
 

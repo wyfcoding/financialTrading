@@ -2,119 +2,113 @@ package application
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
 	"github.com/wyfcoding/pkg/contextx"
-	"gorm.io/gorm"
 )
 
-// PlaceOrderCommand 下单命令
-type PlaceOrderCommand struct {
-	UserID        string
-	Symbol        string
-	Side          string
-	Type          string
-	Price         float64
-	StopPrice     float64
-	Quantity      float64
-	TimeInForce   string
-	ParentOrderID string
-	IsOCO         bool
-}
-
-// CancelOrderCommand 取消订单命令
-type CancelOrderCommand struct {
-	OrderID string
-	UserID  string
-	Reason  string
-}
-
 // OrderCommandService 处理订单相关的命令操作
+// 使用事件溯源 + Outbox
+
 type OrderCommandService struct {
 	repo           domain.OrderRepository
 	eventStore     domain.EventStore
 	eventPublisher domain.EventPublisher
-	db             *gorm.DB
 }
 
 // NewOrderCommandService 创建新的 OrderCommandService 实例
-func NewOrderCommandService(repo domain.OrderRepository, eventStore domain.EventStore, eventPublisher domain.EventPublisher, db *gorm.DB) *OrderCommandService {
+func NewOrderCommandService(repo domain.OrderRepository, eventStore domain.EventStore, eventPublisher domain.EventPublisher) *OrderCommandService {
 	return &OrderCommandService{
 		repo:           repo,
 		eventStore:     eventStore,
 		eventPublisher: eventPublisher,
-		db:             db,
 	}
 }
 
 // PlaceOrder 下单
 func (c *OrderCommandService) PlaceOrder(ctx context.Context, cmd PlaceOrderCommand) (string, error) {
-	// 开启事务
-	err := c.db.Transaction(func(tx *gorm.DB) error {
-		txCtx := contextx.WithTx(ctx, tx)
+	if err := validatePlaceOrder(cmd); err != nil {
+		return "", err
+	}
 
-		// 创建订单 (构造函数内部已经 ApplyChange)
+	orderID := generateOrderID()
+	var createdID string
+
+	err := c.repo.WithTx(ctx, func(txCtx context.Context) error {
+		tx := contextx.GetTx(txCtx)
+
 		order := domain.NewOrder(
-			generateOrderID(),
+			orderID,
 			cmd.UserID,
 			cmd.Symbol,
 			domain.OrderSide(cmd.Side),
 			domain.OrderType(cmd.Type),
 			cmd.Price,
 			cmd.Quantity,
+			cmd.StopPrice,
+			domain.TimeInForce(cmd.TimeInForce),
+			cmd.ParentOrderID,
+			cmd.IsOCO,
 		)
 
-		order.StopPrice = cmd.StopPrice
-		order.TimeInForce = domain.TimeInForce(cmd.TimeInForce)
-		order.ParentOrderID = cmd.ParentOrderID
-		order.IsOCO = cmd.IsOCO
-
-		// 验证订单
 		if err := order.Validate(); err != nil {
 			return err
 		}
 
-		// 保存订单
 		if err := c.repo.Save(txCtx, order); err != nil {
 			return err
 		}
 
-		// 保存事件
 		if err := c.eventStore.Save(txCtx, order.OrderID, order.GetUncommittedEvents(), order.Version()); err != nil {
 			return err
 		}
+		if c.eventPublisher != nil {
+			for _, ev := range order.GetUncommittedEvents() {
+				if err := c.eventPublisher.PublishInTx(txCtx, tx, ev.EventType(), order.OrderID, ev); err != nil {
+					return err
+				}
+			}
+		}
 		order.MarkCommitted()
 
-		// 验证订单并更新状态
 		order.MarkValidated()
 		if err := c.repo.Save(txCtx, order); err != nil {
 			return err
 		}
-
-		// 保存状态变更事件
 		if err := c.eventStore.Save(txCtx, order.OrderID, order.GetUncommittedEvents(), order.Version()); err != nil {
 			return err
 		}
+		if c.eventPublisher != nil {
+			for _, ev := range order.GetUncommittedEvents() {
+				if err := c.eventPublisher.PublishInTx(txCtx, tx, ev.EventType(), order.OrderID, ev); err != nil {
+					return err
+				}
+			}
+		}
 		order.MarkCommitted()
 
+		createdID = order.OrderID
 		return nil
 	})
 
 	if err != nil {
 		return "", err
 	}
-
-	return "", nil // Temporarily return empty if no order id available directly, but wait
+	return createdID, nil
 }
 
 // CancelOrder 取消订单
 func (c *OrderCommandService) CancelOrder(ctx context.Context, cmd CancelOrderCommand) error {
-	return c.db.Transaction(func(tx *gorm.DB) error {
-		txCtx := contextx.WithTx(ctx, tx)
+	if cmd.OrderID == "" {
+		return errors.New("order_id is required")
+	}
+	return c.repo.WithTx(ctx, func(txCtx context.Context) error {
+		tx := contextx.GetTx(txCtx)
 
-		// 获取订单
 		order, err := c.repo.Get(txCtx, cmd.OrderID)
 		if err != nil {
 			return err
@@ -122,19 +116,13 @@ func (c *OrderCommandService) CancelOrder(ctx context.Context, cmd CancelOrderCo
 		if order == nil {
 			return fmt.Errorf("order not found")
 		}
-
-		// 检查用户权限
-		if order.UserID != cmd.UserID {
+		if cmd.UserID != "" && order.UserID != cmd.UserID {
 			return ErrUnauthorized
 		}
-
-		// 检查订单状态
 		if order.Status != domain.StatusValidated && order.Status != domain.StatusPartiallyFilled {
 			return ErrInvalidOrderStatus
 		}
 
-		// 执行取消逻辑 (ApplyChange inside Domain if needed, currently manual)
-		// I'll add MarkCancelled to Domain later or just ApplyChange here
 		order.ApplyChange(&domain.OrderCancelledEvent{
 			OrderID:     order.OrderID,
 			UserID:      order.UserID,
@@ -147,22 +135,28 @@ func (c *OrderCommandService) CancelOrder(ctx context.Context, cmd CancelOrderCo
 		if err := c.repo.Save(txCtx, order); err != nil {
 			return err
 		}
-
 		if err := c.eventStore.Save(txCtx, order.OrderID, order.GetUncommittedEvents(), order.Version()); err != nil {
 			return err
 		}
+		if c.eventPublisher != nil {
+			for _, ev := range order.GetUncommittedEvents() {
+				if err := c.eventPublisher.PublishInTx(txCtx, tx, ev.EventType(), order.OrderID, ev); err != nil {
+					return err
+				}
+			}
+		}
 		order.MarkCommitted()
-
 		return nil
 	})
 }
 
 // UpdateOrderExecution 更新订单执行状态
 func (c *OrderCommandService) UpdateOrderExecution(ctx context.Context, orderID string, filledQty, tradePrice float64) error {
-	return c.db.Transaction(func(tx *gorm.DB) error {
-		txCtx := contextx.WithTx(ctx, tx)
-
-		// 获取订单
+	if orderID == "" {
+		return errors.New("order_id is required")
+	}
+	return c.repo.WithTx(ctx, func(txCtx context.Context) error {
+		tx := contextx.GetTx(txCtx)
 		order, err := c.repo.Get(txCtx, orderID)
 		if err != nil {
 			return err
@@ -171,18 +165,21 @@ func (c *OrderCommandService) UpdateOrderExecution(ctx context.Context, orderID 
 			return fmt.Errorf("order not found")
 		}
 
-		// 更新订单执行状态 (Inside domain uses ApplyChange)
 		order.UpdateExecution(filledQty, tradePrice)
-
 		if err := c.repo.Save(txCtx, order); err != nil {
 			return err
 		}
-
 		if err := c.eventStore.Save(txCtx, order.OrderID, order.GetUncommittedEvents(), order.Version()); err != nil {
 			return err
 		}
+		if c.eventPublisher != nil {
+			for _, ev := range order.GetUncommittedEvents() {
+				if err := c.eventPublisher.PublishInTx(txCtx, tx, ev.EventType(), order.OrderID, ev); err != nil {
+					return err
+				}
+			}
+		}
 		order.MarkCommitted()
-
 		return nil
 	})
 }
@@ -209,6 +206,7 @@ var (
 )
 
 // Error 自定义错误
+
 type Error struct {
 	Code    string
 	Message string
@@ -225,4 +223,22 @@ func NewError(code, message string) *Error {
 		Code:    code,
 		Message: message,
 	}
+}
+
+func validatePlaceOrder(cmd PlaceOrderCommand) error {
+	if cmd.UserID == "" || cmd.Symbol == "" || cmd.Side == "" || cmd.Type == "" {
+		return errors.New("user_id, symbol, side, type are required")
+	}
+	cmd.Side = strings.ToLower(cmd.Side)
+	if cmd.Side != string(domain.SideBuy) && cmd.Side != string(domain.SideSell) {
+		return errors.New("invalid side")
+	}
+	cmd.Type = strings.ToLower(cmd.Type)
+	if cmd.Quantity <= 0 {
+		return errors.New("quantity must be positive")
+	}
+	if cmd.Type == string(domain.TypeLimit) && cmd.Price <= 0 {
+		return errors.New("price must be positive for limit orders")
+	}
+	return nil
 }

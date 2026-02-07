@@ -7,16 +7,49 @@ metadata:
 data:
   config.toml: |
     [server]
-    grpc_port = "{{ .Values.config.server.grpc_port }}"
+    name = "{{ .Values.config.server.name }}"
+    environment = "{{ .Values.config.server.environment }}"
 
-    [database]
-    driver = "{{ .Values.config.database.driver }}"
-    source = "{{ .Values.config.database.source }}"
+    [server.http]
+    port = {{ .Values.config.server.http.port }}
+    timeout = "{{ .Values.config.server.http.timeout }}"
+
+    [server.grpc]
+    port = {{ .Values.config.server.grpc.port }}
+    timeout = "{{ .Values.config.server.grpc.timeout }}"
 
     [log]
     level = "{{ .Values.config.log.level }}"
     format = "{{ .Values.config.log.format }}"
+    output = "{{ .Values.config.log.output }}"
 
-    [kafka]
-    brokers = {{ .Values.config.kafka.brokers | toJson }}
-    topic_order = "{{ .Values.config.kafka.topic_order }}"
+    [data.database]
+    driver = "{{ .Values.config.data.database.driver }}"
+    dsn = "{{ .Values.config.data.database.dsn }}"
+    max_idle_conns = {{ .Values.config.data.database.max_idle_conns }}
+    max_open_conns = {{ .Values.config.data.database.max_open_conns }}
+    conn_max_lifetime = "{{ .Values.config.data.database.conn_max_lifetime }}"
+
+    [data.redis]
+    addrs = {{ .Values.config.data.redis.addrs | toJson }}
+    password = "{{ .Values.config.data.redis.password }}"
+    db = {{ .Values.config.data.redis.db }}
+    pool_size = {{ .Values.config.data.redis.pool_size }}
+    min_idle_conns = {{ .Values.config.data.redis.min_idle_conns }}
+    read_timeout = "{{ .Values.config.data.redis.read_timeout }}"
+    write_timeout = "{{ .Values.config.data.redis.write_timeout }}"
+
+    [data.elasticsearch]
+    addresses = {{ .Values.config.data.elasticsearch.addresses | toJson }}
+    username = "{{ .Values.config.data.elasticsearch.username }}"
+    password = "{{ .Values.config.data.elasticsearch.password }}"
+
+    [messagequeue.kafka]
+    brokers = {{ .Values.config.messagequeue.kafka.brokers | toJson }}
+    topic = "{{ .Values.config.messagequeue.kafka.topic }}"
+    group_id = "{{ .Values.config.messagequeue.kafka.group_id }}"
+
+    [tracing]
+    enabled = {{ .Values.config.tracing.enabled }}
+    service_name = "{{ .Values.config.tracing.service_name }}"
+    otlp_endpoint = "{{ .Values.config.tracing.otlp_endpoint }}"
