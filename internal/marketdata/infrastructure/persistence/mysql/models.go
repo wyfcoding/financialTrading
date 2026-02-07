@@ -6,13 +6,12 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/domain"
+	"gorm.io/gorm"
 )
 
 // QuoteModel MySQL 行情报价表映射
 type QuoteModel struct {
-	ID        uint            `gorm:"primaryKey;autoIncrement"`
-	CreatedAt time.Time       `gorm:"column:created_at"`
-	UpdatedAt time.Time       `gorm:"column:updated_at"`
+	gorm.Model
 	Symbol    string          `gorm:"column:symbol;type:varchar(32);index;not null;comment:标的"`
 	BidPrice  decimal.Decimal `gorm:"column:bid_price;type:decimal(32,18);not null"`
 	AskPrice  decimal.Decimal `gorm:"column:ask_price;type:decimal(32,18);not null"`
@@ -27,9 +26,7 @@ func (QuoteModel) TableName() string { return "quotes" }
 
 // KlineModel MySQL K 线表映射
 type KlineModel struct {
-	ID        uint            `gorm:"primaryKey;autoIncrement"`
-	CreatedAt time.Time       `gorm:"column:created_at"`
-	UpdatedAt time.Time       `gorm:"column:updated_at"`
+	gorm.Model
 	Symbol    string          `gorm:"column:symbol;type:varchar(32);index;not null"`
 	Interval  string          `gorm:"column:interval_period;type:varchar(10);index;not null"`
 	OpenTime  time.Time       `gorm:"column:open_time;index;not null"`
@@ -45,9 +42,8 @@ func (KlineModel) TableName() string { return "klines" }
 
 // TradeModel MySQL 成交记录表映射
 type TradeModel struct {
+	gorm.Model
 	ID        string          `gorm:"primaryKey;type:varchar(64);column:id"`
-	CreatedAt time.Time       `gorm:"column:created_at"`
-	UpdatedAt time.Time       `gorm:"column:updated_at"`
 	Symbol    string          `gorm:"column:symbol;type:varchar(32);index;not null"`
 	Price     decimal.Decimal `gorm:"column:price;type:decimal(32,18);not null"`
 	Quantity  decimal.Decimal `gorm:"column:quantity;type:decimal(32,18);not null"`
@@ -59,9 +55,7 @@ func (TradeModel) TableName() string { return "trades" }
 
 // OrderBookModel MySQL 订单簿表映射
 type OrderBookModel struct {
-	ID        uint      `gorm:"primaryKey;autoIncrement"`
-	CreatedAt time.Time `gorm:"column:created_at"`
-	UpdatedAt time.Time `gorm:"column:updated_at"`
+	gorm.Model
 	Symbol    string    `gorm:"column:symbol;type:varchar(32);uniqueIndex;not null"`
 	BidsJSON  string    `gorm:"column:bids;type:json;not null"`
 	AsksJSON  string    `gorm:"column:asks;type:json;not null"`

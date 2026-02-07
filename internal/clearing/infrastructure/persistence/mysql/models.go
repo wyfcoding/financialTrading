@@ -5,13 +5,12 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/clearing/domain"
+	"gorm.io/gorm"
 )
 
 // SettlementModel MySQL 结算表映射
 type SettlementModel struct {
-	ID           uint            `gorm:"primaryKey;autoIncrement"`
-	CreatedAt    time.Time       `gorm:"column:created_at"`
-	UpdatedAt    time.Time       `gorm:"column:updated_at"`
+	gorm.Model
 	SettlementID string          `gorm:"column:settlement_id;type:varchar(32);uniqueIndex;not null;comment:结算ID"`
 	TradeID      string          `gorm:"column:trade_id;type:varchar(32);index;not null;comment:成交ID"`
 	BuyUserID    string          `gorm:"column:buy_user_id;type:varchar(32);not null;comment:买方用户ID"`
@@ -35,9 +34,11 @@ func toSettlementModel(s *domain.Settlement) *SettlementModel {
 		return nil
 	}
 	return &SettlementModel{
-		ID:           s.ID,
-		CreatedAt:    s.CreatedAt,
-		UpdatedAt:    s.UpdatedAt,
+		Model: gorm.Model{
+			ID:        s.ID,
+			CreatedAt: s.CreatedAt,
+			UpdatedAt: s.UpdatedAt,
+		},
 		SettlementID: s.SettlementID,
 		TradeID:      s.TradeID,
 		BuyUserID:    s.BuyUserID,

@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -43,12 +44,16 @@ func (c *PricingCommandService) PriceOption(ctx context.Context, cmd PriceOption
 
 		// 根据定价模型选择不同的定价方法
 		var price float64
+		timeToExpiry := float64(cmd.ExpiryDate-time.Now().UnixMilli()) / 1000 / 24 / 3600 / 365
+		if timeToExpiry < 0 {
+			timeToExpiry = 0
+		}
 		switch cmd.PricingModel {
 		case "BlackScholes":
 			input := domain.BlackScholesInput{
 				S: cmd.UnderlyingPrice,
 				K: cmd.StrikePrice,
-				T: float64(cmd.ExpiryDate-time.Now().UnixMilli()) / 1000 / 24 / 3600 / 365,
+				T: timeToExpiry,
 				R: cmd.RiskFreeRate,
 				V: cmd.Volatility,
 			}
@@ -62,14 +67,28 @@ func (c *PricingCommandService) PriceOption(ctx context.Context, cmd PriceOption
 				Rho:   bs.Rho,
 			}
 		case "LongstaffSchwartz":
-			// 简化实现：实际应使用完整的模拟定价
-			price = cmd.UnderlyingPrice * 0.1
+			pricer := domain.NewLSMPricer()
+			isPut := strings.EqualFold(cmd.OptionType, string(domain.OptionTypePut))
+			lsmPrice, calcErr := pricer.Price(domain.AmericanOptionParams{
+				S0:    cmd.UnderlyingPrice,
+				K:     cmd.StrikePrice,
+				T:     timeToExpiry,
+				R:     cmd.RiskFreeRate,
+				Sigma: cmd.Volatility,
+				IsPut: isPut,
+				Paths: 2000,
+				Steps: 50,
+			})
+			if calcErr != nil {
+				return calcErr
+			}
+			price = lsmPrice
 			greeks = domain.Greeks{}
 		default:
 			input := domain.BlackScholesInput{
 				S: cmd.UnderlyingPrice,
 				K: cmd.StrikePrice,
-				T: float64(cmd.ExpiryDate-time.Now().UnixMilli()) / 1000 / 24 / 3600 / 365,
+				T: timeToExpiry,
 				R: cmd.RiskFreeRate,
 				V: cmd.Volatility,
 			}

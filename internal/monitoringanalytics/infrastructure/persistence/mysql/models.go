@@ -6,57 +6,50 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/domain"
+	"gorm.io/gorm"
 )
 
 // MetricModel 指标数据库模型
 type MetricModel struct {
-	ID        uint      `gorm:"primaryKey;autoIncrement"`
-	CreatedAt time.Time `gorm:"column:created_at"`
-	UpdatedAt time.Time `gorm:"column:updated_at"`
-	Name      string    `gorm:"column:name;type:varchar(100);index;not null"`
-	Value     string    `gorm:"column:value;type:decimal(32,18);not null"`
-	TagsJSON  string    `gorm:"column:tags;type:text"`
-	Timestamp int64     `gorm:"column:timestamp;type:bigint;index;not null"`
+	gorm.Model
+	Name      string `gorm:"column:name;type:varchar(100);index;not null"`
+	Value     string `gorm:"column:value;type:decimal(32,18);not null"`
+	TagsJSON  string `gorm:"column:tags;type:text"`
+	Timestamp int64  `gorm:"column:timestamp;type:bigint;index;not null"`
 }
 
 func (MetricModel) TableName() string { return "analytics_metrics" }
 
 // SystemHealthModel 系统健康数据库模型
 type SystemHealthModel struct {
-	ID          uint      `gorm:"primaryKey;autoIncrement"`
-	CreatedAt   time.Time `gorm:"column:created_at"`
-	UpdatedAt   time.Time `gorm:"column:updated_at"`
-	ServiceName string    `gorm:"column:service_name;type:varchar(100);index;not null"`
-	Status      string    `gorm:"column:status;type:varchar(20);not null"`
-	CPUUsage    float64   `gorm:"column:cpu_usage;type:decimal(5,2)"`
-	MemoryUsage float64   `gorm:"column:memory_usage;type:decimal(5,2)"`
-	Message     string    `gorm:"column:message;type:text"`
-	LastChecked int64     `gorm:"column:last_checked;type:bigint;not null"`
+	gorm.Model
+	ServiceName string  `gorm:"column:service_name;type:varchar(100);index;not null"`
+	Status      string  `gorm:"column:status;type:varchar(20);not null"`
+	CPUUsage    float64 `gorm:"column:cpu_usage;type:decimal(5,2)"`
+	MemoryUsage float64 `gorm:"column:memory_usage;type:decimal(5,2)"`
+	Message     string  `gorm:"column:message;type:text"`
+	LastChecked int64   `gorm:"column:last_checked;type:bigint;not null"`
 }
 
 func (SystemHealthModel) TableName() string { return "analytics_system_health" }
 
 // AlertModel 告警数据库模型
 type AlertModel struct {
-	ID        uint      `gorm:"primaryKey;autoIncrement"`
-	CreatedAt time.Time `gorm:"column:created_at"`
-	UpdatedAt time.Time `gorm:"column:updated_at"`
-	AlertID   string    `gorm:"column:alert_id;type:varchar(32);uniqueIndex;not null"`
-	RuleName  string    `gorm:"column:rule_name;type:varchar(100);not null"`
-	Severity  string    `gorm:"column:severity;type:varchar(20)"`
-	Message   string    `gorm:"column:message;type:text"`
-	Source    string    `gorm:"column:source;type:varchar(50)"`
-	Status    string    `gorm:"column:status;type:varchar(20)"`
-	Timestamp int64     `gorm:"column:timestamp;type:bigint;index"`
+	gorm.Model
+	AlertID   string `gorm:"column:alert_id;type:varchar(32);uniqueIndex;not null"`
+	RuleName  string `gorm:"column:rule_name;type:varchar(100);not null"`
+	Severity  string `gorm:"column:severity;type:varchar(20)"`
+	Message   string `gorm:"column:message;type:text"`
+	Source    string `gorm:"column:source;type:varchar(50)"`
+	Status    string `gorm:"column:status;type:varchar(20)"`
+	Timestamp int64  `gorm:"column:timestamp;type:bigint;index"`
 }
 
 func (AlertModel) TableName() string { return "analytics_alerts" }
 
 // TradeMetricModel 交易指标数据库模型
 type TradeMetricModel struct {
-	ID           uint      `gorm:"primaryKey;autoIncrement"`
-	CreatedAt    time.Time `gorm:"column:created_at"`
-	UpdatedAt    time.Time `gorm:"column:updated_at"`
+	gorm.Model
 	Symbol       string    `gorm:"column:symbol;type:varchar(20);index"`
 	MetricType   string    `gorm:"column:metric_type;type:varchar(20)"`
 	Timestamp    time.Time `gorm:"column:timestamp;index"`
@@ -82,9 +75,11 @@ func toMetricModel(m *domain.Metric) (*MetricModel, error) {
 		tagsJSON = string(raw)
 	}
 	return &MetricModel{
-		ID:        m.ID,
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
+		Model: gorm.Model{
+			ID:        m.ID,
+			CreatedAt: m.CreatedAt,
+			UpdatedAt: m.UpdatedAt,
+		},
 		Name:      m.Name,
 		Value:     m.Value.String(),
 		TagsJSON:  tagsJSON,
@@ -123,9 +118,11 @@ func toHealthModel(h *domain.SystemHealth) *SystemHealthModel {
 		return nil
 	}
 	return &SystemHealthModel{
-		ID:          h.ID,
-		CreatedAt:   h.CreatedAt,
-		UpdatedAt:   h.UpdatedAt,
+		Model: gorm.Model{
+			ID:        h.ID,
+			CreatedAt: h.CreatedAt,
+			UpdatedAt: h.UpdatedAt,
+		},
 		ServiceName: h.ServiceName,
 		Status:      h.Status,
 		CPUUsage:    h.CPUUsage,
@@ -157,9 +154,11 @@ func toAlertModel(a *domain.Alert) *AlertModel {
 		return nil
 	}
 	return &AlertModel{
-		ID:        a.ID,
-		CreatedAt: a.CreatedAt,
-		UpdatedAt: a.UpdatedAt,
+		Model: gorm.Model{
+			ID:        a.ID,
+			CreatedAt: a.CreatedAt,
+			UpdatedAt: a.UpdatedAt,
+		},
 		AlertID:   a.AlertID,
 		RuleName:  a.RuleName,
 		Severity:  a.Severity,

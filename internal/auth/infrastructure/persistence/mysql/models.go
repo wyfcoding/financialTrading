@@ -1,19 +1,16 @@
 package mysql
 
 import (
-	"time"
-
 	"github.com/wyfcoding/financialtrading/internal/auth/domain"
+	"gorm.io/gorm"
 )
 
 // UserModel MySQL 用户表映射
 type UserModel struct {
-	ID           uint      `gorm:"primaryKey;autoIncrement"`
-	CreatedAt    time.Time `gorm:"column:created_at"`
-	UpdatedAt    time.Time `gorm:"column:updated_at"`
-	Email        string    `gorm:"column:email;type:varchar(255);uniqueIndex;not null"`
-	PasswordHash string    `gorm:"column:password_hash;type:varchar(255);not null"`
-	Role         string    `gorm:"column:role;type:varchar(20);default:'TRADER';not null"`
+	gorm.Model
+	Email        string `gorm:"column:email;type:varchar(255);uniqueIndex;not null"`
+	PasswordHash string `gorm:"column:password_hash;type:varchar(255);not null"`
+	Role         string `gorm:"column:role;type:varchar(20);default:'TRADER';not null"`
 }
 
 func (UserModel) TableName() string {
@@ -22,15 +19,13 @@ func (UserModel) TableName() string {
 
 // APIKeyModel MySQL API Key 表映射
 type APIKeyModel struct {
-	ID         uint      `gorm:"primaryKey;autoIncrement"`
-	CreatedAt  time.Time `gorm:"column:created_at"`
-	UpdatedAt  time.Time `gorm:"column:updated_at"`
-	Key        string    `gorm:"column:api_key;type:varchar(64);uniqueIndex;not null"`
-	SecretHash string    `gorm:"column:secret_hash;type:varchar(128);not null"`
-	UserID     string    `gorm:"column:user_id;type:varchar(64);index;not null"`
-	Label      string    `gorm:"column:label;type:varchar(100)"`
-	Enabled    bool      `gorm:"column:enabled;default:true"`
-	Scopes     string    `gorm:"column:scopes;type:text"`
+	gorm.Model
+	Key        string `gorm:"column:api_key;type:varchar(64);uniqueIndex;not null"`
+	SecretHash string `gorm:"column:secret_hash;type:varchar(128);not null"`
+	UserID     string `gorm:"column:user_id;type:varchar(64);index;not null"`
+	Label      string `gorm:"column:label;type:varchar(100)"`
+	Enabled    bool   `gorm:"column:enabled;default:true"`
+	Scopes     string `gorm:"column:scopes;type:text"`
 }
 
 func (APIKeyModel) TableName() string {
@@ -42,9 +37,11 @@ func toUserModel(user *domain.User) *UserModel {
 		return nil
 	}
 	return &UserModel{
-		ID:           user.ID,
-		CreatedAt:    user.CreatedAt,
-		UpdatedAt:    user.UpdatedAt,
+		Model: gorm.Model{
+			ID:        user.ID,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+		},
 		Email:        user.Email,
 		PasswordHash: user.PasswordHash,
 		Role:         string(user.Role),
@@ -70,9 +67,11 @@ func toAPIKeyModel(key *domain.APIKey) *APIKeyModel {
 		return nil
 	}
 	return &APIKeyModel{
-		ID:         key.ID,
-		CreatedAt:  key.CreatedAt,
-		UpdatedAt:  key.UpdatedAt,
+		Model: gorm.Model{
+			ID:        key.ID,
+			CreatedAt: key.CreatedAt,
+			UpdatedAt: key.UpdatedAt,
+		},
 		Key:        key.Key,
 		SecretHash: key.SecretHash,
 		UserID:     key.UserID,

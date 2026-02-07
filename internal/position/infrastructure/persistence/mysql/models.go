@@ -1,22 +1,19 @@
 package mysql
 
 import (
-	"time"
-
 	"github.com/wyfcoding/financialtrading/internal/position/domain"
+	"gorm.io/gorm"
 )
 
 // PositionModel MySQL 持仓表映射
 type PositionModel struct {
-	ID                uint      `gorm:"primaryKey;autoIncrement"`
-	CreatedAt         time.Time `gorm:"column:created_at"`
-	UpdatedAt         time.Time `gorm:"column:updated_at"`
-	UserID            string    `gorm:"column:user_id;type:varchar(50);index;uniqueIndex:idx_user_symbol;not null"`
-	Symbol            string    `gorm:"column:symbol;type:varchar(20);index;uniqueIndex:idx_user_symbol;not null"`
-	Quantity          float64   `gorm:"column:quantity;type:decimal(20,8)"`
-	AverageEntryPrice float64   `gorm:"column:average_entry_price;type:decimal(20,8)"`
-	RealizedPnL       float64   `gorm:"column:realized_pnl;type:decimal(20,8);default:0"`
-	Method            string    `gorm:"column:cost_method;type:varchar(20);default:'AVERAGE'"`
+	gorm.Model
+	UserID            string             `gorm:"column:user_id;type:varchar(50);index;uniqueIndex:idx_user_symbol;not null"`
+	Symbol            string             `gorm:"column:symbol;type:varchar(20);index;uniqueIndex:idx_user_symbol;not null"`
+	Quantity          float64            `gorm:"column:quantity;type:decimal(20,8)"`
+	AverageEntryPrice float64            `gorm:"column:average_entry_price;type:decimal(20,8)"`
+	RealizedPnL       float64            `gorm:"column:realized_pnl;type:decimal(20,8);default:0"`
+	Method            string             `gorm:"column:cost_method;type:varchar(20);default:'AVERAGE'"`
 	Lots              []PositionLotModel `gorm:"foreignKey:PositionID;constraint:OnDelete:CASCADE"`
 }
 
@@ -24,12 +21,10 @@ func (PositionModel) TableName() string { return "positions" }
 
 // PositionLotModel MySQL 持仓批次表映射
 type PositionLotModel struct {
-	ID         uint      `gorm:"primaryKey;autoIncrement"`
-	CreatedAt  time.Time `gorm:"column:created_at"`
-	UpdatedAt  time.Time `gorm:"column:updated_at"`
-	PositionID uint      `gorm:"column:position_id;index;not null"`
-	Quantity   float64   `gorm:"column:quantity;type:decimal(20,8)"`
-	Price      float64   `gorm:"column:price;type:decimal(20,8)"`
+	gorm.Model
+	PositionID uint    `gorm:"column:position_id;index;not null"`
+	Quantity   float64 `gorm:"column:quantity;type:decimal(20,8)"`
+	Price      float64 `gorm:"column:price;type:decimal(20,8)"`
 }
 
 func (PositionLotModel) TableName() string { return "position_lots" }
@@ -41,9 +36,11 @@ func toPositionModel(p *domain.Position) *PositionModel {
 		return nil
 	}
 	return &PositionModel{
-		ID:                p.ID,
-		CreatedAt:         p.CreatedAt,
-		UpdatedAt:         p.UpdatedAt,
+		Model: gorm.Model{
+			ID:        p.ID,
+			CreatedAt: p.CreatedAt,
+			UpdatedAt: p.UpdatedAt,
+		},
 		UserID:            p.UserID,
 		Symbol:            p.Symbol,
 		Quantity:          p.Quantity,
@@ -79,9 +76,11 @@ func toPositionLotModels(lots []domain.PositionLot) []PositionLotModel {
 	models := make([]PositionLotModel, len(lots))
 	for i := range lots {
 		models[i] = PositionLotModel{
-			ID:         lots[i].ID,
-			CreatedAt:  lots[i].CreatedAt,
-			UpdatedAt:  lots[i].UpdatedAt,
+			Model: gorm.Model{
+				ID:        lots[i].ID,
+				CreatedAt: lots[i].CreatedAt,
+				UpdatedAt: lots[i].UpdatedAt,
+			},
 			PositionID: lots[i].PositionID,
 			Quantity:   lots[i].Quantity,
 			Price:      lots[i].Price,

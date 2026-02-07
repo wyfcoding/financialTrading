@@ -5,13 +5,12 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
+	"gorm.io/gorm"
 )
 
 // StrategyModel MySQL 做市策略表映射
 type StrategyModel struct {
-	ID           uint            `gorm:"primaryKey;autoIncrement"`
-	CreatedAt    time.Time       `gorm:"column:created_at"`
-	UpdatedAt    time.Time       `gorm:"column:updated_at"`
+	gorm.Model
 	Symbol       string          `gorm:"column:symbol;type:varchar(32);uniqueIndex;not null"`
 	Spread       decimal.Decimal `gorm:"column:spread;type:decimal(32,18);not null"`
 	MinOrderSize decimal.Decimal `gorm:"column:min_order_size;type:decimal(32,18);not null"`
@@ -24,9 +23,7 @@ func (StrategyModel) TableName() string { return "marketmaking_strategies" }
 
 // PerformanceModel MySQL 做市绩效表映射
 type PerformanceModel struct {
-	ID          uint            `gorm:"primaryKey;autoIncrement"`
-	CreatedAt   time.Time       `gorm:"column:created_at"`
-	UpdatedAt   time.Time       `gorm:"column:updated_at"`
+	gorm.Model
 	Symbol      string          `gorm:"column:symbol;type:varchar(32);uniqueIndex;not null"`
 	TotalPnL    decimal.Decimal `gorm:"column:total_pnl;type:decimal(32,18);not null"`
 	TotalVolume decimal.Decimal `gorm:"column:total_volume;type:decimal(32,18);not null"`
@@ -43,9 +40,11 @@ func toStrategyModel(s *domain.QuoteStrategy) *StrategyModel {
 		return nil
 	}
 	return &StrategyModel{
-		ID:           s.ID,
-		CreatedAt:    s.CreatedAt,
-		UpdatedAt:    s.UpdatedAt,
+		Model: gorm.Model{
+			ID:        s.ID,
+			CreatedAt: s.CreatedAt,
+			UpdatedAt: s.UpdatedAt,
+		},
 		Symbol:       s.Symbol,
 		Spread:       s.Spread,
 		MinOrderSize: s.MinOrderSize,
@@ -77,9 +76,11 @@ func toPerformanceModel(p *domain.MarketMakingPerformance) *PerformanceModel {
 		return nil
 	}
 	return &PerformanceModel{
-		ID:          p.ID,
-		CreatedAt:   p.CreatedAt,
-		UpdatedAt:   p.UpdatedAt,
+		Model: gorm.Model{
+			ID:        p.ID,
+			CreatedAt: p.CreatedAt,
+			UpdatedAt: p.UpdatedAt,
+		},
 		Symbol:      p.Symbol,
 		TotalPnL:    p.TotalPnL,
 		TotalVolume: p.TotalVolume,

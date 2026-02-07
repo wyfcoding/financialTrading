@@ -4,13 +4,12 @@ import (
 	"time"
 
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/domain"
+	"gorm.io/gorm"
 )
 
 // SimulationModel 模拟场景数据库模型
 type SimulationModel struct {
-	ID          uint      `gorm:"primaryKey;autoIncrement"`
-	CreatedAt   time.Time `gorm:"column:created_at"`
-	UpdatedAt   time.Time `gorm:"column:updated_at"`
+	gorm.Model
 	ScenarioID  string    `gorm:"column:scenario_id;type:varchar(32);uniqueIndex;not null"`
 	Name        string    `gorm:"column:name;type:varchar(100);not null"`
 	Description string    `gorm:"column:description;type:text"`
@@ -44,9 +43,11 @@ func toSimulationModel(sim *domain.Simulation) *SimulationModel {
 		return nil
 	}
 	return &SimulationModel{
-		ID:           sim.ID,
-		CreatedAt:    sim.CreatedAt,
-		UpdatedAt:    sim.UpdatedAt,
+		Model: gorm.Model{
+			ID:        sim.ID,
+			CreatedAt: sim.CreatedAt,
+			UpdatedAt: sim.UpdatedAt,
+		},
 		ScenarioID:   sim.ScenarioID,
 		Name:         sim.Name,
 		Description:  sim.Description,

@@ -5,13 +5,12 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/execution/domain"
+	"gorm.io/gorm"
 )
 
 // TradeModel MySQL 成交表映射
 type TradeModel struct {
-	ID               uint            `gorm:"primaryKey;autoIncrement"`
-	CreatedAt        time.Time       `gorm:"column:created_at"`
-	UpdatedAt        time.Time       `gorm:"column:updated_at"`
+	gorm.Model
 	TradeID          string          `gorm:"column:trade_id;type:varchar(32);uniqueIndex;not null;comment:成交ID"`
 	OrderID          string          `gorm:"column:order_id;type:varchar(32);index;not null;comment:订单ID"`
 	UserID           string          `gorm:"column:user_id;type:varchar(32);index;not null;comment:用户ID"`
@@ -29,9 +28,7 @@ func (TradeModel) TableName() string {
 
 // AlgoOrderModel MySQL 算法订单表映射
 type AlgoOrderModel struct {
-	ID                uint            `gorm:"primaryKey;autoIncrement"`
-	CreatedAt         time.Time       `gorm:"column:created_at"`
-	UpdatedAt         time.Time       `gorm:"column:updated_at"`
+	gorm.Model
 	AlgoID            string          `gorm:"column:algo_id;type:varchar(64);uniqueIndex;not null;comment:算法订单ID"`
 	UserID            string          `gorm:"column:user_id;type:varchar(64);not null;comment:用户ID"`
 	Symbol            string          `gorm:"column:symbol;type:varchar(20);not null;comment:标的"`
@@ -52,13 +49,11 @@ func (AlgoOrderModel) TableName() string {
 
 // EventPO 事件存储表
 type EventPO struct {
-	ID          uint      `gorm:"primaryKey;autoIncrement"`
-	CreatedAt   time.Time `gorm:"column:created_at"`
-	UpdatedAt   time.Time `gorm:"column:updated_at"`
-	AggregateID string    `gorm:"column:aggregate_id;type:varchar(64);index;not null"`
-	EventType   string    `gorm:"column:event_type;type:varchar(50);not null"`
-	Payload     string    `gorm:"column:payload;type:json;not null"`
-	OccurredAt  int64     `gorm:"column:occurred_at;not null"`
+	gorm.Model
+	AggregateID string `gorm:"column:aggregate_id;type:varchar(64);index;not null"`
+	EventType   string `gorm:"column:event_type;type:varchar(50);not null"`
+	Payload     string `gorm:"column:payload;type:json;not null"`
+	OccurredAt  int64  `gorm:"column:occurred_at;not null"`
 }
 
 func (EventPO) TableName() string {
@@ -70,9 +65,11 @@ func toTradeModel(t *domain.Trade) *TradeModel {
 		return nil
 	}
 	return &TradeModel{
-		ID:               t.ID,
-		CreatedAt:        t.CreatedAt,
-		UpdatedAt:        t.UpdatedAt,
+		Model: gorm.Model{
+			ID:        t.ID,
+			CreatedAt: t.CreatedAt,
+			UpdatedAt: t.UpdatedAt,
+		},
 		TradeID:          t.TradeID,
 		OrderID:          t.OrderID,
 		UserID:           t.UserID,
@@ -112,9 +109,11 @@ func toAlgoOrderModel(o *domain.AlgoOrder) *AlgoOrderModel {
 		return nil
 	}
 	return &AlgoOrderModel{
-		ID:                o.ID,
-		CreatedAt:         o.CreatedAt,
-		UpdatedAt:         o.UpdatedAt,
+		Model: gorm.Model{
+			ID:        o.ID,
+			CreatedAt: o.CreatedAt,
+			UpdatedAt: o.UpdatedAt,
+		},
 		AlgoID:            o.AlgoID,
 		UserID:            o.UserID,
 		Symbol:            o.Symbol,

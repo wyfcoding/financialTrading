@@ -6,13 +6,12 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
+	"gorm.io/gorm"
 )
 
 // OrderModel MySQL 订单表映射
 type OrderModel struct {
-	ID        uint      `gorm:"primaryKey;autoIncrement"`
-	CreatedAt time.Time `gorm:"column:created_at"`
-	UpdatedAt time.Time `gorm:"column:updated_at"`
+	gorm.Model
 	OrderID   string    `gorm:"column:order_id;type:varchar(32);uniqueIndex;not null;comment:订单ID"`
 	Symbol    string    `gorm:"column:symbol;type:varchar(20);index;not null;comment:标的"`
 	Side      int       `gorm:"column:side;type:tinyint;not null;comment:方向"`
@@ -27,9 +26,7 @@ func (OrderModel) TableName() string { return "matching_orders" }
 
 // TradeModel MySQL 成交表映射
 type TradeModel struct {
-	ID          uint      `gorm:"primaryKey;autoIncrement"`
-	CreatedAt   time.Time `gorm:"column:created_at"`
-	UpdatedAt   time.Time `gorm:"column:updated_at"`
+	gorm.Model
 	TradeID     string    `gorm:"column:trade_id;type:varchar(32);uniqueIndex;not null;comment:成交ID"`
 	BuyOrderID  string    `gorm:"column:buy_order_id;type:varchar(32);index;not null"`
 	SellOrderID string    `gorm:"column:sell_order_id;type:varchar(32);index;not null"`
@@ -43,13 +40,11 @@ func (TradeModel) TableName() string { return "matching_trades" }
 
 // OrderBookSnapshotModel MySQL 订单簿快照表映射
 type OrderBookSnapshotModel struct {
-	ID        uint      `gorm:"primaryKey;autoIncrement"`
-	CreatedAt time.Time `gorm:"column:created_at"`
-	UpdatedAt time.Time `gorm:"column:updated_at"`
-	Symbol    string    `gorm:"column:symbol;type:varchar(20);index;not null"`
-	BidsJSON  string    `gorm:"column:bids;type:json"`
-	AsksJSON  string    `gorm:"column:asks;type:json"`
-	Timestamp int64     `gorm:"column:timestamp;not null"`
+	gorm.Model
+	Symbol    string `gorm:"column:symbol;type:varchar(20);index;not null"`
+	BidsJSON  string `gorm:"column:bids;type:json"`
+	AsksJSON  string `gorm:"column:asks;type:json"`
+	Timestamp int64  `gorm:"column:timestamp;not null"`
 }
 
 func (OrderBookSnapshotModel) TableName() string { return "order_book_snapshots" }
@@ -61,9 +56,11 @@ func toTradeModel(t *domain.Trade) *TradeModel {
 		return nil
 	}
 	return &TradeModel{
-		ID:          t.ID,
-		CreatedAt:   t.CreatedAt,
-		UpdatedAt:   t.UpdatedAt,
+		Model: gorm.Model{
+			ID:        t.ID,
+			CreatedAt: t.CreatedAt,
+			UpdatedAt: t.UpdatedAt,
+		},
 		TradeID:     t.TradeID,
 		BuyOrderID:  t.BuyOrderID,
 		SellOrderID: t.SellOrderID,
@@ -105,9 +102,11 @@ func toSnapshotModel(s *domain.OrderBookSnapshot) (*OrderBookSnapshotModel, erro
 		return nil, err
 	}
 	return &OrderBookSnapshotModel{
-		ID:        s.ID,
-		CreatedAt: s.CreatedAt,
-		UpdatedAt: s.UpdatedAt,
+		Model: gorm.Model{
+			ID:        s.ID,
+			CreatedAt: s.CreatedAt,
+			UpdatedAt: s.UpdatedAt,
+		},
 		Symbol:    s.Symbol,
 		BidsJSON:  string(bids),
 		AsksJSON:  string(asks),
