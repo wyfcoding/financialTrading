@@ -6,19 +6,63 @@ image:
 service:
   type: ClusterIP
   grpcPort: 9090
+  httpPort: 8090
 
 config:
   server:
-    grpc_port: 9090
-  database:
-    driver: "mysql"
-    source: "root:root@tcp(mysql:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+    name: "pricing-service"
+    environment: "dev"
+    http:
+      port: 8090
+      timeout: "10s"
+    grpc:
+      port: 9090
+      timeout: "10s"
   log:
     level: "info"
     format: "json"
-  kafka:
-    brokers: ["kafka:9092"]
-    topic_quote: "marketdata.quote"
+    output: "stdout"
+  data:
+    database:
+      driver: "mysql"
+      dsn: "root:password@tcp(mysql:3306)/financial_pricing?charset=utf8mb4&parseTime=True&loc=Local"
+      max_idle_conns: 10
+      max_open_conns: 100
+      conn_max_lifetime: "1h"
+    redis:
+      addrs: ["redis:6379"]
+      password: ""
+      db: 0
+      pool_size: 10
+      min_idle_conns: 5
+      read_timeout: "3s"
+      write_timeout: "3s"
+    elasticsearch:
+      addresses: ["http://elasticsearch:9200"]
+      username: ""
+      password: ""
+  messagequeue:
+    kafka:
+      brokers: ["kafka:9092"]
+      topic: "pricing-events"
+      group_id: ""
+  tracing:
+    enabled: false
+    service_name: "pricing-service"
+    otlp_endpoint: "otel-collector:4317"
+
+canary:
+  enabled: false
+  version: v2
+  trafficWeight: 10
+  headerMatch:
+    key: "x-canary"
+    value: "always"
+
+observability:
+  tracing:
+    provider: jaeger
+    samplingRate: 100
 
 resources:
   limits:

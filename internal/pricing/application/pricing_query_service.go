@@ -10,14 +10,13 @@ import (
 
 // PricingQueryService 处理所有定价相关的查询操作（Queries）。
 type PricingQueryService struct {
-	repo domain.PricingRepository
+	repo     domain.PricingRepository
+	readRepo domain.PricingReadRepository
 }
 
 // NewPricingQueryService 构造函数。
-func NewPricingQueryService(repo domain.PricingRepository) *PricingQueryService {
-	return &PricingQueryService{
-		repo: repo,
-	}
+func NewPricingQueryService(repo domain.PricingRepository, readRepo domain.PricingReadRepository) *PricingQueryService {
+	return &PricingQueryService{repo: repo, readRepo: readRepo}
 }
 
 // GetGreeks 计算希腊字母
@@ -58,13 +57,35 @@ func (s *PricingQueryService) GetGreeks(ctx context.Context, contract domain.Opt
 
 // GetLatestResult 获取最新定价结果
 func (s *PricingQueryService) GetLatestResult(ctx context.Context, symbol string) (*domain.PricingResult, error) {
-	return s.repo.GetLatestPricingResult(ctx, symbol)
+	if s.readRepo != nil {
+		if cached, err := s.readRepo.GetLatestPricingResult(ctx, symbol); err == nil && cached != nil {
+			return cached, nil
+		}
+	}
+
+	res, err := s.repo.GetLatestPricingResult(ctx, symbol)
+	if err != nil || res == nil {
+		return res, err
+	}
+	if s.readRepo != nil {
+		_ = s.readRepo.SavePricingResult(ctx, res)
+	}
+	return res, nil
 }
 
 func (s *PricingQueryService) GetPrice(ctx context.Context, symbol string) (*PriceDTO, error) {
+	if s.readRepo != nil {
+		if cached, err := s.readRepo.GetLatestPrice(ctx, symbol); err == nil && cached != nil {
+			return s.toDTO(cached), nil
+		}
+	}
+
 	price, err := s.repo.GetLatestPrice(ctx, symbol)
 	if err != nil {
 		return nil, err
+	}
+	if price != nil && s.readRepo != nil {
+		_ = s.readRepo.SavePrice(ctx, price)
 	}
 	return s.toDTO(price), nil
 }
@@ -76,6 +97,9 @@ func (s *PricingQueryService) ListPrices(ctx context.Context, symbols []string) 
 	}
 	var dtos []*PriceDTO
 	for _, p := range prices {
+		if p != nil && s.readRepo != nil {
+			_ = s.readRepo.SavePrice(ctx, p)
+		}
 		dtos = append(dtos, s.toDTO(p))
 	}
 	return dtos, nil

@@ -1,4 +1,3 @@
-// 包  gRPC 处理器实现
 package grpc
 
 import (
@@ -19,18 +18,18 @@ import (
 // 负责处理与定价相关的 gRPC 请求
 type Handler struct {
 	pb.UnimplementedPricingServiceServer
-	app *application.PricingService // 定价应用服务
+	cmd   *application.PricingCommandService
+	query *application.PricingQueryService
 }
 
 // NewHandler 创建 gRPC 处理器实例
-// app: 注入的定价应用服务
-func NewHandler(app *application.PricingService) *Handler {
-	return &Handler{app: app}
+func NewHandler(cmd *application.PricingCommandService, query *application.PricingQueryService) *Handler {
+	return &Handler{cmd: cmd, query: query}
 }
 
 // GetPrice 获取单品种价格
 func (h *Handler) GetPrice(ctx context.Context, req *pb.GetPriceRequest) (*pb.GetPriceResponse, error) {
-	dto, err := h.app.GetPrice(ctx, req.Symbol)
+	dto, err := h.query.GetPrice(ctx, req.Symbol)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -39,7 +38,7 @@ func (h *Handler) GetPrice(ctx context.Context, req *pb.GetPriceRequest) (*pb.Ge
 
 // ListPrices 批量获取价格
 func (h *Handler) ListPrices(ctx context.Context, req *pb.ListPricesRequest) (*pb.ListPricesResponse, error) {
-	dtos, err := h.app.ListPrices(ctx, req.Symbols)
+	dtos, err := h.query.ListPrices(ctx, req.Symbols)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -61,7 +60,7 @@ func (h *Handler) SubscribePrices(req *pb.SubscribePricesRequest, stream pb.Pric
 		case <-stream.Context().Done():
 			return nil
 		case <-ticker.C:
-			dtos, err := h.app.ListPrices(context.Background(), req.Symbols)
+			dtos, err := h.query.ListPrices(context.Background(), req.Symbols)
 			if err != nil {
 				continue
 			}
@@ -76,20 +75,25 @@ func (h *Handler) SubscribePrices(req *pb.SubscribePricesRequest, stream pb.Pric
 
 // GetOptionPrice 获取期权价格
 func (h *Handler) GetOptionPrice(ctx context.Context, req *pb.GetOptionPriceRequest) (*pb.GetOptionPriceResponse, error) {
-	contract := domain.OptionContract{
-		Symbol:      req.Contract.Symbol,
-		Type:        domain.OptionType(req.Contract.Type),
-		StrikePrice: decimal.NewFromFloat(req.Contract.StrikePrice),
-		ExpiryDate:  req.Contract.ExpiryDate.AsTime().UnixMilli(),
+	cmd := application.PriceOptionCommand{
+		Symbol:          req.Contract.Symbol,
+		OptionType:      req.Contract.Type,
+		StrikePrice:     req.Contract.StrikePrice,
+		ExpiryDate:      req.Contract.ExpiryDate.AsTime().UnixMilli(),
+		UnderlyingPrice: req.UnderlyingPrice,
+		Volatility:      req.Volatility,
+		RiskFreeRate:    req.RiskFreeRate,
+		DividendYield:   0,
+		PricingModel:    "BlackScholes",
 	}
 
-	price, err := h.app.GetOptionPrice(ctx, contract, decimal.NewFromFloat(req.UnderlyingPrice), req.Volatility, req.RiskFreeRate)
+	result, err := h.cmd.PriceOption(ctx, cmd)
 	if err != nil {
 		slog.Error("Failed to get option price", "symbol", req.Contract.Symbol, "error", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	pVal, _ := price.Float64()
+	pVal, _ := result.OptionPrice.Float64()
 	return &pb.GetOptionPriceResponse{
 		Price:           pVal,
 		CalculationTime: timestamppb.Now(),
@@ -105,7 +109,7 @@ func (h *Handler) GetGreeks(ctx context.Context, req *pb.GetGreeksRequest) (*pb.
 		ExpiryDate:  req.Contract.ExpiryDate.AsTime().UnixMilli(),
 	}
 
-	greeks, err := h.app.GetGreeks(ctx, contract, decimal.NewFromFloat(req.UnderlyingPrice), req.Volatility, req.RiskFreeRate)
+	greeks, err := h.query.GetGreeks(ctx, contract, decimal.NewFromFloat(req.UnderlyingPrice), req.Volatility, req.RiskFreeRate)
 	if err != nil {
 		slog.Error("Failed to get greeks", "symbol", req.Contract.Symbol, "error", err)
 		return nil, status.Error(codes.Internal, err.Error())

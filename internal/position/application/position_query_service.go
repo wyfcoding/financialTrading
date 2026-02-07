@@ -2,19 +2,19 @@ package application
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/wyfcoding/financialtrading/internal/position/domain"
 )
 
 // PositionQueryService 处理所有持仓相关的查询操作（Queries）。
 type PositionQueryService struct {
-	repo domain.PositionRepository
+	repo     domain.PositionRepository
+	readRepo domain.PositionReadRepository
 }
 
 // NewPositionQueryService 构造函数。
-func NewPositionQueryService(repo domain.PositionRepository) *PositionQueryService {
-	return &PositionQueryService{repo: repo}
+func NewPositionQueryService(repo domain.PositionRepository, readRepo domain.PositionReadRepository) *PositionQueryService {
+	return &PositionQueryService{repo: repo, readRepo: readRepo}
 }
 
 func (s *PositionQueryService) GetPositions(ctx context.Context, userID string, limit, offset int) ([]*PositionDTO, int64, error) {
@@ -22,36 +22,24 @@ func (s *PositionQueryService) GetPositions(ctx context.Context, userID string, 
 	if err != nil {
 		return nil, 0, err
 	}
-
-	dtos := make([]*PositionDTO, 0, len(positions))
-	for _, p := range positions {
-		dtos = append(dtos, s.mapToDTO(p))
-	}
-	return dtos, total, nil
+	return toPositionDTOs(positions), total, nil
 }
 
 func (s *PositionQueryService) GetPosition(ctx context.Context, positionID string) (*PositionDTO, error) {
+	if s.readRepo != nil {
+		if cached, err := s.readRepo.Get(ctx, positionID); err == nil && cached != nil {
+			return toPositionDTO(cached), nil
+		}
+	}
+
 	pos, err := s.repo.Get(ctx, positionID)
 	if err != nil || pos == nil {
 		return nil, err
 	}
-	return s.mapToDTO(pos), nil
-}
 
-func (s *PositionQueryService) mapToDTO(p *domain.Position) *PositionDTO {
-	side := "buy"
-	if p.Quantity < 0 {
-		side = "sell"
+	if s.readRepo != nil {
+		_ = s.readRepo.Save(ctx, pos)
 	}
-	return &PositionDTO{
-		PositionID:  fmt.Sprintf("%d", p.ID),
-		UserID:      p.UserID,
-		Symbol:      p.Symbol,
-		Side:        side,
-		Quantity:    fmt.Sprintf("%f", p.Quantity),
-		EntryPrice:  fmt.Sprintf("%f", p.AverageEntryPrice),
-		RealizedPnL: fmt.Sprintf("%f", p.RealizedPnL),
-		OpenedAt:    p.CreatedAt.Unix(),
-		Status:      "OPEN",
-	}
+
+	return toPositionDTO(pos), nil
 }

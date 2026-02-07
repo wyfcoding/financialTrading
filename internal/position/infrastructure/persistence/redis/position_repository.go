@@ -4,29 +4,32 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/position/domain"
 )
 
-type positionRedisRepository struct {
+type PositionRedisRepository struct {
 	client redis.UniversalClient
 	prefix string
 	ttl    time.Duration
 }
 
-func NewPositionRedisRepository(client redis.UniversalClient) domain.PositionRepository {
-	return &positionRedisRepository{
+func NewPositionRedisRepository(client redis.UniversalClient) *PositionRedisRepository {
+	return &PositionRedisRepository{
 		client: client,
 		prefix: "position:",
-		ttl:    24 * time.Hour,
+		ttl:    15 * time.Minute,
 	}
 }
 
-func (r *positionRedisRepository) Save(ctx context.Context, position *domain.Position) error {
-	key := r.key(position.UserID, position.Symbol)
+func (r *PositionRedisRepository) Save(ctx context.Context, position *domain.Position) error {
+	if position == nil || position.ID == 0 {
+		return nil
+	}
+	key := r.key(strconv.FormatUint(uint64(position.ID), 10))
 	data, err := json.Marshal(position)
 	if err != nil {
 		return err
@@ -34,8 +37,11 @@ func (r *positionRedisRepository) Save(ctx context.Context, position *domain.Pos
 	return r.client.Set(ctx, key, data, r.ttl).Err()
 }
 
-func (r *positionRedisRepository) Get(ctx context.Context, positionID string) (*domain.Position, error) {
-	data, err := r.client.Get(ctx, positionID).Bytes()
+func (r *PositionRedisRepository) Get(ctx context.Context, positionID string) (*domain.Position, error) {
+	if positionID == "" {
+		return nil, nil
+	}
+	data, err := r.client.Get(ctx, r.key(positionID)).Bytes()
 	if err == redis.Nil {
 		return nil, nil
 	}
@@ -49,38 +55,6 @@ func (r *positionRedisRepository) Get(ctx context.Context, positionID string) (*
 	return &pos, nil
 }
 
-func (r *positionRedisRepository) ListByUser(ctx context.Context, userID string) ([]*domain.Position, error) {
-	return nil, nil // Redis 不支持按前缀列表查询（除非扫描或维护 Set）
-}
-
-func (r *positionRedisRepository) Delete(ctx context.Context, userID, symbol string) error {
-	return r.client.Del(ctx, r.key(userID, symbol)).Err()
-}
-
-func (r *positionRedisRepository) GetByUser(ctx context.Context, userID string, limit, offset int) ([]*domain.Position, int64, error) {
-	return nil, 0, nil
-}
-
-func (r *positionRedisRepository) GetBySymbol(ctx context.Context, symbol string, limit, offset int) ([]*domain.Position, int64, error) {
-	return nil, 0, nil
-}
-
-func (r *positionRedisRepository) GetByUserSymbol(ctx context.Context, userID, symbol string) (*domain.Position, error) {
-	return r.Get(ctx, r.key(userID, symbol))
-}
-
-func (r *positionRedisRepository) Update(ctx context.Context, position *domain.Position) error {
-	return r.Save(ctx, position)
-}
-
-func (r *positionRedisRepository) Close(ctx context.Context, positionID string, closePrice decimal.Decimal) error {
-	return nil // Redis 不支持物理平仓逻辑
-}
-
-func (r *positionRedisRepository) ExecWithBarrier(ctx context.Context, barrier any, fn func(ctx context.Context) error) error {
-	return fn(ctx)
-}
-
-func (r *positionRedisRepository) key(userID, symbol string) string {
-	return fmt.Sprintf("%s%s:%s", r.prefix, userID, symbol)
+func (r *PositionRedisRepository) key(id string) string {
+	return fmt.Sprintf("%s%s", r.prefix, id)
 }

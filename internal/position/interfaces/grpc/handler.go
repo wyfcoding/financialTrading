@@ -17,13 +17,15 @@ import (
 // Handler 实现了 PositionService 的 gRPC 服务端接口，负责处理用户的交易头寸相关请求。
 type Handler struct {
 	pb.UnimplementedPositionServiceServer
-	service *application.PositionService // 关联的持仓应用服务
+	cmd   *application.PositionCommandService
+	query *application.PositionQueryService
 }
 
 // NewHandler 构造一个新的持仓 gRPC 处理器实例。
-func NewHandler(service *application.PositionService) *Handler {
+func NewHandler(cmd *application.PositionCommandService, query *application.PositionQueryService) *Handler {
 	return &Handler{
-		service: service,
+		cmd:   cmd,
+		query: query,
 	}
 }
 
@@ -38,7 +40,7 @@ func (h *Handler) GetPositions(ctx context.Context, req *pb.GetPositionsRequest)
 	}
 	offset := max(int((req.Page-1)*req.PageSize), 0)
 
-	dtos, total, err := h.service.GetPositions(ctx, req.UserId, limit, offset)
+	dtos, total, err := h.query.GetPositions(ctx, req.UserId, limit, offset)
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc get_positions failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get positions: %v", err)
@@ -61,7 +63,7 @@ func (h *Handler) GetPosition(ctx context.Context, req *pb.GetPositionRequest) (
 	start := time.Now()
 	slog.DebugContext(ctx, "grpc get_position received", "position_id", req.PositionId)
 
-	dto, err := h.service.GetPosition(ctx, req.PositionId)
+	dto, err := h.query.GetPosition(ctx, req.PositionId)
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc get_position failed", "position_id", req.PositionId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get position: %v", err)
@@ -84,13 +86,13 @@ func (h *Handler) ClosePosition(ctx context.Context, req *pb.ClosePositionReques
 		return nil, status.Errorf(codes.InvalidArgument, "invalid close price: %v", err)
 	}
 
-	err = h.service.ClosePosition(ctx, req.PositionId, closePrice)
+	err = h.cmd.ClosePosition(ctx, req.PositionId, closePrice)
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc close_position failed", "position_id", req.PositionId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to close position: %v", err)
 	}
 
-	dto, err := h.service.GetPosition(ctx, req.PositionId)
+	dto, err := h.query.GetPosition(ctx, req.PositionId)
 	if err != nil {
 		slog.ErrorContext(ctx, "grpc get_position after close failed", "position_id", req.PositionId, "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to get updated position: %v", err)
@@ -114,7 +116,7 @@ func (h *Handler) TccTryFreeze(ctx context.Context, req *pb.TccPositionRequest) 
 		return nil, status.Errorf(codes.InvalidArgument, "invalid quantity format: %v", err)
 	}
 
-	if err := h.service.TccTryFreeze(ctx, barrier, req.UserId, req.Symbol, quantity); err != nil {
+	if err := h.cmd.TccTryFreeze(ctx, barrier, req.UserId, req.Symbol, quantity); err != nil {
 		slog.ErrorContext(ctx, "tcc_try_freeze failed", "user_id", req.UserId, "symbol", req.Symbol, "error", err)
 		return nil, status.Errorf(codes.Aborted, "TccTryFreeze failed: %v", err)
 	}
@@ -132,7 +134,7 @@ func (h *Handler) TccConfirmFreeze(ctx context.Context, req *pb.TccPositionReque
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid quantity: %v", err)
 	}
-	if err := h.service.TccConfirmFreeze(ctx, barrier, req.UserId, req.Symbol, quantity); err != nil {
+	if err := h.cmd.TccConfirmFreeze(ctx, barrier, req.UserId, req.Symbol, quantity); err != nil {
 		slog.ErrorContext(ctx, "tcc_confirm_freeze failed", "error", err)
 		return nil, status.Errorf(codes.Internal, "TccConfirmFreeze failed: %v", err)
 	}
@@ -149,7 +151,7 @@ func (h *Handler) TccCancelFreeze(ctx context.Context, req *pb.TccPositionReques
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid quantity: %v", err)
 	}
-	if err := h.service.TccCancelFreeze(ctx, barrier, req.UserId, req.Symbol, quantity); err != nil {
+	if err := h.cmd.TccCancelFreeze(ctx, barrier, req.UserId, req.Symbol, quantity); err != nil {
 		slog.ErrorContext(ctx, "tcc_cancel_freeze failed", "error", err)
 		return nil, status.Errorf(codes.Internal, "TccCancelFreeze failed: %v", err)
 	}
@@ -170,7 +172,7 @@ func (h *Handler) SagaDeductFrozen(ctx context.Context, req *pb.SagaPositionRequ
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid price: %v", err)
 	}
-	if err := h.service.SagaDeductFrozen(ctx, barrier, req.UserId, req.Symbol, qty, price); err != nil {
+	if err := h.cmd.SagaDeductFrozen(ctx, barrier, req.UserId, req.Symbol, qty, price); err != nil {
 		slog.ErrorContext(ctx, "saga_deduct_frozen failed", "error", err)
 		return nil, status.Errorf(codes.Aborted, "SagaDeductFrozen failed: %v", err)
 	}
@@ -187,7 +189,7 @@ func (h *Handler) SagaRefundFrozen(ctx context.Context, req *pb.SagaPositionRequ
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid quantity: %v", err)
 	}
-	if err := h.service.SagaRefundFrozen(ctx, barrier, req.UserId, req.Symbol, qty); err != nil {
+	if err := h.cmd.SagaRefundFrozen(ctx, barrier, req.UserId, req.Symbol, qty); err != nil {
 		slog.ErrorContext(ctx, "saga_refund_frozen failed", "error", err)
 		return nil, status.Errorf(codes.Internal, "SagaRefundFrozen failed: %v", err)
 	}
@@ -208,7 +210,7 @@ func (h *Handler) SagaAddPosition(ctx context.Context, req *pb.SagaPositionReque
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid price: %v", err)
 	}
-	if err := h.service.SagaAddPosition(ctx, barrier, req.UserId, req.Symbol, qty, price); err != nil {
+	if err := h.cmd.SagaAddPosition(ctx, barrier, req.UserId, req.Symbol, qty, price); err != nil {
 		slog.ErrorContext(ctx, "saga_add_position failed", "error", err)
 		return nil, status.Errorf(codes.Aborted, "SagaAddPosition failed: %v", err)
 	}
@@ -225,7 +227,7 @@ func (h *Handler) SagaSubPosition(ctx context.Context, req *pb.SagaPositionReque
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid quantity: %v", err)
 	}
-	if err := h.service.SagaSubPosition(ctx, barrier, req.UserId, req.Symbol, qty); err != nil {
+	if err := h.cmd.SagaSubPosition(ctx, barrier, req.UserId, req.Symbol, qty); err != nil {
 		slog.ErrorContext(ctx, "saga_sub_position failed", "error", err)
 		return nil, status.Errorf(codes.Internal, "SagaSubPosition failed: %v", err)
 	}
@@ -233,6 +235,9 @@ func (h *Handler) SagaSubPosition(ctx context.Context, req *pb.SagaPositionReque
 }
 
 func (h *Handler) toProtoPosition(dto *application.PositionDTO) *pb.Position {
+	if dto == nil {
+		return nil
+	}
 	var closedAt int64
 	if dto.ClosedAt != nil {
 		closedAt = *dto.ClosedAt
@@ -251,4 +256,11 @@ func (h *Handler) toProtoPosition(dto *application.PositionDTO) *pb.Position {
 		OpenedAt:      dto.OpenedAt,
 		ClosedAt:      closedAt,
 	}
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

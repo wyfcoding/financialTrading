@@ -6,82 +6,133 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
-	"github.com/spf13/viper"
-	pricing_pb "github.com/wyfcoding/financialtrading/go-api/pricing/v1"
+	"github.com/gin-gonic/gin"
+	pricingpb "github.com/wyfcoding/financialtrading/go-api/pricing/v1"
 	"github.com/wyfcoding/financialtrading/internal/pricing/application"
-	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
 	"github.com/wyfcoding/financialtrading/internal/pricing/infrastructure/persistence/mysql"
+	redisrepo "github.com/wyfcoding/financialtrading/internal/pricing/infrastructure/persistence/redis"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/pricing/interfaces/grpc"
+	http_server "github.com/wyfcoding/financialtrading/internal/pricing/interfaces/http"
+	"github.com/wyfcoding/pkg/cache"
+	"github.com/wyfcoding/pkg/config"
+	"github.com/wyfcoding/pkg/database"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
+	"github.com/wyfcoding/pkg/messagequeue/outbox"
+	"github.com/wyfcoding/pkg/metrics"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	gorm_mysql "gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
+var configPath = flag.String("config", "configs/pricing/config.toml", "config file path")
+
 func main() {
-	var configPath string
-	flag.StringVar(&configPath, "config", "configs/pricing/config.toml", "path to config file")
 	flag.Parse()
 
 	// 1. Config
-	viper.SetConfigFile(configPath)
-	viper.AutomaticEnv()
-	if err := viper.ReadInConfig(); err != nil {
-		panic(fmt.Sprintf("read config failed: %v", err))
+	var cfg config.Config
+	if err := config.Load(*configPath, &cfg); err != nil {
+		panic(fmt.Sprintf("failed to load config: %v", err))
 	}
 
 	// 2. Logger
-	logger := logging.NewLogger("pricing", "main", viper.GetString("log.level"))
+	logCfg := &logging.Config{Service: cfg.Server.Name, Level: cfg.Log.Level}
+	logger := logging.NewFromConfig(logCfg)
 	slog.SetDefault(logger.Logger)
 
-	// 3. Database
-	dsn := viper.GetString("database.source")
-	db, err := gorm.Open(gorm_mysql.Open(dsn), &gorm.Config{})
+	// 3. Metrics
+	metricsImpl := metrics.NewMetrics(cfg.Server.Name)
+	if cfg.Metrics.Enabled {
+		go metricsImpl.ExposeHTTP(cfg.Metrics.Port)
+	}
+
+	// 4. Database (MySQL)
+	db, err := database.NewDB(cfg.Data.Database, cfg.CircuitBreaker, logger, metricsImpl)
 	if err != nil {
-		panic(fmt.Sprintf("connect db failed: %v", err))
+		slog.Error("failed to connect database", "error", err)
+		os.Exit(1)
 	}
 
-	// Auto Migrate
-	if err := db.AutoMigrate(&domain.Price{}, &mysql.PricingResultModel{}); err != nil {
-		panic(fmt.Sprintf("migrate db failed: %v", err))
+	if cfg.Server.Environment == "dev" {
+		if err := db.RawDB().AutoMigrate(&mysql.PriceModel{}, &mysql.PricingResultModel{}, &outbox.Message{}); err != nil {
+			slog.Error("failed to migrate database", "error", err)
+		}
 	}
 
-	// 4. Infrastructure & Domain
-	repo := mysql.NewPricingRepository(db)
+	// 5. Kafka & Outbox
+	kafkaProducer := kafka.NewProducer(&cfg.MessageQueue.Kafka, logger, metricsImpl)
+	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
+	pusher := func(ctx context.Context, topic, key string, payload []byte) error {
+		return kafkaProducer.PublishToTopic(ctx, topic, []byte(key), payload)
+	}
+	outboxProcessor := outbox.NewProcessor(outboxMgr, pusher, 100, 2*time.Second)
 
-	// 5. Application
-	appService, err := application.NewPricingService(repo, db)
+	// 6. Redis
+	redisCache, err := cache.NewRedisCache(&cfg.Data.Redis, cfg.CircuitBreaker, logger, metricsImpl)
 	if err != nil {
-		panic(fmt.Sprintf("failed to init pricing service: %v", err))
+		slog.Error("failed to init redis", "error", err)
+		os.Exit(1)
 	}
+	redisClient := redisCache.GetClient()
 
-	// 6. Interfaces
-	// gRPC
+	// 7. Repositories
+	repo := mysql.NewPricingRepository(db.RawDB())
+	readRepo := redisrepo.NewPricingRedisRepository(redisClient)
+	publisher := outbox.NewPublisher(outboxMgr)
+
+	// 8. Application
+	commandSvc := application.NewPricingCommandService(repo, publisher)
+	querySvc := application.NewPricingQueryService(repo, readRepo)
+
+	// 9. Interfaces
 	grpcSrv := grpc.NewServer()
-	pricingHandler := grpc_server.NewHandler(appService)
-	pricing_pb.RegisterPricingServiceServer(grpcSrv, pricingHandler)
+	grpcHandler := grpc_server.NewHandler(commandSvc, querySvc)
+	pricingpb.RegisterPricingServiceServer(grpcSrv, grpcHandler)
 	reflection.Register(grpcSrv)
 
-	// 7. Start
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.Recovery())
+	hHandler := http_server.NewPricingHandler(commandSvc, querySvc)
+	hHandler.RegisterRoutes(r.Group("/api"))
+
+	// 10. Start
 	g, ctx := errgroup.WithContext(context.Background())
 
-	grpcPort := viper.GetString("server.grpc_port")
 	g.Go(func() error {
-		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+		outboxProcessor.Start()
+		<-ctx.Done()
+		outboxProcessor.Stop()
+		return nil
+	})
+
+	g.Go(func() error {
+		addr := fmt.Sprintf(":%d", cfg.Server.GRPC.Port)
+		lis, err := net.Listen("tcp", addr)
 		if err != nil {
 			return err
 		}
-		slog.Info("Starting gRPC server", "port", grpcPort)
+		slog.Info("gRPC server starting", "addr", addr)
 		return grpcSrv.Serve(lis)
 	})
 
-	// 8. Graceful Shutdown
+	g.Go(func() error {
+		addr := fmt.Sprintf(":%d", cfg.Server.HTTP.Port)
+		server := &http.Server{Addr: addr, Handler: r}
+		slog.Info("HTTP server starting", "addr", addr)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return err
+		}
+		return nil
+	})
+
 	g.Go(func() error {
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

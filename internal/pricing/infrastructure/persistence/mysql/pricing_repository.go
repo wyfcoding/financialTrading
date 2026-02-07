@@ -5,27 +5,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
+	"github.com/wyfcoding/pkg/contextx"
 	"gorm.io/gorm"
 )
-
-// PricingResultModel 定价结果数据库模型
-type PricingResultModel struct {
-	gorm.Model
-	Symbol          string `gorm:"column:symbol;type:varchar(32);index;not null" json:"symbol"`
-	OptionPrice     string `gorm:"column:option_price;type:decimal(32,18);not null" json:"option_price"`
-	UnderlyingPrice string `gorm:"column:underlying_price;type:decimal(32,18);not null" json:"underlying_price"`
-	Delta           string `gorm:"column:delta;type:decimal(32,18)" json:"delta"`
-	Gamma           string `gorm:"column:gamma;type:decimal(32,18)" json:"gamma"`
-	Theta           string `gorm:"column:theta;type:decimal(32,18)" json:"theta"`
-	Vega            string `gorm:"column:vega;type:decimal(32,18)" json:"vega"`
-	Rho             string `gorm:"column:rho;type:decimal(32,18)" json:"rho"`
-	CalculatedAt    int64  `gorm:"column:calculated_at;type:bigint;not null" json:"calculated_at"`
-	PricingModel    string `gorm:"column:pricing_model;type:varchar(32)" json:"pricing_model"`
-}
-
-func (PricingResultModel) TableName() string { return "pricing_results" }
 
 type pricingRepository struct {
 	db *gorm.DB
@@ -36,24 +19,82 @@ func NewPricingRepository(db *gorm.DB) domain.PricingRepository {
 	return &pricingRepository{db: db}
 }
 
+// --- tx helpers ---
+
+func (r *pricingRepository) BeginTx(ctx context.Context) any {
+	return r.db.WithContext(ctx).Begin()
+}
+
+func (r *pricingRepository) CommitTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Commit().Error
+}
+
+func (r *pricingRepository) RollbackTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Rollback().Error
+}
+
+func (r *pricingRepository) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		txCtx := contextx.WithTx(ctx, tx)
+		return fn(txCtx)
+	})
+}
+
 // --- Price (Simple Asset Price) ---
 
 func (r *pricingRepository) SavePrice(ctx context.Context, price *domain.Price) error {
-	return r.db.WithContext(ctx).Create(price).Error
+	model := toPriceModel(price)
+	if model == nil {
+		return nil
+	}
+	db := r.getDB(ctx).WithContext(ctx)
+	if model.ID == 0 {
+		if err := db.Create(model).Error; err != nil {
+			return err
+		}
+		price.ID = model.ID
+		price.CreatedAt = model.CreatedAt
+		price.UpdatedAt = model.UpdatedAt
+		return nil
+	}
+	return db.Model(&PriceModel{}).
+		Where("id = ?", model.ID).
+		Updates(map[string]any{
+			"symbol":     model.Symbol,
+			"bid":        model.Bid,
+			"ask":        model.Ask,
+			"mid":        model.Mid,
+			"source":     model.Source,
+			"timestamp":  model.Timestamp,
+			"updated_at": time.Now(),
+		}).Error
 }
 
 func (r *pricingRepository) GetLatestPrice(ctx context.Context, symbol string) (*domain.Price, error) {
-	var price domain.Price
-	err := r.db.WithContext(ctx).Where("symbol = ?", symbol).Order("timestamp desc").First(&price).Error
+	var model PriceModel
+	err := r.getDB(ctx).WithContext(ctx).
+		Where("symbol = ?", symbol).
+		Order("timestamp desc").
+		First(&model).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
-	return &price, err
+	if err != nil {
+		return nil, err
+	}
+	return toPrice(&model), nil
 }
 
 func (r *pricingRepository) ListLatestPrices(ctx context.Context, symbols []string) ([]*domain.Price, error) {
-	var prices []*domain.Price
-	// Fallback simple loop for NOW. Optimized implementation would use window functions or IN query with max ID logic.
+	prices := make([]*domain.Price, 0, len(symbols))
 	for _, s := range symbols {
 		p, err := r.GetLatestPrice(ctx, s)
 		if err == nil && p != nil {
@@ -66,70 +107,76 @@ func (r *pricingRepository) ListLatestPrices(ctx context.Context, symbols []stri
 // --- PricingResult (Option/Derivatives Pricing) ---
 
 func (r *pricingRepository) SavePricingResult(ctx context.Context, res *domain.PricingResult) error {
-	m := &PricingResultModel{
-		PricingModel:    res.PricingModel,
-		Symbol:          res.Symbol,
-		OptionPrice:     res.OptionPrice.String(),
-		UnderlyingPrice: res.UnderlyingPrice.String(),
-		Delta:           res.Delta.String(),
-		Gamma:           res.Gamma.String(),
-		Theta:           res.Theta.String(),
-		Vega:            res.Vega.String(),
-		Rho:             res.Rho.String(),
-		CalculatedAt:    res.CalculatedAt,
+	model := toPricingResultModel(res)
+	if model == nil {
+		return nil
 	}
-	// Assuming Model field inside gorm.Model is handled automatically if we don't set ID
-	return r.db.WithContext(ctx).Create(m).Error
+	db := r.getDB(ctx).WithContext(ctx)
+	if model.ID == 0 {
+		if err := db.Create(model).Error; err != nil {
+			return err
+		}
+		res.ID = model.ID
+		res.CreatedAt = model.CreatedAt
+		res.UpdatedAt = model.UpdatedAt
+		return nil
+	}
+	return db.Model(&PricingResultModel{}).
+		Where("id = ?", model.ID).
+		Updates(map[string]any{
+			"symbol":           model.Symbol,
+			"option_price":     model.OptionPrice,
+			"underlying_price": model.UnderlyingPrice,
+			"delta":            model.Delta,
+			"gamma":            model.Gamma,
+			"theta":            model.Theta,
+			"vega":             model.Vega,
+			"rho":              model.Rho,
+			"calculated_at":    model.CalculatedAt,
+			"pricing_model":    model.PricingModel,
+			"updated_at":       time.Now(),
+		}).Error
 }
 
 func (r *pricingRepository) GetLatestPricingResult(ctx context.Context, symbol string) (*domain.PricingResult, error) {
 	var m PricingResultModel
-	if err := r.db.WithContext(ctx).Where("symbol = ?", symbol).Order("calculated_at desc").First(&m).Error; err != nil {
+	if err := r.getDB(ctx).WithContext(ctx).
+		Where("symbol = ?", symbol).
+		Order("calculated_at desc").
+		First(&m).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return r.toDomain(&m), nil
+	return toPricingResult(&m), nil
 }
 
 func (r *pricingRepository) GetPricingResultHistory(ctx context.Context, symbol string, limit int) ([]*domain.PricingResult, error) {
 	var models []PricingResultModel
-	if err := r.db.WithContext(ctx).Where("symbol = ?", symbol).Order("calculated_at desc").Limit(limit).Find(&models).Error; err != nil {
+	if err := r.getDB(ctx).WithContext(ctx).
+		Where("symbol = ?", symbol).
+		Order("calculated_at desc").
+		Limit(limit).
+		Find(&models).Error; err != nil {
 		return nil, err
 	}
 	res := make([]*domain.PricingResult, len(models))
-	for i, m := range models {
-		res[i] = r.toDomain(&m)
+	for i := range models {
+		res[i] = toPricingResult(&models[i])
 	}
 	return res, nil
 }
 
-func (r *pricingRepository) toDomain(m *PricingResultModel) *domain.PricingResult {
-	opPrice, _ := decimal.NewFromString(m.OptionPrice)
-	ulPrice, _ := decimal.NewFromString(m.UnderlyingPrice)
-	delta, _ := decimal.NewFromString(m.Delta)
-	gamma, _ := decimal.NewFromString(m.Gamma)
-	theta, _ := decimal.NewFromString(m.Theta)
-	vega, _ := decimal.NewFromString(m.Vega)
-	rho, _ := decimal.NewFromString(m.Rho)
-
-	return &domain.PricingResult{
-		PricingModel:    m.PricingModel,
-		Symbol:          m.Symbol,
-		OptionPrice:     opPrice,
-		UnderlyingPrice: ulPrice,
-		Delta:           delta,
-		Gamma:           gamma,
-		Theta:           theta,
-		Vega:            vega,
-		Rho:             rho,
-		CalculatedAt:    m.CalculatedAt,
+func (r *pricingRepository) getDB(ctx context.Context) *gorm.DB {
+	if tx, ok := contextx.GetTx(ctx).(*gorm.DB); ok {
+		return tx
 	}
+	return r.db
 }
 
 // CleanupOldPrices maintenance function
 func (r *pricingRepository) CleanupOldPrices(ctx context.Context, retention time.Duration) error {
 	cutoff := time.Now().Add(-retention)
-	return r.db.WithContext(ctx).Where("created_at < ?", cutoff).Delete(&domain.Price{}).Error
+	return r.getDB(ctx).WithContext(ctx).Where("created_at < ?", cutoff).Delete(&PriceModel{}).Error
 }

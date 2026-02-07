@@ -15,14 +15,15 @@ import (
 // HTTP 处理器
 // 负责处理与持仓管理相关的 HTTP 请求
 type PositionHandler struct {
-	positionService *application.PositionService // 持仓应用服务
+	cmd   *application.PositionCommandService
+	query *application.PositionQueryService
 }
 
 // 创建 HTTP 处理器
-// positionService: 注入的持仓应用服务
-func NewPositionHandler(positionService *application.PositionService) *PositionHandler {
+func NewPositionHandler(cmd *application.PositionCommandService, query *application.PositionQueryService) *PositionHandler {
 	return &PositionHandler{
-		positionService: positionService,
+		cmd:   cmd,
+		query: query,
 	}
 }
 
@@ -58,7 +59,7 @@ func (h *PositionHandler) GetPositions(c *gin.Context) {
 		return
 	}
 
-	dtos, total, err := h.positionService.GetPositions(c.Request.Context(), userID, limit, offset)
+	dtos, total, err := h.query.GetPositions(c.Request.Context(), userID, limit, offset)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get positions", "user_id", userID, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -79,7 +80,7 @@ func (h *PositionHandler) GetPosition(c *gin.Context) {
 		return
 	}
 
-	dto, err := h.positionService.GetPosition(c.Request.Context(), positionID)
+	dto, err := h.query.GetPosition(c.Request.Context(), positionID)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get position", "position_id", positionID, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -114,14 +115,14 @@ func (h *PositionHandler) ClosePosition(c *gin.Context) {
 		return
 	}
 
-	if err := h.positionService.ClosePosition(c.Request.Context(), positionID, closePrice); err != nil {
+	if err := h.cmd.ClosePosition(c.Request.Context(), positionID, closePrice); err != nil {
 		logging.Error(c.Request.Context(), "Failed to close position", "position_id", positionID, "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
 	// 返回更新后的持仓信息
-	dto, err := h.positionService.GetPosition(c.Request.Context(), positionID)
+	dto, err := h.query.GetPosition(c.Request.Context(), positionID)
 	if err != nil {
 		response.Success(c, gin.H{"status": "closed", "message": "Position closed but failed to fetch updated details"})
 		return

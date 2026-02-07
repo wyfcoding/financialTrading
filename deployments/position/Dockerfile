@@ -16,6 +16,6 @@ WORKDIR /app
 COPY --from=builder /app/position .
 COPY --from=builder /app/configs/position/config.toml ./configs/position/
 
-EXPOSE 9089
+EXPOSE 8089 9089
 
 CMD ["./position", "-config", "configs/position/config.toml"]

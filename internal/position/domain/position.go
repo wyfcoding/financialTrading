@@ -2,8 +2,7 @@ package domain
 
 import (
 	"math"
-
-	"gorm.io/gorm"
+	"time"
 )
 
 // CostBasisMethod 成本计算方法
@@ -17,26 +16,26 @@ const (
 
 // PositionLot 仓位头寸记录 (用于 FIFO/LIFO)
 type PositionLot struct {
-	gorm.Model
-	PositionID uint    `gorm:"index"`
-	Quantity   float64 `gorm:"column:quantity;type:decimal(20,8)"`
-	Price      float64 `gorm:"column:price;type:decimal(20,8)"`
+	ID         uint      `json:"id"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	PositionID uint      `json:"position_id"`
+	Quantity   float64   `json:"quantity"`
+	Price      float64   `json:"price"`
 }
 
 // Position represents a user's holding in a symbol
 type Position struct {
-	gorm.Model
-	UserID            string          `gorm:"column:user_id;type:varchar(50);index;uniqueIndex:idx_user_symbol"`
-	Symbol            string          `gorm:"column:symbol;type:varchar(20);index;uniqueIndex:idx_user_symbol"`
-	Quantity          float64         `gorm:"column:quantity;type:decimal(20,8)"`
-	AverageEntryPrice float64         `gorm:"column:average_entry_price;type:decimal(20,8)"`
-	RealizedPnL       float64         `gorm:"column:realized_pnl;type:decimal(20,8);default:0"`
-	Method            CostBasisMethod `gorm:"column:cost_method;type:varchar(20);default:'AVERAGE'"`
-	Lots              []PositionLot   `gorm:"foreignKey:PositionID"`
-}
-
-func (p *Position) TableName() string {
-	return "positions"
+	ID                uint            `json:"id"`
+	CreatedAt         time.Time       `json:"created_at"`
+	UpdatedAt         time.Time       `json:"updated_at"`
+	UserID            string          `json:"user_id"`
+	Symbol            string          `json:"symbol"`
+	Quantity          float64         `json:"quantity"`
+	AverageEntryPrice float64         `json:"average_entry_price"`
+	RealizedPnL       float64         `json:"realized_pnl"`
+	Method            CostBasisMethod `json:"method"`
+	Lots              []PositionLot   `json:"lots,omitempty"`
 }
 
 func NewPosition(userID, symbol string) *Position {
@@ -46,6 +45,7 @@ func NewPosition(userID, symbol string) *Position {
 		Quantity:          0,
 		AverageEntryPrice: 0,
 		RealizedPnL:       0,
+		Method:            CostBasisAverage,
 	}
 }
 

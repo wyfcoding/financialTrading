@@ -16,6 +16,6 @@ WORKDIR /app
 COPY --from=builder /app/pricing .
 COPY --from=builder /app/configs/pricing/config.toml ./configs/pricing/
 
-EXPOSE 9090
+EXPOSE 8090 9090
 
 CMD ["./pricing", "-config", "configs/pricing/config.toml"]

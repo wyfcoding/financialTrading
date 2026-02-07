@@ -16,13 +16,13 @@ import (
 // HTTP 处理器
 // 负责处理与定价相关的 HTTP 请求
 type PricingHandler struct {
-	app *application.PricingService // 定价应用服务
+	cmd   *application.PricingCommandService
+	query *application.PricingQueryService
 }
 
 // 创建 HTTP 处理器实例
-// app: 注入的定价应用服务
-func NewPricingHandler(app *application.PricingService) *PricingHandler {
-	return &PricingHandler{app: app}
+func NewPricingHandler(cmd *application.PricingCommandService, query *application.PricingQueryService) *PricingHandler {
+	return &PricingHandler{cmd: cmd, query: query}
 }
 
 // 注册路由
@@ -49,6 +49,8 @@ type PricingRequest struct {
 	UnderlyingPrice float64               `json:"underlying_price" binding:"required"`
 	Volatility      float64               `json:"volatility" binding:"required"`
 	RiskFreeRate    float64               `json:"risk_free_rate" binding:"required"`
+	DividendYield   float64               `json:"dividend_yield"`
+	PricingModel    string                `json:"pricing_model"`
 }
 
 // GetOptionPrice 获取期权价格
@@ -59,14 +61,19 @@ func (h *PricingHandler) GetOptionPrice(c *gin.Context) {
 		return
 	}
 
-	contract := domain.OptionContract{
-		Symbol:      req.Contract.Symbol,
-		Type:        domain.OptionType(req.Contract.Type),
-		StrikePrice: decimal.NewFromFloat(req.Contract.StrikePrice),
-		ExpiryDate:  req.Contract.ExpiryDate.UnixMilli(),
+	cmd := application.PriceOptionCommand{
+		Symbol:          req.Contract.Symbol,
+		OptionType:      req.Contract.Type,
+		StrikePrice:     req.Contract.StrikePrice,
+		ExpiryDate:      req.Contract.ExpiryDate.UnixMilli(),
+		UnderlyingPrice: req.UnderlyingPrice,
+		Volatility:      req.Volatility,
+		RiskFreeRate:    req.RiskFreeRate,
+		DividendYield:   req.DividendYield,
+		PricingModel:    req.PricingModel,
 	}
 
-	price, err := h.app.GetOptionPrice(c.Request.Context(), contract, decimal.NewFromFloat(req.UnderlyingPrice), req.Volatility, req.RiskFreeRate)
+	result, err := h.cmd.PriceOption(c.Request.Context(), cmd)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to calculate option price", "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -74,7 +81,7 @@ func (h *PricingHandler) GetOptionPrice(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{
-		"price":            price,
+		"price":            result.OptionPrice,
 		"calculation_time": time.Now(),
 	})
 }
@@ -94,7 +101,7 @@ func (h *PricingHandler) GetGreeks(c *gin.Context) {
 		ExpiryDate:  req.Contract.ExpiryDate.UnixMilli(),
 	}
 
-	greeks, err := h.app.GetGreeks(c.Request.Context(), contract, decimal.NewFromFloat(req.UnderlyingPrice), req.Volatility, req.RiskFreeRate)
+	greeks, err := h.query.GetGreeks(c.Request.Context(), contract, decimal.NewFromFloat(req.UnderlyingPrice), req.Volatility, req.RiskFreeRate)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to calculate Greeks", "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
