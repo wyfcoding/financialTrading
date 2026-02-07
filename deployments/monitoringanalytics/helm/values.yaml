@@ -10,17 +10,51 @@ service:
 
 config:
   server:
-    grpc_port: 9086
-    http_port: 8086
-  database:
-    driver: "mysql"
-    source: "root:root@tcp(mysql:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+    name: "monitoringanalytics-service"
+    environment: "dev"
+    http:
+      port: 8086
+      timeout: "10s"
+    grpc:
+      port: 9086
+      timeout: "10s"
   log:
     level: "info"
     format: "json"
-  kafka:
-    brokers: ["kafka:9092"]
-    topic_trade: "matching.trade"
+    output: "stdout"
+  data:
+    database:
+      driver: "mysql"
+      dsn: "root:password@tcp(mysql:3306)/financial_monitoring?charset=utf8mb4&parseTime=True&loc=Local"
+      max_idle_conns: 10
+      max_open_conns: 100
+      conn_max_lifetime: "1h"
+    redis:
+      addrs: ["redis:6379"]
+      password: ""
+      db: 0
+      pool_size: 10
+      min_idle_conns: 5
+      read_timeout: "3s"
+      write_timeout: "3s"
+    elasticsearch:
+      addresses: ["http://elasticsearch:9200"]
+      username: ""
+      password: ""
+    clickhouse:
+      addr: "clickhouse:9000"
+      database: "financial_monitoring"
+      username: "default"
+      password: ""
+  messagequeue:
+    kafka:
+      brokers: ["kafka:9092"]
+      topic: "financial.monitoring.events"
+      group_id: "monitoringanalytics-service"
+  tracing:
+    enabled: false
+    service_name: "monitoringanalytics-service"
+    otlp_endpoint: "otel-collector:4317"
 
 resources:
   limits:

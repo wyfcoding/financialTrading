@@ -13,12 +13,12 @@ import (
 
 // MonitoringHandler HTTP 处理器
 type MonitoringHandler struct {
-	app *application.MonitoringAnalyticsService
+	query *application.MonitoringAnalyticsQueryService
 }
 
 // NewMonitoringHandler 创建 HTTP 处理器实例
-func NewMonitoringHandler(app *application.MonitoringAnalyticsService) *MonitoringHandler {
-	return &MonitoringHandler{app: app}
+func NewMonitoringHandler(query *application.MonitoringAnalyticsQueryService) *MonitoringHandler {
+	return &MonitoringHandler{query: query}
 }
 
 // RegisterRoutes 注册路由
@@ -54,7 +54,7 @@ func (h *MonitoringHandler) GetTradeMetrics(c *gin.Context) {
 		}
 	}
 
-	dtos, err := h.app.GetTradeMetrics(c.Request.Context(), symbol, startTime, endTime)
+	dtos, err := h.query.GetTradeMetrics(c.Request.Context(), symbol, startTime, endTime)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get trade metrics", "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -69,7 +69,7 @@ func (h *MonitoringHandler) GetAlerts(c *gin.Context) {
 	limitStr := c.DefaultQuery("limit", "20")
 	limit, _ := strconv.Atoi(limitStr)
 
-	dtos, err := h.app.GetAlerts(c.Request.Context(), limit)
+	dtos, err := h.query.GetAlerts(c.Request.Context(), limit)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get alerts", "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
@@ -87,7 +87,7 @@ func (h *MonitoringHandler) GetSystemHealth(c *gin.Context) {
 		return
 	}
 
-	dtos, err := h.app.GetSystemHealth(c.Request.Context(), serviceName)
+	dtos, err := h.query.GetSystemHealth(c.Request.Context(), serviceName)
 	if err != nil {
 		logging.Error(c.Request.Context(), "Failed to get system health", "error", err)
 		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")

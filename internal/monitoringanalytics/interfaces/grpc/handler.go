@@ -13,19 +13,27 @@ import (
 
 type Handler struct {
 	v1.UnimplementedMonitoringAnalyticsServer
-	app *application.MonitoringAnalyticsService
+	query *application.MonitoringAnalyticsQueryService
 }
 
-func NewHandler(app *application.MonitoringAnalyticsService) *Handler {
-	return &Handler{app: app}
+func NewHandler(query *application.MonitoringAnalyticsQueryService) *Handler {
+	return &Handler{query: query}
 }
 
 func (h *Handler) GetMetrics(ctx context.Context, req *v1.GetMetricsRequest) (*v1.GetMetricsResponse, error) {
-	// Default time range: last 24h
 	endTime := time.Now()
 	startTime := endTime.Add(-24 * time.Hour)
+	if req.TimeRange != "" {
+		if dur, err := time.ParseDuration(req.TimeRange); err == nil {
+			startTime = endTime.Add(-dur)
+		} else if len(req.TimeRange) > 1 && req.TimeRange[len(req.TimeRange)-1] == 'd' {
+			if days, err := time.ParseDuration(req.TimeRange[:len(req.TimeRange)-1] + "24h"); err == nil {
+				startTime = endTime.Add(-days)
+			}
+		}
+	}
 
-	dtos, err := h.app.GetTradeMetrics(ctx, req.Symbol, startTime, endTime)
+	dtos, err := h.query.GetTradeMetrics(ctx, req.Symbol, startTime, endTime)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -47,7 +55,7 @@ func (h *Handler) GetMetrics(ctx context.Context, req *v1.GetMetricsRequest) (*v
 }
 
 func (h *Handler) GetAlerts(ctx context.Context, req *v1.GetAlertsRequest) (*v1.GetAlertsResponse, error) {
-	dtos, err := h.app.GetAlerts(ctx, int(req.Limit))
+	dtos, err := h.query.GetAlerts(ctx, int(req.Limit))
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

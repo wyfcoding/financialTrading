@@ -1,48 +1,55 @@
 package domain
 
 import (
+	"time"
+
 	"github.com/shopspring/decimal"
-	"gorm.io/gorm"
 )
 
 // Metric 指标实体
 // 代表一个时间点上的监控指标数据
 type Metric struct {
-	gorm.Model
+	ID        uint      `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 	// Name 指标名称
-	Name string `gorm:"column:name;type:varchar(100);index;not null"`
+	Name string `json:"name"`
 	// Value 指标值
-	Value decimal.Decimal `gorm:"column:value;type:decimal(32,18);not null"`
+	Value decimal.Decimal `json:"value"`
 	// Tags 标签 (内存中 Map 表示)
-	Tags map[string]string `gorm:"-"`
+	Tags map[string]string `json:"tags"`
 	// TagsJSON 标签 (数据库存储 JSON 字符串)
-	TagsJSON string `gorm:"column:tags;type:text"`
+	TagsJSON string `json:"tags_json"`
 	// Timestamp 时间戳
-	Timestamp int64 `gorm:"column:timestamp;type:bigint;index;not null"`
+	Timestamp int64 `json:"timestamp"`
 }
 
 // SystemHealth 系统健康状态实体
 type SystemHealth struct {
-	gorm.Model
-	ServiceName string  `gorm:"column:service_name;type:varchar(50);not null;index"`
-	Status      string  `gorm:"column:status;type:varchar(20);not null"` // UP, DOWN, DEGRADED
-	CPUUsage    float64 `gorm:"column:cpu_usage;type:decimal(5,2)"`
-	MemoryUsage float64 `gorm:"column:memory_usage;type:decimal(5,2)"`
-	Message     string  `gorm:"column:message;type:text"`
+	ID          uint      `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	ServiceName string    `json:"service_name"`
+	Status      string    `json:"status"` // UP, DOWN, DEGRADED
+	CPUUsage    float64   `json:"cpu_usage"`
+	MemoryUsage float64   `json:"memory_usage"`
+	Message     string    `json:"message"`
 	// LastChecked 上次检查时间
-	LastChecked int64 `gorm:"column:last_checked;type:bigint;not null"`
+	LastChecked int64 `json:"last_checked"`
 }
 
 // Alert 告警实体
 type Alert struct {
-	gorm.Model
-	AlertID     string `gorm:"column:alert_id;type:varchar(32);uniqueIndex;not null"`
-	RuleName    string `gorm:"column:rule_name;type:varchar(100);not null"`
-	Severity    string `gorm:"column:severity;type:varchar(20);not null"` // INFO, WARNING, CRITICAL
-	Message     string `gorm:"column:message;type:text;not null"`
-	Source      string `gorm:"column:source;type:varchar(50)"`
-	GeneratedAt int64  `gorm:"column:generated_at;type:bigint;not null"`
-	Status      string `gorm:"column:status;type:varchar(20);default:'NEW'"` // NEW, ACKNOWLEDGED, RESOLVED
+	ID          uint      `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	AlertID     string    `json:"alert_id"`
+	RuleName    string    `json:"rule_name"`
+	Severity    string    `json:"severity"` // INFO, WARNING, CRITICAL
+	Message     string    `json:"message"`
+	Source      string    `json:"source"`
+	GeneratedAt int64     `json:"generated_at"`
+	Status      string    `json:"status"` // NEW, ACKNOWLEDGED, RESOLVED
 }
 
 func (a *Alert) Timestamp() int64 {
@@ -51,18 +58,18 @@ func (a *Alert) Timestamp() int64 {
 
 // ExecutionAudit 审计流水实体 (ClickHouse 优化)
 type ExecutionAudit struct {
-	ID        string          `gorm:"primaryKey;type:varchar(32)" json:"id"`
-	TradeID   string          `gorm:"index;type:varchar(32)" json:"trade_id"`
-	OrderID   string          `gorm:"index;type:varchar(32)" json:"order_id"`
-	UserID    string          `gorm:"index;type:varchar(64)" json:"user_id"`
-	Symbol    string          `gorm:"index;type:varchar(20)" json:"symbol"`
-	Side      string          `gorm:"type:varchar(10)" json:"side"`
-	Price     decimal.Decimal `gorm:"type:decimal(32,18)" json:"price"`
-	Quantity  decimal.Decimal `gorm:"type:decimal(32,18)" json:"quantity"`
-	Fee       decimal.Decimal `gorm:"type:decimal(32,18)" json:"fee"`
-	Venue     string          `gorm:"type:varchar(20)" json:"venue"`
-	AlgoType  string          `gorm:"type:varchar(20)" json:"algo_type"`
-	Timestamp int64           `gorm:"index;type:bigint" json:"timestamp"`
+	ID        string          `json:"id"`
+	TradeID   string          `json:"trade_id"`
+	OrderID   string          `json:"order_id"`
+	UserID    string          `json:"user_id"`
+	Symbol    string          `json:"symbol"`
+	Side      string          `json:"side"`
+	Price     decimal.Decimal `json:"price"`
+	Quantity  decimal.Decimal `json:"quantity"`
+	Fee       decimal.Decimal `json:"fee"`
+	Venue     string          `json:"venue"`
+	AlgoType  string          `json:"algo_type"`
+	Timestamp int64           `json:"timestamp"`
 }
 
 // End of domain file

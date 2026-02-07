@@ -3,138 +3,189 @@ package mysql
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/domain"
+	"github.com/wyfcoding/pkg/contextx"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
-// MetricModel 指标数据库模型
-type MetricModel struct {
-	gorm.Model
-	Name      string `gorm:"column:name;type:varchar(100);index;not null"`
-	Value     string `gorm:"column:value;type:decimal(32,18);not null"`
-	Tags      string `gorm:"column:tags;type:text"`
-	Timestamp int64  `gorm:"column:timestamp;type:bigint;index;not null"`
-}
-
-func (MetricModel) TableName() string { return "analytics_metrics" }
-
-// SystemHealthModel 系统健康数据库模型
-type SystemHealthModel struct {
-	gorm.Model
-	ServiceName string `gorm:"column:service_name;type:varchar(100);index;not null"`
-	Status      string `gorm:"column:status;type:varchar(20);not null"`
-	Message     string `gorm:"column:message;type:text"`
-	LastChecked int64  `gorm:"column:last_checked;type:bigint;not null"`
-}
-
-func (SystemHealthModel) TableName() string { return "analytics_system_health" }
-
-type metricRepositoryImpl struct {
+type metricRepository struct {
 	db *gorm.DB
 }
 
 func NewMetricRepository(db *gorm.DB) domain.MetricRepository {
-	return &metricRepositoryImpl{db: db}
+	return &metricRepository{db: db}
 }
 
-func (r *metricRepositoryImpl) Save(ctx context.Context, m *domain.Metric) error {
-	tags, err := json.Marshal(m.Tags)
+// --- tx helpers ---
+
+func (r *metricRepository) BeginTx(ctx context.Context) any {
+	return r.db.WithContext(ctx).Begin()
+}
+
+func (r *metricRepository) CommitTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Commit().Error
+}
+
+func (r *metricRepository) RollbackTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Rollback().Error
+}
+
+func (r *metricRepository) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		txCtx := contextx.WithTx(ctx, tx)
+		return fn(txCtx)
+	})
+}
+
+func (r *metricRepository) Save(ctx context.Context, m *domain.Metric) error {
+	model, err := toMetricModel(m)
 	if err != nil {
 		return err
 	}
-	model := &MetricModel{
-		Model:     m.Model,
-		Name:      m.Name,
-		Value:     m.Value.String(),
-		Tags:      string(tags),
-		Timestamp: m.Timestamp,
+	if model == nil {
+		return nil
 	}
-	err = r.db.WithContext(ctx).Clauses(clause.OnConflict{
-		UpdateAll: true,
-	}).Create(model).Error
-	if err == nil {
-		m.Model = model.Model
+
+	db := r.getDB(ctx).WithContext(ctx)
+	if model.ID == 0 {
+		if err := db.Clauses(clause.OnConflict{UpdateAll: true}).Create(model).Error; err != nil {
+			return err
+		}
+		m.ID = model.ID
+		m.CreatedAt = model.CreatedAt
+		m.UpdatedAt = model.UpdatedAt
+		return nil
 	}
-	return err
+	return db.Model(&MetricModel{}).
+		Where("id = ?", model.ID).
+		Updates(map[string]any{
+			"name":      model.Name,
+			"value":     model.Value,
+			"tags":      model.TagsJSON,
+			"timestamp": model.Timestamp,
+		}).Error
 }
 
-func (r *metricRepositoryImpl) GetMetrics(ctx context.Context, name string, startTime, endTime int64) ([]*domain.Metric, error) {
+func (r *metricRepository) GetMetrics(ctx context.Context, name string, startTime, endTime int64) ([]*domain.Metric, error) {
 	var models []MetricModel
-	if err := r.db.WithContext(ctx).Where("name = ? AND timestamp >= ? AND timestamp <= ?", name, startTime, endTime).Order("timestamp asc").Find(&models).Error; err != nil {
+	if err := r.getDB(ctx).WithContext(ctx).
+		Where("name = ? AND timestamp >= ? AND timestamp <= ?", name, startTime, endTime).
+		Order("timestamp asc").
+		Find(&models).Error; err != nil {
 		return nil, err
 	}
 	res := make([]*domain.Metric, len(models))
-	for i, m := range models {
-		dm, err := r.metricToDomain(&m)
+	for i := range models {
+		metric, err := toMetric(&models[i])
 		if err != nil {
 			return nil, err
 		}
-		res[i] = dm
+		res[i] = metric
 	}
 	return res, nil
 }
 
-func (r *metricRepositoryImpl) metricToDomain(m *MetricModel) (*domain.Metric, error) {
-	val, err := decimal.NewFromString(m.Value)
-	if err != nil {
-		return nil, err
-	}
-	var tags map[string]string
-	if err := json.Unmarshal([]byte(m.Tags), &tags); err != nil {
-		return nil, err
-	}
-	return &domain.Metric{
-		Model:     m.Model,
-		Name:      m.Name,
-		Value:     val,
-		Tags:      tags,
-		TagsJSON:  m.Tags,
-		Timestamp: m.Timestamp,
-	}, nil
-}
-
-func (r *metricRepositoryImpl) GetTradeMetrics(ctx context.Context, symbol string, startTime, endTime time.Time) ([]*domain.TradeMetric, error) {
-	var metrics []*domain.TradeMetric
-	err := r.db.WithContext(ctx).
+func (r *metricRepository) GetTradeMetrics(ctx context.Context, symbol string, startTime, endTime time.Time) ([]*domain.TradeMetric, error) {
+	var models []TradeMetricModel
+	if err := r.getDB(ctx).WithContext(ctx).
 		Where("symbol = ? AND timestamp >= ? AND timestamp <= ?", symbol, startTime, endTime).
 		Order("timestamp asc").
-		Find(&metrics).Error
-	return metrics, err
+		Find(&models).Error; err != nil {
+		return nil, err
+	}
+	res := make([]*domain.TradeMetric, len(models))
+	for i := range models {
+		res[i] = toTradeMetric(&models[i])
+	}
+	return res, nil
 }
 
-type systemHealthRepositoryImpl struct {
+func (r *metricRepository) getDB(ctx context.Context) *gorm.DB {
+	if tx, ok := contextx.GetTx(ctx).(*gorm.DB); ok {
+		return tx
+	}
+	return r.db
+}
+
+// --- SystemHealth ---
+
+type systemHealthRepository struct {
 	db *gorm.DB
 }
 
 func NewSystemHealthRepository(db *gorm.DB) domain.SystemHealthRepository {
-	return &systemHealthRepositoryImpl{db: db}
+	return &systemHealthRepository{db: db}
 }
 
-func (r *systemHealthRepositoryImpl) Save(ctx context.Context, h *domain.SystemHealth) error {
-	model := &SystemHealthModel{
-		Model:       h.Model,
-		ServiceName: h.ServiceName,
-		Status:      h.Status,
-		Message:     h.Message,
-		LastChecked: h.LastChecked,
-	}
-	err := r.db.WithContext(ctx).Clauses(clause.OnConflict{
-		UpdateAll: true,
-	}).Create(model).Error
-	if err == nil {
-		h.Model = model.Model
-	}
-	return err
+func (r *systemHealthRepository) BeginTx(ctx context.Context) any {
+	return r.db.WithContext(ctx).Begin()
 }
 
-func (r *systemHealthRepositoryImpl) GetLatestHealth(ctx context.Context, serviceName string, limit int) ([]*domain.SystemHealth, error) {
+func (r *systemHealthRepository) CommitTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Commit().Error
+}
+
+func (r *systemHealthRepository) RollbackTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Rollback().Error
+}
+
+func (r *systemHealthRepository) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		txCtx := contextx.WithTx(ctx, tx)
+		return fn(txCtx)
+	})
+}
+
+func (r *systemHealthRepository) Save(ctx context.Context, h *domain.SystemHealth) error {
+	model := toHealthModel(h)
+	if model == nil {
+		return nil
+	}
+	db := r.getDB(ctx).WithContext(ctx)
+	if model.ID == 0 {
+		if err := db.Create(model).Error; err != nil {
+			return err
+		}
+		h.ID = model.ID
+		h.CreatedAt = model.CreatedAt
+		h.UpdatedAt = model.UpdatedAt
+		return nil
+	}
+	return db.Model(&SystemHealthModel{}).
+		Where("id = ?", model.ID).
+		Updates(map[string]any{
+			"service_name": model.ServiceName,
+			"status":       model.Status,
+			"cpu_usage":    model.CPUUsage,
+			"memory_usage": model.MemoryUsage,
+			"message":      model.Message,
+			"last_checked": model.LastChecked,
+		}).Error
+}
+
+func (r *systemHealthRepository) GetLatestHealth(ctx context.Context, serviceName string, limit int) ([]*domain.SystemHealth, error) {
 	var models []SystemHealthModel
-	query := r.db.WithContext(ctx)
+	query := r.getDB(ctx).WithContext(ctx)
 	if serviceName != "" {
 		query = query.Where("service_name = ?", serviceName)
 	}
@@ -142,79 +193,112 @@ func (r *systemHealthRepositoryImpl) GetLatestHealth(ctx context.Context, servic
 		return nil, err
 	}
 	res := make([]*domain.SystemHealth, len(models))
-	for i, m := range models {
-		res[i] = r.healthToDomain(&m)
+	for i := range models {
+		res[i] = toHealth(&models[i])
 	}
 	return res, nil
 }
 
-func (r *systemHealthRepositoryImpl) healthToDomain(m *SystemHealthModel) *domain.SystemHealth {
-	return &domain.SystemHealth{
-		Model:       m.Model,
-		ServiceName: m.ServiceName,
-		Status:      m.Status,
-		Message:     m.Message,
-		LastChecked: m.LastChecked,
+func (r *systemHealthRepository) getDB(ctx context.Context) *gorm.DB {
+	if tx, ok := contextx.GetTx(ctx).(*gorm.DB); ok {
+		return tx
 	}
+	return r.db
 }
 
-// AlertModel 告警数据库模型
-type AlertModel struct {
-	gorm.Model
-	AlertID   string `gorm:"column:alert_id;type:varchar(32);uniqueIndex;not null"`
-	RuleName  string `gorm:"column:rule_name;type:varchar(100);not null"`
-	Severity  string `gorm:"column:severity;type:varchar(20)"`
-	Message   string `gorm:"column:message;type:text"`
-	Source    string `gorm:"column:source;type:varchar(50)"`
-	Status    string `gorm:"column:status;type:varchar(20)"`
-	Timestamp int64  `gorm:"column:timestamp;type:bigint;index"`
-}
+// --- Alert ---
 
-func (AlertModel) TableName() string { return "analytics_alerts" }
-
-type alertRepositoryImpl struct {
+type alertRepository struct {
 	db *gorm.DB
 }
 
 func NewAlertRepository(db *gorm.DB) domain.AlertRepository {
-	return &alertRepositoryImpl{db: db}
+	return &alertRepository{db: db}
 }
 
-func (r *alertRepositoryImpl) Save(ctx context.Context, a *domain.Alert) error {
-	m := &AlertModel{
-		Model:     a.Model,
-		AlertID:   a.AlertID,
-		RuleName:  a.RuleName,
-		Severity:  a.Severity,
-		Message:   a.Message,
-		Source:    a.Source,
-		Status:    a.Status,
-		Timestamp: a.GeneratedAt,
-	}
-	err := r.db.WithContext(ctx).Save(m).Error
-	if err == nil {
-		a.Model = m.Model
-	}
-	return err
+func (r *alertRepository) BeginTx(ctx context.Context) any {
+	return r.db.WithContext(ctx).Begin()
 }
 
-func (r *alertRepositoryImpl) GetAlerts(ctx context.Context, limit int) ([]*domain.Alert, error) {
+func (r *alertRepository) CommitTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Commit().Error
+}
+
+func (r *alertRepository) RollbackTx(tx any) error {
+	gormTx, ok := tx.(*gorm.DB)
+	if !ok || gormTx == nil {
+		return errors.New("invalid transaction")
+	}
+	return gormTx.Rollback().Error
+}
+
+func (r *alertRepository) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		txCtx := contextx.WithTx(ctx, tx)
+		return fn(txCtx)
+	})
+}
+
+func (r *alertRepository) Save(ctx context.Context, a *domain.Alert) error {
+	model := toAlertModel(a)
+	if model == nil {
+		return nil
+	}
+	db := r.getDB(ctx).WithContext(ctx)
+	if model.ID == 0 {
+		if err := db.Create(model).Error; err != nil {
+			return err
+		}
+		a.ID = model.ID
+		a.CreatedAt = model.CreatedAt
+		a.UpdatedAt = model.UpdatedAt
+		return nil
+	}
+	return db.Model(&AlertModel{}).
+		Where("id = ?", model.ID).
+		Updates(map[string]any{
+			"alert_id":  model.AlertID,
+			"rule_name": model.RuleName,
+			"severity":  model.Severity,
+			"message":   model.Message,
+			"source":    model.Source,
+			"status":    model.Status,
+			"timestamp": model.Timestamp,
+		}).Error
+}
+
+func (r *alertRepository) UpdateStatus(ctx context.Context, alertID, status string) error {
+	if alertID == "" {
+		return nil
+	}
+	return r.getDB(ctx).WithContext(ctx).
+		Model(&AlertModel{}).
+		Where("alert_id = ?", alertID).
+		Updates(map[string]any{
+			"status":     status,
+			"updated_at": time.Now(),
+		}).Error
+}
+
+func (r *alertRepository) GetAlerts(ctx context.Context, limit int) ([]*domain.Alert, error) {
 	var models []AlertModel
-	if err := r.db.WithContext(ctx).Order("timestamp desc").Limit(limit).Find(&models).Error; err != nil {
+	if err := r.getDB(ctx).WithContext(ctx).Order("timestamp desc").Limit(limit).Find(&models).Error; err != nil {
 		return nil, err
 	}
 	res := make([]*domain.Alert, len(models))
-	for i, m := range models {
-		res[i] = &domain.Alert{
-			Model:       m.Model,
-			AlertID:     m.AlertID,
-			RuleName:    m.RuleName,
-			Severity:    m.Severity,
-			Message:     m.Message,
-			Source:      m.Source,
-			Status:      m.Status,
-			GeneratedAt: m.Timestamp,
-		}
+	for i := range models {
+		res[i] = toAlert(&models[i])
 	}
 	return res, nil
+}
+
+func (r *alertRepository) getDB(ctx context.Context) *gorm.DB {
+	if tx, ok := contextx.GetTx(ctx).(*gorm.DB); ok {
+		return tx
+	}
+	return r.db
 }
