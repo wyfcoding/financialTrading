@@ -10,22 +10,24 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	accountv1 "github.com/wyfcoding/financialtrading/go-api/account/v1"
 	clearingv1 "github.com/wyfcoding/financialtrading/go-api/clearing/v1"
 	"github.com/wyfcoding/financialtrading/internal/clearing/application"
 	"github.com/wyfcoding/financialtrading/internal/clearing/domain"
-	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/messaging"
 	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/persistence/mysql"
-	clearing_redis "github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/persistence/redis"
+	clearingredis "github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/persistence/redis"
 	"github.com/wyfcoding/financialtrading/internal/clearing/infrastructure/search"
+	clearingconsumer "github.com/wyfcoding/financialtrading/internal/clearing/interfaces/consumer"
 	grpcserver "github.com/wyfcoding/financialtrading/internal/clearing/interfaces/grpc"
 	httpserver "github.com/wyfcoding/financialtrading/internal/clearing/interfaces/http"
 	"github.com/wyfcoding/pkg/cache"
 	"github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/database"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
 	"github.com/wyfcoding/pkg/messagequeue/outbox"
 	"github.com/wyfcoding/pkg/metrics"
 	search_pkg "github.com/wyfcoding/pkg/search"
@@ -47,42 +49,34 @@ func main() {
 	}
 
 	// 2. Logger
-	logCfg := &logging.Config{
-		Service:    cfg.Server.Name,
-		Module:     "clearing",
-		Level:      cfg.Log.Level,
-		File:       cfg.Log.File,
-		MaxSize:    cfg.Log.MaxSize,
-		MaxBackups: cfg.Log.MaxBackups,
-		MaxAge:     cfg.Log.MaxAge,
-		Compress:   cfg.Log.Compress,
-	}
+	logCfg := &logging.Config{Service: cfg.Server.Name, Level: cfg.Log.Level}
 	logger := logging.NewFromConfig(logCfg)
 	slog.SetDefault(logger.Logger)
 
 	// 3. Metrics
 	metricsImpl := metrics.NewMetrics(cfg.Server.Name)
-	if cfg.Metrics.Enabled {
-		go metricsImpl.ExposeHTTP(cfg.Metrics.Port)
-	}
 
-	// 4. Infrastructure
+	// 4. Database
 	db, err := database.NewDB(cfg.Data.Database, cfg.CircuitBreaker, logger, metricsImpl)
 	if err != nil {
 		slog.Error("failed to connect database", "error", err)
 		os.Exit(1)
 	}
-
 	if cfg.Server.Environment == "dev" {
-		if err := db.RawDB().AutoMigrate(&domain.Settlement{}); err != nil {
+		if err := db.RawDB().AutoMigrate(&mysql.SettlementModel{}, &outbox.Message{}); err != nil {
 			slog.Error("failed to migrate database", "error", err)
 		}
 	}
 
+	// 5. Kafka & Outbox
+	kafkaProducer := kafka.NewProducer(&cfg.MessageQueue.Kafka, logger, metricsImpl)
 	outboxMgr := outbox.NewManager(db.RawDB(), logger.Logger)
+	pusher := func(ctx context.Context, topic, key string, payload []byte) error {
+		return kafkaProducer.PublishToTopic(ctx, topic, []byte(key), payload)
+	}
+	outboxProcessor := outbox.NewProcessor(outboxMgr, pusher, 100, 2*time.Second)
 
-	// 5. Downstream Clients
-	// Account Service Client
+	// 6. Downstream Clients
 	accountAddr := cfg.GetGRPCAddr("account")
 	if accountAddr == "" {
 		accountAddr = "localhost:9090"
@@ -94,49 +88,73 @@ func main() {
 	}
 	accountClient := accountv1.NewAccountServiceClient(accountConn)
 
-	// 6. Application
+	// 7. Repositories
 	repo := mysql.NewSettlementRepository(db.RawDB())
+	publisher := outbox.NewPublisher(outboxMgr)
 
-	// ES & Redis Repositories
 	esCfg := &search_pkg.Config{
 		ServiceName:         cfg.Server.Name,
 		ElasticsearchConfig: cfg.Data.Elasticsearch,
+		BreakerConfig:       cfg.CircuitBreaker,
 	}
 	esClient, err := search_pkg.NewClient(esCfg, logger, metricsImpl)
 	if err != nil {
 		slog.Error("failed to init elasticsearch", "error", err)
 	}
-	searchRepo := search.NewSettlementSearchRepository(esClient)
+	searchRepo := search.NewSettlementSearchRepository(esClient, "settlements")
 
 	redisCache, err := cache.NewRedisCache(&cfg.Data.Redis, cfg.CircuitBreaker, logger, metricsImpl)
 	if err != nil {
 		slog.Error("failed to init redis", "error", err)
 	}
-	redisRepo := clearing_redis.NewMarginRedisRepository(redisCache.GetClient())
+	marginRepo := clearingredis.NewMarginRedisRepository(redisCache.GetClient())
+	settlementReadRepo := clearingredis.NewSettlementRedisRepository(redisCache.GetClient())
 
-	outboxPub := messaging.NewOutboxPublisher(outboxMgr)
-	commandSvc := application.NewClearingCommandService(repo, redisRepo, outboxPub, db.RawDB(), accountClient)
-	queryService := application.NewClearingQueryService(repo, searchRepo, redisRepo)
-	appService := application.NewClearingService(commandSvc, queryService)
+	// 8. Application
+	commandSvc := application.NewClearingCommandService(repo, marginRepo, publisher, accountClient)
+	querySvc := application.NewClearingQueryService(repo, searchRepo, settlementReadRepo, marginRepo)
 
-	// 7. Interfaces
+	projectionSvc := application.NewClearingProjectionService(repo, settlementReadRepo, searchRepo, logger.Logger)
+	projectionHandler := clearingconsumer.NewSettlementProjectionHandler(projectionSvc, logger.Logger)
+
+	projectionTopics := []string{
+		domain.SettlementCreatedEventType,
+		domain.SettlementCompletedEventType,
+		domain.SettlementFailedEventType,
+	}
+	projectionConsumers := make([]*kafka.Consumer, 0, len(projectionTopics))
+	for _, topic := range projectionTopics {
+		consumerCfg := cfg.MessageQueue.Kafka
+		consumerCfg.Topic = topic
+		if consumerCfg.GroupID == "" {
+			consumerCfg.GroupID = "clearing-projection-group"
+		}
+		consumer := kafka.NewConsumer(&consumerCfg, logger, metricsImpl)
+		consumer.Start(context.Background(), 3, projectionHandler.Handle)
+		projectionConsumers = append(projectionConsumers, consumer)
+	}
+
+	// 9. Interfaces
 	grpcSrv := grpc.NewServer()
-	clearingSrv := grpcserver.NewHandler(appService)
+	clearingSrv := grpcserver.NewHandler(commandSvc, querySvc)
 	clearingv1.RegisterClearingServiceServer(grpcSrv, clearingSrv)
 	reflection.Register(grpcSrv)
 
 	gin.SetMode(gin.ReleaseMode)
-	if cfg.Server.Environment == "dev" {
-		gin.SetMode(gin.DebugMode)
-	}
 	r := gin.New()
 	r.Use(gin.Recovery())
-
-	httpHandler := httpserver.NewClearingHandler(appService)
+	httpHandler := httpserver.NewClearingHandler(commandSvc, querySvc)
 	httpHandler.RegisterRoutes(r.Group("/api"))
 
-	// 8. Start
+	// 10. Start
 	g, ctx := errgroup.WithContext(context.Background())
+
+	g.Go(func() error {
+		outboxProcessor.Start()
+		<-ctx.Done()
+		outboxProcessor.Stop()
+		return nil
+	})
 
 	g.Go(func() error {
 		addr := fmt.Sprintf(":%d", cfg.Server.GRPC.Port)
@@ -168,6 +186,11 @@ func main() {
 			slog.Info("context cancelled, shutting down...")
 		}
 		grpcSrv.GracefulStop()
+		for _, c := range projectionConsumers {
+			if c != nil {
+				_ = c.Close()
+			}
+		}
 		return nil
 	})
 

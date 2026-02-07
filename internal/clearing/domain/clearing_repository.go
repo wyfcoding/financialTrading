@@ -4,10 +4,22 @@ import "context"
 
 // SettlementRepository 结算仓储接口
 type SettlementRepository interface {
+	BeginTx(ctx context.Context) any
+	CommitTx(tx any) error
+	RollbackTx(tx any) error
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+
 	Save(ctx context.Context, settlement *Settlement) error
 	Get(ctx context.Context, id string) (*Settlement, error)
 	GetByTradeID(ctx context.Context, tradeID string) (*Settlement, error)
 	List(ctx context.Context, limit int) ([]*Settlement, error)
+}
+
+// SettlementReadRepository 结算读模型（Redis）。
+type SettlementReadRepository interface {
+	Save(ctx context.Context, settlement *Settlement) error
+	Get(ctx context.Context, settlementID string) (*Settlement, error)
+	Delete(ctx context.Context, settlementID string) error
 }
 
 // SettlementSearchRepository 提供基于 Elasticsearch 的结算历史搜索

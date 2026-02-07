@@ -31,30 +31,41 @@ func (m *MarginDTO) CurrentMarginRate() decimal.Decimal {
 }
 
 type ClearingQueryService struct {
-	repo       domain.SettlementRepository
-	searchRepo domain.SettlementSearchRepository
-	redisRepo  domain.MarginRedisRepository
+	repo           domain.SettlementRepository
+	searchRepo     domain.SettlementSearchRepository
+	marginRepo     domain.MarginRedisRepository
+	settleReadRepo domain.SettlementReadRepository
 }
 
 func NewClearingQueryService(
 	repo domain.SettlementRepository,
 	searchRepo domain.SettlementSearchRepository,
-	redisRepo domain.MarginRedisRepository,
+	settleReadRepo domain.SettlementReadRepository,
+	marginRepo domain.MarginRedisRepository,
 ) *ClearingQueryService {
 	return &ClearingQueryService{
-		repo:       repo,
-		searchRepo: searchRepo,
-		redisRepo:  redisRepo,
+		repo:           repo,
+		searchRepo:     searchRepo,
+		marginRepo:     marginRepo,
+		settleReadRepo: settleReadRepo,
 	}
 }
 
 func (q *ClearingQueryService) GetSettlement(ctx context.Context, id string) (*SettlementDTO, error) {
+	if q.settleReadRepo != nil {
+		if cached, err := q.settleReadRepo.Get(ctx, id); err == nil && cached != nil {
+			return q.toDTO(cached), nil
+		}
+	}
 	agg, err := q.repo.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	if agg == nil {
 		return nil, nil
+	}
+	if q.settleReadRepo != nil {
+		_ = q.settleReadRepo.Save(ctx, agg)
 	}
 	return q.toDTO(agg), nil
 }
@@ -64,8 +75,16 @@ func (q *ClearingQueryService) GetClearingStatus(ctx context.Context, id string)
 }
 
 func (q *ClearingQueryService) ListSettlements(ctx context.Context, userID, symbol string, limit, offset int) ([]*SettlementDTO, int64, error) {
-	aggs, total, err := q.searchRepo.Search(ctx, userID, symbol, limit, offset)
-	if err != nil {
+	var (
+		aggs  []*domain.Settlement
+		total int64
+		err   error
+	)
+
+	if q.searchRepo != nil {
+		aggs, total, err = q.searchRepo.Search(ctx, userID, symbol, limit, offset)
+	}
+	if err != nil || q.searchRepo == nil {
 		// Fallback to MySQL
 		mysqlAggs, mysqlErr := q.repo.List(ctx, limit)
 		if mysqlErr != nil {
@@ -84,7 +103,7 @@ func (q *ClearingQueryService) ListSettlements(ctx context.Context, userID, symb
 
 func (q *ClearingQueryService) GetMarginRequirement(ctx context.Context, userID, symbol string) (*MarginDTO, error) {
 	// Try Redis first
-	cached, _ := q.redisRepo.Get(ctx, userID)
+	cached, _ := q.marginRepo.Get(ctx, userID)
 	if cached != nil {
 		// 实际上这里应该有更复杂的解包逻辑，此处仅示意
 		return &MarginDTO{Symbol: symbol, BaseMarginRate: decimal.NewFromFloat(0.05)}, nil

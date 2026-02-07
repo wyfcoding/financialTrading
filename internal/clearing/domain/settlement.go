@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"gorm.io/gorm"
 )
 
 // SettlementStatus 结算状态
@@ -18,23 +17,21 @@ const (
 
 // Settlement 结算单聚合根
 type Settlement struct {
-	gorm.Model
-	SettlementID string           `gorm:"column:settlement_id;type:varchar(32);uniqueIndex;not null;comment:结算ID"`
-	TradeID      string           `gorm:"column:trade_id;type:varchar(32);index;not null;comment:成交ID"`
-	BuyUserID    string           `gorm:"column:buy_user_id;type:varchar(32);not null;comment:买方用户ID"`
-	SellUserID   string           `gorm:"column:sell_user_id;type:varchar(32);not null;comment:卖方用户ID"`
-	Symbol       string           `gorm:"column:symbol;type:varchar(20);not null;comment:标的"`
-	Quantity     decimal.Decimal  `gorm:"column:quantity;type:decimal(32,18);not null;comment:数量"`
-	Price        decimal.Decimal  `gorm:"column:price;type:decimal(32,18);not null;comment:价格"`
-	TotalAmount  decimal.Decimal  `gorm:"column:total_amount;type:decimal(32,18);not null;comment:总金额"`
-	Fee          decimal.Decimal  `gorm:"column:fee;type:decimal(32,18);default:0;not null;comment:手续费"`
-	Status       SettlementStatus `gorm:"column:status;type:varchar(20);not null;comment:状态"`
-	SettledAt    *time.Time       `gorm:"column:settled_at;comment:结算时间"`
-	ErrorMessage string           `gorm:"column:error_message;type:text;comment:错误信息"`
-}
-
-func (Settlement) TableName() string {
-	return "settlements"
+	ID           uint             `json:"id"`
+	CreatedAt    time.Time        `json:"created_at"`
+	UpdatedAt    time.Time        `json:"updated_at"`
+	SettlementID string           `json:"settlement_id"`
+	TradeID      string           `json:"trade_id"`
+	BuyUserID    string           `json:"buy_user_id"`
+	SellUserID   string           `json:"sell_user_id"`
+	Symbol       string           `json:"symbol"`
+	Quantity     decimal.Decimal  `json:"quantity"`
+	Price        decimal.Decimal  `json:"price"`
+	TotalAmount  decimal.Decimal  `json:"total_amount"`
+	Fee          decimal.Decimal  `json:"fee"`
+	Status       SettlementStatus `json:"status"`
+	SettledAt    *time.Time       `json:"settled_at"`
+	ErrorMessage string           `json:"error_message"`
 }
 
 // NewSettlement 创建新的结算单

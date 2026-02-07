@@ -25,10 +25,13 @@ type esSearchResponse struct {
 	} `json:"hits"`
 }
 
-func NewSettlementSearchRepository(client *search_pkg.Client) domain.SettlementSearchRepository {
+func NewSettlementSearchRepository(client *search_pkg.Client, index string) domain.SettlementSearchRepository {
+	if index == "" {
+		index = "settlements"
+	}
 	return &settlementSearchRepository{
 		client: client,
-		index:  "settlements",
+		index:  index,
 	}
 }
 

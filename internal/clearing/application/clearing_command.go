@@ -4,15 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/shopspring/decimal"
 	accountv1 "github.com/wyfcoding/financialtrading/go-api/account/v1"
-	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/clearing/domain"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/transaction"
-	"gorm.io/gorm"
 )
 
 type SettleTradeRequest struct {
@@ -86,24 +85,19 @@ type ClearingCommandService struct {
 	repo          domain.SettlementRepository
 	redisRepo     domain.MarginRedisRepository
 	publisher     domain.EventPublisher
-	db            *gorm.DB
 	accountClient accountv1.AccountServiceClient
-	orderClient   orderv1.OrderServiceClient
-	marginEngine  *domain.PortfolioMarginEngine
 }
 
 func NewClearingCommandService(
 	repo domain.SettlementRepository,
 	redisRepo domain.MarginRedisRepository,
 	publisher domain.EventPublisher,
-	db *gorm.DB,
 	accountClient accountv1.AccountServiceClient,
 ) *ClearingCommandService {
 	return &ClearingCommandService{
 		repo:          repo,
 		redisRepo:     redisRepo,
 		publisher:     publisher,
-		db:            db,
 		accountClient: accountClient,
 	}
 }
@@ -120,16 +114,22 @@ func (s *ClearingCommandService) SettleTrade(ctx context.Context, req *SettleTra
 	settlement := domain.NewSettlement(settlementID, req.TradeID, req.BuyUserID, req.SellUserID, req.Symbol, req.Quantity, req.Price)
 
 	// 本地事务：保存 Settlement 并发送 Saga 开始事件
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		txCtx := contextx.WithTx(ctx, tx)
+	err := s.repo.WithTx(ctx, func(txCtx context.Context) error {
 		if err := s.repo.Save(txCtx, settlement); err != nil {
 			return err
 		}
 
+		if s.publisher == nil {
+			return nil
+		}
 		// 发送集成事件 (Outbox Pattern)
-		return s.publisher.PublishInTx(ctx, tx, "clearing.started", settlementID, map[string]any{
-			"settlement_id": settlementID, "trade_id": req.TradeID,
-		})
+		event := domain.SettlementCreatedEvent{
+			BaseEvent:    domain.BaseEvent{Timestamp: time.Now()},
+			SettlementID: settlementID,
+			TradeID:      req.TradeID,
+			TotalAmount:  settlement.TotalAmount.String(),
+		}
+		return s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.SettlementCreatedEventType, settlementID, event)
 	})
 	if err != nil {
 		return nil, err
@@ -165,28 +165,49 @@ func (s *ClearingCommandService) executeSaga(ctx context.Context, settlement *do
 }
 
 func (s *ClearingCommandService) markCompleted(ctx context.Context, id string) {
-	_ = s.db.Transaction(func(tx *gorm.DB) error {
-		txCtx := contextx.WithTx(ctx, tx)
+	_ = s.repo.WithTx(ctx, func(txCtx context.Context) error {
 		settlement, err := s.repo.Get(txCtx, id)
 		if err != nil || settlement == nil {
 			return err
 		}
 
 		settlement.Complete()
-		return s.repo.Save(txCtx, settlement)
+		if err := s.repo.Save(txCtx, settlement); err != nil {
+			return err
+		}
+		if s.publisher == nil {
+			return nil
+		}
+		event := domain.SettlementCompletedEvent{
+			BaseEvent:    domain.BaseEvent{Timestamp: time.Now()},
+			SettlementID: settlement.SettlementID,
+			TradeID:      settlement.TradeID,
+		}
+		return s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.SettlementCompletedEventType, settlement.SettlementID, event)
 	})
 }
 
 func (s *ClearingCommandService) markFailed(ctx context.Context, id, reason string) {
-	_ = s.db.Transaction(func(tx *gorm.DB) error {
-		txCtx := contextx.WithTx(ctx, tx)
+	_ = s.repo.WithTx(ctx, func(txCtx context.Context) error {
 		settlement, err := s.repo.Get(txCtx, id)
 		if err != nil || settlement == nil {
 			return err
 		}
 
 		settlement.Fail(reason)
-		return s.repo.Save(txCtx, settlement)
+		if err := s.repo.Save(txCtx, settlement); err != nil {
+			return err
+		}
+		if s.publisher == nil {
+			return nil
+		}
+		event := domain.SettlementFailedEvent{
+			BaseEvent:    domain.BaseEvent{Timestamp: time.Now()},
+			SettlementID: settlement.SettlementID,
+			TradeID:      settlement.TradeID,
+			Reason:       reason,
+		}
+		return s.publisher.PublishInTx(ctx, contextx.GetTx(txCtx), domain.SettlementFailedEventType, settlement.SettlementID, event)
 	})
 }
 

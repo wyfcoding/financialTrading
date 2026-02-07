@@ -18,13 +18,15 @@ import (
 // Handler 是清算服务的 gRPC 处理器。
 type Handler struct {
 	pb.UnimplementedClearingServiceServer
-	app *application.ClearingService
+	cmd   *application.ClearingCommandService
+	query *application.ClearingQueryService
 }
 
 // NewHandler 创建 gRPC 处理器实例。
-func NewHandler(app *application.ClearingService) *Handler {
+func NewHandler(cmd *application.ClearingCommandService, query *application.ClearingQueryService) *Handler {
 	return &Handler{
-		app: app,
+		cmd:   cmd,
+		query: query,
 	}
 }
 
@@ -45,7 +47,7 @@ func (h *Handler) SettleTrade(ctx context.Context, req *pb.SettleTradeRequest) (
 		Price:      price,
 	}
 
-	dto, err := h.app.Command.SettleTrade(ctx, appReq)
+	dto, err := h.cmd.SettleTrade(ctx, appReq)
 	if err != nil {
 		slog.Error("gRPC SettleTrade failed", "trade_id", req.TradeId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to settle trade: %v", err)
@@ -70,7 +72,7 @@ func (h *Handler) GetSettlements(ctx context.Context, req *pb.GetSettlementsRequ
 		limit = 20
 	}
 
-	dtos, _, err := h.app.Query.ListSettlements(ctx, req.UserId, "", limit, 0)
+	dtos, _, err := h.query.ListSettlements(ctx, req.UserId, "", limit, 0)
 	if err != nil {
 		slog.Error("gRPC GetSettlements failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
 		return nil, status.Errorf(codes.Internal, "failed to get settlements: %v", err)
@@ -93,7 +95,7 @@ func (h *Handler) GetSettlements(ctx context.Context, req *pb.GetSettlementsRequ
 
 // SagaMarkSettlementCompleted Saga 正向: 确认结算成功
 func (h *Handler) SagaMarkSettlementCompleted(ctx context.Context, req *pb.SagaSettlementRequest) (*pb.SagaSettlementResponse, error) {
-	if err := h.app.Command.SagaMarkSettlementCompleted(ctx, req.SettlementId); err != nil {
+	if err := h.cmd.SagaMarkSettlementCompleted(ctx, req.SettlementId); err != nil {
 		return nil, status.Errorf(codes.Internal, "SagaMarkSettlementCompleted failed: %v", err)
 	}
 	return &pb.SagaSettlementResponse{Success: true}, nil
@@ -101,7 +103,7 @@ func (h *Handler) SagaMarkSettlementCompleted(ctx context.Context, req *pb.SagaS
 
 // SagaMarkSettlementFailed Saga 补偿: 标记结算失败
 func (h *Handler) SagaMarkSettlementFailed(ctx context.Context, req *pb.SagaSettlementRequest) (*pb.SagaSettlementResponse, error) {
-	if err := h.app.Command.SagaMarkSettlementFailed(ctx, req.SettlementId, req.Reason); err != nil {
+	if err := h.cmd.SagaMarkSettlementFailed(ctx, req.SettlementId, req.Reason); err != nil {
 		return nil, status.Errorf(codes.Internal, "SagaMarkSettlementFailed failed: %v", err)
 	}
 	return &pb.SagaSettlementResponse{Success: true}, nil
@@ -109,7 +111,7 @@ func (h *Handler) SagaMarkSettlementFailed(ctx context.Context, req *pb.SagaSett
 
 // ExecuteEODClearing 执行日终清算
 func (h *Handler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEODClearingRequest) (*pb.ExecuteEODClearingResponse, error) {
-	clearingID, err := h.app.Command.ExecuteEODClearing(ctx, req.ClearingDate)
+	clearingID, err := h.cmd.ExecuteEODClearing(ctx, req.ClearingDate)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to execute EOD clearing: %v", err)
 	}
@@ -123,7 +125,7 @@ func (h *Handler) ExecuteEODClearing(ctx context.Context, req *pb.ExecuteEODClea
 
 // GetClearingStatus 获取状态
 func (h *Handler) GetClearingStatus(ctx context.Context, req *pb.GetClearingStatusRequest) (*pb.GetClearingStatusResponse, error) {
-	dto, err := h.app.Query.GetClearingStatus(ctx, req.ClearingId)
+	dto, err := h.query.GetClearingStatus(ctx, req.ClearingId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get clearing status: %v", err)
 	}
@@ -142,7 +144,7 @@ func (h *Handler) GetClearingStatus(ctx context.Context, req *pb.GetClearingStat
 // GetMarginRequirement 获取保证金
 func (h *Handler) GetMarginRequirement(ctx context.Context, req *pb.GetMarginRequirementRequest) (*pb.GetMarginRequirementResponse, error) {
 	// 获取保证金要求
-	margin, err := h.app.Query.GetMarginRequirement(ctx, "", req.Symbol)
+	margin, err := h.query.GetMarginRequirement(ctx, "", req.Symbol)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get margin requirement: %v", err)
 	}
