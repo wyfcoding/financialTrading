@@ -45,6 +45,7 @@ func (h *Handler) SettleTrade(ctx context.Context, req *pb.SettleTradeRequest) (
 		Symbol:     req.Symbol,
 		Quantity:   qty,
 		Price:      price,
+		Currency:   req.Currency,
 	}
 
 	dto, err := h.cmd.SettleTrade(ctx, appReq)
@@ -155,4 +156,28 @@ func (h *Handler) GetMarginRequirement(ctx context.Context, req *pb.GetMarginReq
 		VolatilityMultiplier: margin.VolatilityFactor.String(),
 		CurrentMarginRate:    margin.CurrentMarginRate().String(),
 	}, nil
+}
+
+// RunFXHedge 执行实时汇率对冲
+func (h *Handler) RunFXHedge(ctx context.Context, req *pb.RunFXHedgeRequest) (*pb.RunFXHedgeResponse, error) {
+	start := time.Now()
+	slog.Info("gRPC RunFXHedge received", "base_currency", req.BaseCurrency)
+
+	results, err := h.cmd.RunFXHedge(ctx, req.BaseCurrency)
+	if err != nil {
+		slog.Error("gRPC RunFXHedge failed", "error", err, "duration", time.Since(start))
+		return nil, status.Errorf(codes.Internal, "failed to run FX hedge: %v", err)
+	}
+
+	pbResults := make([]*pb.FXHedgeResponse, 0, len(results))
+	for _, res := range results {
+		pbResults = append(pbResults, &pb.FXHedgeResponse{
+			Currency:    res.Currency,
+			NetExposure: res.NetExposure,
+			HedgeAmount: res.HedgeAmount,
+			Status:      res.Status,
+		})
+	}
+
+	return &pb.RunFXHedgeResponse{Results: pbResults}, nil
 }

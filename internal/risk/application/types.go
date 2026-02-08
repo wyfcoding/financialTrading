@@ -180,6 +180,44 @@ type MonteCarloRiskResponse struct {
 	ES99  string `json:"es_99"`
 }
 
+// --- Stress Testing ---
+
+type RunStressTestRequest struct {
+	ScenarioName string              `json:"scenario_name"`
+	Assets       []PortfolioAssetDTO `json:"assets"`
+}
+
+type StressTestResultDTO struct {
+	ScenarioName   string `json:"scenario_name"`
+	PnLImpact      string `json:"pnl_impact"`
+	PercentageDrop string `json:"percentage_drop"`
+	Survived       bool   `json:"survived"`
+}
+
+type RunStressTestResponse struct {
+	Results []*StressTestResultDTO `json:"results"`
+}
+
+// --- Anomaly Detection ---
+
+type GetAnomalyReportRequest struct {
+	UserID    string `json:"user_id"`
+	StartTime int64  `json:"start_time"`
+	EndTime   int64  `json:"end_time"`
+}
+
+type AnomalyRecordDTO struct {
+	Type            string `json:"type"`
+	Symbol          string `json:"symbol"`
+	Reason          string `json:"reason"`
+	ConfidenceScore string `json:"confidence_score"`
+	Timestamp       int64  `json:"timestamp"`
+}
+
+type GetAnomalyReportResponse struct {
+	Anomalies []*AnomalyRecordDTO `json:"anomalies"`
+}
+
 func toRiskAssessmentDTO(a *domain.RiskAssessment) *RiskAssessmentDTO {
 	if a == nil {
 		return nil

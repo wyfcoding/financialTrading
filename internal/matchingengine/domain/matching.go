@@ -14,6 +14,16 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+type MarketStatus int32
+
+const (
+	StatusInit    MarketStatus = 0
+	StatusAuction MarketStatus = 1
+	StatusTrading MarketStatus = 2
+	StatusHalted  MarketStatus = 3
+	StatusClosed  MarketStatus = 4
+)
+
 // OrderLevel 表示同一价格档位下的订单集合，保证时间优先 (FIFO)
 type OrderLevel struct {
 	Price  decimal.Decimal
@@ -58,6 +68,9 @@ type DisruptionEngine struct {
 	stopChan       chan struct{}
 	logger         *slog.Logger
 	halted         int32
+	status         int32           // MarketStatus
+	lastPrice      atomic.Value    // decimal.Decimal
+	priceCage      decimal.Decimal // 价格笼子比例
 	circuitBreaker *CircuitBreaker
 }
 
@@ -69,16 +82,21 @@ func NewDisruptionEngine(symbol string, capacity uint64, logger *slog.Logger) (*
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ring buffer: %w", err)
 	}
-	return &DisruptionEngine{
+	engine := &DisruptionEngine{
 		symbol:    symbol,
 		orderBook: NewOrderBook(symbol),
 		ring:      ring,
 		stopChan:  make(chan struct{}),
 		logger:    logger,
 		halted:    0,
-		// 默认 10% 阈值，60秒冷却
+		status:    int32(StatusInit),
+		// 默认 2% 价格笼子
+		priceCage: decimal.NewFromFloat(0.02),
+		// 默认 10% 熔断阈值，60秒冷却
 		circuitBreaker: NewCircuitBreaker(decimal.NewFromFloat(0.10), 60*time.Second, logger),
-	}, nil
+	}
+	engine.lastPrice.Store(decimal.Zero)
+	return engine, nil
 }
 
 func (e *DisruptionEngine) Start() error {
@@ -101,7 +119,32 @@ func (e *DisruptionEngine) Halt() {
 func (e *DisruptionEngine) Resume() {
 	e.circuitBreaker.Reset()
 	atomic.StoreInt32(&e.halted, 0)
+	atomic.StoreInt32(&e.status, int32(StatusTrading))
 	e.logger.Info("matching engine resumed")
+}
+
+func (e *DisruptionEngine) GetStatus() MarketStatus {
+	return MarketStatus(atomic.LoadInt32(&e.status))
+}
+
+func (e *DisruptionEngine) SetStatus(status MarketStatus) {
+	atomic.StoreInt32(&e.status, int32(status))
+	e.logger.Info("market status changed", "status", status)
+}
+
+func (e *DisruptionEngine) SetBasePrice(price decimal.Decimal) {
+	e.lastPrice.Store(price)
+	e.logger.Info("base price set", "price", price)
+}
+
+func (e *DisruptionEngine) validatePriceCage(price decimal.Decimal) bool {
+	last := e.lastPrice.Load().(decimal.Decimal)
+	if last.IsZero() {
+		return true // 如果没有上一次成交价，暂时跳过校验
+	}
+	upper := last.Mul(decimal.NewFromInt(1).Add(e.priceCage))
+	lower := last.Mul(decimal.NewFromInt(1).Sub(e.priceCage))
+	return price.GreaterThanOrEqual(lower) && price.LessThanOrEqual(upper)
 }
 
 func (e *DisruptionEngine) Symbol() string {
@@ -158,6 +201,18 @@ func (e *DisruptionEngine) applyOrder(order *types.Order) *MatchingResult {
 		OrderID:           order.OrderID,
 		RemainingQuantity: order.Quantity,
 		Status:            "PENDING",
+	}
+
+	// 1. 状态检查
+	if e.GetStatus() != StatusTrading {
+		result.Status = "REJECTED_MARKET_CLOSED"
+		return result
+	}
+
+	// 2. 价格笼子校验
+	if !e.validatePriceCage(order.Price) {
+		result.Status = "REJECTED_PRICE_OUT_OF_CAGE"
+		return result
 	}
 
 	if order.Side == "BUY" {
@@ -262,6 +317,7 @@ func (e *DisruptionEngine) matchOrder(order *types.Order, opponentBook *algorith
 			result.Trades = append(result.Trades, trade)
 			result.RemainingQuantity = result.RemainingQuantity.Sub(matchQty)
 			oppOrder.Quantity = oppOrder.Quantity.Sub(matchQty)
+			e.lastPrice.Store(realOppPrice) // 更新最新成交价
 
 			if oppOrder.Quantity.IsZero() {
 				oppLevel.Orders.Remove(el)

@@ -19,6 +19,10 @@ service RiskService {
   // Portfolio & Monte Carlo Risk Analytics
   rpc CalculatePortfolioRisk(CalculatePortfolioRiskRequest) returns (CalculatePortfolioRiskResponse) {};
   rpc CalculateMonteCarloRisk(MonteCarloRiskRequest) returns (MonteCarloRiskResponse) {};
+  
+  // Stress Testing & Anomaly Detection
+  rpc RunStressTest(RunStressTestRequest) returns (RunStressTestResponse) {};
+  rpc GetAnomalyReport(GetAnomalyReportRequest) returns (GetAnomalyReportResponse) {};
 }
 
 message CheckRiskRequest {
@@ -172,4 +176,42 @@ message MonteCarloRiskResponse {
   string var_99 = 2;
   string es_95 = 3;
   string es_99 = 4;
+}
+
+// --- Stress Testing ---
+
+message RunStressTestRequest {
+  string scenario_name = 1; // e.g., "GLOBAL_FINANCIAL_CRISIS", "FLASH_CRASH"
+  repeated PortfolioAsset assets = 2;
+}
+
+message StressTestResult {
+  string scenario_name = 1;
+  string pnl_impact = 2;
+  string percentage_drop = 3;
+  bool survived = 4; // Did it exceed critical risk level
+}
+
+message RunStressTestResponse {
+  repeated StressTestResult results = 1;
+}
+
+// --- Anomaly Detection ---
+
+message GetAnomalyReportRequest {
+  string user_id = 1;
+  int64 start_time = 2;
+  int64 end_time = 3;
+}
+
+message AnomalyRecord {
+  string type = 1; // "WASH_TRADING", "SPOOFING", "LAYERING"
+  string symbol = 2;
+  string reason = 3;
+  string confidence_score = 4;
+  int64 timestamp = 5;
+}
+
+message GetAnomalyReportResponse {
+  repeated AnomalyRecord anomalies = 1;
 }

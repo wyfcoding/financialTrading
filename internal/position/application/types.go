@@ -3,6 +3,7 @@ package application
 import (
 	"fmt"
 
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/position/domain"
 )
 
@@ -11,8 +12,8 @@ type UpdatePositionCommand struct {
 	UserID   string
 	Symbol   string
 	Side     string
-	Quantity float64
-	Price    float64
+	Quantity decimal.Decimal
+	Price    decimal.Decimal
 }
 
 // ChangeCostMethodCommand 变更成本计算方法命令
@@ -44,12 +45,12 @@ func toPositionDTO(p *domain.Position) *PositionDTO {
 		return nil
 	}
 	side := "buy"
-	if p.Quantity < 0 {
+	if p.Quantity.IsNegative() {
 		side = "sell"
 	}
 
 	status := "OPEN"
-	if p.Quantity == 0 {
+	if p.Quantity.IsZero() {
 		status = "CLOSED"
 	}
 
@@ -63,11 +64,11 @@ func toPositionDTO(p *domain.Position) *PositionDTO {
 		UserID:            p.UserID,
 		Symbol:            p.Symbol,
 		Side:              side,
-		Quantity:          fmt.Sprintf("%f", p.Quantity),
-		EntryPrice:        fmt.Sprintf("%f", p.AverageEntryPrice),
-		RealizedPnL:       fmt.Sprintf("%f", p.RealizedPnL),
-		UnrealizedPnL:     fmt.Sprintf("%f", p.UnrealizedPnL),
-		MarginRequirement: fmt.Sprintf("%f", p.MarginRequirement),
+		Quantity:          p.Quantity.String(),
+		EntryPrice:        p.AverageEntryPrice.String(),
+		RealizedPnL:       p.RealizedPnL.String(),
+		UnrealizedPnL:     p.UnrealizedPnL.String(),
+		MarginRequirement: p.MarginRequirement.String(),
 		OpenedAt:          openedAt,
 		Status:            status,
 	}

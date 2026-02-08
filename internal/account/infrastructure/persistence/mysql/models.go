@@ -19,6 +19,7 @@ type AccountModel struct {
 	BorrowedAmount   decimal.Decimal `gorm:"column:borrowed_amount;type:decimal(32,18);default:0;not null;comment:借款金额"`
 	LockedCollateral decimal.Decimal `gorm:"column:locked_collateral;type:decimal(32,18);default:0;not null;comment:锁定质押物"`
 	AccruedInterest  decimal.Decimal `gorm:"column:accrued_interest;type:decimal(32,18);default:0;not null;comment:累计利息"`
+	VIPLevel         int             `gorm:"column:vip_level;type:int;default:0;not null;comment:VIP等级"`
 	Version          int64           `gorm:"column:version;not null;default:0;comment:聚合版本"`
 }
 
@@ -69,6 +70,7 @@ func toAccountModel(account *domain.Account) *AccountModel {
 		BorrowedAmount:   account.BorrowedAmount,
 		LockedCollateral: account.LockedCollateral,
 		AccruedInterest:  account.AccruedInterest,
+		VIPLevel:         account.VIPLevel,
 		Version:          account.Version(),
 	}
 }
@@ -91,6 +93,7 @@ func toAccount(model *AccountModel) *domain.Account {
 		BorrowedAmount:   model.BorrowedAmount,
 		LockedCollateral: model.LockedCollateral,
 		AccruedInterest:  model.AccruedInterest,
+		VIPLevel:         model.VIPLevel,
 	}
 	acc.SetID(acc.AccountID)
 	acc.SetVersion(model.Version)

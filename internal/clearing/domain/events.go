@@ -6,6 +6,7 @@ const (
 	SettlementCreatedEventType   = "clearing.settlement.created"
 	SettlementCompletedEventType = "clearing.settlement.completed"
 	SettlementFailedEventType    = "clearing.settlement.failed"
+	FXHedgeExecutedEventType     = "clearing.fx_hedge.executed"
 )
 
 // ClearingEvent 清算领域事件接口

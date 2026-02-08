@@ -233,3 +233,62 @@ func (h *Handler) CalculateMonteCarloRisk(ctx context.Context, req *pb.MonteCarl
 		Es_99:  result.ES99,
 	}, nil
 }
+
+// RunStressTest 运行压力测试
+func (h *Handler) RunStressTest(ctx context.Context, req *pb.RunStressTestRequest) (*pb.RunStressTestResponse, error) {
+	assets := make([]application.PortfolioAssetDTO, 0, len(req.Assets))
+	for _, a := range req.Assets {
+		assets = append(assets, application.PortfolioAssetDTO{
+			Symbol:         a.Symbol,
+			Position:       a.Position,
+			CurrentPrice:   a.CurrentPrice,
+			Volatility:     a.Volatility,
+			ExpectedReturn: a.ExpectedReturn,
+		})
+	}
+
+	result, err := h.query.RunStressTest(ctx, &application.RunStressTestRequest{
+		ScenarioName: req.ScenarioName,
+		Assets:       assets,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to run stress test: %v", err)
+	}
+
+	resultsDTO := make([]*pb.StressTestResult, 0, len(result.Results))
+	for _, res := range result.Results {
+		resultsDTO = append(resultsDTO, &pb.StressTestResult{
+			ScenarioName:   res.ScenarioName,
+			PnlImpact:      res.PnLImpact,
+			PercentageDrop: res.PercentageDrop,
+			Survived:       res.Survived,
+		})
+	}
+
+	return &pb.RunStressTestResponse{Results: resultsDTO}, nil
+}
+
+// GetAnomalyReport 获取异常检测报告
+func (h *Handler) GetAnomalyReport(ctx context.Context, req *pb.GetAnomalyReportRequest) (*pb.GetAnomalyReportResponse, error) {
+	result, err := h.query.GetAnomalyReport(ctx, &application.GetAnomalyReportRequest{
+		UserID:    req.UserId,
+		StartTime: req.StartTime,
+		EndTime:   req.EndTime,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get anomaly report: %v", err)
+	}
+
+	anomaliesDTO := make([]*pb.AnomalyRecord, 0, len(result.Anomalies))
+	for _, a := range result.Anomalies {
+		anomaliesDTO = append(anomaliesDTO, &pb.AnomalyRecord{
+			Type:            a.Type,
+			Symbol:          a.Symbol,
+			Reason:          a.Reason,
+			ConfidenceScore: a.ConfidenceScore,
+			Timestamp:       a.Timestamp,
+		})
+	}
+
+	return &pb.GetAnomalyReportResponse{Anomalies: anomaliesDTO}, nil
+}

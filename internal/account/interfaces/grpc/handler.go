@@ -247,6 +247,47 @@ func (h *Handler) ListAccounts(ctx context.Context, req *pb.ListAccountsRequest)
 	}, nil
 }
 
+// UpdateVIPLevel 更新用户 VIP 等级。
+func (h *Handler) UpdateVIPLevel(ctx context.Context, req *pb.UpdateVIPLevelRequest) (*pb.UpdateVIPLevelResponse, error) {
+	start := time.Now()
+	accountID := req.AccountId
+	if accountID == "" {
+		// 如果未传 account_id，则通过 user_id 获取主账户（假设第一个是主账户）
+		dto, err := h.query.GetBalance(ctx, req.UserId, "USDT")
+		if err != nil {
+			return nil, status.Errorf(codes.NotFound, "account not found for user: %v", err)
+		}
+		accountID = dto.AccountID
+	}
+
+	err := h.cmd.UpdateVIPLevel(ctx, application.UpdateVIPLevelCommand{
+		AccountID: accountID,
+		NewLevel:  int(req.NewLevel),
+	})
+	if err != nil {
+		slog.ErrorContext(ctx, "grpc update_vip_level failed", "user_id", req.UserId, "error", err, "duration", time.Since(start))
+		return nil, status.Errorf(codes.Internal, "failed to update vip level: %v", err)
+	}
+
+	slog.InfoContext(ctx, "grpc update_vip_level successful", "user_id", req.UserId, "new_level", req.NewLevel, "duration", time.Since(start))
+	return &pb.UpdateVIPLevelResponse{Success: true, CurrentLevel: req.NewLevel}, nil
+}
+
+// SettleInterest 执行利息结算。
+func (h *Handler) SettleInterest(ctx context.Context, req *pb.SettleInterestRequest) (*pb.SettleInterestResponse, error) {
+	start := time.Now()
+	err := h.cmd.SettleInterest(ctx, application.SettleInterestCommand{
+		AccountID: req.AccountId,
+	})
+	if err != nil {
+		slog.ErrorContext(ctx, "grpc settle_interest failed", "account_id", req.AccountId, "error", err, "duration", time.Since(start))
+		return nil, status.Errorf(codes.Internal, "failed to settle interest: %v", err)
+	}
+
+	slog.InfoContext(ctx, "grpc settle_interest successful", "account_id", req.AccountId, "duration", time.Since(start))
+	return &pb.SettleInterestResponse{Success: true, SettledAmount: "TODO"}, nil // 也可以从 DTO 获取
+}
+
 func (h *Handler) toProto(dto *application.AccountDTO) *pb.AccountResponse {
 	return &pb.AccountResponse{
 		AccountId:        dto.AccountID,
@@ -259,6 +300,7 @@ func (h *Handler) toProto(dto *application.AccountDTO) *pb.AccountResponse {
 		BorrowedAmount:   dto.BorrowedAmount,
 		LockedCollateral: dto.LockedCollateral,
 		AccruedInterest:  dto.AccruedInterest,
+		VipLevel:         int32(dto.VIPLevel),
 		CreatedAt:        dto.CreatedAt,
 		UpdatedAt:        dto.UpdatedAt,
 	}

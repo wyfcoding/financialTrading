@@ -25,6 +25,7 @@ type Settlement struct {
 	BuyUserID    string           `json:"buy_user_id"`
 	SellUserID   string           `json:"sell_user_id"`
 	Symbol       string           `json:"symbol"`
+	Currency     string           `json:"currency"`
 	Quantity     decimal.Decimal  `json:"quantity"`
 	Price        decimal.Decimal  `json:"price"`
 	TotalAmount  decimal.Decimal  `json:"total_amount"`
@@ -35,7 +36,7 @@ type Settlement struct {
 }
 
 // NewSettlement 创建新的结算单
-func NewSettlement(settlementID, tradeID, buyUser, sellUser, symbol string, qty, price decimal.Decimal) *Settlement {
+func NewSettlement(settlementID, tradeID, buyUser, sellUser, symbol, currency string, qty, price decimal.Decimal) *Settlement {
 	total := qty.Mul(price)
 	return &Settlement{
 		SettlementID: settlementID,
@@ -43,6 +44,7 @@ func NewSettlement(settlementID, tradeID, buyUser, sellUser, symbol string, qty,
 		BuyUserID:    buyUser,
 		SellUserID:   sellUser,
 		Symbol:       symbol,
+		Currency:     currency,
 		Quantity:     qty,
 		Price:        price,
 		TotalAmount:  total,

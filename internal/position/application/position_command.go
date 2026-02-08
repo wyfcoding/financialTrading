@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -136,16 +135,16 @@ func (c *PositionCommandService) ClosePosition(ctx context.Context, positionID s
 		if err != nil {
 			return err
 		}
-		if position == nil || position.Quantity == 0 {
+		if position == nil || position.Quantity.IsZero() {
 			return nil
 		}
 
 		side := "sell"
-		if position.Quantity < 0 {
+		if position.Quantity.IsNegative() {
 			side = "buy"
 		}
-		qty := math.Abs(position.Quantity)
-		return c.applyTrade(txCtx, tx, position, side, qty, closePrice.InexactFloat64())
+		qty := position.Quantity.Abs()
+		return c.applyTrade(txCtx, tx, position, side, qty, closePrice)
 	})
 }
 
@@ -184,7 +183,7 @@ func (c *PositionCommandService) SagaSubPosition(ctx context.Context, barrier in
 	return nil
 }
 
-func (c *PositionCommandService) applyTrade(ctx context.Context, tx any, position *domain.Position, side string, qty, price float64) error {
+func (c *PositionCommandService) applyTrade(ctx context.Context, tx any, position *domain.Position, side string, qty, price decimal.Decimal) error {
 	oldQuantity := position.Quantity
 	oldAveragePrice := position.AverageEntryPrice
 	oldRealizedPnL := position.RealizedPnL
@@ -215,8 +214,8 @@ func (c *PositionCommandService) applyTrade(ctx context.Context, tx any, positio
 		return err
 	}
 
-	pnlChange := position.RealizedPnL - oldRealizedPnL
-	if math.Abs(pnlChange) > 0 {
+	pnlChange := position.RealizedPnL.Sub(oldRealizedPnL)
+	if !pnlChange.IsZero() {
 		pnlEvent := domain.PositionPnLUpdatedEvent{
 			UserID:         position.UserID,
 			Symbol:         position.Symbol,
@@ -233,7 +232,7 @@ func (c *PositionCommandService) applyTrade(ctx context.Context, tx any, positio
 		}
 	}
 
-	if position.Quantity == 0 && oldQuantity != 0 {
+	if position.Quantity.IsZero() && !oldQuantity.IsZero() {
 		closedEvent := domain.PositionClosedEvent{
 			UserID:        position.UserID,
 			Symbol:        position.Symbol,
@@ -247,14 +246,14 @@ func (c *PositionCommandService) applyTrade(ctx context.Context, tx any, positio
 		}
 	}
 
-	if (oldQuantity > 0 && position.Quantity < 0) || (oldQuantity < 0 && position.Quantity > 0) {
+	if (oldQuantity.IsPositive() && position.Quantity.IsNegative()) || (oldQuantity.IsNegative() && position.Quantity.IsPositive()) {
 		oldDirection := "short"
-		if oldQuantity > 0 {
+		if oldQuantity.IsPositive() {
 			oldDirection = "long"
 		}
 
 		newDirection := "short"
-		if position.Quantity > 0 {
+		if position.Quantity.IsPositive() {
 			newDirection = "long"
 		}
 

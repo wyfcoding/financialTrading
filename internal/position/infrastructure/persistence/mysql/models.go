@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/position/domain"
 	"gorm.io/gorm"
 )
@@ -10,9 +11,9 @@ type PositionModel struct {
 	gorm.Model
 	UserID            string             `gorm:"column:user_id;type:varchar(50);index;uniqueIndex:idx_user_symbol;not null"`
 	Symbol            string             `gorm:"column:symbol;type:varchar(20);index;uniqueIndex:idx_user_symbol;not null"`
-	Quantity          float64            `gorm:"column:quantity;type:decimal(20,8)"`
-	AverageEntryPrice float64            `gorm:"column:average_entry_price;type:decimal(20,8)"`
-	RealizedPnL       float64            `gorm:"column:realized_pnl;type:decimal(20,8);default:0"`
+	Quantity          decimal.Decimal    `gorm:"column:quantity;type:decimal(32,18)"`
+	AverageEntryPrice decimal.Decimal    `gorm:"column:average_entry_price;type:decimal(32,18)"`
+	RealizedPnL       decimal.Decimal    `gorm:"column:realized_pnl;type:decimal(32,18);default:0"`
 	Method            string             `gorm:"column:cost_method;type:varchar(20);default:'AVERAGE'"`
 	Lots              []PositionLotModel `gorm:"foreignKey:PositionID;constraint:OnDelete:CASCADE"`
 }
@@ -22,9 +23,9 @@ func (PositionModel) TableName() string { return "positions" }
 // PositionLotModel MySQL 持仓批次表映射
 type PositionLotModel struct {
 	gorm.Model
-	PositionID uint    `gorm:"column:position_id;index;not null"`
-	Quantity   float64 `gorm:"column:quantity;type:decimal(20,8)"`
-	Price      float64 `gorm:"column:price;type:decimal(20,8)"`
+	PositionID uint            `gorm:"column:position_id;index;not null"`
+	Quantity   decimal.Decimal `gorm:"column:quantity;type:decimal(32,18)"`
+	Price      decimal.Decimal `gorm:"column:price;type:decimal(32,18)"`
 }
 
 func (PositionLotModel) TableName() string { return "position_lots" }

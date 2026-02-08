@@ -50,6 +50,17 @@ type AccrueInterestCommand struct {
 	Rate      decimal.Decimal
 }
 
+// UpdateVIPLevelCommand VIP等级更新命令
+type UpdateVIPLevelCommand struct {
+	AccountID string
+	NewLevel  int
+}
+
+// SettleInterestCommand 利息结算命令
+type SettleInterestCommand struct {
+	AccountID string
+}
+
 // AccountCommandService 处理账户相关的写操作。
 type AccountCommandService struct {
 	repo       domain.AccountRepository
@@ -252,10 +263,78 @@ func (s *AccountCommandService) toDTO(a *domain.Account) *AccountDTO {
 		BorrowedAmount:   a.BorrowedAmount.String(),
 		LockedCollateral: a.LockedCollateral.String(),
 		AccruedInterest:  a.AccruedInterest.String(),
+		VIPLevel:         a.VIPLevel,
 		CreatedAt:        a.CreatedAt.Unix(),
 		UpdatedAt:        a.UpdatedAt.Unix(),
 		Version:          a.Version(),
 	}
+}
+
+// UpdateVIPLevel 更新VIP等级
+func (s *AccountCommandService) UpdateVIPLevel(ctx context.Context, cmd UpdateVIPLevelCommand) error {
+	return s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		account, err := s.repo.Get(txCtx, cmd.AccountID)
+		if err != nil {
+			return err
+		}
+		if account == nil {
+			return fmt.Errorf("account not found: %s", cmd.AccountID)
+		}
+
+		oldLevel := account.VIPLevel
+		account.UpdateVIPLevel(cmd.NewLevel)
+
+		if err := s.repo.Save(txCtx, account); err != nil {
+			return err
+		}
+		if err := s.eventStore.Save(txCtx, account.AccountID, account.GetUncommittedEvents(), account.Version()); err != nil {
+			return err
+		}
+		account.MarkCommitted()
+
+		if s.publisher == nil {
+			return nil
+		}
+		tx := contextx.GetTx(txCtx)
+		return s.publisher.PublishInTx(ctx, tx, domain.AccountVIPUpdatedEventType, fmt.Sprintf("VIP-%d", idgen.GenID()), map[string]any{
+			"account_id": account.AccountID,
+			"old_level":  oldLevel,
+			"new_level":  cmd.NewLevel,
+		})
+	})
+}
+
+// SettleInterest 利息结算
+func (s *AccountCommandService) SettleInterest(ctx context.Context, cmd SettleInterestCommand) error {
+	return s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		account, err := s.repo.Get(txCtx, cmd.AccountID)
+		if err != nil {
+			return err
+		}
+		if account == nil {
+			return fmt.Errorf("account not found: %s", cmd.AccountID)
+		}
+
+		account.SettleInterest()
+
+		if err := s.repo.Save(txCtx, account); err != nil {
+			return err
+		}
+		if err := s.eventStore.Save(txCtx, account.AccountID, account.GetUncommittedEvents(), account.Version()); err != nil {
+			return err
+		}
+		account.MarkCommitted()
+
+		if s.publisher == nil {
+			return nil
+		}
+		tx := contextx.GetTx(txCtx)
+		return s.publisher.PublishInTx(ctx, tx, domain.AccountInterestSettledEventType, fmt.Sprintf("ITS-%d", idgen.GenID()), map[string]any{
+			"account_id": account.AccountID,
+			"amount":     account.AccruedInterest.String(), // 结算前金额
+			"balance":    account.Balance.String(),
+		})
+	})
 }
 
 // Freeze 处理冻结

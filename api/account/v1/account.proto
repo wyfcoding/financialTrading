@@ -48,6 +48,12 @@ service AccountService {
 
   // 批量获取账户。
   rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse);
+
+  // 更新 VIP 等级。
+  rpc UpdateVIPLevel(UpdateVIPLevelRequest) returns (UpdateVIPLevelResponse);
+
+  // 利息结算。
+  rpc SettleInterest(SettleInterestRequest) returns (SettleInterestResponse);
 }
 
 // TCC 冻结请求
@@ -99,10 +105,12 @@ message AccountResponse {
   string locked_collateral = 9;
   // 累计利息。
   string accrued_interest = 10;
+  // VIP 等级。
+  int32 vip_level = 11;
   // 创建时间戳。
-  int64 created_at = 11;
+  int64 created_at = 12;
   // 更新时间戳。
-  int64 updated_at = 12;
+  int64 updated_at = 13;
 }
 
 // 资金事务记录。
@@ -272,4 +280,29 @@ message ListAccountsRequest {
 message ListAccountsResponse {
   repeated AccountResponse accounts = 1;
   int32 next_page_token = 2;
+}
+
+// VIP 更新请求
+message UpdateVIPLevelRequest {
+  string user_id = 1;
+  string account_id = 2;
+  int32 new_level = 3;
+}
+
+// VIP 更新响应
+message UpdateVIPLevelResponse {
+  bool success = 1;
+  int32 current_level = 2;
+}
+
+// 利息结算请求
+message SettleInterestRequest {
+  string account_id = 1;
+  string user_id = 2;
+}
+
+// 利息结算响应
+message SettleInterestResponse {
+  bool success = 1;
+  string settled_amount = 2;
 }

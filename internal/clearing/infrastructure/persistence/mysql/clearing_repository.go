@@ -68,6 +68,7 @@ func (r *settlementRepository) Save(ctx context.Context, s *domain.Settlement) e
 			"buy_user_id":   model.BuyUserID,
 			"sell_user_id":  model.SellUserID,
 			"symbol":        model.Symbol,
+			"currency":      model.Currency,
 			"quantity":      model.Quantity,
 			"price":         model.Price,
 			"total_amount":  model.TotalAmount,

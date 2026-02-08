@@ -31,6 +31,7 @@ type Account struct {
 	BorrowedAmount   decimal.Decimal `gorm:"column:borrowed_amount;type:decimal(32,18);default:0;not null;comment:借款金额"`
 	LockedCollateral decimal.Decimal `gorm:"column:locked_collateral;type:decimal(32,18);default:0;not null;comment:锁定质押物"`
 	AccruedInterest  decimal.Decimal `gorm:"column:accrued_interest;type:decimal(32,18);default:0;not null;comment:累计利息"`
+	VIPLevel         int             `gorm:"column:vip_level;type:int;default:0;not null;comment:VIP等级"`
 }
 
 func (Account) TableName() string {
@@ -58,6 +59,7 @@ func NewAccount(accountID, userID, currency string, accType AccountType) *Accoun
 		UserID:      userID,
 		AccountType: string(accType),
 		Currency:    currency,
+		VIPLevel:    0,
 	})
 	return a
 }
@@ -70,6 +72,7 @@ func (a *Account) Apply(event eventsourcing.DomainEvent) {
 		a.UserID = e.UserID
 		a.AccountType = AccountType(e.AccountType)
 		a.Currency = e.Currency
+		a.VIPLevel = e.VIPLevel
 	case *FundsDepositedEvent:
 		a.Balance = e.Balance
 		a.AvailableBalance = a.AvailableBalance.Add(e.Amount)
@@ -95,6 +98,12 @@ func (a *Account) Apply(event eventsourcing.DomainEvent) {
 		a.BorrowedAmount = a.BorrowedAmount.Sub(e.Amount)
 	case *InterestAccruedEvent:
 		a.AccruedInterest = e.Total
+	case *InterestSettledEvent:
+		a.Balance = e.Balance
+		a.BorrowedAmount = a.BorrowedAmount.Add(e.PrincipalDelta)
+		a.AccruedInterest = decimal.Zero
+	case *VIPLevelUpdatedEvent:
+		a.VIPLevel = e.NewLevel
 	}
 }
 
@@ -194,6 +203,39 @@ func (a *Account) AccrueInterest(rate decimal.Decimal) {
 			AccountID: a.AccountID,
 			Amount:    interest,
 			Total:     a.AccruedInterest.Add(interest),
+		})
+	}
+}
+
+// SettleInterest 结转利息 (将累计利息资本化或从余额扣除)
+func (a *Account) SettleInterest() {
+	if a.AccruedInterest.IsZero() {
+		return
+	}
+
+	// 逻辑：如果是保证金账户，利息计入借款本金；如果是普通账户，利息从余额扣除
+	var balDelta, principalDelta decimal.Decimal
+	if a.AccountType == AccountTypeMargin {
+		principalDelta = a.AccruedInterest
+	} else {
+		balDelta = a.AccruedInterest.Neg()
+	}
+
+	a.ApplyChange(&InterestSettledEvent{
+		AccountID:      a.AccountID,
+		Amount:         a.AccruedInterest,
+		Balance:        a.Balance.Add(balDelta),
+		PrincipalDelta: principalDelta,
+	})
+}
+
+// UpdateVIPLevel 更新 VIP 等级
+func (a *Account) UpdateVIPLevel(level int) {
+	if a.VIPLevel != level {
+		a.ApplyChange(&VIPLevelUpdatedEvent{
+			AccountID: a.AccountID,
+			OldLevel:  a.VIPLevel,
+			NewLevel:  level,
 		})
 	}
 }

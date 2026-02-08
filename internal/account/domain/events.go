@@ -15,6 +15,8 @@ const (
 	AccountBorrowedEventType        = "account.borrowed"
 	AccountRepaidEventType          = "account.repaid"
 	AccountInterestAccruedEventType = "account.interest"
+	AccountInterestSettledEventType = "account.interest_settled"
+	AccountVIPUpdatedEventType      = "account.vip_updated"
 )
 
 // MarginFundsBorrowedEvent 借款事件
@@ -54,6 +56,7 @@ type AccountCreatedEvent struct {
 	UserID      string
 	AccountType string
 	Currency    string
+	VIPLevel    int
 }
 
 func (e *AccountCreatedEvent) EventType() string { return "AccountCreated" }
@@ -105,3 +108,24 @@ type FrozenFundsDeductedEvent struct {
 }
 
 func (e *FrozenFundsDeductedEvent) EventType() string { return "FrozenFundsDeducted" }
+
+// InterestSettledEvent 利息结转事件
+type InterestSettledEvent struct {
+	eventsourcing.BaseEvent
+	AccountID      string
+	Amount         decimal.Decimal
+	Balance        decimal.Decimal
+	PrincipalDelta decimal.Decimal
+}
+
+func (e *InterestSettledEvent) EventType() string { return "InterestSettled" }
+
+// VIPLevelUpdatedEvent VIP等级更新事件
+type VIPLevelUpdatedEvent struct {
+	eventsourcing.BaseEvent
+	AccountID string
+	OldLevel  int
+	NewLevel  int
+}
+
+func (e *VIPLevelUpdatedEvent) EventType() string { return "VIPLevelUpdated" }

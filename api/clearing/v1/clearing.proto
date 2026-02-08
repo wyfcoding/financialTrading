@@ -26,6 +26,9 @@ service ClearingService {
   rpc SagaMarkSettlementCompleted(SagaSettlementRequest) returns (SagaSettlementResponse);
   // 标记结算失败 (Saga 补偿操作)
   rpc SagaMarkSettlementFailed(SagaSettlementRequest) returns (SagaSettlementResponse);
+
+  // 执行实时汇率对冲
+  rpc RunFXHedge(RunFXHedgeRequest) returns (RunFXHedgeResponse);
 }
 
 // Saga 结算回调请求
@@ -48,8 +51,10 @@ message Settlement {
   string trade_id = 2;
   // 状态。
   string status = 3;
-  // 时间。
+  // 结算时间。
   int64 settlement_time = 4;
+  // 币种 (e.g., USD, EUR, CNY)
+  string currency = 5;
 }
 
 // 结算请求。
@@ -66,6 +71,8 @@ message SettleTradeRequest {
   string quantity = 5;
   // 价格。
   string price = 6;
+  // 币种
+  string currency = 7;
 }
 
 // 结算响应。
@@ -150,4 +157,19 @@ message GetMarginRequirementResponse {
   string volatility_multiplier = 3;
   // 最终计算得出的当前保证金率。
   string current_margin_rate = 4;
+}
+
+message RunFXHedgeRequest {
+  string base_currency = 1; // 目标对冲到的主币种，如 USD
+}
+
+message FXHedgeResponse {
+  string currency = 1;
+  string net_exposure = 2;
+  string hedge_amount = 3;
+  string status = 4;
+}
+
+message RunFXHedgeResponse {
+  repeated FXHedgeResponse results = 1;
 }

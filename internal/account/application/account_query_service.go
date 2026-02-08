@@ -19,6 +19,7 @@ type AccountDTO struct {
 	BorrowedAmount   string
 	LockedCollateral string
 	AccruedInterest  string
+	VIPLevel         int
 	CreatedAt        int64
 	UpdatedAt        int64
 	Version          int64
@@ -108,6 +109,7 @@ func (q *AccountQueryService) toDTO(a *domain.Account) *AccountDTO {
 		BorrowedAmount:   a.BorrowedAmount.String(),
 		LockedCollateral: a.LockedCollateral.String(),
 		AccruedInterest:  a.AccruedInterest.String(),
+		VIPLevel:         a.VIPLevel,
 		CreatedAt:        a.CreatedAt.Unix(),
 		UpdatedAt:        a.UpdatedAt.Unix(),
 		Version:          a.Version(),

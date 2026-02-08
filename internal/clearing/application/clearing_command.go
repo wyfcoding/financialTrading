@@ -22,6 +22,7 @@ type SettleTradeRequest struct {
 	Symbol     string
 	Quantity   decimal.Decimal
 	Price      decimal.Decimal
+	Currency   string
 }
 
 type SettleTradeCommand = SettleTradeRequest
@@ -42,7 +43,7 @@ type DeductBuyStep struct {
 func (s *DeductBuyStep) Execute(ctx context.Context) error {
 	_, err := s.accountCli.SagaDeductFrozen(ctx, &accountv1.SagaAccountRequest{
 		UserId:   s.settlement.BuyUserID,
-		Currency: "USDT",
+		Currency: s.settlement.Currency,
 		Amount:   s.settlement.TotalAmount.String(),
 		TradeId:  s.settlement.TradeID,
 	})
@@ -52,7 +53,7 @@ func (s *DeductBuyStep) Execute(ctx context.Context) error {
 func (s *DeductBuyStep) Compensate(ctx context.Context) error {
 	_, err := s.accountCli.SagaRefundFrozen(ctx, &accountv1.SagaAccountRequest{
 		UserId:   s.settlement.BuyUserID,
-		Currency: "USDT",
+		Currency: s.settlement.Currency,
 		Amount:   s.settlement.TotalAmount.String(),
 		TradeId:  s.settlement.TradeID,
 	})
@@ -69,7 +70,7 @@ type AddSellStep struct {
 func (s *AddSellStep) Execute(ctx context.Context) error {
 	_, err := s.accountCli.SagaAddBalance(ctx, &accountv1.SagaAccountRequest{
 		UserId:   s.settlement.SellUserID,
-		Currency: "USDT",
+		Currency: s.settlement.Currency,
 		Amount:   s.settlement.TotalAmount.String(),
 		TradeId:  s.settlement.TradeID,
 	})
@@ -112,7 +113,7 @@ func (s *ClearingCommandService) SettleTrade(ctx context.Context, req *SettleTra
 	}
 
 	settlementID := fmt.Sprintf("SET-%d", idgen.GenID())
-	settlement := domain.NewSettlement(settlementID, req.TradeID, req.BuyUserID, req.SellUserID, req.Symbol, req.Quantity, req.Price)
+	settlement := domain.NewSettlement(settlementID, req.TradeID, req.BuyUserID, req.SellUserID, req.Symbol, req.Currency, req.Quantity, req.Price)
 
 	// 本地事务：保存 Settlement 并发送 Saga 开始事件
 	err := s.repo.WithTx(ctx, func(txCtx context.Context) error {
@@ -258,6 +259,53 @@ func (s *ClearingCommandService) ExecuteEODClearing(ctx context.Context, clearin
 // RunLiquidationCheck 对指定用户执行强平核查
 func (s *ClearingCommandService) RunLiquidationCheck(ctx context.Context, userID string) error {
 	return nil
+}
+
+// RunFXHedge 执行实时汇率对冲
+func (s *ClearingCommandService) RunFXHedge(ctx context.Context, baseCurrency string) ([]*FXHedgeResponseDTO, error) {
+	// 1. 获取所有待清算的结算单
+	settlements, err := s.repo.List(ctx, 5000)
+	if err != nil {
+		return nil, err
+	}
+
+	nettingEngine := domain.NewNettingEngine()
+	nettingResults := nettingEngine.CalculateMultilateralNetting(settlements)
+
+	hedgeEngine := domain.FXHedgeEngine{BaseCurrency: baseCurrency}
+	exposures := hedgeEngine.CalculateExposure(nettingResults)
+	instructions := hedgeEngine.GenerateHedgeInstructions(exposures)
+
+	responses := make([]*FXHedgeResponseDTO, 0, len(instructions))
+	for _, inst := range instructions {
+		// 这里实际应调用交易服务执行对冲买卖，此处模拟
+		status := "EXECUTED"
+		responses = append(responses, &FXHedgeResponseDTO{
+			Currency:    inst.Currency,
+			NetExposure: exposures[inst.Currency].NetAmount.String(),
+			HedgeAmount: inst.Amount.String(),
+			Status:      status,
+		})
+
+		// 派发对冲完成事件
+		if s.publisher != nil {
+			_ = s.publisher.Publish(ctx, domain.FXHedgeExecutedEventType, inst.Currency, domain.FXHedgeExecutedEvent{
+				Currency:  inst.Currency,
+				Side:      inst.Side,
+				Amount:    inst.Amount,
+				Timestamp: time.Now(),
+			})
+		}
+	}
+
+	return responses, nil
+}
+
+type FXHedgeResponseDTO struct {
+	Currency    string `json:"currency"`
+	NetExposure string `json:"net_exposure"`
+	HedgeAmount string `json:"hedge_amount"`
+	Status      string `json:"status"`
 }
 
 func (s *ClearingCommandService) toDTO(agg *domain.Settlement) *SettlementDTO {

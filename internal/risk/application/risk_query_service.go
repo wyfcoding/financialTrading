@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
@@ -236,4 +237,83 @@ func (s *RiskQueryService) CalculateMonteCarloRisk(ctx context.Context, req *Mon
 		ES95:  result.ES95.String(),
 		ES99:  result.ES99.String(),
 	}, nil
+}
+
+// RunStressTest 运行压力测试
+func (s *RiskQueryService) RunStressTest(ctx context.Context, req *RunStressTestRequest) (*RunStressTestResponse, error) {
+	if req == nil || len(req.Assets) == 0 {
+		return nil, fmt.Errorf("assets required")
+	}
+
+	assets := make([]domain.PortfolioAsset, 0, len(req.Assets))
+	for _, a := range req.Assets {
+		pos, _ := decimal.NewFromString(a.Position)
+		price, _ := decimal.NewFromString(a.CurrentPrice)
+		assets = append(assets, domain.PortfolioAsset{
+			Symbol:         a.Symbol,
+			Position:       pos,
+			CurrentPrice:   price,
+			Volatility:     a.Volatility,
+			ExpectedReturn: a.ExpectedReturn,
+		})
+	}
+
+	engine := domain.NewStressTestEngine()
+
+	// 如果指定了场景，则只跑该场景；否则跑全场景
+	results := make([]*StressTestResultDTO, 0)
+	scenarios := []string{"GFC", "FLASH_CRASH"}
+	if req.ScenarioName != "" {
+		scenarios = []string{req.ScenarioName}
+	}
+
+	for _, sc := range scenarios {
+		res, err := engine.RunScenario(sc, assets)
+		if err != nil {
+			continue
+		}
+		results = append(results, &StressTestResultDTO{
+			ScenarioName:   res.ScenarioName,
+			PnLImpact:      res.PnLImpact.String(),
+			PercentageDrop: res.PercentageDrop.String(),
+			Survived:       res.Survived,
+		})
+	}
+
+	return &RunStressTestResponse{Results: results}, nil
+}
+
+// GetAnomalyReport 获取异常交易报告
+func (s *RiskQueryService) GetAnomalyReport(ctx context.Context, req *GetAnomalyReportRequest) (*GetAnomalyReportResponse, error) {
+	// 实际生产中应从搜索引擎或时序数据库查询交易流水并分析
+	// 此处演示从 repo 获取近期交易并应用检测逻辑
+
+	// 模拟数据：假设我们从 repo 获取到了交易列表
+	// trades, _ := s.repo.GetRecentTrades(ctx, req.UserID, req.StartTime, req.EndTime)
+	trades := []*domain.TradeInfo{
+		{
+			Symbol:    "BTC/USD",
+			BuyerID:   req.UserID,
+			SellerID:  req.UserID, // 故意模拟自成交
+			Price:     decimal.NewFromInt(50000),
+			Quantity:  decimal.NewFromFloat(0.1),
+			Timestamp: time.Now(),
+		},
+	}
+
+	detector := domain.WashTradingDetector{MaxSelfTradeRatio: 0.01}
+	anomalies := detector.DetectWashTrading(trades)
+
+	results := make([]*AnomalyRecordDTO, 0, len(anomalies))
+	for _, a := range anomalies {
+		results = append(results, &AnomalyRecordDTO{
+			Type:            string(a.Type),
+			Symbol:          a.Symbol,
+			Reason:          a.Reason,
+			ConfidenceScore: fmt.Sprintf("%.2f", a.ConfidenceScore),
+			Timestamp:       a.Timestamp.Unix(),
+		})
+	}
+
+	return &GetAnomalyReportResponse{Anomalies: results}, nil
 }

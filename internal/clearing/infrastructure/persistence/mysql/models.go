@@ -16,6 +16,7 @@ type SettlementModel struct {
 	BuyUserID    string          `gorm:"column:buy_user_id;type:varchar(32);not null;comment:买方用户ID"`
 	SellUserID   string          `gorm:"column:sell_user_id;type:varchar(32);not null;comment:卖方用户ID"`
 	Symbol       string          `gorm:"column:symbol;type:varchar(20);not null;comment:标的"`
+	Currency     string          `gorm:"column:currency;type:varchar(10);not null;comment:币种"`
 	Quantity     decimal.Decimal `gorm:"column:quantity;type:decimal(32,18);not null;comment:数量"`
 	Price        decimal.Decimal `gorm:"column:price;type:decimal(32,18);not null;comment:价格"`
 	TotalAmount  decimal.Decimal `gorm:"column:total_amount;type:decimal(32,18);not null;comment:总金额"`
@@ -44,6 +45,7 @@ func toSettlementModel(s *domain.Settlement) *SettlementModel {
 		BuyUserID:    s.BuyUserID,
 		SellUserID:   s.SellUserID,
 		Symbol:       s.Symbol,
+		Currency:     s.Currency,
 		Quantity:     s.Quantity,
 		Price:        s.Price,
 		TotalAmount:  s.TotalAmount,
@@ -67,6 +69,7 @@ func toSettlement(model *SettlementModel) *domain.Settlement {
 		BuyUserID:    model.BuyUserID,
 		SellUserID:   model.SellUserID,
 		Symbol:       model.Symbol,
+		Currency:     model.Currency,
 		Quantity:     model.Quantity,
 		Price:        model.Price,
 		TotalAmount:  model.TotalAmount,
