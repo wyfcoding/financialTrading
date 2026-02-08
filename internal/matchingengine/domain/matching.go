@@ -2,7 +2,6 @@ package domain
 
 import (
 	"container/list"
-	"context"
 	"fmt"
 	"log/slog"
 	"runtime"
@@ -59,7 +58,6 @@ type DisruptionEngine struct {
 	stopChan  chan struct{}
 	logger    *slog.Logger
 	halted    int32
-	marginSvc MarginService // Added for Phase 4
 }
 
 func NewDisruptionEngine(symbol string, capacity uint64, logger *slog.Logger) (*DisruptionEngine, error) {
@@ -77,7 +75,6 @@ func NewDisruptionEngine(symbol string, capacity uint64, logger *slog.Logger) (*
 		stopChan:  make(chan struct{}),
 		logger:    logger,
 		halted:    0,
-		marginSvc: NewMockMarginService(),
 	}, nil
 }
 
@@ -147,18 +144,6 @@ func (e *DisruptionEngine) SubmitOrder(order *types.Order) (*MatchingResult, err
 func (e *DisruptionEngine) applyOrder(order *types.Order) *MatchingResult {
 	ob := e.orderBook
 	e.repricePeggedOrders(order.Symbol)
-
-	// Phase 4: Pre-match Margin Check
-	if order.InstType != types.InstSpot {
-		if ok, err := e.marginSvc.CheckMargin(context.Background(), order.UserID, order); !ok {
-			e.logger.Warn("margin check failed", "order_id", order.OrderID, "error", err)
-			return &MatchingResult{
-				OrderID:           order.OrderID,
-				RemainingQuantity: order.Quantity,
-				Status:            "REJECTED_MARGIN",
-			}
-		}
-	}
 
 	result := &MatchingResult{
 		OrderID:           order.OrderID,
@@ -247,7 +232,6 @@ func (e *DisruptionEngine) matchOrder(order *types.Order, opponentBook *algorith
 				Symbol:    e.symbol,
 				Price:     realOppPrice,
 				Quantity:  matchQty,
-				InstType:  order.InstType,
 				Timestamp: time.Now().UnixNano(),
 			}
 
