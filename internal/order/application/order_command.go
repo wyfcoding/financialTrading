@@ -51,8 +51,10 @@ func (c *OrderCommandService) PlaceOrder(ctx context.Context, cmd PlaceOrderComm
 			cmd.Price,
 			cmd.Quantity,
 			cmd.StopPrice,
+			cmd.TakeProfitPrice,
 			domain.TimeInForce(cmd.TimeInForce),
 			cmd.ParentOrderID,
+			cmd.OcoOrderID,
 			cmd.IsOCO,
 		)
 

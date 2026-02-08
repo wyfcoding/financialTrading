@@ -57,3 +57,9 @@ type TradeReadRepository interface {
 	GetByOrderID(ctx context.Context, orderID string) (*Trade, error)
 	Delete(ctx context.Context, orderID string) error
 }
+
+// VenueRepository 交易所仓储接口
+type VenueRepository interface {
+	List(ctx context.Context) ([]*Venue, error)
+	Get(ctx context.Context, venueID string) (*Venue, error)
+}

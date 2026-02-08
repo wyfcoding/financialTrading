@@ -60,6 +60,46 @@ func (EventPO) TableName() string {
 	return "execution_events"
 }
 
+// VenueModel MySQL 交易所表映射
+type VenueModel struct {
+	gorm.Model
+	VenueID      string          `gorm:"column:venue_id;type:varchar(32);uniqueIndex;not null"`
+	Name         string          `gorm:"column:name;type:varchar(50)"`
+	ExecutionFee decimal.Decimal `gorm:"column:fee;type:decimal(18,8)"`
+	LatencyMs    int64           `gorm:"column:latency_ms"`
+	Weight       float64         `gorm:"column:weight"`
+}
+
+func (VenueModel) TableName() string {
+	return "venues"
+}
+
+func toVenueModel(v *domain.Venue) *VenueModel {
+	if v == nil {
+		return nil
+	}
+	return &VenueModel{
+		VenueID:      v.ID,
+		Name:         v.Name,
+		ExecutionFee: v.ExecutionFee,
+		LatencyMs:    v.Latency.Milliseconds(),
+		Weight:       v.Weight,
+	}
+}
+
+func toVenue(m *VenueModel) *domain.Venue {
+	if m == nil {
+		return nil
+	}
+	return &domain.Venue{
+		ID:           m.VenueID,
+		Name:         m.Name,
+		ExecutionFee: m.ExecutionFee,
+		Latency:      time.Duration(m.LatencyMs) * time.Millisecond,
+		Weight:       m.Weight,
+	}
+}
+
 func toTradeModel(t *domain.Trade) *TradeModel {
 	if t == nil {
 		return nil

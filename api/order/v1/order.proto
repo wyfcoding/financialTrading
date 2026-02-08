@@ -43,6 +43,11 @@ message CreateOrderRequest {
   OrderType type = 4;
   double price = 5;
   double quantity = 6;
+  double stop_price = 7;
+  double take_profit_price = 8;
+  string parent_order_id = 9;
+  string oco_order_id = 10;
+  bool is_oco = 11;
 }
 
 message CreateOrderResponse {
@@ -78,8 +83,13 @@ message Order {
   double filled_quantity = 8;
   double average_price = 9;
   OrderStatus status = 10;
-  google.protobuf.Timestamp created_at = 11;
-  google.protobuf.Timestamp updated_at = 12;
+  double stop_price = 11;
+  double take_profit_price = 12;
+  string parent_order_id = 13;
+  string oco_order_id = 14;
+  bool is_oco = 15;
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
 }
 
 message ListOrdersResponse {

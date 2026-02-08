@@ -20,18 +20,20 @@ const (
 // OrderCreatedEvent 订单创建事件
 type OrderCreatedEvent struct {
 	eventsourcing.BaseEvent
-	OrderID       string      `json:"order_id"`
-	UserID        string      `json:"user_id"`
-	Symbol        string      `json:"symbol"`
-	Side          OrderSide   `json:"side"`
-	Type          OrderType   `json:"type"`
-	Price         float64     `json:"price"`
-	StopPrice     float64     `json:"stop_price"`
-	Quantity      float64     `json:"quantity"`
-	TimeInForce   TimeInForce `json:"time_in_force"`
-	ParentOrderID string      `json:"parent_order_id"`
-	IsOCO         bool        `json:"is_oco"`
-	OccurredOn    time.Time   `json:"occurred_on"`
+	OrderID         string      `json:"order_id"`
+	UserID          string      `json:"user_id"`
+	Symbol          string      `json:"symbol"`
+	Side            OrderSide   `json:"side"`
+	Type            OrderType   `json:"type"`
+	Price           float64     `json:"price"`
+	StopPrice       float64     `json:"stop_price"`
+	TakeProfitPrice float64     `json:"take_profit_price"`
+	Quantity        float64     `json:"quantity"`
+	TimeInForce     TimeInForce `json:"time_in_force"`
+	ParentOrderID   string      `json:"parent_order_id"`
+	OcoOrderID      string      `json:"oco_order_id"`
+	IsOCO           bool        `json:"is_oco"`
+	OccurredOn      time.Time   `json:"occurred_on"`
 }
 
 func (e *OrderCreatedEvent) EventType() string     { return OrderCreatedEventType }

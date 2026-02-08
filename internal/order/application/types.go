@@ -12,16 +12,18 @@ import (
 //
 // NOTE: fields are validated in command service.
 type PlaceOrderCommand struct {
-	UserID        string
-	Symbol        string
-	Side          string
-	Type          string
-	Price         float64
-	StopPrice     float64
-	Quantity      float64
-	TimeInForce   string
-	ParentOrderID string
-	IsOCO         bool
+	UserID          string
+	Symbol          string
+	Side            string
+	Type            string
+	Price           float64
+	StopPrice       float64
+	TakeProfitPrice float64
+	Quantity        float64
+	TimeInForce     string
+	ParentOrderID   string
+	OcoOrderID      string
+	IsOCO           bool
 }
 
 // CancelOrderCommand 取消订单命令
@@ -35,20 +37,25 @@ type CancelOrderCommand struct {
 // OrderDTO API/Query 输出结构
 
 type OrderDTO struct {
-	OrderID        string `json:"order_id"`
-	UserID         string `json:"user_id"`
-	Symbol         string `json:"symbol"`
-	Side           string `json:"side"`
-	OrderType      string `json:"order_type"`
-	Price          string `json:"price"`
-	Quantity       string `json:"quantity"`
-	FilledQuantity string `json:"filled_quantity"`
-	AveragePrice   string `json:"average_price"`
-	Status         string `json:"status"`
-	TimeInForce    string `json:"time_in_force"`
-	CreatedAt      int64  `json:"created_at"`
-	UpdatedAt      int64  `json:"updated_at"`
-	Remark         string `json:"remark"`
+	OrderID         string `json:"order_id"`
+	UserID          string `json:"user_id"`
+	Symbol          string `json:"symbol"`
+	Side            string `json:"side"`
+	OrderType       string `json:"order_type"`
+	Price           string `json:"price"`
+	Quantity        string `json:"quantity"`
+	FilledQuantity  string `json:"filled_quantity"`
+	AveragePrice    string `json:"average_price"`
+	Status          string `json:"status"`
+	TimeInForce     string `json:"time_in_force"`
+	StopPrice       string `json:"stop_price"`
+	TakeProfitPrice string `json:"take_profit_price"`
+	ParentOrderID   string `json:"parent_order_id"`
+	OcoOrderID      string `json:"oco_order_id"`
+	IsOCO           bool   `json:"is_oco"`
+	CreatedAt       int64  `json:"created_at"`
+	UpdatedAt       int64  `json:"updated_at"`
+	Remark          string `json:"remark"`
 }
 
 func toOrderDTO(o *domain.Order) *OrderDTO {
@@ -56,20 +63,25 @@ func toOrderDTO(o *domain.Order) *OrderDTO {
 		return nil
 	}
 	return &OrderDTO{
-		OrderID:        o.OrderID,
-		UserID:         o.UserID,
-		Symbol:         o.Symbol,
-		Side:           string(o.Side),
-		OrderType:      string(o.Type),
-		Price:          decimal.NewFromFloat(o.Price).String(),
-		Quantity:       decimal.NewFromFloat(o.Quantity).String(),
-		FilledQuantity: decimal.NewFromFloat(o.FilledQuantity).String(),
-		AveragePrice:   decimal.NewFromFloat(o.AveragePrice).String(),
-		Status:         string(o.Status),
-		TimeInForce:    string(o.TimeInForce),
-		CreatedAt:      o.CreatedAt.Unix(),
-		UpdatedAt:      o.UpdatedAt.Unix(),
-		Remark:         "",
+		OrderID:         o.OrderID,
+		UserID:          o.UserID,
+		Symbol:          o.Symbol,
+		Side:            string(o.Side),
+		OrderType:       string(o.Type),
+		Price:           decimal.NewFromFloat(o.Price).String(),
+		Quantity:        decimal.NewFromFloat(o.Quantity).String(),
+		FilledQuantity:  decimal.NewFromFloat(o.FilledQuantity).String(),
+		AveragePrice:    decimal.NewFromFloat(o.AveragePrice).String(),
+		Status:          string(o.Status),
+		TimeInForce:     string(o.TimeInForce),
+		StopPrice:       decimal.NewFromFloat(o.StopPrice).String(),
+		TakeProfitPrice: decimal.NewFromFloat(o.TakeProfitPrice).String(),
+		ParentOrderID:   o.ParentOrderID,
+		OcoOrderID:      o.OcoOrderID,
+		IsOCO:           o.IsOCO,
+		CreatedAt:       o.CreatedAt.Unix(),
+		UpdatedAt:       o.UpdatedAt.Unix(),
+		Remark:          "",
 	}
 }
 

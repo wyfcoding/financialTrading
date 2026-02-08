@@ -25,12 +25,17 @@ func NewHandler(cmd *application.OrderCommandService, query *application.OrderQu
 
 func (h *Handler) CreateOrder(ctx context.Context, req *pb.CreateOrderRequest) (*pb.CreateOrderResponse, error) {
 	cmd := application.PlaceOrderCommand{
-		UserID:   req.UserId,
-		Symbol:   req.Symbol,
-		Side:     req.Side.String(),
-		Type:     req.Type.String(),
-		Price:    req.Price,
-		Quantity: req.Quantity,
+		UserID:          req.UserId,
+		Symbol:          req.Symbol,
+		Side:            req.Side.String(),
+		Type:            req.Type.String(),
+		Price:           req.Price,
+		Quantity:        req.Quantity,
+		StopPrice:       req.StopPrice,
+		TakeProfitPrice: req.TakeProfitPrice,
+		ParentOrderID:   req.ParentOrderId,
+		OcoOrderID:      req.OcoOrderId,
+		IsOCO:           req.IsOco,
 	}
 
 	orderID, err := h.cmd.PlaceOrder(ctx, cmd)
@@ -127,17 +132,25 @@ func (h *Handler) toProtoOrder(d *application.OrderDTO) *pb.Order {
 		status = pb.OrderStatus_STATUS_UNSPECIFIED
 	}
 
+	stopPrice, _ := decimal.NewFromString(d.StopPrice)
+	tpPrice, _ := decimal.NewFromString(d.TakeProfitPrice)
+
 	return &pb.Order{
-		Id:             d.OrderID,
-		UserId:         d.UserID,
-		Symbol:         d.Symbol,
-		Side:           side,
-		Type:           oType,
-		Price:          price.InexactFloat64(),
-		Quantity:       qty.InexactFloat64(),
-		FilledQuantity: filled.InexactFloat64(),
-		Status:         status,
-		CreatedAt:      timestamppb.New(time.Unix(d.CreatedAt, 0)),
-		UpdatedAt:      timestamppb.New(time.Unix(d.UpdatedAt, 0)),
+		Id:              d.OrderID,
+		UserId:          d.UserID,
+		Symbol:          d.Symbol,
+		Side:            side,
+		Type:            oType,
+		Price:           price.InexactFloat64(),
+		Quantity:        qty.InexactFloat64(),
+		FilledQuantity:  filled.InexactFloat64(),
+		Status:          status,
+		StopPrice:       stopPrice.InexactFloat64(),
+		TakeProfitPrice: tpPrice.InexactFloat64(),
+		ParentOrderId:   d.ParentOrderID,
+		OcoOrderId:      d.OcoOrderID,
+		IsOco:           d.IsOCO,
+		CreatedAt:       timestamppb.New(time.Unix(d.CreatedAt, 0)),
+		UpdatedAt:       timestamppb.New(time.Unix(d.UpdatedAt, 0)),
 	}
 }

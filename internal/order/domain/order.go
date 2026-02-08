@@ -46,54 +46,60 @@ type Order struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	eventsourcing.AggregateRoot
-	OrderID        string      `json:"order_id"` // UUID
-	UserID         string      `json:"user_id"`
-	Symbol         string      `json:"symbol"`
-	Side           OrderSide   `json:"side"`
-	Type           OrderType   `json:"type"`
-	Price          float64     `json:"price"`
-	StopPrice      float64     `json:"stop_price"`
-	Quantity       float64     `json:"quantity"`
-	FilledQuantity float64     `json:"filled_quantity"`
-	AveragePrice   float64     `json:"average_price"`
-	Status         OrderStatus `json:"status"`
-	TimeInForce    TimeInForce `json:"time_in_force"`
+	OrderID         string      `json:"order_id"` // UUID
+	UserID          string      `json:"user_id"`
+	Symbol          string      `json:"symbol"`
+	Side            OrderSide   `json:"side"`
+	Type            OrderType   `json:"type"`
+	Price           float64     `json:"price"`
+	StopPrice       float64     `json:"stop_price"`
+	TakeProfitPrice float64     `json:"take_profit_price"`
+	Quantity        float64     `json:"quantity"`
+	FilledQuantity  float64     `json:"filled_quantity"`
+	AveragePrice    float64     `json:"average_price"`
+	Status          OrderStatus `json:"status"`
+	TimeInForce     TimeInForce `json:"time_in_force"`
 
 	// Complex Order Support
 	ParentOrderID string `json:"parent_order_id"` // For Bracket/OCO
+	OcoOrderID    string `json:"oco_order_id"`    // Linked OCO order
 	IsOCO         bool   `json:"is_oco"`
 }
 
-func NewOrder(id, userID, symbol string, side OrderSide, typ OrderType, price, qty float64, stopPrice float64, tif TimeInForce, parentID string, isOCO bool) *Order {
+func NewOrder(id, userID, symbol string, side OrderSide, typ OrderType, price, qty float64, stopPrice, tpPrice float64, tif TimeInForce, parentID, ocoID string, isOCO bool) *Order {
 	o := &Order{
-		OrderID:       id,
-		UserID:        userID,
-		Symbol:        symbol,
-		Side:          side,
-		Type:          typ,
-		Price:         price,
-		StopPrice:     stopPrice,
-		Quantity:      qty,
-		Status:        StatusPending,
-		TimeInForce:   tif,
-		ParentOrderID: parentID,
-		IsOCO:         isOCO,
+		OrderID:         id,
+		UserID:          userID,
+		Symbol:          symbol,
+		Side:            side,
+		Type:            typ,
+		Price:           price,
+		StopPrice:       stopPrice,
+		TakeProfitPrice: tpPrice,
+		Quantity:        qty,
+		Status:          StatusPending,
+		TimeInForce:     tif,
+		ParentOrderID:   parentID,
+		OcoOrderID:      ocoID,
+		IsOCO:           isOCO,
 	}
 	o.SetID(id)
 
 	o.ApplyChange(&OrderCreatedEvent{
-		OrderID:       id,
-		UserID:        userID,
-		Symbol:        symbol,
-		Side:          side,
-		Type:          typ,
-		Price:         price,
-		StopPrice:     stopPrice,
-		Quantity:      qty,
-		TimeInForce:   tif,
-		ParentOrderID: parentID,
-		IsOCO:         isOCO,
-		OccurredOn:    time.Now(),
+		OrderID:         id,
+		UserID:          userID,
+		Symbol:          symbol,
+		Side:            side,
+		Type:            typ,
+		Price:           price,
+		StopPrice:       stopPrice,
+		TakeProfitPrice: tpPrice,
+		Quantity:        qty,
+		TimeInForce:     tif,
+		ParentOrderID:   parentID,
+		OcoOrderID:      ocoID,
+		IsOCO:           isOCO,
+		OccurredOn:      time.Now(),
 	})
 	return o
 }
@@ -109,9 +115,11 @@ func (o *Order) Apply(event eventsourcing.DomainEvent) {
 		o.Type = e.Type
 		o.Price = e.Price
 		o.StopPrice = e.StopPrice
+		o.TakeProfitPrice = e.TakeProfitPrice
 		o.Quantity = e.Quantity
 		o.TimeInForce = e.TimeInForce
 		o.ParentOrderID = e.ParentOrderID
+		o.OcoOrderID = e.OcoOrderID
 		o.IsOCO = e.IsOCO
 		o.Status = StatusPending
 	case *OrderValidatedEvent:

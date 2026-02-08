@@ -23,6 +23,7 @@ type ExecutionCommandService struct {
 	orderClient    orderv1.OrderServiceClient
 	marketData     domain.MarketDataProvider
 	volumeProvider domain.VolumeProfileProvider
+	venueRepo      domain.VenueRepository
 }
 
 // NewExecutionCommandService 构造函数。
@@ -35,6 +36,7 @@ func NewExecutionCommandService(
 	orderClient orderv1.OrderServiceClient,
 	marketData domain.MarketDataProvider,
 	volumeProvider domain.VolumeProfileProvider,
+	venueRepo domain.VenueRepository,
 ) *ExecutionCommandService {
 	return &ExecutionCommandService{
 		tradeRepo:      tradeRepo,
@@ -45,6 +47,7 @@ func NewExecutionCommandService(
 		orderClient:    orderClient,
 		marketData:     marketData,
 		volumeProvider: volumeProvider,
+		venueRepo:      venueRepo,
 	}
 }
 
@@ -157,11 +160,14 @@ func (s *ExecutionCommandService) SubmitSOROrder(ctx context.Context, cmd Submit
 	algoID := fmt.Sprintf("SOR-%d", idgen.GenID())
 	order := domain.NewAlgoOrder(algoID, cmd.UserID, cmd.Symbol, domain.TradeSide(cmd.Side), cmd.TotalQty, domain.AlgoTypeSOR, time.Now(), time.Now().Add(time.Hour), cmd.Params)
 
+	venues, err := s.venueRepo.List(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to list venues: %w", err)
+	}
+
 	strategy := &domain.SORStrategy{
 		Provider: s.marketData,
-		Venues: []*domain.Venue{
-			{ID: "MAIN", Name: "Main Exchange", ExecutionFee: decimal.Zero, Latency: 0, Weight: 1.0},
-		},
+		Venues:   venues,
 	}
 	slices, err := strategy.GenerateSlices(order)
 	if err != nil {
@@ -247,11 +253,13 @@ func (s *ExecutionCommandService) processActiveAlgoOrders(ctx context.Context) {
 				Provider: s.marketData,
 			}
 		case domain.AlgoTypeSOR:
+			venues, err := s.venueRepo.List(ctx)
+			if err != nil {
+				continue
+			}
 			strategy = &domain.SORStrategy{
 				Provider: s.marketData,
-				Venues: []*domain.Venue{
-					{ID: "MAIN", Name: "Main Exchange", ExecutionFee: decimal.Zero, Latency: 0, Weight: 1.0},
-				},
+				Venues:   venues,
 			}
 		default:
 			continue
