@@ -1,0 +1,193 @@
+// 资金管理服务 Proto 定义
+// 管理资金账户、调拨、冻结解冻等
+syntax = "proto3";
+
+package financial.treasury.v1;
+
+option go_package = "github.com/wyfcoding/go-api/financial/treasury/v1;treasuryv1";
+
+import "google/protobuf/timestamp.proto";
+
+// 资金服务
+service TreasuryService {
+  // 创建资金账户
+  rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse);
+  // 获取账户余额
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
+  // 冻结资金
+  rpc Freeze(FreezeRequest) returns (FreezeResponse);
+  // 解冻资金
+  rpc Unfreeze(UnfreezeRequest) returns (UnfreezeResponse);
+  // 扣减资金（解冻并扣减，或直接扣减可用）
+  rpc Deduct(DeductRequest) returns (DeductResponse);
+  // 增加资金（充值、入金）
+  rpc Deposit(DepositRequest) returns (DepositResponse);
+  // 资金调拨（账户间转账）
+  rpc Transfer(TransferRequest) returns (TransferResponse);
+  
+  // 获取流水
+  rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse);
+}
+
+// 账户类型
+enum AccountType {
+  ACCOUNT_TYPE_UNSPECIFIED = 0;
+  ACCOUNT_TYPE_USER = 1;                    // 用户资金账户
+  ACCOUNT_TYPE_MERCHANT = 2;                // 商家资金账户
+  ACCOUNT_TYPE_PLATFORM = 3;                // 平台运营账户
+  ACCOUNT_TYPE_MARGIN = 4;                  // 保证金账户
+}
+
+// 货币类型
+enum Currency {
+  CURRENCY_UNSPECIFIED = 0;
+  CURRENCY_CNY = 1;
+  CURRENCY_USD = 2;
+  // ...
+}
+
+// 资金账户
+message Account {
+  uint64 account_id = 1;
+  uint64 owner_id = 2;                      // 用户ID或商家ID
+  AccountType type = 3;
+  Currency currency = 4;
+  
+  int64 balance = 5;                        // 总余额(分)
+  int64 available = 6;                      // 可用余额(分)
+  int64 frozen = 7;                         // 冻结余额(分)
+  
+  string status = 8;                        // ACTIVE, FROZEN, CLOSED
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// 交易类型
+enum TransactionType {
+  TRANSACTION_TYPE_UNSPECIFIED = 0;
+  TRANSACTION_TYPE_DEPOSIT = 1;             // 充值
+  TRANSACTION_TYPE_WITHDRAW = 2;            // 提现
+  TRANSACTION_TYPE_TRANSFER_IN = 3;         // 转入
+  TRANSACTION_TYPE_TRANSFER_OUT = 4;        // 转出
+  TRANSACTION_TYPE_PAYMENT = 5;             // 支付
+  TRANSACTION_TYPE_REFUND = 6;              // 退款
+  TRANSACTION_TYPE_FREEZE = 7;              // 冻结
+  TRANSACTION_TYPE_UNFREEZE = 8;            // 解冻
+  TRANSACTION_TYPE_DEDUCT = 9;              // 扣减
+}
+
+// 资金流水
+message Transaction {
+  string transaction_id = 1;
+  uint64 account_id = 2;
+  TransactionType type = 3;
+  int64 amount = 4;                         // 变动金额(分)，正负表示方向
+  int64 balance_after = 5;                  // 变动后余额
+  string reference_id = 6;                  // 关联业务ID（如订单号）
+  string remark = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+// 创建账户请求
+message CreateAccountRequest {
+  uint64 owner_id = 1;
+  AccountType type = 2;
+  Currency currency = 3;
+}
+
+message CreateAccountResponse {
+  uint64 account_id = 1;
+}
+
+// 获取余额请求
+message GetBalanceRequest {
+  uint64 account_id = 1;
+  uint64 owner_id = 2;                      // 可选，按 owner_id 查询
+  AccountType type = 3;                     // 配合 owner_id 使用
+  Currency currency = 4;                    // 配合 owner_id 使用
+}
+
+message GetBalanceResponse {
+  Account account = 1;
+}
+
+// 冻结请求
+message FreezeRequest {
+  uint64 account_id = 1;
+  int64 amount = 2;
+  string reference_id = 3;
+  string reason = 4;
+}
+
+message FreezeResponse {
+  bool success = 1;
+  string transaction_id = 2;
+}
+
+// 解冻请求
+message UnfreezeRequest {
+  uint64 account_id = 1;
+  int64 amount = 2;
+  string reference_id = 3;
+  string reason = 4;
+}
+
+message UnfreezeResponse {
+  bool success = 1;
+  string transaction_id = 2;
+}
+
+// 扣减请求
+message DeductRequest {
+  uint64 account_id = 1;
+  int64 amount = 2;
+  string reference_id = 3;
+  string reason = 4;
+  bool unfreeze_first = 5;                  // 是否先解冻再扣减（针对已冻结资金）
+}
+
+message DeductResponse {
+  bool success = 1;
+  string transaction_id = 2;
+}
+
+// 增加请求
+message DepositRequest {
+  uint64 account_id = 1;
+  int64 amount = 2;
+  string reference_id = 3;
+  string source = 4;                        // 来源
+}
+
+message DepositResponse {
+  bool success = 1;
+  string transaction_id = 2;
+}
+
+// 转账请求
+message TransferRequest {
+  uint64 from_account_id = 1;
+  uint64 to_account_id = 2;
+  int64 amount = 3;
+  string reference_id = 4;
+  string remark = 5;
+}
+
+message TransferResponse {
+  bool success = 1;
+  string transaction_id = 2; // 只返回主交易ID（通常是转出方流水ID）
+}
+
+// 获取流水请求
+message ListTransactionsRequest {
+  uint64 account_id = 1;
+  TransactionType type = 2;
+  string reference_id = 3;
+  int32 page = 4;
+  int32 page_size = 5;
+}
+
+message ListTransactionsResponse {
+  repeated Transaction transactions = 1;
+  int64 total = 2;
+}
