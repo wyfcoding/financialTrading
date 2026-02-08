@@ -10,6 +10,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/position/domain"
 	"github.com/wyfcoding/pkg/contextx"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // PositionCommandService 处理头寸相关的命令操作
@@ -17,11 +18,11 @@ import (
 
 type PositionCommandService struct {
 	repo           domain.PositionRepository
-	eventPublisher domain.EventPublisher
+	eventPublisher messagequeue.EventPublisher
 }
 
 // NewPositionCommandService 创建新的 PositionCommandService 实例
-func NewPositionCommandService(repo domain.PositionRepository, eventPublisher domain.EventPublisher) *PositionCommandService {
+func NewPositionCommandService(repo domain.PositionRepository, eventPublisher messagequeue.EventPublisher) *PositionCommandService {
 	return &PositionCommandService{
 		repo:           repo,
 		eventPublisher: eventPublisher,

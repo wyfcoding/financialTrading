@@ -8,6 +8,7 @@ import (
 
 	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/domain"
 	"github.com/wyfcoding/pkg/contextx"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // MonitoringAnalyticsCommandService 处理监控分析相关的命令操作
@@ -20,7 +21,7 @@ type MonitoringAnalyticsCommandService struct {
 	alertReadRepo  domain.AlertReadRepository
 	auditRepo      domain.ExecutionAuditRepository
 	auditESRepo    domain.AuditESRepository
-	eventPublisher domain.EventPublisher
+	eventPublisher messagequeue.EventPublisher
 }
 
 // NewMonitoringAnalyticsCommandService 创建新的命令服务实例
@@ -33,7 +34,7 @@ func NewMonitoringAnalyticsCommandService(
 	alertReadRepo domain.AlertReadRepository,
 	auditRepo domain.ExecutionAuditRepository,
 	auditESRepo domain.AuditESRepository,
-	eventPublisher domain.EventPublisher,
+	eventPublisher messagequeue.EventPublisher,
 ) *MonitoringAnalyticsCommandService {
 	return &MonitoringAnalyticsCommandService{
 		metricRepo:     metricRepo,

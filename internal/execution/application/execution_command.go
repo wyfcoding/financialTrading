@@ -10,6 +10,7 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/execution/domain"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/idgen"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // ExecutionCommandService 处理所有执行相关的写入操作（Commands）。
@@ -18,7 +19,7 @@ type ExecutionCommandService struct {
 	algoRepo       domain.AlgoOrderRepository
 	redisRepo      domain.AlgoRedisRepository
 	eventStore     domain.EventStore
-	publisher      domain.EventPublisher
+	publisher      messagequeue.EventPublisher
 	orderClient    orderv1.OrderServiceClient
 	marketData     domain.MarketDataProvider
 	volumeProvider domain.VolumeProfileProvider
@@ -30,7 +31,7 @@ func NewExecutionCommandService(
 	algoRepo domain.AlgoOrderRepository,
 	redisRepo domain.AlgoRedisRepository,
 	eventStore domain.EventStore,
-	publisher domain.EventPublisher,
+	publisher messagequeue.EventPublisher,
 	orderClient orderv1.OrderServiceClient,
 	marketData domain.MarketDataProvider,
 	volumeProvider domain.VolumeProfileProvider,

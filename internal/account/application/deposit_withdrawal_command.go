@@ -13,6 +13,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/account/domain"
 	"github.com/wyfcoding/pkg/idgen"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // DepositWithdrawalCommandService 充值提现命令服务
@@ -20,7 +21,7 @@ type DepositWithdrawalCommandService struct {
 	accountRepo         domain.AccountRepository
 	depositOrderRepo    domain.DepositOrderRepository
 	withdrawalOrderRepo domain.WithdrawalOrderRepository
-	publisher           domain.EventPublisher
+	publisher           messagequeue.EventPublisher
 	idGenerator         idgen.Generator
 	logger              *slog.Logger
 }
@@ -30,7 +31,7 @@ func NewDepositWithdrawalCommandService(
 	accountRepo domain.AccountRepository,
 	depositOrderRepo domain.DepositOrderRepository,
 	withdrawalOrderRepo domain.WithdrawalOrderRepository,
-	publisher domain.EventPublisher,
+	publisher messagequeue.EventPublisher,
 	idGenerator idgen.Generator,
 	logger *slog.Logger,
 ) *DepositWithdrawalCommandService {

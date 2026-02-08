@@ -9,6 +9,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
 	"github.com/wyfcoding/pkg/contextx"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // PricingCommandService 处理定价相关的命令操作
@@ -16,11 +17,11 @@ import (
 
 type PricingCommandService struct {
 	repo      domain.PricingRepository
-	publisher domain.EventPublisher
+	publisher messagequeue.EventPublisher
 }
 
 // NewPricingCommandService 创建新的 PricingCommandService 实例
-func NewPricingCommandService(repo domain.PricingRepository, publisher domain.EventPublisher) *PricingCommandService {
+func NewPricingCommandService(repo domain.PricingRepository, publisher messagequeue.EventPublisher) *PricingCommandService {
 	return &PricingCommandService{
 		repo:      repo,
 		publisher: publisher,

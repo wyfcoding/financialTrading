@@ -13,6 +13,7 @@ import (
 	"github.com/wyfcoding/pkg/algorithm/types"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // MatchingCommandService 处理所有撮合引擎相关的写入操作（Commands）。
@@ -20,7 +21,7 @@ type MatchingCommandService struct {
 	engine        *domain.DisruptionEngine
 	tradeRepo     domain.TradeRepository
 	orderBookRepo domain.OrderBookRepository
-	publisher     domain.EventPublisher
+	publisher     messagequeue.EventPublisher
 	clearingCli   clearingv1.ClearingServiceClient
 	orderCli      orderv1.OrderServiceClient
 	logger        *slog.Logger
@@ -32,7 +33,7 @@ func NewMatchingCommandService(
 	engine *domain.DisruptionEngine,
 	tradeRepo domain.TradeRepository,
 	orderBookRepo domain.OrderBookRepository,
-	publisher domain.EventPublisher,
+	publisher messagequeue.EventPublisher,
 	logger *slog.Logger,
 ) *MatchingCommandService {
 	return &MatchingCommandService{

@@ -11,13 +11,14 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketsimulation/domain"
 	"github.com/wyfcoding/pkg/contextx"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // MarketSimulationCommandService 市场模拟命令服务
 type MarketSimulationCommandService struct {
 	repo        domain.SimulationRepository
 	readRepo    domain.SimulationReadRepository
-	publisher   domain.EventPublisher
+	publisher   messagequeue.EventPublisher
 	runningSims map[string]context.CancelFunc
 	mu          sync.Mutex
 }
@@ -26,7 +27,7 @@ type MarketSimulationCommandService struct {
 func NewMarketSimulationCommandService(
 	repo domain.SimulationRepository,
 	readRepo domain.SimulationReadRepository,
-	publisher domain.EventPublisher,
+	publisher messagequeue.EventPublisher,
 ) *MarketSimulationCommandService {
 	return &MarketSimulationCommandService{
 		repo:        repo,

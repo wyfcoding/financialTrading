@@ -11,6 +11,7 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/clearing/domain"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/idgen"
+	"github.com/wyfcoding/pkg/messagequeue"
 	"github.com/wyfcoding/pkg/transaction"
 )
 
@@ -84,14 +85,14 @@ func (s *AddSellStep) Compensate(ctx context.Context) error {
 type ClearingCommandService struct {
 	repo          domain.SettlementRepository
 	redisRepo     domain.MarginRedisRepository
-	publisher     domain.EventPublisher
+	publisher     messagequeue.EventPublisher
 	accountClient accountv1.AccountServiceClient
 }
 
 func NewClearingCommandService(
 	repo domain.SettlementRepository,
 	redisRepo domain.MarginRedisRepository,
-	publisher domain.EventPublisher,
+	publisher messagequeue.EventPublisher,
 	accountClient accountv1.AccountServiceClient,
 ) *ClearingCommandService {
 	return &ClearingCommandService{

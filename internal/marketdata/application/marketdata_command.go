@@ -10,6 +10,7 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/marketdata/domain"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/idgen"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // MarketDataCommandService 处理所有市场数据写入操作（Commands）。
@@ -17,7 +18,7 @@ type MarketDataCommandService struct {
 	repo        domain.MarketDataRepository
 	logger      *slog.Logger
 	broadcaster Broadcaster
-	publisher   domain.EventPublisher
+	publisher   messagequeue.EventPublisher
 	history     *HistoryService
 }
 
@@ -27,7 +28,7 @@ type Broadcaster interface {
 }
 
 // NewMarketDataCommandService 构造函数。
-func NewMarketDataCommandService(repo domain.MarketDataRepository, logger *slog.Logger, publisher domain.EventPublisher, history *HistoryService) *MarketDataCommandService {
+func NewMarketDataCommandService(repo domain.MarketDataRepository, logger *slog.Logger, publisher messagequeue.EventPublisher, history *HistoryService) *MarketDataCommandService {
 	return &MarketDataCommandService{
 		repo:      repo,
 		logger:    logger,

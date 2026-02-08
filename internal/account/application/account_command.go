@@ -9,6 +9,7 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/account/domain"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/idgen"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // CreateAccountCommand 开户命令
@@ -53,14 +54,14 @@ type AccrueInterestCommand struct {
 type AccountCommandService struct {
 	repo       domain.AccountRepository
 	eventStore domain.EventStore
-	publisher  domain.EventPublisher
+	publisher  messagequeue.EventPublisher
 	logger     *slog.Logger
 }
 
 func NewAccountCommandService(
 	repo domain.AccountRepository,
 	eventStore domain.EventStore,
-	publisher domain.EventPublisher,
+	publisher messagequeue.EventPublisher,
 	logger *slog.Logger,
 ) *AccountCommandService {
 	return &AccountCommandService{

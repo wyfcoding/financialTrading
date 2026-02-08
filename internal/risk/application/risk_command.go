@@ -11,6 +11,7 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/idgen"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // RiskCommandService 处理风险相关的命令操作（Commands）。
@@ -19,7 +20,7 @@ type RiskCommandService struct {
 	readRepo       domain.RiskReadRepository
 	accountClient  accountv1.AccountServiceClient
 	positionClient positionv1.PositionServiceClient
-	publisher      domain.EventPublisher
+	publisher      messagequeue.EventPublisher
 	marginCalc     domain.MarginCalculator
 }
 
@@ -29,7 +30,7 @@ func NewRiskCommandService(
 	readRepo domain.RiskReadRepository,
 	accClient accountv1.AccountServiceClient,
 	posClient positionv1.PositionServiceClient,
-	publisher domain.EventPublisher,
+	publisher messagequeue.EventPublisher,
 	marginCalc domain.MarginCalculator,
 ) *RiskCommandService {
 	return &RiskCommandService{

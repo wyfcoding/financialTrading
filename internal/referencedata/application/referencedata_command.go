@@ -9,17 +9,18 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/referencedata/domain"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/idgen"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // ReferenceDataCommandService 处理参考数据相关的命令操作
 // Writes 统一走 MySQL + Outbox 事件发布。
 type ReferenceDataCommandService struct {
 	repo      domain.ReferenceDataRepository
-	publisher domain.EventPublisher
+	publisher messagequeue.EventPublisher
 }
 
 // NewReferenceDataCommandService 创建新的命令服务
-func NewReferenceDataCommandService(repo domain.ReferenceDataRepository, publisher domain.EventPublisher) *ReferenceDataCommandService {
+func NewReferenceDataCommandService(repo domain.ReferenceDataRepository, publisher messagequeue.EventPublisher) *ReferenceDataCommandService {
 	return &ReferenceDataCommandService{
 		repo:      repo,
 		publisher: publisher,

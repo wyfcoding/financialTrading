@@ -11,6 +11,7 @@ import (
 	"github.com/wyfcoding/pkg/algorithm/finance"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/idgen"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // QuantCommandService 处理量化相关的命令操作（写模型）
@@ -19,7 +20,7 @@ type QuantCommandService struct {
 	backtestRepo     domain.BacktestResultRepository
 	signalRepo       domain.SignalRepository
 	marketDataClient domain.MarketDataClient
-	publisher        domain.EventPublisher
+	publisher        messagequeue.EventPublisher
 	riskCalc         *finance.RiskCalculator
 	indicatorSvc     *domain.IndicatorService
 }
@@ -30,7 +31,7 @@ func NewQuantCommandService(
 	backtestRepo domain.BacktestResultRepository,
 	signalRepo domain.SignalRepository,
 	marketDataClient domain.MarketDataClient,
-	publisher domain.EventPublisher,
+	publisher messagequeue.EventPublisher,
 ) *QuantCommandService {
 	return &QuantCommandService{
 		strategyRepo:     strategyRepo,

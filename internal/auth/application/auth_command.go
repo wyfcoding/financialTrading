@@ -7,6 +7,7 @@ import (
 
 	"github.com/wyfcoding/financialtrading/internal/auth/domain"
 	"github.com/wyfcoding/pkg/contextx"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // RegisterCommand 注册命令
@@ -37,7 +38,7 @@ type AuthCommandService struct {
 	apiKeyRedisRepo domain.APIKeyRedisRepository
 	sessionRepo     domain.SessionRepository
 	keySvc          *APIKeyService
-	publisher       domain.EventPublisher
+	publisher       messagequeue.EventPublisher
 }
 
 // NewAuthCommandService 创建认证命令服务实例
@@ -47,7 +48,7 @@ func NewAuthCommandService(
 	apiKeyRedisRepo domain.APIKeyRedisRepository,
 	sessionRepo domain.SessionRepository,
 	keySvc *APIKeyService,
-	publisher domain.EventPublisher,
+	publisher messagequeue.EventPublisher,
 ) *AuthCommandService {
 	return &AuthCommandService{
 		repo:            repo,

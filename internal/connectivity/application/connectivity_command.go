@@ -8,6 +8,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/connectivity/domain"
 	"github.com/wyfcoding/pkg/connectivity/fix"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // ConnectivityCommandService 处理所有连接相关的写入操作（Commands）。
@@ -15,7 +16,7 @@ type ConnectivityCommandService struct {
 	sessionMgr *fix.SessionManager
 	execClient domain.ExecutionClient
 	mdClient   domain.MarketDataClient
-	publisher  domain.EventPublisher
+	publisher  messagequeue.EventPublisher
 	quoteRepo  domain.QuoteRepository
 }
 
@@ -24,7 +25,7 @@ func NewConnectivityCommandService(
 	sm *fix.SessionManager,
 	ec domain.ExecutionClient,
 	mdClient domain.MarketDataClient,
-	publisher domain.EventPublisher,
+	publisher messagequeue.EventPublisher,
 	quoteRepo domain.QuoteRepository,
 ) *ConnectivityCommandService {
 	return &ConnectivityCommandService{

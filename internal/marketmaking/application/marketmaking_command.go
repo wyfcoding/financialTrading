@@ -9,6 +9,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/marketmaking/domain"
 	"github.com/wyfcoding/pkg/contextx"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // MarketMakingCommandService 做市命令服务
@@ -16,7 +17,7 @@ type MarketMakingCommandService struct {
 	repo      domain.MarketMakingRepository
 	orderSvc  domain.OrderClient
 	marketSvc domain.MarketDataClient
-	publisher domain.EventPublisher
+	publisher messagequeue.EventPublisher
 
 	mu      sync.Mutex
 	workers map[string]context.CancelFunc
@@ -27,7 +28,7 @@ func NewMarketMakingCommandService(
 	repo domain.MarketMakingRepository,
 	orderSvc domain.OrderClient,
 	marketSvc domain.MarketDataClient,
-	publisher domain.EventPublisher,
+	publisher messagequeue.EventPublisher,
 ) *MarketMakingCommandService {
 	return &MarketMakingCommandService{
 		repo:      repo,

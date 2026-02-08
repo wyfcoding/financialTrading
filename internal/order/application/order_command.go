@@ -9,6 +9,7 @@ import (
 
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
 	"github.com/wyfcoding/pkg/contextx"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // OrderCommandService 处理订单相关的命令操作
@@ -17,11 +18,11 @@ import (
 type OrderCommandService struct {
 	repo           domain.OrderRepository
 	eventStore     domain.EventStore
-	eventPublisher domain.EventPublisher
+	eventPublisher messagequeue.EventPublisher
 }
 
 // NewOrderCommandService 创建新的 OrderCommandService 实例
-func NewOrderCommandService(repo domain.OrderRepository, eventStore domain.EventStore, eventPublisher domain.EventPublisher) *OrderCommandService {
+func NewOrderCommandService(repo domain.OrderRepository, eventStore domain.EventStore, eventPublisher messagequeue.EventPublisher) *OrderCommandService {
 	return &OrderCommandService{
 		repo:           repo,
 		eventStore:     eventStore,

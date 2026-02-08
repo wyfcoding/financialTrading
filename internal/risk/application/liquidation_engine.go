@@ -10,13 +10,14 @@ import (
 	accountv1 "github.com/wyfcoding/financialtrading/go-api/account/v1"
 	positionv1 "github.com/wyfcoding/financialtrading/go-api/position/v1"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
+	"github.com/wyfcoding/pkg/messagequeue"
 )
 
 // LiquidationEngine 强平引擎，负责定期检查杠杆账户风险并触发强平。
 type LiquidationEngine struct {
 	accountClient  accountv1.AccountServiceClient
 	positionClient positionv1.PositionServiceClient
-	publisher      domain.EventPublisher
+	publisher      messagequeue.EventPublisher
 	logger         *slog.Logger
 	checkInterval  time.Duration
 	mmThreshold    decimal.Decimal // 维持保证金阈值，例如 110% (1.1)
@@ -25,7 +26,7 @@ type LiquidationEngine struct {
 func NewLiquidationEngine(
 	accClient accountv1.AccountServiceClient,
 	posClient positionv1.PositionServiceClient,
-	publisher domain.EventPublisher,
+	publisher messagequeue.EventPublisher,
 	logger *slog.Logger,
 ) *LiquidationEngine {
 	return &LiquidationEngine{
