@@ -1,0 +1,31 @@
+# 合规服务配置文件
+[server]
+http_port = 8083
+grpc_port = 9083
+read_timeout = "15s"
+write_timeout = "15s"
+shutdown_timeout = "30s"
+
+[database]
+dsn = "${MYSQL_DSN:root:password@tcp(localhost:3306)/compliance?charset=utf8mb4&parseTime=True&loc=Local}"
+max_open_conns = 100
+max_idle_conns = 10
+
+[redis]
+addr = "${REDIS_ADDR:localhost:6379}"
+db = 3
+pool_size = 100
+
+[kafka]
+brokers = ["${KAFKA_BROKER:localhost:9092}"]
+group_id = "compliance-service"
+topics = ["compliance.events"]
+
+[log]
+level = "${LOG_LEVEL:info}"
+format = "json"
+
+[compliance]
+# 第三方 AML 服务 API
+aml_provider_url = "https://api.aml-provider.com/v1"
+aml_api_key = "${AML_API_KEY}"

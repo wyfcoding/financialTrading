@@ -1,0 +1,140 @@
+// 合规服务 Proto 定义
+// 管理KYC、AML、风险评估等
+syntax = "proto3";
+
+package financial.compliance.v1;
+
+option go_package = "github.com/wyfcoding/go-api/financial/compliance/v1;compliancev1";
+
+import "google/protobuf/timestamp.proto";
+
+// 合规服务
+service ComplianceService {
+  // 提交KYC申请
+  rpc SubmitKYC(SubmitKYCRequest) returns (SubmitKYCResponse);
+  // 获取KYC状态
+  rpc GetKYCStatus(GetKYCStatusRequest) returns (GetKYCStatusResponse);
+  // 审核KYC
+  rpc ReviewKYC(ReviewKYCRequest) returns (ReviewKYCResponse);
+  
+  // 提交AML检查
+  rpc CheckAML(CheckAMLRequest) returns (CheckAMLResponse);
+  
+  // 风险评估
+  rpc AssessRisk(AssessRiskRequest) returns (AssessRiskResponse);
+}
+
+// KYC 状态
+enum KYCStatus {
+  KYC_STATUS_UNSPECIFIED = 0;
+  KYC_STATUS_PENDING = 1;                   // 待审核
+  KYC_STATUS_APPROVED = 2;                  // 已通过
+  KYC_STATUS_REJECTED = 3;                  // 已拒绝
+  KYC_STATUS_MORE_INFO_REQUIRED = 4;        // 需补充材料
+}
+
+// KYC 等级
+enum KYCLevel {
+  KYC_LEVEL_UNSPECIFIED = 0;
+  KYC_LEVEL_1 = 1;                          // 基础认证
+  KYC_LEVEL_2 = 2;                          // 高级认证
+  KYC_LEVEL_3 = 3;                          // 机构认证
+}
+
+// 若有更多枚举，可在此定义
+
+// KYC 申请信息
+message KYCApplication {
+  string application_id = 1;
+  uint64 user_id = 2;
+  KYCLevel level = 3;
+  KYCStatus status = 4;
+  
+  // 个人信息
+  string first_name = 5;
+  string last_name = 6;
+  string id_number = 7;                     // 证件号码
+  string date_of_birth = 8;
+  string country = 9;
+  
+  // 文件链接
+  string id_card_front_url = 10;
+  string id_card_back_url = 11;
+  string face_photo_url = 12;
+  
+  // 审核信息
+  string reject_reason = 13;
+  string reviewer_id = 14;
+  google.protobuf.Timestamp reviewed_at = 15;
+  
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
+}
+
+// 提交KYC请求
+message SubmitKYCRequest {
+  uint64 user_id = 1;
+  KYCLevel level = 2;
+  string first_name = 3;
+  string last_name = 4;
+  string id_number = 5;
+  string date_of_birth = 6;
+  string country = 7;
+  string id_card_front_url = 8;
+  string id_card_back_url = 9;
+  string face_photo_url = 10;
+}
+
+message SubmitKYCResponse {
+  string application_id = 1;
+}
+
+// 获取KYC状态请求
+message GetKYCStatusRequest {
+  uint64 user_id = 1;
+}
+
+message GetKYCStatusResponse {
+  KYCApplication application = 1;
+}
+
+// 审核KYC请求
+message ReviewKYCRequest {
+  string application_id = 1;
+  bool approved = 2;
+  string reject_reason = 3;
+  string reviewer_id = 4;
+}
+
+message ReviewKYCResponse {
+  bool success = 1;
+}
+
+// AML 检查请求
+message CheckAMLRequest {
+  uint64 user_id = 1;
+  string name = 2;
+  string country = 3;
+  // 可扩展其他检查要素
+}
+
+message CheckAMLResponse {
+  bool passed = 1;
+  string risk_level = 2;                    // LOW, MEDIUM, HIGH
+  string reason = 3;
+}
+
+// 风险评估请求
+message AssessRiskRequest {
+  uint64 user_id = 1;
+  string action_type = 2;                   // 提现、大额交易等
+  int64 amount = 3;
+  string ip_address = 4;
+  string device_id = 5;
+}
+
+message AssessRiskResponse {
+  bool allowed = 1;
+  string risk_score = 2;
+  string reason = 3;
+}
