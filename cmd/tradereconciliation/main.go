@@ -49,7 +49,7 @@ func main() {
 	s := grpc.NewServer()
 	tradereconciliationv1.RegisterTradeReconciliationServiceServer(s, handler)
 
-	fmt.Printf("server listening at %v\n", lis.Addr())
+	fmt.Printf("%s listening at %v\n", cfg.Name, lis.Addr())
 
 	go func() {
 		if err := s.Serve(lis); err != nil {

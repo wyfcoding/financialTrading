@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package aml.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/aml/v1;amlv1";
+
+// AMLService 反洗钱监控服务
+service AMLService {
+    // MonitorTransaction 监控交易并检查风险
+    rpc MonitorTransaction(MonitorTransactionRequest) returns (MonitorTransactionResponse);
+    
+    // GetRiskScore 获取用户的风险评分
+    rpc GetRiskScore(GetRiskScoreRequest) returns (GetRiskScoreResponse);
+    
+    // ListAlerts 获取待处理的反洗钱警报
+    rpc ListAlerts(ListAlertsRequest) returns (ListAlertsResponse);
+}
+
+message MonitorTransactionRequest {
+    string transaction_id = 1;
+    string user_id = 2;
+    string amount = 3;
+    string currency = 4;
+    string counterparty_id = 5;
+}
+
+message MonitorTransactionResponse {
+    bool is_suspicious = 1;
+    string alert_id = 2;
+    string risk_level = 3;
+}
+
+message GetRiskScoreRequest {
+    string user_id = 1;
+}
+
+message GetRiskScoreResponse {
+    string user_id = 1;
+    double score = 2;
+    string risk_level = 3;
+}
+
+message AlertItem {
+    string alert_id = 1;
+    string user_id = 2;
+    string type = 3;
+    string description = 4;
+    string status = 5;
+    google.protobuf.Timestamp created_at = 6;
+}
+
+message ListAlertsRequest {
+    string status = 1; // PENDING, RESOLVED
+}
+
+message ListAlertsResponse {
+    repeated AlertItem alerts = 1;
+}

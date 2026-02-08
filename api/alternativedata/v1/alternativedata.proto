@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package alternativedata.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/alternativedata/v1;alternativedatav1";
+
+// AlternativeDataService 另类数据服务 (舆情、新闻、非传统数据)
+service AlternativeDataService {
+    // GetSentiment 获取指定标的的舆情数据
+    rpc GetSentiment(GetSentimentRequest) returns (GetSentimentResponse);
+    
+    // ListNews 获取最新新闻数据
+    rpc ListNews(ListNewsRequest) returns (ListNewsResponse);
+    
+    // IngestData 注入另类数据 (用于爬虫或数据源输入)
+    rpc IngestData(IngestDataRequest) returns (IngestDataResponse);
+}
+
+message GetSentimentRequest {
+    string symbol = 1;
+}
+
+message GetSentimentResponse {
+    string symbol = 1;
+    double score = 2; // -1.0 to 1.0
+    string trend = 3; // BULLISH, BEARISH, NEUTRAL
+    google.protobuf.Timestamp last_updated = 4;
+}
+
+message ListNewsRequest {
+    string symbol = 1;
+    int32 limit = 2;
+}
+
+message ListNewsResponse {
+    repeated NewsItem news = 1;
+}
+
+message NewsItem {
+    string news_id = 1;
+    string title = 2;
+    string content = 3;
+    string source = 4;
+    double sentiment_score = 5;
+    google.protobuf.Timestamp published_at = 6;
+}
+
+message IngestDataRequest {
+    string type = 1; // NEWS, SOCIAL_MEDIA, SATELLITE
+    string payload = 2; // JSON payload
+}
+
+message IngestDataResponse {
+    bool success = 1;
+    string data_id = 2;
+}

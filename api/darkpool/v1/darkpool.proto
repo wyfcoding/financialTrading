@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package darkpool.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/darkpool/v1;darkpoolv1";
+
+// DarkpoolService 暗池交易服务 (匿名交易、大额撮合)
+service DarkpoolService {
+    // PlaceOrder 下单 (匿名、不公开盘口)
+    rpc PlaceOrder(PlaceOrderRequest) returns (PlaceOrderResponse);
+    
+    // CancelOrder 撤销订单
+    rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+    
+    // GetOrder 获取订单状态
+    rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+    
+    // ListUserOrders 获取用户在暗池的订单列表
+    rpc ListUserOrders(ListUserOrdersRequest) returns (ListUserOrdersResponse);
+}
+
+message PlaceOrderRequest {
+    string user_id = 1;
+    string symbol = 2;
+    string side = 3; // BUY, SELL
+    string price = 4;
+    string quantity = 5;
+    string type = 6; // LIMIT, MARKET
+}
+
+message PlaceOrderResponse {
+    string order_id = 1;
+    string status = 2;
+}
+
+message CancelOrderRequest {
+    string order_id = 1;
+    string user_id = 2;
+}
+
+message CancelOrderResponse {
+    bool success = 1;
+}
+
+message GetOrderRequest {
+    string order_id = 1;
+}
+
+message GetOrderResponse {
+    DarkOrder order = 1;
+}
+
+message DarkOrder {
+    string order_id = 1;
+    string user_id = 2;
+    string symbol = 3;
+    string side = 4;
+    string price = 5;
+    string quantity = 6;
+    string filled_quantity = 7;
+    string status = 8;
+    google.protobuf.Timestamp created_at = 9;
+}
+
+message ListUserOrdersRequest {
+    string user_id = 1;
+    string status = 2;
+}
+
+message ListUserOrdersResponse {
+    repeated DarkOrder orders = 1;
+}

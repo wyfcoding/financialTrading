@@ -1,0 +1,22 @@
+[server]
+name = "funding-service"
+environment = "dev"
+
+[server.grpc]
+port = 50051
+
+[data.database]
+driver = "mysql"
+dsn = "root:123456@tcp(localhost:3306)/financialtrading?charset=utf8mb4&parseTime=True&loc=Local"
+
+[data.redis]
+addr = "localhost:6379"
+password = ""
+db = 0
+
+[log]
+level = "debug"
+format = "json"
+
+[circuitbreaker]
+enabled = false
