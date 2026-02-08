@@ -6,17 +6,23 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
+	"github.com/wyfcoding/pkg/algorithm/finance"
 )
 
 // PricingQueryService 处理所有定价相关的查询操作（Queries）。
 type PricingQueryService struct {
 	repo     domain.PricingRepository
 	readRepo domain.PricingReadRepository
+	bsCalc   *finance.BlackScholesCalculator
 }
 
 // NewPricingQueryService 构造函数。
 func NewPricingQueryService(repo domain.PricingRepository, readRepo domain.PricingReadRepository) *PricingQueryService {
-	return &PricingQueryService{repo: repo, readRepo: readRepo}
+	return &PricingQueryService{
+		repo:     repo,
+		readRepo: readRepo,
+		bsCalc:   finance.NewBlackScholesCalculator(),
+	}
 }
 
 // GetGreeks 计算希腊字母
@@ -35,23 +41,25 @@ func (s *PricingQueryService) GetGreeks(ctx context.Context, contract domain.Opt
 		}, nil
 	}
 
-	sVal, _ := underlyingPrice.Float64()
-	kVal, _ := contract.StrikePrice.Float64()
-
-	result := domain.CalculateBlackScholes(contract.Type, domain.BlackScholesInput{
-		S: sVal,
-		K: kVal,
-		T: timeToExpiry,
-		R: riskFreeRate,
-		V: volatility,
-	})
+	res, calcErr := s.bsCalc.Calculate(
+		string(contract.Type),
+		underlyingPrice,
+		contract.StrikePrice,
+		decimal.NewFromFloat(timeToExpiry),
+		decimal.NewFromFloat(riskFreeRate),
+		decimal.NewFromFloat(volatility),
+		decimal.Zero, // Default div to 0 if not provided in Query
+	)
+	if calcErr != nil {
+		return nil, calcErr
+	}
 
 	return &domain.Greeks{
-		Delta: result.Delta,
-		Gamma: result.Gamma,
-		Theta: result.Theta,
-		Vega:  result.Vega,
-		Rho:   result.Rho,
+		Delta: res.Delta,
+		Gamma: res.Gamma,
+		Theta: res.Theta,
+		Vega:  res.Vega,
+		Rho:   res.Rho,
 	}, nil
 }
 

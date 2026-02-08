@@ -8,6 +8,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
+	"github.com/wyfcoding/pkg/algorithm/finance"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/messagequeue"
 )
@@ -18,6 +19,7 @@ import (
 type PricingCommandService struct {
 	repo      domain.PricingRepository
 	publisher messagequeue.EventPublisher
+	bsCalc    *finance.BlackScholesCalculator
 }
 
 // NewPricingCommandService 创建新的 PricingCommandService 实例
@@ -25,6 +27,7 @@ func NewPricingCommandService(repo domain.PricingRepository, publisher messagequ
 	return &PricingCommandService{
 		repo:      repo,
 		publisher: publisher,
+		bsCalc:    finance.NewBlackScholesCalculator(),
 	}
 }
 
@@ -51,14 +54,18 @@ func (c *PricingCommandService) PriceOption(ctx context.Context, cmd PriceOption
 		}
 		switch cmd.PricingModel {
 		case "BlackScholes":
-			input := domain.BlackScholesInput{
-				S: cmd.UnderlyingPrice,
-				K: cmd.StrikePrice,
-				T: timeToExpiry,
-				R: cmd.RiskFreeRate,
-				V: cmd.Volatility,
+			bs, calcErr := c.bsCalc.Calculate(
+				cmd.OptionType,
+				decimal.NewFromFloat(cmd.UnderlyingPrice),
+				decimal.NewFromFloat(cmd.StrikePrice),
+				decimal.NewFromFloat(timeToExpiry),
+				decimal.NewFromFloat(cmd.RiskFreeRate),
+				decimal.NewFromFloat(cmd.Volatility),
+				decimal.NewFromFloat(cmd.DividendYield),
+			)
+			if calcErr != nil {
+				return calcErr
 			}
-			bs := domain.CalculateBlackScholes(domain.OptionType(cmd.OptionType), input)
 			price = bs.Price.InexactFloat64()
 			greeks = domain.Greeks{
 				Delta: bs.Delta,
@@ -86,14 +93,18 @@ func (c *PricingCommandService) PriceOption(ctx context.Context, cmd PriceOption
 			price = lsmPrice
 			greeks = domain.Greeks{}
 		default:
-			input := domain.BlackScholesInput{
-				S: cmd.UnderlyingPrice,
-				K: cmd.StrikePrice,
-				T: timeToExpiry,
-				R: cmd.RiskFreeRate,
-				V: cmd.Volatility,
+			bs, calcErr := c.bsCalc.Calculate(
+				cmd.OptionType,
+				decimal.NewFromFloat(cmd.UnderlyingPrice),
+				decimal.NewFromFloat(cmd.StrikePrice),
+				decimal.NewFromFloat(timeToExpiry),
+				decimal.NewFromFloat(cmd.RiskFreeRate),
+				decimal.NewFromFloat(cmd.Volatility),
+				decimal.NewFromFloat(cmd.DividendYield),
+			)
+			if calcErr != nil {
+				return calcErr
 			}
-			bs := domain.CalculateBlackScholes(domain.OptionType(cmd.OptionType), input)
 			price = bs.Price.InexactFloat64()
 			greeks = domain.Greeks{
 				Delta: bs.Delta,

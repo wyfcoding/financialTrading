@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -23,6 +24,7 @@ type QuantCommandService struct {
 	publisher        messagequeue.EventPublisher
 	riskCalc         *finance.RiskCalculator
 	indicatorSvc     *domain.IndicatorService
+	logger           *slog.Logger
 }
 
 // NewQuantCommandService 创建新的 QuantCommandService 实例
@@ -32,6 +34,7 @@ func NewQuantCommandService(
 	signalRepo domain.SignalRepository,
 	marketDataClient domain.MarketDataClient,
 	publisher messagequeue.EventPublisher,
+	logger *slog.Logger,
 ) *QuantCommandService {
 	return &QuantCommandService{
 		strategyRepo:     strategyRepo,
@@ -41,6 +44,7 @@ func NewQuantCommandService(
 		publisher:        publisher,
 		riskCalc:         finance.NewRiskCalculator(),
 		indicatorSvc:     domain.NewIndicatorService(),
+		logger:           logger,
 	}
 }
 
@@ -399,24 +403,66 @@ func (s *QuantCommandService) GenerateSignal(ctx context.Context, cmd GenerateSi
 }
 
 // OptimizePortfolio 优化组合
-func (s *QuantCommandService) OptimizePortfolio(ctx context.Context, cmd OptimizePortfolioCommand) error {
+func (s *QuantCommandService) OptimizePortfolio(ctx context.Context, cmd OptimizePortfolioCommand) (*map[string]float64, error) {
 	if len(cmd.Symbols) == 0 {
-		return errors.New("symbols are required")
+		return nil, errors.New("symbols are required")
 	}
 	portfolioID := cmd.PortfolioID
 	if portfolioID == "" {
 		portfolioID = fmt.Sprintf("PORT-%d", idgen.GenID())
 	}
-	weights := make(map[string]float64)
+
+	// 1. 获取所有标的的收益率数据
+	var allReturns [][]decimal.Decimal
+	validSymbols := make([]string, 0)
+	minLen := -1
+
 	for _, symbol := range cmd.Symbols {
-		weights[symbol] = 1.0 / float64(len(cmd.Symbols))
+		prices, err := s.marketDataClient.GetHistoricalData(ctx, symbol)
+		if err != nil || len(prices) < 2 {
+			s.logger.WarnContext(ctx, "insufficient data for symbol, skipping", "symbol", symbol, "error", err)
+			continue
+		}
+		reth := finance.CalculateReturns(prices)
+		if len(reth) > 0 {
+			allReturns = append(allReturns, reth)
+			validSymbols = append(validSymbols, symbol)
+			if minLen == -1 || len(reth) < minLen {
+				minLen = len(reth)
+			}
+		}
+	}
+
+	if len(allReturns) < 2 {
+		return nil, errors.New("insufficient valid symbols for portfolio optimization")
+	}
+
+	// 2. 截断对齐数据长度
+	for i := range allReturns {
+		if len(allReturns[i]) > minLen {
+			allReturns[i] = allReturns[i][len(allReturns[i])-minLen:]
+		}
+	}
+
+	// 3. 计算协方差矩阵
+	cov := finance.CalculateCovariance(allReturns)
+
+	// 4. 执行最小方差优化 (Mean-Variance)
+	// 这里简化处理：假定预期收益率为当前各标的平均收益率（占位）
+	optimizer := finance.NewPortfolioOptimizer(validSymbols, nil, cov)
+	resultWeights := optimizer.OptimizeMinimumVariance()
+
+	// 5. 转换并发布结果
+	weightsFloat := make(map[string]float64)
+	for k, v := range resultWeights {
+		weightsFloat[k] = v.InexactFloat64()
 	}
 
 	if s.publisher != nil {
 		event := domain.PortfolioOptimizedEvent{
 			PortfolioID:    portfolioID,
-			Symbols:        cmd.Symbols,
-			Weights:        weights,
+			Symbols:        validSymbols,
+			Weights:        weightsFloat,
 			ExpectedReturn: cmd.ExpectedReturn,
 			Volatility:     cmd.RiskTolerance,
 			SharpeRatio:    0,
@@ -426,7 +472,7 @@ func (s *QuantCommandService) OptimizePortfolio(ctx context.Context, cmd Optimiz
 		_ = s.publisher.Publish(ctx, domain.PortfolioOptimizedEventType, portfolioID, event)
 	}
 
-	return nil
+	return &weightsFloat, nil
 }
 
 // AssessRisk 风险评估

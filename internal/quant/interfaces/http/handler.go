@@ -37,6 +37,7 @@ func (h *QuantHandler) RegisterRoutes(router *gin.RouterGroup) {
 		api.POST("/signals", h.GenerateSignal)
 		api.GET("/signals", h.GetSignal)
 		api.POST("/arbitrage/opportunities", h.FindArbitrageOpportunities)
+		api.POST("/portfolio/optimize", h.OptimizePortfolio)
 	}
 }
 
@@ -209,6 +210,42 @@ func (h *QuantHandler) GetSignal(c *gin.Context) {
 		return
 	}
 	response.Success(c, dto)
+}
+
+// OptimizePortfolioRequest 优化组合请求
+type OptimizePortfolioRequest struct {
+	PortfolioID    string   `json:"portfolio_id"`
+	Symbols        []string `json:"symbols" binding:"required"`
+	ExpectedReturn float64  `json:"expected_return"`
+	RiskTolerance  float64  `json:"risk_tolerance"`
+}
+
+// OptimizePortfolio 优化组合
+func (h *QuantHandler) OptimizePortfolio(c *gin.Context) {
+	var req OptimizePortfolioRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ErrorWithStatus(c, http.StatusBadRequest, err.Error(), "")
+		return
+	}
+
+	cmd := application.OptimizePortfolioCommand{
+		PortfolioID:    req.PortfolioID,
+		Symbols:        req.Symbols,
+		ExpectedReturn: req.ExpectedReturn,
+		RiskTolerance:  req.RiskTolerance,
+	}
+
+	weights, err := h.command.OptimizePortfolio(c.Request.Context(), cmd)
+	if err != nil {
+		logging.Error(c.Request.Context(), "Failed to optimize portfolio", "error", err)
+		response.ErrorWithStatus(c, http.StatusInternalServerError, err.Error(), "")
+		return
+	}
+
+	response.Success(c, gin.H{
+		"portfolio_id": req.PortfolioID,
+		"weights":      weights,
+	})
 }
 
 // FindArbitrageRequest 查找套利机会

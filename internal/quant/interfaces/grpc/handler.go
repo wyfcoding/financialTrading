@@ -145,3 +145,21 @@ func toProtoBacktestResult(r *domain.BacktestResult) *pb.BacktestResult {
 		CreatedAt:     timestamppb.New(r.CreatedAt),
 	}
 }
+
+// OptimizePortfolio 优化投资组合
+func (h *Handler) OptimizePortfolio(ctx context.Context, req *pb.OptimizePortfolioRequest) (*pb.OptimizePortfolioResponse, error) {
+	cmd := application.OptimizePortfolioCommand{
+		PortfolioID:    req.PortfolioId,
+		Symbols:        req.Symbols,
+		ExpectedReturn: req.ExpectedReturn,
+		RiskTolerance:  req.RiskTolerance,
+	}
+	weights, err := h.command.OptimizePortfolio(ctx, cmd)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to optimize portfolio: %v", err)
+	}
+	return &pb.OptimizePortfolioResponse{
+		PortfolioId: req.PortfolioId,
+		Weights:     *weights,
+	}, nil
+}

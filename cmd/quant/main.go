@@ -131,7 +131,7 @@ func main() {
 	arbEngine := arbitrage.NewEngine(marketGrpcCli)
 
 	// 9. Application
-	commandSvc := application.NewQuantCommandService(strategyRepo, backtestRepo, signalRepo, marketCli, publisher)
+	commandSvc := application.NewQuantCommandService(strategyRepo, backtestRepo, signalRepo, marketCli, publisher, logger.Logger)
 	querySvc := application.NewQuantQueryService(strategyRepo, strategyReadRepo, backtestRepo, backtestReadRepo, signalRepo, signalReadRepo, searchRepo, arbEngine)
 
 	// 10. Interfaces

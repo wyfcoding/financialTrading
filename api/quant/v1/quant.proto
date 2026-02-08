@@ -17,6 +17,9 @@ service QuantService {
   // Backtesting
   rpc RunBacktest(RunBacktestRequest) returns (RunBacktestResponse) {};
   rpc GetBacktestResult(GetBacktestResultRequest) returns (GetBacktestResultResponse) {};
+
+  // Portfolio Optimization
+  rpc OptimizePortfolio(OptimizePortfolioRequest) returns (OptimizePortfolioResponse) {};
 }
 
 enum IndicatorType {
@@ -105,4 +108,16 @@ message BacktestResult {
 
 message GetBacktestResultResponse {
   BacktestResult result = 1;
+}
+
+message OptimizePortfolioRequest {
+  string portfolio_id = 1;
+  repeated string symbols = 2;
+  double expected_return = 3;
+  double risk_tolerance = 4;
+}
+
+message OptimizePortfolioResponse {
+  string portfolio_id = 1;
+  map<string, double> weights = 2;
 }
