@@ -1,0 +1,24 @@
+# 算法交易服务配置文件
+[server]
+http_port = 8085
+grpc_port = 9085
+
+[database]
+dsn = "${MYSQL_DSN:root:password@tcp(localhost:3306)/algotrading?charset=utf8mb4&parseTime=True&loc=Local}"
+max_open_conns = 100
+max_idle_conns = 10
+
+[kafka]
+brokers = ["${KAFKA_BROKER:localhost:9092}"]
+group_id = "algotrading-service"
+topics = ["algotrading.events"]
+
+[log]
+level = "${LOG_LEVEL:info}"
+format = "json"
+
+[algotrading]
+# 回测服务并发限制
+backtest_concurrency = 5
+# 市场数据服务地址
+market_data_service_addr = "localhost:9099"

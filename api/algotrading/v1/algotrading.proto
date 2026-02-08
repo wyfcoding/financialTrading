@@ -1,0 +1,141 @@
+// 算法交易服务 Proto 定义
+// 管理策略、执行引擎、回测等
+syntax = "proto3";
+
+package financial.algotrading.v1;
+
+option go_package = "github.com/wyfcoding/go-api/financial/algotrading/v1;algotradingv1";
+
+import "google/protobuf/timestamp.proto";
+
+// 算法交易服务
+service AlgoTradingService {
+  // 创建策略
+  rpc CreateStrategy(CreateStrategyRequest) returns (CreateStrategyResponse);
+  // 启动策略
+  rpc StartStrategy(StartStrategyRequest) returns (StartStrategyResponse);
+  // 停止策略
+  rpc StopStrategy(StopStrategyRequest) returns (StopStrategyResponse);
+  // 获取策略状态
+  rpc GetStrategy(GetStrategyRequest) returns (GetStrategyResponse);
+  
+  // 提交回测
+  rpc SubmitBacktest(SubmitBacktestRequest) returns (SubmitBacktestResponse);
+  // 获取回测结果
+  rpc GetBacktestResult(GetBacktestResultRequest) returns (GetBacktestResultResponse);
+}
+
+// 策略类型
+enum StrategyType {
+  STRATEGY_TYPE_UNSPECIFIED = 0;
+  STRATEGY_TYPE_TWAP = 1;                   // 时间加权平均价格
+  STRATEGY_TYPE_VWAP = 2;                   // 成交量加权平均价格
+  STRATEGY_TYPE_GRID = 3;                   // 网格交易
+  STRATEGY_TYPE_ARBITRAGE = 4;              // 套利
+}
+
+// 策略状态
+enum StrategyStatus {
+  STRATEGY_STATUS_UNSPECIFIED = 0;
+  STRATEGY_STATUS_CREATED = 1;
+  STRATEGY_STATUS_RUNNING = 2;
+  STRATEGY_STATUS_PAUSED = 3;
+  STRATEGY_STATUS_STOPPED = 4;
+  STRATEGY_STATUS_FAILED = 5;
+}
+
+// 策略实例
+message Strategy {
+  string strategy_id = 1;
+  uint64 user_id = 2;
+  StrategyType type = 3;
+  StrategyStatus status = 4;
+  string symbol = 5;
+  
+  // 参数 (JSON String)
+  string parameters = 6;
+  
+  // 运行统计
+  int64 executed_amount = 7;
+  int64 executed_quantity = 8;
+  
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// 回测任务
+message Backtest {
+  string backtest_id = 1;
+  string strategy_id = 2; // 如果是测试已有策略
+  StrategyType type = 3;  // 如果是测试新参数
+  string parameters = 4;
+  
+  string symbol = 5;
+  google.protobuf.Timestamp start_time = 6;
+  google.protobuf.Timestamp end_time = 7;
+  
+  string status = 8; // PENDING, RUNNING, COMPLETED, FAILED
+  string result_json = 9; // 回测结果统计
+}
+
+// 创建策略请求
+message CreateStrategyRequest {
+  uint64 user_id = 1;
+  StrategyType type = 2;
+  string symbol = 3;
+  string parameters = 4;
+}
+
+message CreateStrategyResponse {
+  string strategy_id = 1;
+}
+
+// 启动策略请求
+message StartStrategyRequest {
+  string strategy_id = 1;
+}
+
+message StartStrategyResponse {
+  bool success = 1;
+}
+
+// 停止策略请求
+message StopStrategyRequest {
+  string strategy_id = 1;
+}
+
+message StopStrategyResponse {
+  bool success = 1;
+}
+
+// 获取策略请求
+message GetStrategyRequest {
+  string strategy_id = 1;
+}
+
+message GetStrategyResponse {
+  Strategy strategy = 1;
+}
+
+// 提交回测请求
+message SubmitBacktestRequest {
+  uint64 user_id = 1;
+  StrategyType type = 2;
+  string symbol = 3;
+  string parameters = 4;
+  google.protobuf.Timestamp start_time = 5;
+  google.protobuf.Timestamp end_time = 6;
+}
+
+message SubmitBacktestResponse {
+  string backtest_id = 1;
+}
+
+// 获取回测结果请求
+message GetBacktestResultRequest {
+  string backtest_id = 1;
+}
+
+message GetBacktestResultResponse {
+  Backtest backtest = 1;
+}

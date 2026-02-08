@@ -1,0 +1,26 @@
+# 资金服务配置文件
+[server]
+http_port = 8084
+grpc_port = 9084
+read_timeout = "15s"
+write_timeout = "15s"
+shutdown_timeout = "30s"
+
+[database]
+dsn = "${MYSQL_DSN:root:password@tcp(localhost:3306)/treasury?charset=utf8mb4&parseTime=True&loc=Local}"
+max_open_conns = 100
+max_idle_conns = 10
+
+[redis]
+addr = "${REDIS_ADDR:localhost:6379}"
+db = 4
+pool_size = 100
+
+[kafka]
+brokers = ["${KAFKA_BROKER:localhost:9092}"]
+group_id = "treasury-service"
+topics = ["treasury.events"]
+
+[log]
+level = "${LOG_LEVEL:info}"
+format = "json"

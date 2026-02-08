@@ -52,12 +52,13 @@ type MatchTask struct {
 
 // DisruptionEngine 核心撮合引擎
 type DisruptionEngine struct {
-	symbol    string
-	orderBook *OrderBook
-	ring      *algorithm.MpscRingBuffer[MatchTask]
-	stopChan  chan struct{}
-	logger    *slog.Logger
-	halted    int32
+	symbol         string
+	orderBook      *OrderBook
+	ring           *algorithm.MpscRingBuffer[MatchTask]
+	stopChan       chan struct{}
+	logger         *slog.Logger
+	halted         int32
+	circuitBreaker *CircuitBreaker
 }
 
 func NewDisruptionEngine(symbol string, capacity uint64, logger *slog.Logger) (*DisruptionEngine, error) {
@@ -75,6 +76,8 @@ func NewDisruptionEngine(symbol string, capacity uint64, logger *slog.Logger) (*
 		stopChan:  make(chan struct{}),
 		logger:    logger,
 		halted:    0,
+		// 默认 10% 阈值，60秒冷却
+		circuitBreaker: NewCircuitBreaker(decimal.NewFromFloat(0.10), 60*time.Second, logger),
 	}, nil
 }
 
@@ -93,6 +96,12 @@ func (e *DisruptionEngine) IsHalted() bool {
 
 func (e *DisruptionEngine) Halt() {
 	atomic.StoreInt32(&e.halted, 1)
+}
+
+func (e *DisruptionEngine) Resume() {
+	e.circuitBreaker.Reset()
+	atomic.StoreInt32(&e.halted, 0)
+	e.logger.Info("matching engine resumed")
 }
 
 func (e *DisruptionEngine) Symbol() string {
@@ -233,6 +242,13 @@ func (e *DisruptionEngine) matchOrder(order *types.Order, opponentBook *algorith
 				Price:     realOppPrice,
 				Quantity:  matchQty,
 				Timestamp: time.Now().UnixNano(),
+			}
+
+			// 熔断检查
+			if !e.circuitBreaker.CheckPrice(realOppPrice) {
+				e.Halt()
+				e.logger.Error("matching engine halted due to circuit breaker trigger", "price", realOppPrice)
+				break // 停止匹配，引擎 Halt 后主循环会暂停处理
 			}
 
 			if order.Side == "BUY" {
