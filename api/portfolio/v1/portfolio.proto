@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package portfolio.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/portfolio/v1;portfoliov1";
+
+// PortfolioService 投资组合服务
+service PortfolioService {
+    // GetPortfolio 获取用户投资组合概览
+    rpc GetPortfolio(GetPortfolioRequest) returns (GetPortfolioResponse);
+
+    // GetPositions 获取持仓详情
+    rpc GetPositions(GetPositionsRequest) returns (GetPositionsResponse);
+
+    // GetPerformance 获取业绩分析
+    rpc GetPerformance(GetPerformanceRequest) returns (GetPerformanceResponse);
+}
+
+message GetPortfolioRequest {
+    string user_id = 1;
+    string currency = 2; // Base currency, e.g. USD
+}
+
+message GetPortfolioResponse {
+    double total_equity = 1;    // 总权益
+    double unrealized_pnl = 2;  // 未实现盈亏
+    double realized_pnl = 3;    // 已实现盈亏 (当日)
+    double daily_pnl_pct = 4;   // 当日盈亏百分比
+    string currency = 5;
+}
+
+message GetPositionsRequest {
+    string user_id = 1;
+}
+
+message PositionItem {
+    string symbol = 1;
+    double quantity = 2;
+    double avg_price = 3;
+    double current_price = 4;
+    double market_value = 5;
+    double unrealized_pnl = 6;
+    double pnl_pct = 7;
+    string type = 8; // SPOT, MARGIN, FUTURE, OPTION
+}
+
+message GetPositionsResponse {
+    repeated PositionItem positions = 1;
+}
+
+message GetPerformanceRequest {
+    string user_id = 1;
+    string timeframe = 2; // 1D, 1W, 1M, 3M, 1Y, YTD, ALL
+}
+
+message PerformancePoint {
+    string timestamp = 1;
+    double equity = 2;
+}
+
+message GetPerformanceResponse {
+    repeated PerformancePoint history = 1;
+    double total_return = 2;
+    double sharpe_ratio = 3;
+    double max_drawdown = 4;
+}

@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package tradereconciliation.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/tradereconciliation/v1;tradereconciliationv1";
+
+// TradeReconciliationService 交易对账服务
+service TradeReconciliationService {
+    // CreateTask 创建对账任务
+    rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
+
+    // GetTask 获取任务状态
+    rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
+
+    // ListDiscrepancies 获取差异报告
+    rpc ListDiscrepancies(ListDiscrepanciesRequest) returns (ListDiscrepanciesResponse);
+
+    // ResolveDiscrepancy 解决差异
+    rpc ResolveDiscrepancy(ResolveDiscrepancyRequest) returns (ResolveDiscrepancyResponse);
+}
+
+message CreateTaskRequest {
+    string source_a = 1; // e.g. "INTERNAL_LEDGER"
+    string source_b = 2; // e.g. "EXTERNAL_BROKER_A"
+    google.protobuf.Timestamp start_time = 3;
+    google.protobuf.Timestamp end_time = 4;
+}
+
+message CreateTaskResponse {
+    string task_id = 1;
+}
+
+message GetTaskRequest {
+    string task_id = 1;
+}
+
+message GetTaskResponse {
+    string task_id = 1;
+    string status = 2; // PENDING, RUNNING, COMPLETED, FAILED
+    int32 processed_count = 3;
+    int32 discrepancy_count = 4;
+    string created_at = 5;
+}
+
+message ListDiscrepanciesRequest {
+    string task_id = 1;
+}
+
+message DiscrepancyItem {
+    string discrepancy_id = 1;
+    string record_id = 2; // e.g. TradeID
+    string field = 3;     // e.g. "Price", "Quantity"
+    string value_a = 4;
+    string value_b = 5;
+    string status = 6;    // OPEN, RESOLVED, IGNORED
+}
+
+message ListDiscrepanciesResponse {
+    repeated DiscrepancyItem discrepancies = 1;
+}
+
+message ResolveDiscrepancyRequest {
+    string discrepancy_id = 1;
+    string resolution = 2; // e.g. "USE_SOURCE_A", "MANUAL_ADJUST"
+    string comment = 3;
+}
+
+message ResolveDiscrepancyResponse {
+    bool success = 1;
+}

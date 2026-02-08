@@ -1,0 +1,15 @@
+[server]
+name = "portfolio-service"
+environment = "dev"
+zone = "shanghai"
+
+[http]
+addr = ":8092"
+timeout = "5s"
+
+[grpc]
+addr = ":9012"
+timeout = "5s"
+
+[mysql]
+dsn = "root:root@tcp(127.0.0.1:3306)/financial_portfolio?charset=utf8mb4&parseTime=True&loc=Local"

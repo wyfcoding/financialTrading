@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package derivatives.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/derivatives/v1;derivativesv1";
+
+// DerivativesService 衍生品服务
+service DerivativesService {
+    // CreateContract 创建合约
+    rpc CreateContract(CreateContractRequest) returns (CreateContractResponse);
+
+    // GetContract 获取合约详情
+    rpc GetContract(GetContractRequest) returns (GetContractResponse);
+    
+    // ListContracts 列出合约
+    rpc ListContracts(ListContractsRequest) returns (ListContractsResponse);
+
+    // ExerciseContract 行权
+    rpc ExerciseContract(ExerciseContractRequest) returns (ExerciseContractResponse);
+}
+
+message CreateContractRequest {
+    string symbol = 1;
+    string underlying = 2; // e.g. BTC, ETH
+    string type = 3;       // CALL, PUT, FUTURE
+    double strike_price = 4;
+    google.protobuf.Timestamp expiry_date = 5;
+    double multiplier = 6; // e.g. 1 contract = 0.1 BTC
+}
+
+message CreateContractResponse {
+    string contract_id = 1;
+}
+
+message GetContractRequest {
+    string contract_id = 1;
+}
+
+message Contract {
+    string contract_id = 1;
+    string symbol = 2;
+    string underlying = 3;
+    string type = 4;
+    double strike_price = 5;
+    string expiry_date = 6;
+    double multiplier = 7;
+    string status = 8; // TRADING, SETTLED, EXPIRED
+}
+
+message GetContractResponse {
+    Contract contract = 1;
+}
+
+message ListContractsRequest {
+    string underlying = 1;
+    string type = 2; // Optional
+    bool active_only = 3;
+}
+
+message ListContractsResponse {
+    repeated Contract contracts = 1;
+}
+
+message ExerciseContractRequest {
+    string contract_id = 1;
+    string user_id = 2;
+    double quantity = 3;
+}
+
+message ExerciseContractResponse {
+    bool success = 1;
+    string settlement_id = 2;
+    double pnl = 3;
+}
