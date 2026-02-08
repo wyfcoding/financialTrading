@@ -61,6 +61,10 @@ type MarketDataClient interface {
 	GetPrice(ctx context.Context, symbol string) (decimal.Decimal, error)
 }
 
+type AIModelClient interface {
+	GetSentimentScore(ctx context.Context, text string) (float64, error)
+}
+
 func (s *QuoteStrategy) Activate() {
 	s.Status = StrategyStatusActive
 }
