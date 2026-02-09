@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package sor.v1;
+
+option go_package = "github.com/wyfcoding/financialTrading/go-api/sor/v1;pb";
+
+import "google/protobuf/timestamp.proto";
+
+service SOREngineService {
+    // 生成智能路由计划
+    rpc CreateSORPlan(CreateSORPlanRequest) returns (CreateSORPlanResponse);
+    // 聚合多市场深度
+    rpc AggregateDepths(AggregateDepthsRequest) returns (AggregateDepthsResponse);
+}
+
+message CreateSORPlanRequest {
+    string symbol = 1;
+    string side = 2; // BUY, SELL
+    int64 quantity = 3;
+}
+
+message CreateSORPlanResponse {
+    string symbol = 1;
+    int64 total_qty = 2;
+    repeated OrderRoute routes = 3;
+    int64 average_price = 4;
+    google.protobuf.Timestamp generated_at = 5;
+}
+
+message OrderRoute {
+    string exchange = 1;
+    int64 price = 2;
+    int64 quantity = 3;
+}
+
+message AggregateDepthsRequest {
+    string symbol = 1;
+}
+
+message AggregateDepthsResponse {
+    repeated MarketDepth depths = 1;
+}
+
+message MarketDepth {
+    string exchange = 1;
+    string symbol = 2;
+    repeated PriceLevel bids = 3;
+    repeated PriceLevel asks = 4;
+}
+
+message PriceLevel {
+    int64 price = 1;
+    int64 quantity = 2;
+}

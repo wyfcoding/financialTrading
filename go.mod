@@ -14,6 +14,8 @@ require (
 	gorm.io/gorm v1.31.1
 )
 
+replace github.com/wyfcoding/pkg => ../pkg
+
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/ClickHouse/ch-go v0.71.0 // indirect

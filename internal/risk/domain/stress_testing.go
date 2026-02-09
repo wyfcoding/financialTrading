@@ -40,10 +40,20 @@ func (e *StressTestEngine) initDefaultScenarios() {
 	// 闪崩场景 (Flash Crash)
 	e.scenarios["FLASH_CRASH"] = &StressScenario{
 		Name:        "Flash Crash",
-		Description: "Sudden 10% drop in index within minutes",
+		Description: "Sudden 15% drop in index within minutes",
 		PriceShift: map[string]float64{
 			"DEFAULT": -0.15,
 		},
+	}
+
+	// 波动率飙升场景 (Vol Spike)
+	e.scenarios["VOL_SPIKE"] = &StressScenario{
+		Name:        "Volatility Spike",
+		Description: "Sudden increase in market volatility by 50%",
+		PriceShift: map[string]float64{
+			"DEFAULT": -0.05, // 伴随小幅下跌
+		},
+		// 注意：实际逻辑中可能需要影响 Greeks 评估，这里作为价格影响示例
 	}
 }
 

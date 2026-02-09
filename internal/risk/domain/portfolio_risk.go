@@ -16,6 +16,7 @@ type PortfolioAsset struct {
 	Symbol         string          `json:"symbol"`
 	Position       decimal.Decimal `json:"position"`        // 持仓数量 (+为多, -为空)
 	CurrentPrice   decimal.Decimal `json:"current_price"`   // 当前单价
+	AveragePrice   decimal.Decimal `json:"average_price"`   // 平均成本价
 	Volatility     float64         `json:"volatility"`      // 年化波动率 (sigma)
 	ExpectedReturn float64         `json:"expected_return"` // 预期年化收益率 (mu)
 }

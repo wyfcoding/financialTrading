@@ -1,0 +1,22 @@
+[service]
+name = "marginlending"
+version = "v1.0.0"
+
+[server]
+grpc_port = 50055
+
+[database]
+driver = "mysql"
+dsn = "root:root1234@tcp(127.0.0.1:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+
+[log]
+level = "info"
+format = "json"
+
+[margin]
+# 初始保证金比例
+initial_margin_rate = 0.5
+# 维持保证金比例
+maintenance_margin_rate = 0.3
+# 默认杠杆倍数
+max_leverage = 2.0

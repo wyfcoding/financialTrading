@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package custody.v1;
+
+option go_package = "github.com/wyfcoding/financialTrading/go-api/custody/v1;pb";
+
+import "google/protobuf/timestamp.proto";
+
+service CustodyService {
+    // 内部库位转移
+    rpc TransferInternal(TransferInternalRequest) returns (TransferInternalResponse);
+    // 资产隔离处理
+    rpc Segregate(SegregateRequest) returns (SegregateResponse);
+    // 获取托管持仓
+    rpc GetHolding(GetHoldingRequest) returns (GetHoldingResponse);
+    // 发布公司行为公告
+    rpc AnnounceAction(AnnounceActionRequest) returns (AnnounceActionResponse);
+    // 执行公司行为批量处理
+    rpc ExecuteBatchAction(ExecuteBatchActionRequest) returns (ExecuteBatchActionResponse);
+}
+
+message TransferInternalRequest {
+    string from_vault = 1;
+    string to_vault = 2;
+    string symbol = 3;
+    int64 amount = 4;
+    string reason = 5;
+}
+
+message TransferInternalResponse {
+    string transfer_id = 1;
+}
+
+message SegregateRequest {
+    uint64 user_id = 1;
+}
+
+message SegregateResponse {
+    bool success = 1;
+}
+
+message GetHoldingRequest {
+    string vault_id = 1;
+}
+
+message GetHoldingResponse {
+    string vault_id = 1;
+    string type = 2;
+    uint64 user_id = 3;
+    string symbol = 4;
+    int64 balance = 5;
+    int64 locked = 6;
+}
+
+message AnnounceActionRequest {
+    string symbol = 1;
+    string type = 2; // DIVIDEND, SPLIT
+    double ratio = 3;
+    google.protobuf.Timestamp record_date = 4;
+    google.protobuf.Timestamp ex_date = 5;
+    google.protobuf.Timestamp pay_date = 6;
+}
+
+message AnnounceActionResponse {
+    string action_id = 1;
+}
+
+message ExecuteBatchActionRequest {
+    string action_id = 1;
+}
+
+message ExecuteBatchActionResponse {
+    bool success = 1;
+}

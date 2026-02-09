@@ -1,0 +1,33 @@
+replicaCount: 2
+
+image:
+  repository: primebrokerage
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 50051
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+istio:
+  enabled: true
+  gateway:
+    enabled: true
+    host: "primebrokerage.financial.com"
+
+config:
+  db_dsn: "root:root1234@tcp(mysql:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"

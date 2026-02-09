@@ -9,6 +9,15 @@ service MatchingEngineService {
   // 提交报单撮合。
   rpc SubmitOrder(SubmitOrderRequest) returns (SubmitOrderResponse);
 
+  // 批量提交报单（适用于做市商批量报价）。
+  rpc BatchSubmitOrder(BatchSubmitOrderRequest) returns (BatchSubmitOrderResponse);
+
+  // 撤销订单。
+  rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+
+  // 执行集合竞价。
+  rpc ExecuteAuction(ExecuteAuctionRequest) returns (ExecuteAuctionResponse);
+
   // 查询订单簿深度。
   rpc GetOrderBook(GetOrderBookRequest) returns (GetOrderBookResponse);
 
@@ -17,6 +26,43 @@ service MatchingEngineService {
 
   // 实时订阅更新。
   rpc SubscribeTrades(SubscribeTradesRequest) returns (stream SubscribeTradesResponse);
+}
+
+// 批量提交请求。
+message BatchSubmitOrderRequest {
+  repeated SubmitOrderRequest orders = 1;
+}
+
+// 批量提交响应。
+message BatchSubmitOrderResponse {
+  repeated SubmitOrderResponse results = 1;
+}
+
+// 撤单请求。
+message CancelOrderRequest {
+  string order_id = 1;
+  string symbol = 2;
+  string side = 3;
+}
+
+// 撤单响应。
+message CancelOrderResponse {
+  string order_id = 1;
+  bool success = 2;
+  string status = 3;
+}
+
+// 执行集合竞价请求。
+message ExecuteAuctionRequest {
+  string symbol = 1;
+}
+
+// 执行集合竞价响应。
+message ExecuteAuctionResponse {
+  string symbol = 1;
+  string equilibrium_price = 2;
+  string matched_quantity = 3;
+  repeated Trade trades = 4;
 }
 
 // 撮合成交明细。

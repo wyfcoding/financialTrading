@@ -181,6 +181,45 @@ func (m *MatchingCommandService) SubmitOrder(ctx context.Context, cmd *SubmitOrd
 	return result, nil
 }
 
+// CancelOrder 撤销订单
+func (m *MatchingCommandService) CancelOrder(ctx context.Context, orderID string, side string) (*domain.CancelResult, error) {
+	m.logger.Info("cancelling order", "order_id", orderID)
+	req := &domain.CancelRequest{
+		OrderID:   orderID,
+		Symbol:    m.engine.Symbol(),
+		Side:      types.Side(side),
+		Timestamp: time.Now().UnixNano(),
+	}
+	return m.engine.CancelOrder(req)
+}
+
+// BatchSubmitOrder 批量提交订单
+func (m *MatchingCommandService) BatchSubmitOrder(ctx context.Context, cmds []*SubmitOrderCommand) ([]*domain.MatchingResult, error) {
+	results := make([]*domain.MatchingResult, len(cmds))
+	for i, cmd := range cmds {
+		res, err := m.SubmitOrder(ctx, cmd)
+		if err != nil {
+			return nil, err
+		}
+		results[i] = res
+	}
+	return results, nil
+}
+
+// RunAuction 启动集合竞价
+func (m *MatchingCommandService) RunAuction(ctx context.Context) (*domain.AuctionResult, error) {
+	m.logger.Info("triggering manual auction execution")
+	res, err := m.engine.ExecuteAuction()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(res.Trades) > 0 {
+		m.processPostMatching(res.Trades)
+	}
+	return res, nil
+}
+
 func (m *MatchingCommandService) processPostMatching(trades []*types.Trade) {
 	m.logger.Debug("starting reliable post-matching processing", "count", len(trades))
 

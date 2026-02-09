@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package backtest.v1;
+
+option go_package = "github.com/wyfcoding/financialTrading/go-api/backtest/v1;pb";
+
+import "google/protobuf/timestamp.proto";
+
+service BacktestService {
+    // 运行回测任务
+    rpc RunBacktest(RunBacktestRequest) returns (RunBacktestResponse);
+    // 获取回测报告
+    rpc GetBacktestReport(GetBacktestReportRequest) returns (GetBacktestReportResponse);
+}
+
+message RunBacktestRequest {
+    string strategy_id = 1;
+    string symbol = 2;
+    google.protobuf.Timestamp start_time = 3;
+    google.protobuf.Timestamp end_time = 4;
+    double initial_capital = 5;
+}
+
+message RunBacktestResponse {
+    string task_id = 1;
+    string status = 2;
+}
+
+message GetBacktestReportRequest {
+    string task_id = 1;
+}
+
+message GetBacktestReportResponse {
+    string task_id = 1;
+    double total_return = 2;
+    double sharpe_ratio = 3;
+    double max_drawdown = 4;
+    int32 total_trades = 5;
+    double win_rate = 6;
+}

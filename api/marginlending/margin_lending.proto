@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package marginlending.v1;
+
+option go_package = "github.com/wyfcoding/financialTrading/go-api/marginlending/v1;pb";
+
+import "google/protobuf/timestamp.proto";
+
+service MarginLendingService {
+    // 保证金评估
+    rpc EvaluateMargin(EvaluateMarginRequest) returns (EvaluateMarginResponse);
+    // 抵押品锁定
+    rpc LockCollateral(LockCollateralRequest) returns (LockCollateralResponse);
+    // 强制平仓预警
+    rpc MarginCall(MarginCallRequest) returns (MarginCallResponse);
+}
+
+message EvaluateMarginRequest {
+    uint64 user_id = 1;
+    string symbol = 2;
+    int64 quantity = 3;
+    int64 price = 4;
+}
+
+message EvaluateMarginResponse {
+    bool eligible = 1;
+    double required_margin = 2;
+    double available_leverage = 3;
+}
+
+message LockCollateralRequest {
+    uint64 user_id = 1;
+    string asset = 2;
+    int64 amount = 3;
+}
+
+message LockCollateralResponse {
+    string lock_id = 1;
+    bool success = 2;
+}
+
+message MarginCallRequest {
+    uint64 user_id = 1;
+}
+
+message MarginCallResponse {
+    double maintenance_margin = 1;
+    double current_equity = 2;
+    bool is_liquidatable = 3;
+}

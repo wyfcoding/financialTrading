@@ -69,6 +69,81 @@ func (h *Handler) SubmitOrder(ctx context.Context, req *pb.SubmitOrderRequest) (
 	}, nil
 }
 
+// BatchSubmitOrder 批量提交（做市商常用）
+func (h *Handler) BatchSubmitOrder(ctx context.Context, req *pb.BatchSubmitOrderRequest) (*pb.BatchSubmitOrderResponse, error) {
+	cmds := make([]*application.SubmitOrderCommand, len(req.Orders))
+	for i, r := range req.Orders {
+		cmds[i] = &application.SubmitOrderCommand{
+			OrderID:                r.OrderId,
+			Symbol:                 r.Symbol,
+			Side:                   r.Side,
+			Price:                  r.Price,
+			Quantity:               r.Quantity,
+			UserID:                 r.UserId,
+			IsIceberg:              r.IsIceberg,
+			IcebergDisplayQuantity: r.IcebergDisplayQuantity,
+			PostOnly:               r.PostOnly,
+		}
+	}
+
+	results, err := h.cmd.BatchSubmitOrder(ctx, cmds)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "batch submit failed: %v", err)
+	}
+
+	pbResults := make([]*pb.SubmitOrderResponse, len(results))
+	for i, res := range results {
+		pbResults[i] = &pb.SubmitOrderResponse{
+			OrderId:           res.OrderID,
+			RemainingQuantity: res.RemainingQuantity.String(),
+			Status:            res.Status,
+		}
+	}
+
+	return &pb.BatchSubmitOrderResponse{Results: pbResults}, nil
+}
+
+// CancelOrder 撤销订单
+func (h *Handler) CancelOrder(ctx context.Context, req *pb.CancelOrderRequest) (*pb.CancelOrderResponse, error) {
+	res, err := h.cmd.CancelOrder(ctx, req.OrderId, req.Side)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "cancel failed: %v", err)
+	}
+
+	return &pb.CancelOrderResponse{
+		OrderId: res.OrderID,
+		Success: res.Success,
+		Status:  res.Status,
+	}, nil
+}
+
+// ExecuteAuction 执行集合竞价请求
+func (h *Handler) ExecuteAuction(ctx context.Context, req *pb.ExecuteAuctionRequest) (*pb.ExecuteAuctionResponse, error) {
+	res, err := h.cmd.RunAuction(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "auction execution failed: %v", err)
+	}
+
+	pbTrades := make([]*pb.Trade, len(res.Trades))
+	for i, t := range res.Trades {
+		pbTrades[i] = &pb.Trade{
+			TradeId:     t.TradeID,
+			Price:       t.Price.String(),
+			Quantity:    t.Quantity.String(),
+			BuyOrderId:  t.BuyOrderID,
+			SellOrderId: t.SellOrderID,
+			Timestamp:   t.Timestamp,
+		}
+	}
+
+	return &pb.ExecuteAuctionResponse{
+		Symbol:           req.Symbol,
+		EquilibriumPrice: res.EquilibriumPrice.String(),
+		MatchedQuantity:  res.MatchedQuantity.String(),
+		Trades:           pbTrades,
+	}, nil
+}
+
 // GetOrderBook 返回当前内存订单簿的聚合深度快照。
 func (h *Handler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequest) (*pb.GetOrderBookResponse, error) {
 	start := time.Now()

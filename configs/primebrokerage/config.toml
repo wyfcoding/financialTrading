@@ -1,0 +1,20 @@
+[service]
+name = "primebrokerage"
+version = "v1.0.0"
+
+[server]
+grpc_port = 50051
+http_port = 8081
+
+[database]
+driver = "mysql"
+# dsn = "root:root1234@tcp(mysql:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+dsn = "root:root1234@tcp(127.0.0.1:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+
+[log]
+level = "info"
+format = "json"
+
+[routing]
+max_latency_ms = 100
+preferred_exchanges = ["NYSE", "NASDAQ", "HKEX"]

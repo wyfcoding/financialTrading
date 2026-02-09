@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package primebrokerage.v1;
+
+option go_package = "github.com/wyfcoding/financialTrading/go-api/primebrokerage/v1;pb";
+
+import "google/protobuf/timestamp.proto";
+
+service PrimeBrokerageService {
+    // 席位路由
+    rpc RouteToSeat(RouteToSeatRequest) returns (RouteToSeatResponse);
+    // 借券申请
+    rpc BorrowSecurity(BorrowSecurityRequest) returns (BorrowSecurityResponse);
+    // 归还证券
+    rpc ReturnSecurity(ReturnSecurityRequest) returns (ReturnSecurityResponse);
+}
+
+message RouteToSeatRequest {
+    string symbol = 1;
+    int64 amount = 2;
+    string exchange = 3;
+}
+
+message RouteToSeatResponse {
+    string seat_id = 1;
+    string seat_name = 2;
+    int64 latency = 3;
+    double cost = 4;
+}
+
+message BorrowSecurityRequest {
+    uint64 user_id = 1;
+    string symbol = 2;
+    int64 quantity = 3;
+}
+
+message BorrowSecurityResponse {
+    string loan_id = 1;
+    google.protobuf.Timestamp due_at = 2;
+    double rate = 3;
+}
+
+message ReturnSecurityRequest {
+    string loan_id = 1;
+}
+
+message ReturnSecurityResponse {
+    bool success = 1;
+}
