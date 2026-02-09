@@ -3,7 +3,8 @@ package interfaces
 import (
 	"context"
 
-	"github.com/wyfcoding/financialTrading/internal/sor/application"
+	pb "github.com/wyfcoding/financialtrading/go-api/sor/v1"
+	"github.com/wyfcoding/financialtrading/internal/sor/application"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

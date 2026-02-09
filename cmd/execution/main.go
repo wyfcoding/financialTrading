@@ -129,6 +129,8 @@ func main() {
 	mdProvider := client.NewGRPCMarketDataProvider(mdCli)
 	volumeProvider := infrastructure.NewMockVolumeProfileProvider()
 
+	venueRepo := mysql.NewVenueRepository(db.RawDB())
+
 	// 8. Application Services
 	commandSvc := application.NewExecutionCommandService(
 		tradeRepo,
@@ -139,6 +141,7 @@ func main() {
 		orderCli,
 		mdProvider,
 		volumeProvider,
+		venueRepo,
 	)
 	querySvc := application.NewExecutionQueryService(tradeRepo, tradeSearchRepo, tradeReadRepo)
 

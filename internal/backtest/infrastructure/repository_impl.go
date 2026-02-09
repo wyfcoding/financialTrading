@@ -3,7 +3,7 @@ package infrastructure
 import (
 	"context"
 
-	"github.com/wyfcoding/financialTrading/internal/backtest/domain"
+	"github.com/wyfcoding/financialtrading/internal/backtest/domain"
 	"gorm.io/gorm"
 )
 

@@ -3,7 +3,8 @@ package interfaces
 import (
 	"context"
 
-	"github.com/wyfcoding/financialTrading/internal/backtest/application"
+	pb "github.com/wyfcoding/financialtrading/go-api/backtest/v1"
+	"github.com/wyfcoding/financialtrading/internal/backtest/application"
 )
 
 type BacktestHandler struct {

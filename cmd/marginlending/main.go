@@ -8,11 +8,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/wyfcoding/financialTrading/internal/marginlending/application"
-	"github.com/wyfcoding/financialTrading/internal/marginlending/domain"
-	"github.com/wyfcoding/financialTrading/internal/marginlending/infrastructure"
-	"github.com/wyfcoding/financialTrading/internal/marginlending/interfaces"
 	pb "github.com/wyfcoding/financialtrading/go-api/marginlending/v1"
+	"github.com/wyfcoding/financialtrading/internal/marginlending/application"
+	"github.com/wyfcoding/financialtrading/internal/marginlending/domain"
+	"github.com/wyfcoding/financialtrading/internal/marginlending/infrastructure"
+	"github.com/wyfcoding/financialtrading/internal/marginlending/interfaces"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"gorm.io/driver/mysql"
@@ -42,7 +42,7 @@ func main() {
 
 	// 3. 依赖注入
 	repo := infrastructure.NewMarginRepository(db)
-	marginService := &domain.MarginService{} // 假设已存在
+	marginService := domain.NewMarginService(repo)
 	appService := application.NewMarginLendingApplicationService(marginService, repo, logger)
 	handler := interfaces.NewMarginLendingHandler(appService)
 

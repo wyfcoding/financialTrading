@@ -3,7 +3,8 @@ package interfaces
 import (
 	"context"
 
-	"github.com/wyfcoding/financialTrading/internal/marginlending/application"
+	pb "github.com/wyfcoding/financialtrading/go-api/marginlending/v1"
+	"github.com/wyfcoding/financialtrading/internal/marginlending/application"
 )
 
 type MarginLendingHandler struct {
@@ -31,9 +32,8 @@ func (h *MarginLendingHandler) EvaluateMargin(ctx context.Context, req *pb.Evalu
 	}
 
 	return &pb.EvaluateMarginResponse{
-		Eligible:       true,
-		RequiredMargin: reqResult.InitialMargin,
-		// ...
+		Eligible:       reqResult.IsSufficient,
+		RequiredMargin: reqResult.InitialMargin.InexactFloat64(),
 	}, nil
 }
 

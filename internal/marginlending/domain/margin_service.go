@@ -1,5 +1,3 @@
-// Package domain 提供了融资融券与杠杆交易的领域模型。
-// 变更说明：实现融资融券（Margin Lending）核心逻辑，支持抵押品价值评估、利息计提、杠杆倍数控制与强平线监控。
 package domain
 
 import (
@@ -19,17 +17,14 @@ const (
 	MarginStatusLiquidating MarginStatus = "LIQUIDATING" // 强平中
 )
 
-// MarginAccount 融资账户聚合根
-type MarginAccount struct {
-	AccountID       string
-	UserID          string
-	CollateralVal   decimal.Decimal // 抵押品价值
-	BorrowedAmount  decimal.Decimal // 已借金额
-	InterestAccrued decimal.Decimal // 累计利息
-	MarginRatio     decimal.Decimal // 保证金率 (抵押品 / 已借额)
-	Status          MarginStatus
-	LeverageLimit   int32 // 最大杠杆上限
-	LastInterestAt  time.Time
+// MarginRequirement 保证金要求
+type MarginRequirement struct {
+	AccountID     string
+	InitialMargin decimal.Decimal
+	MaintMargin   decimal.Decimal
+	CurrentMargin decimal.Decimal
+	Shortfall     decimal.Decimal
+	IsSufficient  bool
 }
 
 // LoanRequest 借款请求
@@ -48,17 +43,55 @@ type MarginService interface {
 	ApplyLoan(ctx context.Context, userID string, amount decimal.Decimal) (*LoanRequest, error)
 	AccrueInterest(ctx context.Context, accountID string) error
 	CheckLiquidation(ctx context.Context, accountID string) (bool, error)
+	CalculateRequirement(ctx context.Context, symbol string, quantity int64, price int64) (*MarginRequirement, error)
+}
+
+// DefaultMarginService 默认融资服务实现
+type DefaultMarginService struct {
+	repo MarginRepository
+}
+
+func NewMarginService(repo MarginRepository) MarginService {
+	return &DefaultMarginService{repo: repo}
+}
+
+func (s *DefaultMarginService) CalculateMarginRatio(ctx context.Context, accountID string) (decimal.Decimal, error) {
+	acc, err := s.repo.GetAccount(ctx, accountID)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	if acc.BorrowedAmount.IsZero() {
+		return decimal.NewFromInt(999), nil
+	}
+	return acc.CollateralVal.Div(acc.BorrowedAmount), nil
+}
+
+func (s *DefaultMarginService) ApplyLoan(ctx context.Context, userID string, amount decimal.Decimal) (*LoanRequest, error) {
+	return &LoanRequest{Status: "APPROVED"}, nil
+}
+
+func (s *DefaultMarginService) AccrueInterest(ctx context.Context, accountID string) error {
+	return nil
+}
+
+func (s *DefaultMarginService) CheckLiquidation(ctx context.Context, accountID string) (bool, error) {
+	return false, nil
+}
+
+func (s *DefaultMarginService) CalculateRequirement(ctx context.Context, symbol string, quantity int64, price int64) (*MarginRequirement, error) {
+	val := decimal.NewFromInt(price).Mul(decimal.NewFromInt(quantity))
+	initial := val.Mul(decimal.NewFromFloat(0.5)) // 50%
+	maint := val.Mul(decimal.NewFromFloat(0.3))   // 30%
+	return &MarginRequirement{
+		InitialMargin: initial,
+		MaintMargin:   maint,
+		IsSufficient:  true,
+	}, nil
 }
 
 // MarginRiskManager 融资风险管理器
 type MarginRiskManager struct {
 	repo MarginRepository
-}
-
-// MarginRepository 融资仓储接口
-type MarginRepository interface {
-	GetAccount(ctx context.Context, accountID string) (*MarginAccount, error)
-	SaveAccount(ctx context.Context, account *MarginAccount) error
 }
 
 func NewMarginRiskManager(repo MarginRepository) *MarginRiskManager {
@@ -72,14 +105,11 @@ func (m *MarginRiskManager) EvaluateRisk(ctx context.Context, accountID string) 
 		return err
 	}
 
-	// 1. 计算当前保证金率
 	if acc.BorrowedAmount.IsZero() {
-		acc.MarginRatio = decimal.NewFromInt(999) // 无风险
+		acc.MarginRatio = decimal.NewFromInt(999)
 		acc.Status = MarginStatusNormal
 	} else {
 		acc.MarginRatio = acc.CollateralVal.Div(acc.BorrowedAmount)
-
-		// 2. 根据阈值更新状态
 		if acc.MarginRatio.LessThan(decimal.NewFromFloat(1.1)) {
 			acc.Status = MarginStatusLiquidating
 		} else if acc.MarginRatio.LessThan(decimal.NewFromFloat(1.3)) {
@@ -90,7 +120,6 @@ func (m *MarginRiskManager) EvaluateRisk(ctx context.Context, accountID string) 
 			acc.Status = MarginStatusNormal
 		}
 	}
-
 	return m.repo.SaveAccount(ctx, acc)
 }
 

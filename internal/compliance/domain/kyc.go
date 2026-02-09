@@ -145,19 +145,3 @@ func (k *KYCApplication) GetDomainEvents() []DomainEvent {
 func (k *KYCApplication) ClearDomainEvents() {
 	k.domainEvents = nil
 }
-
-// AMLRecord AML检查记录
-type AMLRecord struct {
-	gorm.Model
-	UserID    uint64 `gorm:"column:user_id;index;not null"`
-	Name      string `gorm:"column:name;type:varchar(128)"`
-	Country   string `gorm:"column:country;type:varchar(32)"`
-	Passed    bool   `gorm:"column:passed;not null"`
-	RiskLevel string `gorm:"column:risk_level;type:varchar(16)"`
-	Reason    string `gorm:"column:reason;type:varchar(255)"`
-}
-
-// TableName 表名
-func (AMLRecord) TableName() string {
-	return "aml_records"
-}

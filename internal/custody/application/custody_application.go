@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/wyfcoding/financialTrading/internal/custody/domain"
+	"github.com/wyfcoding/financialtrading/internal/custody/domain"
 )
 
 // TransferInternalCommand 内部转移命令

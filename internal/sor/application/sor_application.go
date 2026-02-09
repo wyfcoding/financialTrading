@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/wyfcoding/financialTrading/internal/sor/domain"
+	"github.com/wyfcoding/financialtrading/internal/sor/domain"
 )
 
 // CreateSORPlanCommand 创建路由计划命令

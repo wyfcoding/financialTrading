@@ -17,12 +17,14 @@ type User struct {
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"-"`
 	Role         UserRole  `json:"role"`
+	Source       string    `json:"source"`
 }
 
-func NewUser(email, passwordHash string) *User {
+func NewUser(email, passwordHash, source string) *User {
 	return &User{
 		Email:        email,
 		PasswordHash: passwordHash,
 		Role:         RoleTrader,
+		Source:       source,
 	}
 }

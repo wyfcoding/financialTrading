@@ -45,14 +45,23 @@ type SOREngine interface {
 	// AggregateDepths 聚合多个市场的深度数据
 	AggregateDepths(ctx context.Context, symbol string) ([]*MarketDepth, error)
 	// CreateSORPlan 生成最优执行计划
-	CreateSORPlan(ctx context.Context, side string, symbol string, quantity int64) (*SORPlan, error)
+	CreateSORPlan(ctx context.Context, side string, symbol string, quantity int64, depths []*MarketDepth) (*SORPlan, error)
 }
 
 // DefaultSOREngine 默认智能路由引擎实现
 type DefaultSOREngine struct{}
 
+// AggregateDepths 聚合多个市场的深度数据
+func (e *DefaultSOREngine) AggregateDepths(ctx context.Context, symbol string) ([]*MarketDepth, error) {
+	// 模拟聚合逻辑，生产环境应从各交易所 API 获取
+	return []*MarketDepth{
+		{Exchange: "NYSE", Symbol: symbol, Liquidity: 0.9},
+		{Exchange: "NASDAQ", Symbol: symbol, Liquidity: 0.8},
+	}, nil
+}
+
 // CreateSORPlan 实现基于价格优先与流动性分配的算法
-func (e *DefaultSOREngine) CreateSORPlan(ctx context.Context, side string, symbol string, quantity int64, depths []*MarketDepth) *SORPlan {
+func (e *DefaultSOREngine) CreateSORPlan(ctx context.Context, side string, symbol string, quantity int64, depths []*MarketDepth) (*SORPlan, error) {
 	plan := &SORPlan{
 		Symbol:      symbol,
 		TotalQty:    quantity,
@@ -107,5 +116,5 @@ func (e *DefaultSOREngine) CreateSORPlan(ctx context.Context, side string, symbo
 		}
 	}
 
-	return plan
+	return plan, nil
 }

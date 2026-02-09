@@ -15,6 +15,7 @@ type RegisterCommand struct {
 	Email    string
 	Password string
 	Role     domain.UserRole
+	Source   string
 }
 
 // LoginCommand 登录命令
@@ -73,7 +74,11 @@ func (s *AuthCommandService) Register(ctx context.Context, cmd RegisterCommand) 
 		}
 
 		// Hash password (mock)
-		user = domain.NewUser(cmd.Email, cmd.Password)
+		source := cmd.Source
+		if source == "" {
+			source = "TRADING" // Default
+		}
+		user = domain.NewUser(cmd.Email, cmd.Password, source)
 		if cmd.Role != "" {
 			user.Role = cmd.Role
 		}

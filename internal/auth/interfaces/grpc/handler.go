@@ -24,6 +24,7 @@ func (s *Server) Register(ctx context.Context, req *v1.RegisterRequest) (*v1.Reg
 	id, err := s.cmd.Register(ctx, application.RegisterCommand{
 		Email:    req.Email,
 		Password: req.Password,
+		Source:   req.Source,
 	})
 	if err != nil {
 		return nil, status.Error(codes.AlreadyExists, err.Error())

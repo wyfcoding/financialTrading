@@ -3,7 +3,7 @@ package infrastructure
 import (
 	"context"
 
-	"github.com/wyfcoding/financialTrading/internal/primebrokerage/domain"
+	"github.com/wyfcoding/financialtrading/internal/primebrokerage/domain"
 	"gorm.io/gorm"
 )
 

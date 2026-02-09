@@ -3,7 +3,8 @@ package interfaces
 import (
 	"context"
 
-	"github.com/wyfcoding/financialTrading/internal/primebrokerage/application"
+	pb "github.com/wyfcoding/financialtrading/go-api/primebrokerage/v1"
+	"github.com/wyfcoding/financialtrading/internal/primebrokerage/application"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

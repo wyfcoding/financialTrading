@@ -34,17 +34,6 @@ type BacktestOrder struct {
 	Status      string // PENDING, FILLED, REJECTED
 }
 
-// BacktestResult 回测结果报告
-type BacktestResult struct {
-	StrategyID  string
-	TotalTrades int
-	WinRate     float64
-	ProfitLoss  decimal.Decimal
-	SharpeRatio float64
-	MaxDrawdown float64
-	EquityCurve []decimal.Decimal
-}
-
 // BacktestEngine 回测引擎服务
 type BacktestEngine struct {
 	repo BacktestDataRepository
@@ -59,8 +48,8 @@ func NewBacktestEngine(repo BacktestDataRepository) *BacktestEngine {
 	return &BacktestEngine{repo: repo}
 }
 
-// RunBacktest 执行回测流程
-func (e *BacktestEngine) RunBacktest(ctx context.Context, strategyID string, symbols []string, start, end time.Time) (*BacktestResult, error) {
+// Run 执行回测流程
+func (e *BacktestEngine) Run(ctx context.Context, task *BacktestTask) (*BacktestReport, error) {
 	// 1. 加载历史数据
 	// 2. 模拟时间步进
 	// 3. 触发策略信号
@@ -68,10 +57,13 @@ func (e *BacktestEngine) RunBacktest(ctx context.Context, strategyID string, sym
 	// 5. 计算各项指标
 
 	// 此处为核心逻辑抽象
-	return &BacktestResult{
-		StrategyID:  strategyID,
+	return &BacktestReport{
+		TaskID:      task.TaskID,
+		TotalReturn: 0,
+		SharpeRatio: 0,
+		MaxDrawdown: 0,
 		TotalTrades: 0,
-		ProfitLoss:  decimal.Zero,
+		WinRate:     0,
 	}, nil
 }
 

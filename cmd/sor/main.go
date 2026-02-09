@@ -8,10 +8,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/wyfcoding/financialTrading/internal/sor/application"
-	"github.com/wyfcoding/financialTrading/internal/sor/domain"
-	"github.com/wyfcoding/financialTrading/internal/sor/interfaces"
 	pb "github.com/wyfcoding/financialtrading/go-api/sor/v1"
+	"github.com/wyfcoding/financialtrading/internal/sor/application"
+	"github.com/wyfcoding/financialtrading/internal/sor/domain"
+	"github.com/wyfcoding/financialtrading/internal/sor/interfaces"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )

@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/wyfcoding/financialTrading/internal/marginlending/domain"
+	"github.com/wyfcoding/financialtrading/internal/marginlending/domain"
 )
 
 // EvaluateMarginCommand 保证金评估命令
@@ -24,12 +24,12 @@ type LockCollateralCommand struct {
 
 // MarginLendingApplicationService 融资融券应用服务
 type MarginLendingApplicationService struct {
-	marginService *domain.MarginService
+	marginService domain.MarginService
 	repo          domain.MarginRepository
 	logger        *slog.Logger
 }
 
-func NewMarginLendingApplicationService(marginService *domain.MarginService, repo domain.MarginRepository, logger *slog.Logger) *MarginLendingApplicationService {
+func NewMarginLendingApplicationService(marginService domain.MarginService, repo domain.MarginRepository, logger *slog.Logger) *MarginLendingApplicationService {
 	return &MarginLendingApplicationService{
 		marginService: marginService,
 		repo:          repo,
@@ -40,7 +40,10 @@ func NewMarginLendingApplicationService(marginService *domain.MarginService, rep
 func (s *MarginLendingApplicationService) EvaluateMargin(ctx context.Context, cmd EvaluateMarginCommand) (*domain.MarginRequirement, error) {
 	s.logger.Info("evaluating margin", "user_id", cmd.UserID, "symbol", cmd.Symbol)
 	// 此处逻辑调用 domain 层的算法
-	req := s.marginService.CalculateRequirement(cmd.Symbol, cmd.Quantity, cmd.Price)
+	req, err := s.marginService.CalculateRequirement(ctx, cmd.Symbol, cmd.Quantity, cmd.Price)
+	if err != nil {
+		return nil, err
+	}
 	return req, nil
 }
 

@@ -3,7 +3,9 @@ package interfaces
 import (
 	"context"
 
-	"github.com/wyfcoding/financialTrading/internal/custody/application"
+	pb "github.com/wyfcoding/financialtrading/go-api/custody/v1"
+	_ "github.com/wyfcoding/financialtrading/internal/backtest/application" // This import is likely for the backtestpb, but not directly used in CustodyHandler
+	"github.com/wyfcoding/financialtrading/internal/custody/application"
 	"github.com/wyfcoding/financialtrading/internal/custody/domain"
 )
 
@@ -52,7 +54,7 @@ func (h *CustodyHandler) GetHolding(ctx context.Context, req *pb.GetHoldingReque
 
 	return &pb.GetHoldingResponse{
 		VaultId: vault.VaultID,
-		Type:    string(vault.VaultType),
+		Type:    string(vault.Type),
 		UserId:  vault.UserID,
 		Symbol:  vault.Symbol,
 		Balance: vault.Balance,

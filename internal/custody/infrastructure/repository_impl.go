@@ -3,7 +3,7 @@ package infrastructure
 import (
 	"context"
 
-	"github.com/wyfcoding/financialTrading/internal/custody/domain"
+	"github.com/wyfcoding/financialtrading/internal/custody/domain"
 	"gorm.io/gorm"
 )
 

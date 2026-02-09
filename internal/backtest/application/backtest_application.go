@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/wyfcoding/financialTrading/internal/backtest/domain"
+	"github.com/wyfcoding/financialtrading/internal/backtest/domain"
 )
 
 // RunBacktestCommand 运行回测命令

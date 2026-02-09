@@ -64,6 +64,7 @@ func (r *userRepository) Save(ctx context.Context, user *domain.User) error {
 			"email":         model.Email,
 			"password_hash": model.PasswordHash,
 			"role":          model.Role,
+			"source":        model.Source,
 		}).Error
 }
 

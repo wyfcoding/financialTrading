@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/wyfcoding/financialTrading/internal/primebrokerage/domain"
+	"github.com/wyfcoding/financialtrading/internal/primebrokerage/domain"
 )
 
 // RouteToSeatCommand 路由席位命令

@@ -178,6 +178,79 @@ func (s *CommandService) CheckAML(ctx context.Context, cmd CheckAMLCommand) (*Ch
 	}, nil
 }
 
+// MonitorTransactionCommand 交易监控命令
+type MonitorTransactionCommand struct {
+	TransactionID string
+	UserID        uint64
+	Amount        float64
+	Currency      string
+	Counterparty  string
+}
+
+// MonitorTransactionResult 监控结果
+type MonitorTransactionResult struct {
+	IsSuspicious bool
+	RiskLevel    string
+	Reason       string
+}
+
+// MonitorTransaction 监控交易
+func (s *CommandService) MonitorTransaction(ctx context.Context, cmd MonitorTransactionCommand) (*MonitorTransactionResult, error) {
+	// 1. 获取用户风险评分
+	riskScore, err := s.amlRepo.GetRiskScore(ctx, cmd.UserID)
+	if err != nil {
+		s.logger.WarnContext(ctx, "risk score not found, assuming low risk", "user_id", cmd.UserID)
+		riskScore = &domain.UserRiskScore{RiskLevel: "LOW", Score: 0}
+	}
+
+	isSuspicious := false
+	reason := ""
+	riskLevel := "LOW"
+
+	// 2. 规则检查
+	// 规则1: 大额交易 (> 10000)
+	if cmd.Amount > 10000 {
+		isSuspicious = true
+		reason = "Large amount transaction"
+		riskLevel = "MEDIUM"
+	}
+
+	// 规则2: 高风险用户
+	if riskScore.RiskLevel == "HIGH" {
+		isSuspicious = true
+		reason = "High risk user activity"
+		riskLevel = "HIGH"
+	}
+
+	// 规则3: 极高额交易 (> 50000)
+	if cmd.Amount > 50000 {
+		isSuspicious = true
+		reason = "Very large amount transaction"
+		riskLevel = "CRITICAL"
+	}
+
+	// 3. 如果可疑，生成警报
+	if isSuspicious {
+		alert := &domain.AMLAlert{
+			AlertID:     fmt.Sprintf("ALERT-%s-%d", cmd.TransactionID, time.Now().Unix()),
+			UserID:      cmd.UserID,
+			Type:        "TRANSACTION_MONITORING",
+			Description: fmt.Sprintf("Suspicious transaction: %s, Amount: %.2f %s, Reason: %s", cmd.TransactionID, cmd.Amount, cmd.Currency, reason),
+			Status:      "PENDING",
+		}
+		if err := s.amlRepo.SaveAlert(ctx, alert); err != nil {
+			s.logger.ErrorContext(ctx, "failed to save aml alert", "error", err)
+			return nil, err
+		}
+	}
+
+	return &MonitorTransactionResult{
+		IsSuspicious: isSuspicious,
+		RiskLevel:    riskLevel,
+		Reason:       reason,
+	}, nil
+}
+
 // publishEvents 发布领域事件
 func (s *CommandService) publishEvents(ctx context.Context, events []domain.DomainEvent) {
 	for _, event := range events {

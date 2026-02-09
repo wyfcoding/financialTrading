@@ -13,4 +13,10 @@ type KYCRepository interface {
 type AMLRepository interface {
 	Save(ctx context.Context, record *AMLRecord) error
 	GetLatestByUserID(ctx context.Context, userID uint64) (*AMLRecord, error)
+
+	SaveAlert(ctx context.Context, alert *AMLAlert) error
+	ListAlertsByStatus(ctx context.Context, status string) ([]*AMLAlert, error)
+
+	SaveRiskScore(ctx context.Context, score *UserRiskScore) error
+	GetRiskScore(ctx context.Context, userID uint64) (*UserRiskScore, error)
 }

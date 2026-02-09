@@ -35,6 +35,7 @@ message ValidateAPIKeyResponse {
 message RegisterRequest {
   string email = 1;
   string password = 2;
+  string source = 3;
 }
 
 message RegisterResponse {

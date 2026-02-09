@@ -11,6 +11,7 @@ type UserModel struct {
 	Email        string `gorm:"column:email;type:varchar(255);uniqueIndex;not null"`
 	PasswordHash string `gorm:"column:password_hash;type:varchar(255);not null"`
 	Role         string `gorm:"column:role;type:varchar(20);default:'TRADER';not null"`
+	Source       string `gorm:"column:source;type:varchar(50);default:'TRADING'"`
 }
 
 func (UserModel) TableName() string {
@@ -45,6 +46,7 @@ func toUserModel(user *domain.User) *UserModel {
 		Email:        user.Email,
 		PasswordHash: user.PasswordHash,
 		Role:         string(user.Role),
+		Source:       user.Source,
 	}
 }
 
@@ -59,6 +61,7 @@ func toUser(model *UserModel) *domain.User {
 		Email:        model.Email,
 		PasswordHash: model.PasswordHash,
 		Role:         domain.UserRole(model.Role),
+		Source:       model.Source,
 	}
 }
 

@@ -74,3 +74,27 @@ func (r *GormAMLRepository) GetLatestByUserID(ctx context.Context, userID uint64
 	}
 	return &record, nil
 }
+
+func (r *GormAMLRepository) SaveAlert(ctx context.Context, alert *domain.AMLAlert) error {
+	return r.db.WithContext(ctx).Save(alert).Error
+}
+
+func (r *GormAMLRepository) ListAlertsByStatus(ctx context.Context, status string) ([]*domain.AMLAlert, error) {
+	var alerts []*domain.AMLAlert
+	if err := r.db.WithContext(ctx).Where("status = ?", status).Find(&alerts).Error; err != nil {
+		return nil, err
+	}
+	return alerts, nil
+}
+
+func (r *GormAMLRepository) SaveRiskScore(ctx context.Context, score *domain.UserRiskScore) error {
+	return r.db.WithContext(ctx).Save(score).Error
+}
+
+func (r *GormAMLRepository) GetRiskScore(ctx context.Context, userID uint64) (*domain.UserRiskScore, error) {
+	var score domain.UserRiskScore
+	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).First(&score).Error; err != nil {
+		return nil, fmt.Errorf("risk score not found: %w", err)
+	}
+	return &score, nil
+}
