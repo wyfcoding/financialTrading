@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/wyfcoding/financialtrading/internal/execution/domain"
 	"github.com/wyfcoding/pkg/contextx"
@@ -248,7 +249,25 @@ func (s *eventStore) Save(ctx context.Context, aggregateID string, events []even
 }
 
 func (s *eventStore) Load(ctx context.Context, aggregateID string) ([]eventsourcing.DomainEvent, error) {
-	return nil, nil // TODO: 实现加载逻辑
+	var models []EventPO
+	if err := s.getDB(ctx).WithContext(ctx).
+		Where("aggregate_id = ?", aggregateID).
+		Order("occurred_at ASC").
+		Order("id ASC").
+		Find(&models).Error; err != nil {
+		return nil, err
+	}
+
+	events := make([]eventsourcing.DomainEvent, 0, len(models))
+	for i := range models {
+		event, err := unmarshalExecutionEvent(models[i].EventType, models[i].Payload)
+		if err != nil {
+			return nil, err
+		}
+		event.SetVersion(int64(i + 1))
+		events = append(events, event)
+	}
+	return events, nil
 }
 
 func (s *eventStore) getDB(ctx context.Context) *gorm.DB {
@@ -256,4 +275,26 @@ func (s *eventStore) getDB(ctx context.Context) *gorm.DB {
 		return tx
 	}
 	return s.db
+}
+
+func unmarshalExecutionEvent(eventType, payload string) (eventsourcing.DomainEvent, error) {
+	var event eventsourcing.DomainEvent
+	switch eventType {
+	case "TradeExecuted", domain.TradeExecutedEventType:
+		event = &domain.TradeExecutedEvent{}
+	case "AlgoOrderStarted", domain.AlgoOrderStartedEventType:
+		event = &domain.AlgoOrderStartedEvent{}
+	default:
+		base := &eventsourcing.BaseEvent{}
+		if err := json.Unmarshal([]byte(payload), base); err != nil {
+			return nil, fmt.Errorf("unmarshal unknown execution event %q: %w", eventType, err)
+		}
+		base.Type = eventType
+		return base, nil
+	}
+
+	if err := json.Unmarshal([]byte(payload), event); err != nil {
+		return nil, fmt.Errorf("unmarshal execution event %q: %w", eventType, err)
+	}
+	return event, nil
 }

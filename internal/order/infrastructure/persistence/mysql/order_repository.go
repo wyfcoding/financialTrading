@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/wyfcoding/financialtrading/internal/order/domain"
@@ -217,7 +218,25 @@ func (s *eventStore) Save(ctx context.Context, aggregateID string, events []even
 }
 
 func (s *eventStore) Load(ctx context.Context, aggregateID string) ([]eventsourcing.DomainEvent, error) {
-	return nil, nil // TODO: 实现加载逻辑
+	var models []EventModel
+	if err := s.getDB(ctx).WithContext(ctx).
+		Where("aggregate_id = ?", aggregateID).
+		Order("occurred_at ASC").
+		Order("id ASC").
+		Find(&models).Error; err != nil {
+		return nil, err
+	}
+
+	events := make([]eventsourcing.DomainEvent, 0, len(models))
+	for i := range models {
+		event, err := unmarshalOrderEvent(models[i].EventType, models[i].Payload)
+		if err != nil {
+			return nil, err
+		}
+		event.SetVersion(int64(i + 1))
+		events = append(events, event)
+	}
+	return events, nil
 }
 
 func (s *eventStore) getDB(ctx context.Context) *gorm.DB {
@@ -225,4 +244,39 @@ func (s *eventStore) getDB(ctx context.Context) *gorm.DB {
 		return tx
 	}
 	return s.db
+}
+
+func unmarshalOrderEvent(eventType, payload string) (eventsourcing.DomainEvent, error) {
+	var event eventsourcing.DomainEvent
+	switch eventType {
+	case domain.OrderCreatedEventType:
+		event = &domain.OrderCreatedEvent{}
+	case domain.OrderValidatedEventType:
+		event = &domain.OrderValidatedEvent{}
+	case domain.OrderRejectedEventType:
+		event = &domain.OrderRejectedEvent{}
+	case domain.OrderPartiallyFilledEventType:
+		event = &domain.OrderPartiallyFilledEvent{}
+	case domain.OrderFilledEventType:
+		event = &domain.OrderFilledEvent{}
+	case domain.OrderCancelledEventType:
+		event = &domain.OrderCancelledEvent{}
+	case domain.OrderExpiredEventType:
+		event = &domain.OrderExpiredEvent{}
+	case domain.OrderStatusChangedEventType:
+		event = &domain.OrderStatusChangedEvent{}
+	default:
+		// Forward-compatible fallback for unknown event types.
+		base := &eventsourcing.BaseEvent{}
+		if err := json.Unmarshal([]byte(payload), base); err != nil {
+			return nil, fmt.Errorf("unmarshal unknown order event %q: %w", eventType, err)
+		}
+		base.Type = eventType
+		return base, nil
+	}
+
+	if err := json.Unmarshal([]byte(payload), event); err != nil {
+		return nil, fmt.Errorf("unmarshal order event %q: %w", eventType, err)
+	}
+	return event, nil
 }

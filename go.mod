@@ -1,6 +1,6 @@
 module github.com/wyfcoding/financialtrading
 
-go 1.25.7
+go 1.26
 
 require (
 	github.com/dtm-labs/client v1.18.7
