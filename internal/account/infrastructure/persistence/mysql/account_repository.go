@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/wyfcoding/financialtrading/internal/account/domain"
@@ -163,12 +164,16 @@ func (s *eventStore) Save(ctx context.Context, aggregateID string, events []even
 		if err != nil {
 			return err
 		}
+		occurredAt := event.OccurredAt()
+		if occurredAt.IsZero() {
+			occurredAt = time.Now()
+		}
 
 		po := &EventPO{
 			AggregateID: aggregateID,
 			EventType:   event.EventType(),
 			Payload:     string(payload),
-			OccurredAt:  event.OccurredAt().UnixNano(),
+			OccurredAt:  occurredAt.UnixNano(),
 		}
 
 		if err := db.Create(po).Error; err != nil {
@@ -179,7 +184,23 @@ func (s *eventStore) Save(ctx context.Context, aggregateID string, events []even
 }
 
 func (s *eventStore) Load(ctx context.Context, aggregateID string) ([]eventsourcing.DomainEvent, error) {
-	return nil, nil
+	var rows []EventPO
+	if err := s.getDB(ctx).WithContext(ctx).
+		Where("aggregate_id = ?", aggregateID).
+		Order("id ASC").
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	events := make([]eventsourcing.DomainEvent, 0, len(rows))
+	for _, row := range rows {
+		event, err := decodeAccountEvent(row)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, event)
+	}
+	return events, nil
 }
 
 func (s *eventStore) getDB(ctx context.Context) *gorm.DB {
@@ -187,4 +208,94 @@ func (s *eventStore) getDB(ctx context.Context) *gorm.DB {
 		return tx
 	}
 	return s.db
+}
+
+func decodeAccountEvent(row EventPO) (eventsourcing.DomainEvent, error) {
+	var event eventsourcing.DomainEvent
+	switch row.EventType {
+	case "AccountCreated":
+		event = &domain.AccountCreatedEvent{}
+	case "FundsDeposited":
+		event = &domain.FundsDepositedEvent{}
+	case "FundsWithdrawn":
+		event = &domain.FundsWithdrawnEvent{}
+	case "FundsFrozen":
+		event = &domain.FundsFrozenEvent{}
+	case "FundsUnfrozen":
+		event = &domain.FundsUnfrozenEvent{}
+	case "FrozenFundsDeducted":
+		event = &domain.FrozenFundsDeductedEvent{}
+	case "MarginFundsBorrowed":
+		event = &domain.MarginFundsBorrowedEvent{}
+	case "MarginFundsRepaid":
+		event = &domain.MarginFundsRepaidEvent{}
+	case "InterestAccrued":
+		event = &domain.InterestAccruedEvent{}
+	case "InterestSettled":
+		event = &domain.InterestSettledEvent{}
+	case "VIPLevelUpdated":
+		event = &domain.VIPLevelUpdatedEvent{}
+	default:
+		return nil, fmt.Errorf("unknown account event type: %s", row.EventType)
+	}
+
+	if err := json.Unmarshal([]byte(row.Payload), event); err != nil {
+		return nil, fmt.Errorf("unmarshal account event %s failed: %w", row.EventType, err)
+	}
+	applyFallbackOccurredAt(event, row.OccurredAt)
+	return event, nil
+}
+
+func applyFallbackOccurredAt(event eventsourcing.DomainEvent, occurredAt int64) {
+	if occurredAt <= 0 {
+		return
+	}
+	fallback := time.Unix(0, occurredAt)
+
+	switch e := event.(type) {
+	case *domain.AccountCreatedEvent:
+		if e.Timestamp.IsZero() {
+			e.Timestamp = fallback
+		}
+	case *domain.FundsDepositedEvent:
+		if e.Timestamp.IsZero() {
+			e.Timestamp = fallback
+		}
+	case *domain.FundsWithdrawnEvent:
+		if e.Timestamp.IsZero() {
+			e.Timestamp = fallback
+		}
+	case *domain.FundsFrozenEvent:
+		if e.Timestamp.IsZero() {
+			e.Timestamp = fallback
+		}
+	case *domain.FundsUnfrozenEvent:
+		if e.Timestamp.IsZero() {
+			e.Timestamp = fallback
+		}
+	case *domain.FrozenFundsDeductedEvent:
+		if e.Timestamp.IsZero() {
+			e.Timestamp = fallback
+		}
+	case *domain.MarginFundsBorrowedEvent:
+		if e.Timestamp.IsZero() {
+			e.Timestamp = fallback
+		}
+	case *domain.MarginFundsRepaidEvent:
+		if e.Timestamp.IsZero() {
+			e.Timestamp = fallback
+		}
+	case *domain.InterestAccruedEvent:
+		if e.Timestamp.IsZero() {
+			e.Timestamp = fallback
+		}
+	case *domain.InterestSettledEvent:
+		if e.Timestamp.IsZero() {
+			e.Timestamp = fallback
+		}
+	case *domain.VIPLevelUpdatedEvent:
+		if e.Timestamp.IsZero() {
+			e.Timestamp = fallback
+		}
+	}
 }

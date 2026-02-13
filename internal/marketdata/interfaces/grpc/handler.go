@@ -3,7 +3,10 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"strconv"
+	"strings"
+	"time"
 
 	pb "github.com/wyfcoding/financialtrading/go-api/marketdata/v1"
 	"github.com/wyfcoding/financialtrading/internal/marketdata/application"
@@ -145,7 +148,74 @@ func (h *MarketDataHandler) SubscribeQuotes(req *pb.SubscribeQuotesRequest, stre
 	if len(req.Symbols) == 0 {
 		return status.Error(codes.InvalidArgument, "symbols is required")
 	}
-	return status.Error(codes.Unimplemented, "streaming quotes not implemented")
+
+	symbols := make([]string, 0, len(req.Symbols))
+	seen := make(map[string]struct{}, len(req.Symbols))
+	for _, raw := range req.Symbols {
+		symbol := strings.TrimSpace(raw)
+		if symbol == "" {
+			continue
+		}
+		if _, ok := seen[symbol]; ok {
+			continue
+		}
+		seen[symbol] = struct{}{}
+		symbols = append(symbols, symbol)
+	}
+	if len(symbols) == 0 {
+		return status.Error(codes.InvalidArgument, "symbols is required")
+	}
+
+	sendOnce := func(ctx context.Context) error {
+		for _, symbol := range symbols {
+			quoteDTO, err := h.query.GetLatestQuote(ctx, symbol)
+			if err != nil {
+				logging.Error(ctx, "failed to load quote for stream", "symbol", symbol, "error", err)
+				return status.Error(codes.Internal, err.Error())
+			}
+			if quoteDTO == nil {
+				continue
+			}
+
+			if err := stream.Send(&pb.SubscribeQuotesResponse{
+				Symbol:    quoteDTO.Symbol,
+				BidPrice:  parseFloat(quoteDTO.BidPrice),
+				AskPrice:  parseFloat(quoteDTO.AskPrice),
+				BidSize:   parseFloat(quoteDTO.BidSize),
+				AskSize:   parseFloat(quoteDTO.AskSize),
+				LastPrice: parseFloat(quoteDTO.LastPrice),
+				LastSize:  parseFloat(quoteDTO.LastSize),
+				Timestamp: quoteDTO.Timestamp,
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	ctx := stream.Context()
+	if err := sendOnce(ctx); err != nil {
+		if errors.Is(err, context.Canceled) {
+			return nil
+		}
+		return err
+	}
+
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			if err := sendOnce(ctx); err != nil {
+				if errors.Is(err, context.Canceled) {
+					return nil
+				}
+				return err
+			}
+		}
+	}
 }
 
 // GetTrades 获取交易历史

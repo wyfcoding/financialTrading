@@ -258,10 +258,3 @@ func (h *Handler) toProtoPosition(dto *application.PositionDTO) *pb.Position {
 		ClosedAt:          closedAt,
 	}
 }
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}

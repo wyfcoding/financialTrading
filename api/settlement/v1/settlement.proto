@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package settlement.v1;
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/settlement/v1;v1";
+
+import "google/protobuf/timestamp.proto";
+
+// SettlementService 结算服务
+service SettlementService {
+  // CreateInstruction 创建结算指令
+  rpc CreateInstruction(CreateInstructionRequest) returns (CreateInstructionResponse);
+  
+  // GetInstruction 获取结算指令详情
+  rpc GetInstruction(GetInstructionRequest) returns (GetInstructionResponse);
+  
+  // BatchSettle 批量执行结算 (通常由定时任务触发)
+  rpc BatchSettle(BatchSettleRequest) returns (BatchSettleResponse);
+}
+
+enum SettlementStatus {
+  SETTLEMENT_STATUS_UNSPECIFIED = 0;
+  SETTLEMENT_STATUS_PENDING = 1;     // 待结算
+  SETTLEMENT_STATUS_CLEARED = 2;     // 已清算 (Netting完成)
+  SETTLEMENT_STATUS_SETTLED = 3;     // 已交收 (资金/证券划转完成)
+  SETTLEMENT_STATUS_FAILED = 4;      // 失败
+}
+
+message SettlementInstruction {
+  string id = 1;
+  string trade_id = 2;
+  string symbol = 3;
+  int64 quantity = 4;
+  double price = 5;
+  double amount = 6;
+  string buyer_account_id = 7;
+  string seller_account_id = 8;
+  int64 trade_date = 9;      // Unix timestamp
+  int64 settlement_date = 10; // T+N Unix timestamp
+  SettlementStatus status = 11;
+  string currency = 12;
+}
+
+message CreateInstructionRequest {
+  string trade_id = 1;
+  string symbol = 2;
+  int64 quantity = 3;
+  double price = 4;
+  string buyer_account_id = 5;
+  string seller_account_id = 6;
+  string currency = 7;
+  int32 settlement_cycle_days = 8; // e.g. 2 for T+2
+}
+
+message CreateInstructionResponse {
+  string instruction_id = 1;
+  int64 settlement_date = 2;
+}
+
+message GetInstructionRequest {
+  string instruction_id = 1;
+}
+
+message GetInstructionResponse {
+  SettlementInstruction instruction = 1;
+}
+
+message BatchSettleRequest {
+  int64 target_date = 1; // 结算目标日期
+  string currency = 2;   // 可选：按币种结算
+}
+
+message BatchSettleResponse {
+  int32 processed_count = 1;
+  int32 success_count = 2;
+  int32 failure_count = 3;
+  repeated string failed_instruction_ids = 4;
+}

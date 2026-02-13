@@ -1,65 +1,71 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
-	portfoliov1 "github.com/wyfcoding/financialtrading/go-api/portfolio/v1"
+	pb "github.com/wyfcoding/financialtrading/go-api/portfolio/v1"
 	"github.com/wyfcoding/financialtrading/internal/portfolio/application"
 	"github.com/wyfcoding/financialtrading/internal/portfolio/domain"
-	"github.com/wyfcoding/financialtrading/internal/portfolio/infrastructure"
-	"github.com/wyfcoding/financialtrading/internal/portfolio/interfaces"
-	"github.com/wyfcoding/pkg/config"
+	persistence_mysql "github.com/wyfcoding/financialtrading/internal/portfolio/infrastructure/persistence/mysql"
+	grpc_server "github.com/wyfcoding/financialtrading/internal/portfolio/interfaces/grpc"
 	"google.golang.org/grpc"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 func main() {
-	// 加载配置
-	cfg := &config.ServerConfig{}
-	cfg.Name = "portfolio-service"
-	cfg.GRPC.Addr = ":9012"
+	// 1. Logger
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
 
-	// DB 连接
-	dsn := "root:root@tcp(127.0.0.1:3306)/financial_portfolio?charset=utf8mb4&parseTime=True&loc=Local"
+	// 2. Config (Simplified)
+	dsn := os.Getenv("To be replaced by config loader")
+	if dsn == "" {
+		dsn = "root:password@tcp(127.0.0.1:3306)/financial_portfolio?charset=utf8mb4&parseTime=True&loc=Local"
+	}
+
+	// 3. Database
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to connect database: %v", err)
 	}
 
-	// 自动迁移
-	_ = db.AutoMigrate(&domain.PortfolioSnapshot{}, &domain.UserPerformance{})
+	// Auto Migrate
+	err = db.AutoMigrate(&domain.PortfolioSnapshot{}, &domain.UserPerformance{})
+	if err != nil {
+		log.Fatalf("failed to migrate database: %v", err)
+	}
 
-	// 依赖注入
-	repo := infrastructure.NewPortfolioRepository(db)
-	app := application.NewPortfolioService(repo)
-	handler := interfaces.NewPortfolioHandler(app, repo)
+	// 4. Layers
+	repo := persistence_mysql.NewPortfolioRepo(db)
+	app := application.NewPortfolioAppService(repo, logger)
+	svc := grpc_server.NewServer(app)
 
-	// gRPC Server
-	lis, err := net.Listen("tcp", cfg.GRPC.Addr)
+	// 5. Server
+	lis, err := net.Listen("tcp", ":9100")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
 	s := grpc.NewServer()
-	portfoliov1.RegisterPortfolioServiceServer(s, handler)
-
-	fmt.Printf("server listening at %v\n", lis.Addr())
+	pb.RegisterPortfolioServiceServer(s, svc)
 
 	go func() {
+		logger.Info("server started", "addr", ":9100")
 		if err := s.Serve(lis); err != nil {
 			log.Fatalf("failed to serve: %v", err)
 		}
 	}()
 
-	// 优雅关停
+	// 6. Graceful Shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
+	logger.Info("shutting down server...")
 	s.GracefulStop()
 }

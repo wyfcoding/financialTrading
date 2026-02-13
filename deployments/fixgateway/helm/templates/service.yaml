@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fixgateway.fullname" . }}
+  labels:
+    {{- include "fixgateway.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.httpPort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{ .Values.service.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
+    - port: {{ .Values.service.fixPort }}
+      targetPort: fix
+      protocol: TCP
+      name: fix
+  selector:
+    {{- include "fixgateway.selectorLabels" . | nindent 4 }}

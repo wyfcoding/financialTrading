@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package fixgateway.v1;
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/fixgateway/v1;v1";
+
+// FixGatewayService FIX 网关服务
+service FixGatewayService {
+  // Logon FIX 登录请求
+  rpc Logon(LogonRequest) returns (LogonResponse);
+  
+  // Logout FIX 退出请求
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  
+  // SendOrder 发送订单 (通过 FIX)
+  rpc SendOrder(SendOrderRequest) returns (SendOrderResponse);
+
+  // GetSessionStatus 获取会话状态
+  rpc GetSessionStatus(GetSessionStatusRequest) returns (GetSessionStatusResponse);
+}
+
+message LogonRequest {
+  string comp_id = 1;
+  string target_id = 2;
+  string password = 3;
+  string fix_version = 4; // e.g., FIX.4.4
+}
+
+message LogonResponse {
+  string session_id = 1;
+  string status = 2;
+}
+
+message LogoutRequest {
+  string session_id = 1;
+}
+
+message LogoutResponse {
+  bool success = 1;
+}
+
+message SendOrderRequest {
+  string session_id = 1;
+  string symbol = 2;
+  int32 side = 3;     // 1=Buy, 2=Sell
+  int32 ord_type = 4; // 1=Market, 2=Limit
+  double price = 5;
+  double quantity = 6;
+  string cl_ord_id = 7;
+}
+
+message SendOrderResponse {
+  string order_id = 1;
+  string status = 2;
+}
+
+message GetSessionStatusRequest {
+  string session_id = 1;
+}
+
+message GetSessionStatusResponse {
+  string status = 1;
+  int32 seq_in = 2;
+  int32 seq_out = 3;
+}

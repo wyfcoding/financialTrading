@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package sor.v1;
 
-option go_package = "github.com/wyfcoding/financialTrading/go-api/sor/v1;pb";
+option go_package = "github.com/wyfcoding/financialtrading/go-api/sor/v1;pb";
 
 import "google/protobuf/timestamp.proto";
 

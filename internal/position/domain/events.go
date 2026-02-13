@@ -13,6 +13,11 @@ const (
 	PositionPnLUpdatedEventType        = "PositionPnLUpdated"
 	PositionCostMethodChangedEventType = "PositionCostMethodChanged"
 	PositionFlipEventType              = "PositionFlip"
+	PositionTccTryFrozenEventType      = "position.tcc.try_freeze"
+	PositionTccConfirmedEventType      = "position.tcc.confirm_freeze"
+	PositionTccCanceledEventType       = "position.tcc.cancel_freeze"
+	PositionSagaDeductedEventType      = "position.saga.deduct_frozen"
+	PositionSagaRefundedEventType      = "position.saga.refund_frozen"
 )
 
 // PositionCreatedEvent 头寸创建事件

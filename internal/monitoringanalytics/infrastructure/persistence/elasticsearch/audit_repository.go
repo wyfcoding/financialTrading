@@ -33,7 +33,7 @@ func (r *auditESRepository) BatchIndex(ctx context.Context, audits []*domain.Exe
 
 	var buf bytes.Buffer
 	for _, a := range audits {
-		meta := []byte(fmt.Sprintf(`{ "index" : { "_index" : "%s", "_id" : "%s" } }%s`, r.index, a.ID, "\n"))
+		meta := fmt.Appendf(nil, `{ "index" : { "_index" : "%s", "_id" : "%s" } }%s`, r.index, a.ID, "\n")
 		data, err := json.Marshal(a)
 		if err != nil {
 			return err

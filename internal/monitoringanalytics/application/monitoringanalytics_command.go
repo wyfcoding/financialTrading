@@ -221,7 +221,7 @@ func (c *MonitoringAnalyticsCommandService) RecordSpoofingDetection(ctx context.
 }
 
 // RecordMarketAnomaly 记录市场异常
-func (c *MonitoringAnalyticsCommandService) RecordMarketAnomaly(ctx context.Context, symbol, anomalyType string, details map[string]interface{}) error {
+func (c *MonitoringAnalyticsCommandService) RecordMarketAnomaly(ctx context.Context, symbol, anomalyType string, details map[string]any) error {
 	// 发布市场异常检测事件
 	event := domain.MarketAnomalyDetectedEvent{
 		Symbol:      symbol,

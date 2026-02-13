@@ -276,6 +276,11 @@ func (h *Handler) UpdateVIPLevel(ctx context.Context, req *pb.UpdateVIPLevelRequ
 // SettleInterest 执行利息结算。
 func (h *Handler) SettleInterest(ctx context.Context, req *pb.SettleInterestRequest) (*pb.SettleInterestResponse, error) {
 	start := time.Now()
+	settledAmount := "0"
+	if dto, err := h.query.GetAccount(ctx, req.AccountId); err == nil && dto != nil && dto.AccruedInterest != "" {
+		settledAmount = dto.AccruedInterest
+	}
+
 	err := h.cmd.SettleInterest(ctx, application.SettleInterestCommand{
 		AccountID: req.AccountId,
 	})
@@ -285,7 +290,7 @@ func (h *Handler) SettleInterest(ctx context.Context, req *pb.SettleInterestRequ
 	}
 
 	slog.InfoContext(ctx, "grpc settle_interest successful", "account_id", req.AccountId, "duration", time.Since(start))
-	return &pb.SettleInterestResponse{Success: true, SettledAmount: "TODO"}, nil // 也可以从 DTO 获取
+	return &pb.SettleInterestResponse{Success: true, SettledAmount: settledAmount}, nil
 }
 
 func (h *Handler) toProto(dto *application.AccountDTO) *pb.AccountResponse {

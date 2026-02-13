@@ -116,6 +116,7 @@ func main() {
 
 	projectionSvc := application.NewClearingProjectionService(repo, settlementReadRepo, searchRepo, logger.Logger)
 	projectionHandler := clearingconsumer.NewSettlementProjectionHandler(projectionSvc, logger.Logger)
+	tradeSettlementHandler := clearingconsumer.NewTradeSettlementHandler(commandSvc, logger.Logger)
 
 	projectionTopics := []string{
 		domain.SettlementCreatedEventType,
@@ -133,6 +134,14 @@ func main() {
 		consumer.Start(context.Background(), 3, projectionHandler.Handle)
 		projectionConsumers = append(projectionConsumers, consumer)
 	}
+
+	settlementConsumerCfg := cfg.MessageQueue.Kafka
+	settlementConsumerCfg.Topic = "matching.trade.executed"
+	if settlementConsumerCfg.GroupID == "" {
+		settlementConsumerCfg.GroupID = "clearing-settlement-group"
+	}
+	tradeSettlementConsumer := kafka.NewConsumer(&settlementConsumerCfg, logger, metricsImpl)
+	tradeSettlementConsumer.Start(context.Background(), 3, tradeSettlementHandler.Handle)
 
 	// 9. Interfaces
 	grpcSrv := grpc.NewServer()
@@ -186,6 +195,9 @@ func main() {
 			slog.Info("context cancelled, shutting down...")
 		}
 		grpcSrv.GracefulStop()
+		if tradeSettlementConsumer != nil {
+			_ = tradeSettlementConsumer.Close()
+		}
 		for _, c := range projectionConsumers {
 			if c != nil {
 				_ = c.Close()

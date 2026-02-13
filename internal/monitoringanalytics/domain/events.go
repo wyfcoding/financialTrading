@@ -15,7 +15,7 @@ const (
 // MetricCreatedEvent 指标创建事件
 type MetricCreatedEvent struct {
 	MetricName string            `json:"metric_name"`
-	Value      interface{}       `json:"value"`
+	Value      any               `json:"value"`
 	Tags       map[string]string `json:"tags"`
 	Timestamp  int64             `json:"timestamp"`
 	OccurredOn time.Time         `json:"occurred_on"`
@@ -55,19 +55,19 @@ type SystemHealthChangedEvent struct {
 
 // ExecutionAuditCreatedEvent 执行审计创建事件
 type ExecutionAuditCreatedEvent struct {
-	ID         string      `json:"id"`
-	TradeID    string      `json:"trade_id"`
-	OrderID    string      `json:"order_id"`
-	UserID     string      `json:"user_id"`
-	Symbol     string      `json:"symbol"`
-	Side       string      `json:"side"`
-	Price      interface{} `json:"price"`
-	Quantity   interface{} `json:"quantity"`
-	Fee        interface{} `json:"fee"`
-	Venue      string      `json:"venue"`
-	AlgoType   string      `json:"algo_type"`
-	Timestamp  int64       `json:"timestamp"`
-	OccurredOn time.Time   `json:"occurred_on"`
+	ID         string    `json:"id"`
+	TradeID    string    `json:"trade_id"`
+	OrderID    string    `json:"order_id"`
+	UserID     string    `json:"user_id"`
+	Symbol     string    `json:"symbol"`
+	Side       string    `json:"side"`
+	Price      any       `json:"price"`
+	Quantity   any       `json:"quantity"`
+	Fee        any       `json:"fee"`
+	Venue      string    `json:"venue"`
+	AlgoType   string    `json:"algo_type"`
+	Timestamp  int64     `json:"timestamp"`
+	OccurredOn time.Time `json:"occurred_on"`
 }
 
 // SpoofingDetectedEvent 哄骗检测事件
@@ -81,9 +81,9 @@ type SpoofingDetectedEvent struct {
 
 // MarketAnomalyDetectedEvent 市场异常检测事件
 type MarketAnomalyDetectedEvent struct {
-	Symbol      string                 `json:"symbol"`
-	AnomalyType string                 `json:"anomaly_type"`
-	Details     map[string]interface{} `json:"details"`
-	DetectedAt  int64                  `json:"detected_at"`
-	OccurredOn  time.Time              `json:"occurred_on"`
+	Symbol      string         `json:"symbol"`
+	AnomalyType string         `json:"anomaly_type"`
+	Details     map[string]any `json:"details"`
+	DetectedAt  int64          `json:"detected_at"`
+	OccurredOn  time.Time      `json:"occurred_on"`
 }

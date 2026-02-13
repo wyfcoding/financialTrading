@@ -315,6 +315,8 @@ func (s *AccountCommandService) SettleInterest(ctx context.Context, cmd SettleIn
 			return fmt.Errorf("account not found: %s", cmd.AccountID)
 		}
 
+		settledAmount := account.AccruedInterest
+
 		account.SettleInterest()
 
 		if err := s.repo.Save(txCtx, account); err != nil {
@@ -331,7 +333,7 @@ func (s *AccountCommandService) SettleInterest(ctx context.Context, cmd SettleIn
 		tx := contextx.GetTx(txCtx)
 		return s.publisher.PublishInTx(ctx, tx, domain.AccountInterestSettledEventType, fmt.Sprintf("ITS-%d", idgen.GenID()), map[string]any{
 			"account_id": account.AccountID,
-			"amount":     account.AccruedInterest.String(), // 结算前金额
+			"amount":     settledAmount.String(),
 			"balance":    account.Balance.String(),
 		})
 	})
@@ -569,8 +571,40 @@ func (s *AccountCommandService) TccTryFreeze(ctx context.Context, barrier any, u
 
 // TccConfirmFreeze TCC Confirm: 确认冻结
 func (s *AccountCommandService) TccConfirmFreeze(ctx context.Context, barrier any, userID, currency string, amount decimal.Decimal) error {
-	return s.repo.ExecWithBarrier(ctx, barrier, func(ctx context.Context) error {
-		return nil
+	return s.repo.ExecWithBarrier(ctx, barrier, func(txCtx context.Context) error {
+		accounts, err := s.repo.GetByUserID(txCtx, userID)
+		if err != nil {
+			return err
+		}
+
+		var targetAccount *domain.Account
+		for _, acc := range accounts {
+			if acc.Currency == currency {
+				targetAccount = acc
+				break
+			}
+		}
+		if targetAccount == nil {
+			return fmt.Errorf("account not found for user %s currency %s", userID, currency)
+		}
+
+		if success := targetAccount.DeductFrozen(amount); !success {
+			return fmt.Errorf("insufficient frozen balance for TCC confirm")
+		}
+		if err := s.repo.Save(txCtx, targetAccount); err != nil {
+			return err
+		}
+
+		if s.publisher == nil {
+			return nil
+		}
+		tx := contextx.GetTx(txCtx)
+		return s.publisher.PublishInTx(ctx, tx, domain.AccountDeductedEventType, fmt.Sprintf("TCC-CONFIRM-%s", userID), map[string]any{
+			"type":       "TCC_CONFIRM",
+			"account_id": targetAccount.AccountID,
+			"user_id":    userID,
+			"amount":     amount.String(),
+		})
 	})
 }
 

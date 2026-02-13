@@ -1,0 +1,47 @@
+replicaCount: 1
+
+image:
+  repository: fixgateway
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+serviceAccount:
+  create: true
+
+service:
+  type: ClusterIP
+  httpPort: 8080
+  grpcPort: 9090
+  fixPort: 9876
+
+resources: 
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+
+env:
+  - name: FINANCIALTRADING_SERVER_HTTP_PORT
+    value: "8080"
+  - name: FINANCIALTRADING_SERVER_GRPC_PORT
+    value: "9090"
+  - name: FIX_PORT
+    value: "9876"
+  - name: FIX_VERSION
+    value: "FIX.4.4"
+  - name: HEARTBEAT_INTERVAL
+    value: "30"
+
+secrets:
+  dbPassword: ""
+  redisPassword: ""
+  fixSenderId: ""
+  fixTargetId: ""
+  fixPassword: ""

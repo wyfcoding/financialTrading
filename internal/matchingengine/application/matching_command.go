@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -263,7 +264,49 @@ func (m *MatchingCommandService) processPostMatching(trades []*types.Trade) {
 		m.engine.Halt()
 	} else {
 		m.logger.Info("post-matching trades persisted and outbox events created", "count", len(trades))
+		m.dispatchSettlement(trades)
 	}
+}
+
+func (m *MatchingCommandService) dispatchSettlement(trades []*types.Trade) {
+	if m.clearingCli == nil || len(trades) == 0 {
+		return
+	}
+
+	for _, t := range trades {
+		req := &clearingv1.SettleTradeRequest{
+			TradeId:    t.TradeID,
+			BuyUserId:  t.BuyUserID,
+			SellUserId: t.SellUserID,
+			Symbol:     t.Symbol,
+			Quantity:   t.Quantity.String(),
+			Price:      t.Price.String(),
+			Currency:   settlementCurrency(t.Symbol),
+		}
+
+		callCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		_, err := m.clearingCli.SettleTrade(callCtx, req)
+		cancel()
+		if err != nil {
+			m.logger.Error("failed to trigger settlement for trade",
+				"trade_id", t.TradeID,
+				"symbol", t.Symbol,
+				"error", err)
+		}
+	}
+}
+
+func settlementCurrency(symbol string) string {
+	if symbol == "" {
+		return "USDT"
+	}
+	parts := strings.FieldsFunc(symbol, func(r rune) bool {
+		return r == '-' || r == '/' || r == '_'
+	})
+	if len(parts) >= 2 && parts[len(parts)-1] != "" {
+		return strings.ToUpper(parts[len(parts)-1])
+	}
+	return "USDT"
 }
 
 // SaveSnapshot 触发快照

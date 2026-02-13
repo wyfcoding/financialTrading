@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net"
@@ -16,21 +17,44 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/treasury/application"
 	"github.com/wyfcoding/financialtrading/internal/treasury/infrastructure"
 	"github.com/wyfcoding/financialtrading/internal/treasury/interfaces"
+	pkgconfig "github.com/wyfcoding/pkg/config"
+	"github.com/wyfcoding/pkg/logging"
 	"github.com/wyfcoding/pkg/messagequeue"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
+	"github.com/wyfcoding/pkg/metrics"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
-// noopEventPublisher 空操作事件发布者
-type noopEventPublisher struct{}
+// kafkaEventPublisher 资金事件发布者
+type kafkaEventPublisher struct {
+	producer *kafka.Producer
+	logger   *slog.Logger
+}
 
-var _ messagequeue.EventPublisher = (*noopEventPublisher)(nil)
+var _ messagequeue.EventPublisher = (*kafkaEventPublisher)(nil)
 
-func (p *noopEventPublisher) Publish(_ context.Context, _ string, _ string, _ any) error { return nil }
-func (p *noopEventPublisher) PublishInTx(_ context.Context, _ any, _ string, _ string, _ any) error {
+func (p *kafkaEventPublisher) Publish(ctx context.Context, topic, key string, event any) error {
+	if p == nil || p.producer == nil {
+		return nil
+	}
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+	if err := p.producer.PublishToTopic(ctx, topic, []byte(key), payload); err != nil {
+		if p.logger != nil {
+			p.logger.Error("failed to publish treasury event", "topic", topic, "error", err)
+		}
+		return err
+	}
 	return nil
+}
+
+func (p *kafkaEventPublisher) PublishInTx(ctx context.Context, _ any, topic, key string, event any) error {
+	return p.Publish(ctx, topic, key, event)
 }
 
 // Config 服务配置
@@ -66,7 +90,14 @@ func main() {
 	txRepo := infrastructure.NewGormTransactionRepository(db)
 
 	// 事件
-	eventPublisher := &noopEventPublisher{}
+	brokers := []string{cfg.KafkaBroker}
+	if cfg.KafkaBroker == "" {
+		brokers = []string{"localhost:9092"}
+	}
+	infraLogger := logging.NewLogger("treasury", "bootstrap")
+	metricsImpl := metrics.NewMetrics("treasury")
+	producer := kafka.NewProducer(&pkgconfig.KafkaConfig{Brokers: brokers}, infraLogger, metricsImpl)
+	eventPublisher := &kafkaEventPublisher{producer: producer, logger: logger}
 
 	// 服务
 	cmdService := application.NewCommandService(accountRepo, txRepo, eventPublisher, logger)
@@ -140,6 +171,9 @@ func main() {
 
 		httpServer.Shutdown(shutdownCtx)
 		grpcServer.GracefulStop()
+		if producer != nil {
+			_ = producer.Close()
+		}
 		return nil
 	})
 

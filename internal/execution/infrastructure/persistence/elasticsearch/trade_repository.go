@@ -40,11 +40,11 @@ func (r *tradeSearchRepository) Index(ctx context.Context, trade *domain.Trade) 
 }
 
 func (r *tradeSearchRepository) Search(ctx context.Context, userID, symbol string, limit, offset int) ([]*domain.Trade, int64, error) {
-	query := map[string]interface{}{
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
-				"must": []map[string]interface{}{
-					{"term": map[string]interface{}{"user_id": userID}},
+	query := map[string]any{
+		"query": map[string]any{
+			"bool": map[string]any{
+				"must": []map[string]any{
+					{"term": map[string]any{"user_id": userID}},
 				},
 			},
 		},
@@ -53,9 +53,9 @@ func (r *tradeSearchRepository) Search(ctx context.Context, userID, symbol strin
 	}
 
 	if symbol != "" {
-		query["query"].(map[string]interface{})["bool"].(map[string]interface{})["must"] = append(
-			query["query"].(map[string]interface{})["bool"].(map[string]interface{})["must"].([]map[string]interface{}),
-			map[string]interface{}{"term": map[string]interface{}{"symbol": symbol}},
+		query["query"].(map[string]any)["bool"].(map[string]any)["must"] = append(
+			query["query"].(map[string]any)["bool"].(map[string]any)["must"].([]map[string]any),
+			map[string]any{"term": map[string]any{"symbol": symbol}},
 		)
 	}
 

@@ -67,22 +67,29 @@ type DepositCommand struct {
 
 // Deposit 充值
 func (s *CommandService) Deposit(ctx context.Context, cmd DepositCommand) (string, error) {
-	// 使用锁或乐观锁，这里简化为 GetWithLock (悲观锁)
-	account, err := s.accountRepo.GetWithLock(ctx, cmd.AccountID)
+	var txID string
+	err := s.runInAccountTx(ctx, func(txCtx context.Context) error {
+		account, err := s.accountRepo.GetWithLock(txCtx, cmd.AccountID)
+		if err != nil {
+			return err
+		}
+
+		tx, err := account.Deposit(cmd.Amount, cmd.RefID, cmd.Source)
+		if err != nil {
+			return err
+		}
+
+		if err := s.saveAccountAndTx(txCtx, account, tx); err != nil {
+			return err
+		}
+		txID = tx.TransactionID
+		return nil
+	})
 	if err != nil {
 		return "", err
 	}
 
-	tx, err := account.Deposit(cmd.Amount, cmd.RefID, cmd.Source)
-	if err != nil {
-		return "", err
-	}
-
-	if err := s.saveAccountAndTx(ctx, account, tx); err != nil {
-		return "", err
-	}
-
-	return tx.TransactionID, nil
+	return txID, nil
 }
 
 // FreezeCommand 冻结命令
@@ -95,21 +102,29 @@ type FreezeCommand struct {
 
 // Freeze 冻结
 func (s *CommandService) Freeze(ctx context.Context, cmd FreezeCommand) (string, error) {
-	account, err := s.accountRepo.GetWithLock(ctx, cmd.AccountID)
+	var txID string
+	err := s.runInAccountTx(ctx, func(txCtx context.Context) error {
+		account, err := s.accountRepo.GetWithLock(txCtx, cmd.AccountID)
+		if err != nil {
+			return err
+		}
+
+		tx, err := account.Freeze(cmd.Amount, cmd.RefID, cmd.Reason)
+		if err != nil {
+			return err
+		}
+
+		if err := s.saveAccountAndTx(txCtx, account, tx); err != nil {
+			return err
+		}
+		txID = tx.TransactionID
+		return nil
+	})
 	if err != nil {
 		return "", err
 	}
 
-	tx, err := account.Freeze(cmd.Amount, cmd.RefID, cmd.Reason)
-	if err != nil {
-		return "", err
-	}
-
-	if err := s.saveAccountAndTx(ctx, account, tx); err != nil {
-		return "", err
-	}
-
-	return tx.TransactionID, nil
+	return txID, nil
 }
 
 // UnfreezeCommand 解冻命令
@@ -122,21 +137,29 @@ type UnfreezeCommand struct {
 
 // Unfreeze 解冻
 func (s *CommandService) Unfreeze(ctx context.Context, cmd UnfreezeCommand) (string, error) {
-	account, err := s.accountRepo.GetWithLock(ctx, cmd.AccountID)
+	var txID string
+	err := s.runInAccountTx(ctx, func(txCtx context.Context) error {
+		account, err := s.accountRepo.GetWithLock(txCtx, cmd.AccountID)
+		if err != nil {
+			return err
+		}
+
+		tx, err := account.Unfreeze(cmd.Amount, cmd.RefID, cmd.Reason)
+		if err != nil {
+			return err
+		}
+
+		if err := s.saveAccountAndTx(txCtx, account, tx); err != nil {
+			return err
+		}
+		txID = tx.TransactionID
+		return nil
+	})
 	if err != nil {
 		return "", err
 	}
 
-	tx, err := account.Unfreeze(cmd.Amount, cmd.RefID, cmd.Reason)
-	if err != nil {
-		return "", err
-	}
-
-	if err := s.saveAccountAndTx(ctx, account, tx); err != nil {
-		return "", err
-	}
-
-	return tx.TransactionID, nil
+	return txID, nil
 }
 
 // DeductCommand 扣减命令
@@ -150,21 +173,29 @@ type DeductCommand struct {
 
 // Deduct 扣减
 func (s *CommandService) Deduct(ctx context.Context, cmd DeductCommand) (string, error) {
-	account, err := s.accountRepo.GetWithLock(ctx, cmd.AccountID)
+	var txID string
+	err := s.runInAccountTx(ctx, func(txCtx context.Context) error {
+		account, err := s.accountRepo.GetWithLock(txCtx, cmd.AccountID)
+		if err != nil {
+			return err
+		}
+
+		tx, err := account.Deduct(cmd.Amount, cmd.UnfreezeFirst, cmd.RefID, cmd.Reason)
+		if err != nil {
+			return err
+		}
+
+		if err := s.saveAccountAndTx(txCtx, account, tx); err != nil {
+			return err
+		}
+		txID = tx.TransactionID
+		return nil
+	})
 	if err != nil {
 		return "", err
 	}
 
-	tx, err := account.Deduct(cmd.Amount, cmd.UnfreezeFirst, cmd.RefID, cmd.Reason)
-	if err != nil {
-		return "", err
-	}
-
-	if err := s.saveAccountAndTx(ctx, account, tx); err != nil {
-		return "", err
-	}
-
-	return tx.TransactionID, nil
+	return txID, nil
 }
 
 // TransferCommand 转账命令
@@ -176,10 +207,13 @@ type TransferCommand struct {
 	Remark        string
 }
 
-// Transfer 转账 (简单实现，未涉及分布式事务，假设同库)
+// Transfer 转账（同库事务内原子完成双账户变更与双流水写入）
 func (s *CommandService) Transfer(ctx context.Context, cmd TransferCommand) (string, error) {
 	if cmd.FromAccountID == cmd.ToAccountID {
 		return "", errors.New("cannot transfer to self")
+	}
+	if cmd.Amount <= 0 {
+		return "", errors.New("amount must be positive")
 	}
 
 	// 简单的按ID顺序加锁避免死锁
@@ -188,24 +222,94 @@ func (s *CommandService) Transfer(ctx context.Context, cmd TransferCommand) (str
 		firstID, secondID = secondID, firstID
 	}
 
-	// 这里需要支持事务传递，repository 接口可能需要调整以支持事务，
-	// 或者在此层使用 db.Transaction 闭包。
-	// 为保持简单，假设 repo 支持 Save 在外部事务中?
-	// 目前 repo 接口没有 Transaction 方法。
-	// 这里只能先简单调用，如果失败可能导致不一致（生产环境需从 repository 或 unit of work 支持事务）。
+	remark := cmd.Remark
+	if remark == "" {
+		remark = "account transfer"
+	}
 
-	// 由于涉及两个账户，强烈建议将事务控制权上移或在此处使用通过 context 传递的事务
-	// 这里演示逻辑：
+	transferRef := cmd.RefID
+	err := s.runInAccountTx(ctx, func(txCtx context.Context) error {
+		firstAccount, err := s.accountRepo.GetWithLock(txCtx, firstID)
+		if err != nil {
+			return err
+		}
+		secondAccount, err := s.accountRepo.GetWithLock(txCtx, secondID)
+		if err != nil {
+			return err
+		}
 
-	return "", errors.New("transfer not implemented yet without transaction support")
+		fromAccount, toAccount := firstAccount, secondAccount
+		if cmd.FromAccountID != firstID {
+			fromAccount, toAccount = secondAccount, firstAccount
+		}
+		if fromAccount == nil || toAccount == nil {
+			return errors.New("account not found")
+		}
+		if fromAccount.Currency != toAccount.Currency {
+			return fmt.Errorf("currency mismatch: from=%d to=%d", fromAccount.Currency, toAccount.Currency)
+		}
+
+		outTx, err := fromAccount.Deduct(cmd.Amount, false, transferRef, remark)
+		if err != nil {
+			return err
+		}
+		inTx, err := toAccount.Deposit(cmd.Amount, transferRef, remark)
+		if err != nil {
+			return err
+		}
+
+		if transferRef == "" {
+			transferRef = outTx.TransactionID
+		}
+		outTx.Type = domain.TransactionTypeTransferOut
+		outTx.ReferenceID = transferRef
+		outTx.Remark = remark
+		outTx.Amount = -cmd.Amount
+
+		inTx.Type = domain.TransactionTypeTransferIn
+		inTx.ReferenceID = transferRef
+		inTx.Remark = remark
+		inTx.Amount = cmd.Amount
+
+		if err := s.accountRepo.Save(txCtx, fromAccount); err != nil {
+			return err
+		}
+		if err := s.accountRepo.Save(txCtx, toAccount); err != nil {
+			return err
+		}
+		if err := s.txRepo.Save(txCtx, outTx); err != nil {
+			return err
+		}
+		if err := s.txRepo.Save(txCtx, inTx); err != nil {
+			return err
+		}
+
+		s.publishEvents(txCtx, fromAccount.GetDomainEvents())
+		s.publishEvents(txCtx, toAccount.GetDomainEvents())
+		fromAccount.ClearDomainEvents()
+		toAccount.ClearDomainEvents()
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return transferRef, nil
+}
+
+func (s *CommandService) runInAccountTx(ctx context.Context, fn func(txCtx context.Context) error) error {
+	txRunner, ok := s.accountRepo.(interface {
+		Transaction(ctx context.Context, fn func(ctx context.Context) error) error
+	})
+	if !ok {
+		return errors.New("account repository does not support transaction")
+	}
+	return txRunner.Transaction(ctx, fn)
 }
 
 // saveAccountAndTx 辅助方法：保存账户和流水并发布事件
-// 注意：这应该在一个数据库事务中完成，这里简化
+// 调用方应保证在数据库事务上下文中执行。
 func (s *CommandService) saveAccountAndTx(ctx context.Context, account *domain.Account, tx *domain.Transaction) error {
-	// 实际应开启事务: tx := db.Begin() -> repo.WithTx(tx).Save(...) -> commit
-	// 这里仅做逻辑演示，未保证原子性
-
 	if err := s.accountRepo.Save(ctx, account); err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -21,6 +22,7 @@ type DepositWithdrawalCommandService struct {
 	accountRepo         domain.AccountRepository
 	depositOrderRepo    domain.DepositOrderRepository
 	withdrawalOrderRepo domain.WithdrawalOrderRepository
+	gateway             domain.FundsGateway
 	publisher           messagequeue.EventPublisher
 	idGenerator         idgen.Generator
 	logger              *slog.Logger
@@ -34,15 +36,47 @@ func NewDepositWithdrawalCommandService(
 	publisher messagequeue.EventPublisher,
 	idGenerator idgen.Generator,
 	logger *slog.Logger,
+	gateway ...domain.FundsGateway,
 ) *DepositWithdrawalCommandService {
+	var gw domain.FundsGateway
+	if len(gateway) > 0 {
+		gw = gateway[0]
+	}
+	if gw == nil {
+		gw = &mockFundsGateway{}
+	}
+
 	return &DepositWithdrawalCommandService{
 		accountRepo:         accountRepo,
 		depositOrderRepo:    depositOrderRepo,
 		withdrawalOrderRepo: withdrawalOrderRepo,
+		gateway:             gw,
 		publisher:           publisher,
 		idGenerator:         idGenerator,
 		logger:              logger,
 	}
+}
+
+type mockFundsGateway struct{}
+
+func (g *mockFundsGateway) CreateDepositPayment(_ context.Context, req *domain.DepositGatewayRequest) (string, error) {
+	if req == nil {
+		return "", errors.New("invalid deposit gateway request")
+	}
+	if strings.TrimSpace(req.DepositNo) == "" {
+		return "", errors.New("deposit_no is required")
+	}
+	return fmt.Sprintf("https://pay.example.com/deposit/%s", req.DepositNo), nil
+}
+
+func (g *mockFundsGateway) Payout(_ context.Context, req *domain.WithdrawalGatewayRequest) (string, error) {
+	if req == nil {
+		return "", errors.New("invalid withdrawal gateway request")
+	}
+	if strings.TrimSpace(req.WithdrawalNo) == "" {
+		return "", errors.New("withdrawal_no is required")
+	}
+	return fmt.Sprintf("BANK-%s-%d", req.WithdrawalNo, time.Now().UnixNano()), nil
 }
 
 // CreateDepositRequest 创建充值请求
@@ -77,8 +111,18 @@ func (s *DepositWithdrawalCommandService) CreateDeposit(ctx context.Context, req
 
 	depositOrder := domain.NewDepositOrder(req.UserID, req.AccountID, req.Amount, req.Currency, req.GatewayType, s.idGenerator)
 
-	// TODO: 调用外部网关获取支付链接
-	depositOrder.PaymentURL = fmt.Sprintf("https://pay.example.com/deposit/%s", depositOrder.DepositNo)
+	paymentURL, err := s.gateway.CreateDepositPayment(ctx, &domain.DepositGatewayRequest{
+		DepositNo:   depositOrder.DepositNo,
+		UserID:      req.UserID,
+		AccountID:   req.AccountID,
+		Amount:      req.Amount,
+		Currency:    req.Currency,
+		GatewayType: req.GatewayType,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create deposit payment: %w", err)
+	}
+	depositOrder.PaymentURL = paymentURL
 
 	if err := s.depositOrderRepo.Save(ctx, depositOrder); err != nil {
 		return nil, fmt.Errorf("failed to save deposit order: %w", err)
@@ -295,8 +339,20 @@ func (s *DepositWithdrawalCommandService) ProcessWithdrawal(ctx context.Context,
 			return fmt.Errorf("failed to update withdrawal order: %w", err)
 		}
 
-		// TODO: 调用银行/网关打款
-		gatewayRef := fmt.Sprintf("BANK-%d", time.Now().UnixNano())
+		gatewayRef, err := s.gateway.Payout(txCtx, &domain.WithdrawalGatewayRequest{
+			WithdrawalNo:  withdrawalOrder.WithdrawalNo,
+			UserID:        withdrawalOrder.UserID,
+			AccountID:     withdrawalOrder.AccountID,
+			Amount:        withdrawalOrder.Amount,
+			NetAmount:     withdrawalOrder.NetAmount,
+			Currency:      withdrawalOrder.Currency,
+			BankAccountNo: withdrawalOrder.BankAccountNo,
+			BankName:      withdrawalOrder.BankName,
+			BankHolder:    withdrawalOrder.BankHolder,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to process payout via gateway: %w", err)
+		}
 
 		// 从冻结余额扣除
 		account, err := s.accountRepo.Get(txCtx, withdrawalOrder.AccountID)

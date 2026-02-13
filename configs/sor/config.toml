@@ -1,16 +1,6 @@
-[service]
-name = "sor"
-version = "v1.0.0"
-
 [server]
-grpc_port = 50052
+  name = "sor"
+  port = 9093
 
 [log]
-level = "info"
-format = "json"
-
-[market]
-# 聚合延迟控制
-aggregation_timeout_ms = 50
-max_market_depth = 10
-preferred_markets = ["NYSE", "NASDAQ", "IEX"]
+  level = "info"

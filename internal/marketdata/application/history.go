@@ -72,12 +72,6 @@ func (s *HistoryService) toPosition(price decimal.Decimal) int {
 		return 0
 	}
 	scaled := price.Mul(decimal.NewFromInt(int64(s.scale))).IntPart()
-	pos := int(scaled)
-	if pos < 1 {
-		pos = 1
-	}
-	if pos > s.maxPrice {
-		pos = s.maxPrice
-	}
+	pos := min(max(int(scaled), 1), s.maxPrice)
 	return pos
 }

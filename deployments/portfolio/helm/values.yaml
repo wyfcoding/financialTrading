@@ -1,0 +1,41 @@
+replicaCount: 1
+
+image:
+  repository: portfolio
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+serviceAccount:
+  create: true
+
+service:
+  type: ClusterIP
+  httpPort: 8080
+  grpcPort: 9090
+
+resources: 
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+env:
+  - name: FINANCIALTRADING_SERVER_HTTP_PORT
+    value: "8080"
+  - name: FINANCIALTRADING_SERVER_GRPC_PORT
+    value: "9090"
+  - name: REBALANCE_SCHEDULE
+    value: "0 0 * * *"
+
+secrets:
+  dbPassword: ""
+  redisPassword: ""
+  marketDataApiKey: ""

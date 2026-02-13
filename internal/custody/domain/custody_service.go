@@ -1,5 +1,3 @@
-// Package domain 提供了资产托管（Custody）领域的业务逻辑。
-// 变更说明：实现客户资产库（Custody Vault）与法律隔离账本逻辑，确保客户资产与公司自有资金的严格区分。
 package domain
 
 import (
@@ -8,62 +6,126 @@ import (
 	"time"
 )
 
-// VaultType 库位类型
 type VaultType string
 
 const (
-	VaultCustomer VaultType = "CUSTOMER" // 客户隔离库
-	VaultHouse    VaultType = "HOUSE"    // 公司自有库
-	VaultOmnibus  VaultType = "OMNIBUS"  // 综合账户（用于对接外部清算）
+	VaultCustomer VaultType = "CUSTOMER"
+	VaultHouse    VaultType = "HOUSE"
+	VaultOmnibus  VaultType = "OMNIBUS"
 )
 
-// AssetVault 资产库实体
 type AssetVault struct {
 	VaultID   string    `json:"vault_id"`
 	Type      VaultType `json:"type"`
-	UserID    uint64    `json:"user_id"` // 如果是 CUSTOMER 类型
+	UserID    uint64    `json:"user_id"`
 	Symbol    string    `json:"symbol"`
 	Balance   int64     `json:"balance"`
 	Locked    int64     `json:"locked"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// CustodyTransfer 托管转移流水
-type CustodyTransfer struct {
-	TransferID string    `json:"transfer_id"`
-	FromVault  string    `json:"from_vault"`
-	ToVault    string    `json:"to_vault"`
-	Symbol     string    `json:"symbol"`
-	Amount     int64     `json:"amount"`
-	Reason     string    `json:"reason"` // 如：Trade Settlement, Deposit, Withdrawal
-	Timestamp  time.Time `json:"timestamp"`
+func NewCustomerVault(userID uint64, symbol string) *AssetVault {
+	return &AssetVault{
+		VaultID:   fmt.Sprintf("CUST-%d-%s", userID, symbol),
+		Type:      VaultCustomer,
+		UserID:    userID,
+		Symbol:    symbol,
+		Balance:   0,
+		Locked:    0,
+		UpdatedAt: time.Now(),
+	}
 }
 
-// CustodyService 托管服务接口
-type CustodyService interface {
-	// TransferInternal 内部库位间转移（如交易结算时的资产搬运）
-	TransferInternal(ctx context.Context, from, to string, amount int64, reason string) error
-	// Segregate 确保客户资产按法规隔离
-	Segregate(ctx context.Context, userID uint64) error
-	// GetHolding 查看托管持仓
-	GetHolding(ctx context.Context, vaultID string) (*AssetVault, error)
+func NewHouseVault(symbol string) *AssetVault {
+	return &AssetVault{
+		VaultID:   fmt.Sprintf("HOUSE-%s", symbol),
+		Type:      VaultHouse,
+		Symbol:    symbol,
+		UpdatedAt: time.Now(),
+	}
 }
 
-// VaultManager 库位管理逻辑
-type VaultManager struct{}
+func NewOmnibusVault(symbol string) *AssetVault {
+	return &AssetVault{
+		VaultID:   fmt.Sprintf("OMNI-%s", symbol),
+		Type:      VaultOmnibus,
+		Symbol:    symbol,
+		UpdatedAt: time.Now(),
+	}
+}
 
-// SafeDebit 安全扣减（需校验隔离原则）
+func (v *AssetVault) AvailableBalance() int64 {
+	return v.Balance - v.Locked
+}
+
 func (v *AssetVault) SafeDebit(amount int64) error {
-	if v.Balance-v.Locked < amount {
-		return fmt.Errorf("insufficient available balance in vault %s", v.VaultID)
+	if v.AvailableBalance() < amount {
+		return fmt.Errorf("insufficient available balance in vault %s: available=%d, requested=%d",
+			v.VaultID, v.AvailableBalance(), amount)
 	}
 	v.Balance -= amount
 	v.UpdatedAt = time.Now()
 	return nil
 }
 
-// SafeCredit 安全入账
 func (v *AssetVault) SafeCredit(amount int64) {
 	v.Balance += amount
 	v.UpdatedAt = time.Now()
+}
+
+func (v *AssetVault) Lock(amount int64) error {
+	if v.AvailableBalance() < amount {
+		return fmt.Errorf("insufficient available balance to lock")
+	}
+	v.Locked += amount
+	v.UpdatedAt = time.Now()
+	return nil
+}
+
+func (v *AssetVault) Unlock(amount int64) {
+	if v.Locked < amount {
+		amount = v.Locked
+	}
+	v.Locked -= amount
+	v.UpdatedAt = time.Now()
+}
+
+func (v *AssetVault) IsCustomerVault() bool {
+	return v.Type == VaultCustomer
+}
+
+func (v *AssetVault) IsHouseVault() bool {
+	return v.Type == VaultHouse
+}
+
+func (v *AssetVault) IsOmnibusVault() bool {
+	return v.Type == VaultOmnibus
+}
+
+type CustodyTransfer struct {
+	TransferID string    `json:"transfer_id"`
+	FromVault  string    `json:"from_vault"`
+	ToVault    string    `json:"to_vault"`
+	Symbol     string    `json:"symbol"`
+	Amount     int64     `json:"amount"`
+	Reason     string    `json:"reason"`
+	Timestamp  time.Time `json:"timestamp"`
+}
+
+func NewCustodyTransfer(from, to, symbol string, amount int64, reason string) *CustodyTransfer {
+	return &CustodyTransfer{
+		TransferID: fmt.Sprintf("TX-%d", time.Now().UnixNano()),
+		FromVault:  from,
+		ToVault:    to,
+		Symbol:     symbol,
+		Amount:     amount,
+		Reason:     reason,
+		Timestamp:  time.Now(),
+	}
+}
+
+type CustodyService interface {
+	TransferInternal(ctx context.Context, from, to string, amount int64, reason string) error
+	Segregate(ctx context.Context, userID uint64) error
+	GetHolding(ctx context.Context, vaultID string) (*AssetVault, error)
 }

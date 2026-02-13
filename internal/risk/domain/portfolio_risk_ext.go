@@ -15,16 +15,13 @@ func CalculateMarginalVaR(
 	nSims := len(portfolioPnLs)
 
 	// 找到处于 VaR 临界点附近的模拟索引 (通常取尾部 1%-5% 的样本均值)
-	tailIdx := int(float64(nSims) * (1 - confidenceLevel))
-	if tailIdx < 1 {
-		tailIdx = 1
-	}
+	tailIdx := max(int(float64(nSims)*(1-confidenceLevel)), 1)
 
 	marginalVaRs := make(map[string]float64)
 	for i, asset := range assets {
 		var tailSum float64
 		// 对处于组合最差情况下的样本进行累加
-		for s := 0; s < tailIdx; s++ {
+		for s := range tailIdx {
 			tailSum += assetPnLs[s][i]
 		}
 		// 边际风险贡献 (取反表示损失)

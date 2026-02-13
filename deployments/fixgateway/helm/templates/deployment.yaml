@@ -1,0 +1,64 @@
+{{- $fullName := include "fixgateway.fullname" . -}}
+{{- $labels := include "fixgateway.labels" . -}}
+{{- $selectorLabels := include "fixgateway.selectorLabels" . -}}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{ $labels | nindent 4 }}
+    version: v1
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{ $selectorLabels | nindent 6 }}
+      version: v1
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.service.httpPort | quote }}
+      labels:
+        {{ $selectorLabels | nindent 8 }}
+        version: v1
+    spec:
+      serviceAccountName: {{ include "fixgateway.serviceAccountName" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.httpPort }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.service.grpcPort }}
+              protocol: TCP
+            - name: fix
+              containerPort: {{ .Values.service.fixPort }}
+              protocol: TCP
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://jaeger-collector.istio-system.svc.cluster.local:4317"
+            - name: OTEL_SERVICE_NAME
+              value: {{ $fullName }}
+            {{- toYaml .Values.env | nindent 12 }}
+          envFrom:
+            - secretRef:
+                name: {{ $fullName }}-secrets
+          livenessProbe:
+            httpGet:
+              path: /sys/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /sys/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

@@ -41,7 +41,7 @@ func (r *marginRedisRepository) Get(ctx context.Context, userID string) (any, er
 	if err != nil {
 		return nil, err
 	}
-	var res interface{}
+	var res any
 	if err := json.Unmarshal(data, &res); err != nil {
 		return nil, err
 	}

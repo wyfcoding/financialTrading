@@ -149,38 +149,242 @@ func (c *PositionCommandService) ClosePosition(ctx context.Context, positionID s
 }
 
 // TccTryFreeze TCC 尝试冻结
-func (c *PositionCommandService) TccTryFreeze(ctx context.Context, barrier interface{}, userID string, symbol string, quantity decimal.Decimal) error {
-	return nil
+func (c *PositionCommandService) TccTryFreeze(ctx context.Context, barrier any, userID string, symbol string, quantity decimal.Decimal) error {
+	if userID == "" || symbol == "" {
+		return errors.New("user_id and symbol are required")
+	}
+	if quantity.LessThanOrEqual(decimal.Zero) {
+		return errors.New("quantity must be positive")
+	}
+
+	return c.repo.ExecWithBarrier(ctx, barrier, func(txCtx context.Context) error {
+		position, err := c.repo.GetByUserSymbol(txCtx, userID, symbol)
+		if err != nil {
+			return err
+		}
+		if position == nil {
+			return errors.New("position not found")
+		}
+		if position.Quantity.Abs().LessThan(quantity) {
+			return errors.New("insufficient position quantity to freeze")
+		}
+		return c.publishTxEvent(txCtx, domain.PositionTccTryFrozenEventType, fmt.Sprintf("%s:%s:%s", userID, symbol, quantity.String()), map[string]any{
+			"user_id":  userID,
+			"symbol":   symbol,
+			"quantity": quantity.String(),
+		})
+	})
 }
 
 // TccConfirmFreeze TCC 确认冻结
-func (c *PositionCommandService) TccConfirmFreeze(ctx context.Context, barrier interface{}, userID string, symbol string, quantity decimal.Decimal) error {
-	return nil
+func (c *PositionCommandService) TccConfirmFreeze(ctx context.Context, barrier any, userID string, symbol string, quantity decimal.Decimal) error {
+	if userID == "" || symbol == "" {
+		return errors.New("user_id and symbol are required")
+	}
+	if quantity.LessThanOrEqual(decimal.Zero) {
+		return errors.New("quantity must be positive")
+	}
+
+	return c.repo.ExecWithBarrier(ctx, barrier, func(txCtx context.Context) error {
+		tx := contextx.GetTx(txCtx)
+		position, err := c.repo.GetByUserSymbol(txCtx, userID, symbol)
+		if err != nil {
+			return err
+		}
+		if position == nil {
+			return errors.New("position not found")
+		}
+		if position.Quantity.Abs().LessThan(quantity) {
+			return errors.New("insufficient position quantity for confirm")
+		}
+
+		if err := c.applyTrade(txCtx, tx, position, sideForReduce(position), quantity, fallbackPrice(position)); err != nil {
+			return err
+		}
+		return c.publishTxEvent(txCtx, domain.PositionTccConfirmedEventType, fmt.Sprintf("%s:%s:%s", userID, symbol, quantity.String()), map[string]any{
+			"user_id":  userID,
+			"symbol":   symbol,
+			"quantity": quantity.String(),
+		})
+	})
 }
 
 // TccCancelFreeze TCC 取消冻结
-func (c *PositionCommandService) TccCancelFreeze(ctx context.Context, barrier interface{}, userID string, symbol string, quantity decimal.Decimal) error {
-	return nil
+func (c *PositionCommandService) TccCancelFreeze(ctx context.Context, barrier any, userID string, symbol string, quantity decimal.Decimal) error {
+	if userID == "" || symbol == "" {
+		return errors.New("user_id and symbol are required")
+	}
+	if quantity.LessThanOrEqual(decimal.Zero) {
+		return errors.New("quantity must be positive")
+	}
+	return c.repo.ExecWithBarrier(ctx, barrier, func(txCtx context.Context) error {
+		return c.publishTxEvent(txCtx, domain.PositionTccCanceledEventType, fmt.Sprintf("%s:%s:%s", userID, symbol, quantity.String()), map[string]any{
+			"user_id":  userID,
+			"symbol":   symbol,
+			"quantity": quantity.String(),
+		})
+	})
 }
 
 // SagaDeductFrozen SAGA 扣减冻结
-func (c *PositionCommandService) SagaDeductFrozen(ctx context.Context, barrier interface{}, userID string, symbol string, quantity decimal.Decimal, price decimal.Decimal) error {
-	return nil
+func (c *PositionCommandService) SagaDeductFrozen(ctx context.Context, barrier any, userID string, symbol string, quantity decimal.Decimal, price decimal.Decimal) error {
+	if userID == "" || symbol == "" {
+		return errors.New("user_id and symbol are required")
+	}
+	if quantity.LessThanOrEqual(decimal.Zero) {
+		return errors.New("quantity must be positive")
+	}
+
+	return c.repo.ExecWithBarrier(ctx, barrier, func(txCtx context.Context) error {
+		tx := contextx.GetTx(txCtx)
+		position, err := c.repo.GetByUserSymbol(txCtx, userID, symbol)
+		if err != nil {
+			return err
+		}
+		if position == nil {
+			return errors.New("position not found")
+		}
+		if position.Quantity.Abs().LessThan(quantity) {
+			return errors.New("insufficient position quantity to deduct")
+		}
+		if err := c.applyTrade(txCtx, tx, position, sideForReduce(position), quantity, price); err != nil {
+			return err
+		}
+		return c.publishTxEvent(txCtx, domain.PositionSagaDeductedEventType, fmt.Sprintf("%s:%s:%s", userID, symbol, quantity.String()), map[string]any{
+			"user_id":  userID,
+			"symbol":   symbol,
+			"quantity": quantity.String(),
+			"price":    price.String(),
+		})
+	})
 }
 
 // SagaRefundFrozen SAGA 退还冻结
-func (c *PositionCommandService) SagaRefundFrozen(ctx context.Context, barrier interface{}, userID string, symbol string, quantity decimal.Decimal) error {
-	return nil
+func (c *PositionCommandService) SagaRefundFrozen(ctx context.Context, barrier any, userID string, symbol string, quantity decimal.Decimal) error {
+	if userID == "" || symbol == "" {
+		return errors.New("user_id and symbol are required")
+	}
+	if quantity.LessThanOrEqual(decimal.Zero) {
+		return errors.New("quantity must be positive")
+	}
+
+	return c.repo.ExecWithBarrier(ctx, barrier, func(txCtx context.Context) error {
+		tx := contextx.GetTx(txCtx)
+		position, err := c.ensurePosition(txCtx, tx, userID, symbol)
+		if err != nil {
+			return err
+		}
+		if err := c.applyTrade(txCtx, tx, position, sideForIncrease(position), quantity, fallbackPrice(position)); err != nil {
+			return err
+		}
+		return c.publishTxEvent(txCtx, domain.PositionSagaRefundedEventType, fmt.Sprintf("%s:%s:%s", userID, symbol, quantity.String()), map[string]any{
+			"user_id":  userID,
+			"symbol":   symbol,
+			"quantity": quantity.String(),
+		})
+	})
 }
 
 // SagaAddPosition SAGA 增加头寸
-func (c *PositionCommandService) SagaAddPosition(ctx context.Context, barrier interface{}, userID string, symbol string, quantity decimal.Decimal, price decimal.Decimal) error {
-	return nil
+func (c *PositionCommandService) SagaAddPosition(ctx context.Context, barrier any, userID string, symbol string, quantity decimal.Decimal, price decimal.Decimal) error {
+	if userID == "" || symbol == "" {
+		return errors.New("user_id and symbol are required")
+	}
+	if quantity.LessThanOrEqual(decimal.Zero) {
+		return errors.New("quantity must be positive")
+	}
+
+	return c.repo.ExecWithBarrier(ctx, barrier, func(txCtx context.Context) error {
+		tx := contextx.GetTx(txCtx)
+		position, err := c.ensurePosition(txCtx, tx, userID, symbol)
+		if err != nil {
+			return err
+		}
+		return c.applyTrade(txCtx, tx, position, "buy", quantity, price)
+	})
 }
 
 // SagaSubPosition SAGA 减少头寸
-func (c *PositionCommandService) SagaSubPosition(ctx context.Context, barrier interface{}, userID string, symbol string, quantity decimal.Decimal) error {
-	return nil
+func (c *PositionCommandService) SagaSubPosition(ctx context.Context, barrier any, userID string, symbol string, quantity decimal.Decimal) error {
+	if userID == "" || symbol == "" {
+		return errors.New("user_id and symbol are required")
+	}
+	if quantity.LessThanOrEqual(decimal.Zero) {
+		return errors.New("quantity must be positive")
+	}
+
+	return c.repo.ExecWithBarrier(ctx, barrier, func(txCtx context.Context) error {
+		tx := contextx.GetTx(txCtx)
+		position, err := c.repo.GetByUserSymbol(txCtx, userID, symbol)
+		if err != nil {
+			return err
+		}
+		if position == nil {
+			return errors.New("position not found")
+		}
+		if position.Quantity.Abs().LessThan(quantity) {
+			return errors.New("insufficient position quantity")
+		}
+		return c.applyTrade(txCtx, tx, position, "sell", quantity, fallbackPrice(position))
+	})
+}
+
+func (c *PositionCommandService) ensurePosition(ctx context.Context, tx any, userID, symbol string) (*domain.Position, error) {
+	position, err := c.repo.GetByUserSymbol(ctx, userID, symbol)
+	if err != nil {
+		return nil, err
+	}
+	if position != nil {
+		return position, nil
+	}
+
+	position = domain.NewPosition(userID, symbol)
+	if err := c.repo.Save(ctx, position); err != nil {
+		return nil, err
+	}
+	if c.eventPublisher != nil {
+		createdEvent := domain.PositionCreatedEvent{
+			UserID:            position.UserID,
+			Symbol:            position.Symbol,
+			Quantity:          position.Quantity,
+			AverageEntryPrice: position.AverageEntryPrice,
+			Method:            position.Method,
+			OccurredOn:        time.Now(),
+		}
+		if err := c.eventPublisher.PublishInTx(ctx, tx, domain.PositionCreatedEventType, positionKey(position), createdEvent); err != nil {
+			return nil, err
+		}
+	}
+	return position, nil
+}
+
+func (c *PositionCommandService) publishTxEvent(ctx context.Context, topic, key string, payload map[string]any) error {
+	if c.eventPublisher == nil {
+		return nil
+	}
+	tx := contextx.GetTx(ctx)
+	return c.eventPublisher.PublishInTx(ctx, tx, topic, key, payload)
+}
+
+func sideForReduce(position *domain.Position) string {
+	if position != nil && position.Quantity.IsNegative() {
+		return "buy"
+	}
+	return "sell"
+}
+
+func sideForIncrease(position *domain.Position) string {
+	if position != nil && position.Quantity.IsNegative() {
+		return "sell"
+	}
+	return "buy"
+}
+
+func fallbackPrice(position *domain.Position) decimal.Decimal {
+	if position == nil || position.AverageEntryPrice.IsZero() {
+		return decimal.NewFromInt(1)
+	}
+	return position.AverageEntryPrice
 }
 
 func (c *PositionCommandService) applyTrade(ctx context.Context, tx any, position *domain.Position, side string, qty, price decimal.Decimal) error {

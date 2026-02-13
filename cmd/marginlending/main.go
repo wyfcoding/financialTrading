@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"log/slog"
 	"net"
 	"os"
@@ -10,70 +10,61 @@ import (
 
 	pb "github.com/wyfcoding/financialtrading/go-api/marginlending/v1"
 	"github.com/wyfcoding/financialtrading/internal/marginlending/application"
-	"github.com/wyfcoding/financialtrading/internal/marginlending/domain"
-	"github.com/wyfcoding/financialtrading/internal/marginlending/infrastructure"
-	"github.com/wyfcoding/financialtrading/internal/marginlending/interfaces"
+	persistence_mysql "github.com/wyfcoding/financialtrading/internal/marginlending/infrastructure/persistence/mysql"
+	grpc_server "github.com/wyfcoding/financialtrading/internal/marginlending/interfaces/grpc"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 func main() {
-	// 1. 初始化日志
+	// 1. Logger
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	logger.Info("starting margin lending service")
-
-	// 2. 初始化数据库
-	dsn := os.Getenv("DB_DSN")
+	// 2. Config (Simplified)
+	dsn := os.Getenv("To be replaced by config loader")
 	if dsn == "" {
-		dsn = "root:root1234@tcp(127.0.0.1:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+		dsn = "root:password@tcp(127.0.0.1:3306)/financial_margin?charset=utf8mb4&parseTime=True&loc=Local"
 	}
+
+	// 3. Database
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		logger.Error("failed to connect database", "error", err)
-		os.Exit(1)
+		log.Fatalf("failed to connect database: %v", err)
 	}
 
-	// 自动迁移
-	db.AutoMigrate(&domain.MarginAccount{})
-
-	// 3. 依赖注入
-	repo := infrastructure.NewMarginRepository(db)
-	marginService := domain.NewMarginService(repo)
-	appService := application.NewMarginLendingApplicationService(marginService, repo, logger)
-	handler := interfaces.NewMarginLendingHandler(appService)
-
-	// 4. 启动 gRPC 服务
-	port := os.Getenv("GRPC_PORT")
-	if port == "" {
-		port = "50055"
-	}
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
+	// Auto Migrate
+	err = db.AutoMigrate(&persistence_mysql.MarginAccountModel{})
 	if err != nil {
-		logger.Error("failed to listen", "error", err)
-		os.Exit(1)
+		log.Fatalf("failed to migrate database: %v", err)
 	}
 
-	grpcServer := grpc.NewServer()
-	pb.RegisterMarginLendingServiceServer(grpcServer, handler)
-	reflection.Register(grpcServer)
+	// 4. Layers
+	repo := persistence_mysql.NewMarginRepo(db)
+	app := application.NewMarginAppService(repo, logger)
+	svc := grpc_server.NewServer(app)
 
-	// 5. 优雅关停
+	// 5. Server
+	lis, err := net.Listen("tcp", ":9099")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	s := grpc.NewServer()
+	pb.RegisterMarginLendingServiceServer(s, svc)
+
 	go func() {
-		logger.Info("gRPC server listening on", "port", port)
-		if err := grpcServer.Serve(lis); err != nil {
-			logger.Error("failed to serve", "error", err)
+		logger.Info("server started", "addr", ":9099")
+		if err := s.Serve(lis); err != nil {
+			log.Fatalf("failed to serve: %v", err)
 		}
 	}()
 
+	// 6. Graceful Shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-
-	logger.Info("shutting down margin lending server...")
-	grpcServer.GracefulStop()
-	logger.Info("server exited")
+	logger.Info("shutting down server...")
+	s.GracefulStop()
 }
