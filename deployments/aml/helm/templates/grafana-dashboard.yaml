@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "aml.fullname" . }}-grafana-dashboard
+  labels:
+    {{- include "aml.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  aml-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "AML Service Dashboard",
+        "uid": "aml-service",
+        "panels": [
+          {
+            "title": "Request Rate",
+            "type": "graph",
+            "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+            "targets": [
+              {
+                "expr": "rate(grpc_server_handled_total{job=\"{{ include "aml.fullname" . }}\"}[5m])",
+                "legendFormat": "{{`{{method}}`}}",
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "title": "Error Rate",
+            "type": "graph",
+            "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+            "targets": [
+              {
+                "expr": "rate(grpc_server_handled_total{job=\"{{ include "aml.fullname" . }}\",grpc_code!=\"OK\"}[5m]) / rate(grpc_server_handled_total{job=\"{{ include "aml.fullname" . }}\"}[5m])",
+                "legendFormat": "Error Rate",
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "title": "Latency (P99)",
+            "type": "graph",
+            "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.99, rate(grpc_server_handling_seconds_bucket{job=\"{{ include "aml.fullname" . }}\"}[5m]))",
+                "legendFormat": "P99",
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "title": "Alerts by Risk Level",
+            "type": "graph",
+            "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+            "targets": [
+              {
+                "expr": "aml_alerts_total{job=\"{{ include "aml.fullname" . }}\"}",
+                "legendFormat": "{{`{{risk_level}}`}}",
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "title": "Screening Results",
+            "type": "graph",
+            "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+            "targets": [
+              {
+                "expr": "rate(aml_screenings_total{job=\"{{ include "aml.fullname" . }}\"}[5m])",
+                "legendFormat": "{{`{{screening_type}}`}}",
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "title": "Watchlist Matches",
+            "type": "graph",
+            "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+            "targets": [
+              {
+                "expr": "rate(aml_watchlist_matches_total{job=\"{{ include "aml.fullname" . }}\"}[5m])",
+                "legendFormat": "Matches",
+                "refId": "A"
+              }
+            ]
+          }
+        ]
+      }
+    }

@@ -3,15 +3,54 @@ syntax = "proto3";
 package order.v1;
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/field_mask.proto";
 import "order/v1/error_reason.proto";
 
 option go_package = "github.com/wyfcoding/financialtrading/go-api/order/v1;v1";
 
 service OrderService {
+  // 基础订单操作
   rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse) {};
   rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse) {};
-  rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse) {};
   rpc GetOrder(GetOrderRequest) returns (GetOrderResponse) {};
+  rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse) {};
+
+  // 订单修改
+  rpc ReplaceOrder(ReplaceOrderRequest) returns (ReplaceOrderResponse) {};
+  rpc AmendOrder(AmendOrderRequest) returns (AmendOrderResponse) {};
+
+  // 批量操作
+  rpc BatchCreateOrders(BatchCreateOrdersRequest) returns (BatchCreateOrdersResponse) {};
+  rpc BatchCancelOrders(BatchCancelOrdersRequest) returns (BatchCancelOrdersResponse) {};
+  rpc MassCancelOrders(MassCancelOrdersRequest) returns (MassCancelOrdersResponse) {};
+
+  // 条件单和高级订单
+  rpc CreateConditionalOrder(CreateConditionalOrderRequest) returns (CreateConditionalOrderResponse) {};
+  rpc UpdateConditionalOrder(UpdateConditionalOrderRequest) returns (UpdateConditionalOrderResponse) {};
+  rpc ListConditionalOrders(ListConditionalOrdersRequest) returns (ListConditionalOrdersResponse) {};
+
+  // 订单查询和状态
+  rpc GetOrderStatus(GetOrderStatusRequest) returns (GetOrderStatusResponse) {};
+  rpc GetOrderHistory(GetOrderHistoryRequest) returns (GetOrderHistoryResponse) {};
+  rpc GetOrderExecutions(GetOrderExecutionsRequest) returns (GetOrderExecutionsResponse) {};
+  rpc GetOrderBook(GetOrderBookRequest) returns (GetOrderBookResponse) {};
+
+  // 订单流订阅
+  rpc SubscribeOrderUpdates(SubscribeOrderUpdatesRequest) returns (stream OrderUpdate) {};
+
+  // 风险管理
+  rpc ValidateOrder(ValidateOrderRequest) returns (ValidateOrderResponse) {};
+  rpc EstimateOrder(EstimateOrderRequest) returns (EstimateOrderResponse) {};
+  rpc GetOrderMargin(GetOrderMarginRequest) returns (GetOrderMarginResponse) {};
+
+  // 订单链接（OCO/OTO）
+  rpc CreateLinkedOrders(CreateLinkedOrdersRequest) returns (CreateLinkedOrdersResponse) {};
+  rpc CancelLinkedOrders(CancelLinkedOrdersRequest) returns (CancelLinkedOrdersResponse) {};
+  rpc GetLinkedOrders(GetLinkedOrdersRequest) returns (GetLinkedOrdersResponse) {};
+
+  // 订单统计
+  rpc GetOrderStatistics(GetOrderStatisticsRequest) returns (GetOrderStatisticsResponse) {};
+  rpc GetDailyOrderSummary(GetDailyOrderSummaryRequest) returns (GetDailyOrderSummaryResponse) {};
 }
 
 enum OrderSide {
@@ -24,82 +63,621 @@ enum OrderType {
   TYPE_UNSPECIFIED = 0;
   LIMIT = 1;
   MARKET = 2;
+  STOP_LIMIT = 3;
+  STOP_MARKET = 4;
+  TRAILING_STOP = 5;
+  ICEBERG = 6;
+  FILL_OR_KILL = 7;
+  IMMEDIATE_OR_CANCEL = 8;
+  GOOD_TILL_DATE = 9;
+  GOOD_TILL_CANCELLED = 10;
+  ONE_TRIGGERS_OTHER = 11;
+  ONE_CANCELS_OTHER = 12;
 }
 
 enum OrderStatus {
   STATUS_UNSPECIFIED = 0;
-  PENDING = 1;
-  VALIDATED = 2;
-  REJECTED = 3;
-  PARTIALLY_FILLED = 4;
-  FILLED = 5;
-  CANCELLED = 6;
+  PENDING_NEW = 1;
+  NEW = 2;
+  PENDING_REPLACE = 3;
+  PENDING_CANCEL = 4;
+  PARTIALLY_FILLED = 5;
+  FILLED = 6;
+  CANCELLED = 7;
+  REJECTED = 8;
+  EXPIRED = 9;
+  SUSPENDED = 10;
+  TRIGGERED = 11;
+}
+
+enum TimeInForce {
+  TIF_UNSPECIFIED = 0;
+  DAY = 1;
+  GOOD_TILL_CANCEL = 2;
+  IMMEDIATE_OR_CANCEL = 3;
+  FILL_OR_KILL = 4;
+  GOOD_TILL_DATE = 5;
+  AT_THE_OPENING = 6;
+  AT_THE_CLOSE = 7;
+}
+
+enum TriggerType {
+  TRIGGER_UNSPECIFIED = 0;
+  PRICE_ABOVE = 1;
+  PRICE_BELOW = 2;
+  PRICE_TOUCH = 3;
+  TIME_BASED = 4;
+  PERCENTAGE_CHANGE = 5;
+  VOLATILITY_BASED = 6;
+}
+
+enum LinkedOrderType {
+  LINKED_UNSPECIFIED = 0;
+  OCO = 1;
+  OTO = 2;
+  OTOCO = 3;
+}
+
+enum OrderSourceType {
+  SOURCE_UNSPECIFIED = 0;
+  MANUAL = 1;
+  API = 2;
+  ALGO = 3;
+  FIX = 4;
+  WEB = 5;
+  MOBILE = 6;
 }
 
 message CreateOrderRequest {
   string user_id = 1;
-  string symbol = 2;
-  OrderSide side = 3;
-  OrderType type = 4;
-  double price = 5;
-  double quantity = 6;
-  double stop_price = 7;
-  double take_profit_price = 8;
-  string parent_order_id = 9;
-  string oco_order_id = 10;
-  bool is_oco = 11;
-}
-
-message CreateOrderResponse {
-  string order_id = 1;
-  OrderStatus status = 2;
-}
-
-message CancelOrderRequest {
-  string order_id = 1;
-  string user_id = 2; 
-}
-
-message CancelOrderResponse {
-  bool success = 1;
-}
-
-message ListOrdersRequest {
-  string user_id = 1;
-  int32 limit = 2;
-  string symbol = 3; // optional filter
-  int32 offset = 4; // Added for pagination
-  string status = 5; // Added for status filter
-}
-
-message Order {
-  string id = 1;
-  string user_id = 2;
+  string account_id = 2;
   string symbol = 3;
   OrderSide side = 4;
   OrderType type = 5;
   double price = 6;
   double quantity = 7;
-  double filled_quantity = 8;
-  double average_price = 9;
-  OrderStatus status = 10;
-  double stop_price = 11;
-  double take_profit_price = 12;
-  string parent_order_id = 13;
-  string oco_order_id = 14;
-  bool is_oco = 15;
-  google.protobuf.Timestamp created_at = 16;
-  google.protobuf.Timestamp updated_at = 17;
+  TimeInForce time_in_force = 8;
+  google.protobuf.Timestamp expire_time = 9;
+  string client_order_id = 10;
+  string parent_order_id = 11;
+  string strategy_id = 12;
+  OrderSourceType source = 13;
+  map<string, string> metadata = 14;
+}
+
+message CreateOrderResponse {
+  string order_id = 1;
+  string client_order_id = 2;
+  OrderStatus status = 3;
+  google.protobuf.Timestamp created_at = 4;
+  repeated string warnings = 5;
+}
+
+message CancelOrderRequest {
+  string order_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  string reason = 4;
+}
+
+message CancelOrderResponse {
+  bool success = 1;
+  OrderStatus final_status = 2;
+  double cancelled_quantity = 3;
+  google.protobuf.Timestamp cancelled_at = 4;
+}
+
+message ListOrdersRequest {
+  string user_id = 1;
+  string account_id = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+  string symbol = 5;
+  OrderStatus status = 6;
+  OrderSide side = 7;
+  OrderType type = 8;
+  google.protobuf.Timestamp start_time = 9;
+  google.protobuf.Timestamp end_time = 10;
+  string sort_by = 11;
+  bool sort_desc = 12;
+}
+
+message Order {
+  string id = 1;
+  string client_order_id = 2;
+  string user_id = 3;
+  string account_id = 4;
+  string symbol = 5;
+  OrderSide side = 6;
+  OrderType type = 7;
+  double price = 8;
+  double quantity = 9;
+  double filled_quantity = 10;
+  double remaining_quantity = 11;
+  double average_price = 12;
+  double total_value = 13;
+  double commission = 14;
+  OrderStatus status = 15;
+  TimeInForce time_in_force = 16;
+  google.protobuf.Timestamp expire_time = 17;
+  string parent_order_id = 18;
+  string linked_order_id = 19;
+  LinkedOrderType linked_type = 20;
+  string strategy_id = 21;
+  OrderSourceType source = 22;
+  google.protobuf.Timestamp created_at = 23;
+  google.protobuf.Timestamp updated_at = 24;
+  map<string, string> metadata = 25;
 }
 
 message ListOrdersResponse {
   repeated Order orders = 1;
+  int32 total_count = 2;
+  int32 page = 3;
+  int32 page_size = 4;
 }
 
 message GetOrderRequest {
   string order_id = 1;
+  string client_order_id = 2;
 }
 
 message GetOrderResponse {
   Order order = 1;
+}
+
+message ReplaceOrderRequest {
+  string order_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  double new_price = 4;
+  double new_quantity = 5;
+  TimeInForce new_time_in_force = 6;
+  google.protobuf.Timestamp new_expire_time = 7;
+}
+
+message ReplaceOrderResponse {
+  string order_id = 1;
+  OrderStatus status = 2;
+  double original_quantity = 3;
+  double new_quantity = 4;
+  double original_price = 5;
+  double new_price = 6;
+  google.protobuf.Timestamp replaced_at = 7;
+}
+
+message AmendOrderRequest {
+  string order_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  google.protobuf.FieldMask update_mask = 4;
+  double price = 5;
+  double quantity = 6;
+  TimeInForce time_in_force = 7;
+  google.protobuf.Timestamp expire_time = 8;
+}
+
+message AmendOrderResponse {
+  Order order = 1;
+  repeated string changed_fields = 2;
+  google.protobuf.Timestamp amended_at = 3;
+}
+
+message BatchCreateOrdersRequest {
+  string user_id = 1;
+  string account_id = 2;
+  repeated CreateOrderRequest orders = 3;
+  bool stop_on_failure = 4;
+}
+
+message BatchCreateOrdersResponse {
+  repeated BatchOrderResult results = 1;
+  int32 success_count = 2;
+  int32 failure_count = 3;
+}
+
+message BatchOrderResult {
+  string client_order_id = 1;
+  string order_id = 2;
+  bool success = 3;
+  OrderStatus status = 4;
+  string error_code = 5;
+  string error_message = 6;
+}
+
+message BatchCancelOrdersRequest {
+  string user_id = 1;
+  string account_id = 2;
+  repeated string order_ids = 3;
+  string reason = 4;
+}
+
+message BatchCancelOrdersResponse {
+  repeated CancelResult results = 1;
+  int32 success_count = 2;
+  int32 failure_count = 3;
+}
+
+message CancelResult {
+  string order_id = 1;
+  bool success = 2;
+  string error_code = 3;
+  string error_message = 4;
+}
+
+message MassCancelOrdersRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string symbol = 3;
+  OrderSide side = 4;
+  OrderType type = 5;
+  OrderStatus status = 6;
+  string strategy_id = 7;
+}
+
+message MassCancelOrdersResponse {
+  int32 cancelled_count = 1;
+  int32 failed_count = 2;
+  repeated string cancelled_order_ids = 3;
+  repeated string failed_order_ids = 4;
+  google.protobuf.Timestamp cancelled_at = 5;
+}
+
+message ConditionalOrder {
+  string id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  string symbol = 4;
+  OrderSide side = 5;
+  OrderType type = 6;
+  double quantity = 7;
+  double price = 8;
+  TriggerType trigger_type = 9;
+  double trigger_price = 10;
+  double trigger_percentage = 11;
+  double trailing_amount = 12;
+  double trailing_percentage = 13;
+  bool is_active = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp triggered_at = 16;
+  string triggered_order_id = 17;
+  google.protobuf.Timestamp expire_time = 18;
+  map<string, string> metadata = 19;
+}
+
+message CreateConditionalOrderRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string symbol = 3;
+  OrderSide side = 4;
+  OrderType type = 5;
+  double quantity = 6;
+  double price = 7;
+  TriggerType trigger_type = 8;
+  double trigger_price = 9;
+  double trigger_percentage = 10;
+  double trailing_amount = 11;
+  double trailing_percentage = 12;
+  google.protobuf.Timestamp expire_time = 13;
+  string client_order_id = 14;
+  map<string, string> metadata = 15;
+}
+
+message CreateConditionalOrderResponse {
+  string conditional_order_id = 1;
+  string client_order_id = 2;
+  bool is_active = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message UpdateConditionalOrderRequest {
+  string conditional_order_id = 1;
+  string user_id = 2;
+  bool is_active = 3;
+  double trigger_price = 4;
+  double trailing_amount = 5;
+  double trailing_percentage = 6;
+  double quantity = 7;
+  double price = 8;
+  google.protobuf.Timestamp expire_time = 9;
+}
+
+message UpdateConditionalOrderResponse {
+  ConditionalOrder conditional_order = 1;
+  google.protobuf.Timestamp updated_at = 2;
+}
+
+message ListConditionalOrdersRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string symbol = 3;
+  bool is_active = 4;
+  int32 page = 5;
+  int32 page_size = 6;
+}
+
+message ListConditionalOrdersResponse {
+  repeated ConditionalOrder orders = 1;
+  int32 total_count = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message GetOrderStatusRequest {
+  string order_id = 1;
+  string client_order_id = 2;
+}
+
+message GetOrderStatusResponse {
+  string order_id = 1;
+  OrderStatus status = 2;
+  double filled_quantity = 3;
+  double remaining_quantity = 4;
+  double average_price = 5;
+  int32 fill_count = 6;
+  google.protobuf.Timestamp last_updated = 7;
+}
+
+message OrderExecution {
+  string id = 1;
+  string order_id = 2;
+  string symbol = 3;
+  OrderSide side = 4;
+  double quantity = 5;
+  double price = 6;
+  double total_value = 7;
+  double commission = 8;
+  string execution_venue = 9;
+  google.protobuf.Timestamp executed_at = 10;
+  string counterparty = 11;
+  map<string, string> metadata = 12;
+}
+
+message GetOrderHistoryRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string order_id = 3;
+  int32 page = 4;
+  int32 page_size = 5;
+  google.protobuf.Timestamp start_time = 6;
+  google.protobuf.Timestamp end_time = 7;
+}
+
+message OrderHistoryEntry {
+  string order_id = 1;
+  OrderStatus old_status = 2;
+  OrderStatus new_status = 3;
+  string action = 4;
+  string actor = 5;
+  string reason = 6;
+  map<string, string> changes = 7;
+  google.protobuf.Timestamp timestamp = 8;
+}
+
+message GetOrderHistoryResponse {
+  repeated OrderHistoryEntry history = 1;
+  int32 total_count = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message GetOrderExecutionsRequest {
+  string order_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  int32 page = 4;
+  int32 page_size = 5;
+}
+
+message GetOrderExecutionsResponse {
+  repeated OrderExecution executions = 1;
+  int32 total_count = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message OrderBookLevel {
+  double price = 1;
+  double quantity = 2;
+  int32 order_count = 3;
+}
+
+message OrderBook {
+  string symbol = 1;
+  repeated OrderBookLevel bids = 2;
+  repeated OrderBookLevel asks = 3;
+  google.protobuf.Timestamp timestamp = 4;
+  int32 bid_levels = 5;
+  int32 ask_levels = 6;
+}
+
+message GetOrderBookRequest {
+  string symbol = 1;
+  int32 depth = 2;
+}
+
+message GetOrderBookResponse {
+  OrderBook order_book = 1;
+}
+
+message SubscribeOrderUpdatesRequest {
+  string user_id = 1;
+  string account_id = 2;
+  repeated string symbols = 3;
+  repeated OrderStatus status_filter = 4;
+}
+
+message OrderUpdate {
+  string order_id = 1;
+  string client_order_id = 2;
+  string symbol = 3;
+  OrderStatus status = 4;
+  double filled_quantity = 5;
+  double remaining_quantity = 6;
+  double average_price = 7;
+  OrderExecution execution = 8;
+  string message = 9;
+  google.protobuf.Timestamp timestamp = 10;
+}
+
+message ValidateOrderRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string symbol = 3;
+  OrderSide side = 4;
+  OrderType type = 5;
+  double price = 6;
+  double quantity = 7;
+  TimeInForce time_in_force = 8;
+}
+
+message ValidateOrderResponse {
+  bool is_valid = 1;
+  repeated ValidationError errors = 2;
+  repeated string warnings = 3;
+  double estimated_value = 4;
+  double estimated_commission = 5;
+}
+
+message ValidationError {
+  string field = 1;
+  string code = 2;
+  string message = 3;
+}
+
+message EstimateOrderRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string symbol = 3;
+  OrderSide side = 4;
+  OrderType type = 5;
+  double price = 6;
+  double quantity = 7;
+}
+
+message EstimateOrderResponse {
+  double estimated_value = 1;
+  double estimated_commission = 2;
+  double estimated_slippage = 3;
+  double estimated_fill_price = 4;
+  double available_quantity = 5;
+  double required_margin = 6;
+  double available_margin = 7;
+  bool can_fill_immediately = 8;
+}
+
+message GetOrderMarginRequest {
+  string order_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+}
+
+message GetOrderMarginResponse {
+  string order_id = 1;
+  double initial_margin = 2;
+  double maintenance_margin = 3;
+  double margin_used = 4;
+  double margin_available = 5;
+  double margin_ratio = 6;
+}
+
+message LinkedOrder {
+  string id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  LinkedOrderType type = 4;
+  repeated string order_ids = 5;
+  string primary_order_id = 6;
+  bool is_active = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp triggered_at = 9;
+  string triggered_order_id = 10;
+}
+
+message CreateLinkedOrdersRequest {
+  string user_id = 1;
+  string account_id = 2;
+  LinkedOrderType type = 3;
+  repeated CreateOrderRequest orders = 4;
+  string primary_order_id = 5;
+}
+
+message CreateLinkedOrdersResponse {
+  string linked_order_id = 1;
+  repeated string order_ids = 2;
+  LinkedOrderType type = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message CancelLinkedOrdersRequest {
+  string linked_order_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  string reason = 4;
+}
+
+message CancelLinkedOrdersResponse {
+  bool success = 1;
+  repeated string cancelled_order_ids = 2;
+  int32 cancelled_count = 3;
+  google.protobuf.Timestamp cancelled_at = 4;
+}
+
+message GetLinkedOrdersRequest {
+  string linked_order_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+}
+
+message GetLinkedOrdersResponse {
+  LinkedOrder linked_order = 1;
+  repeated Order orders = 2;
+}
+
+message OrderStatistics {
+  int32 total_orders = 1;
+  int32 filled_orders = 2;
+  int32 cancelled_orders = 3;
+  int32 pending_orders = 4;
+  double total_volume = 5;
+  double total_value = 6;
+  double total_commission = 7;
+  double fill_rate = 8;
+  double average_fill_time_seconds = 9;
+}
+
+message GetOrderStatisticsRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string symbol = 3;
+  google.protobuf.Timestamp start_time = 4;
+  google.protobuf.Timestamp end_time = 5;
+}
+
+message GetOrderStatisticsResponse {
+  OrderStatistics statistics = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+}
+
+message DailyOrderSummary {
+  google.protobuf.Timestamp date = 1;
+  int32 total_orders = 2;
+  int32 filled_orders = 3;
+  int32 cancelled_orders = 4;
+  double total_volume = 5;
+  double total_value = 6;
+  double total_commission = 7;
+  double realized_pnl = 8;
+}
+
+message GetDailyOrderSummaryRequest {
+  string user_id = 1;
+  string account_id = 2;
+  google.protobuf.Timestamp date = 3;
+  string symbol = 4;
+}
+
+message GetDailyOrderSummaryResponse {
+  DailyOrderSummary summary = 1;
 }

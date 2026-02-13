@@ -2,64 +2,679 @@ syntax = "proto3";
 
 package fixgateway.v1;
 
-option go_package = "github.com/wyfcoding/financialtrading/go-api/fixgateway/v1;v1";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
 
-// FixGatewayService FIX 网关服务
+option go_package = "github.com/wyfcoding/financialtrading/go-api/fixgateway/v1;fixgatewayv1";
+
+// FixGatewayService FIX 协议网关服务
+// 提供完整的 FIX 协议支持，包括会话管理、订单路由、市场数据订阅等
 service FixGatewayService {
-  // Logon FIX 登录请求
-  rpc Logon(LogonRequest) returns (LogonResponse);
-  
-  // Logout FIX 退出请求
-  rpc Logout(LogoutRequest) returns (LogoutResponse);
-  
-  // SendOrder 发送订单 (通过 FIX)
-  rpc SendOrder(SendOrderRequest) returns (SendOrderResponse);
-
-  // GetSessionStatus 获取会话状态
-  rpc GetSessionStatus(GetSessionStatusRequest) returns (GetSessionStatusResponse);
+    // ==================== 会话管理 ====================
+    
+    // Logon FIX 登录请求
+    rpc Logon(LogonRequest) returns (LogonResponse);
+    
+    // Logout FIX 退出请求
+    rpc Logout(LogoutRequest) returns (LogoutResponse);
+    
+    // GetSessionStatus 获取会话状态
+    rpc GetSessionStatus(GetSessionStatusRequest) returns (SessionStatus);
+    
+    // ListSessions 列出所有会话
+    rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+    
+    // Heartbeat 发送心跳
+    rpc Heartbeat(HeartbeatRequest) returns (google.protobuf.Empty);
+    
+    // TestRequest 发送测试请求
+    rpc TestRequest(TestRequestRequest) returns (google.protobuf.Empty);
+    
+    // ResendRequest 请求重发消息
+    rpc ResendRequest(ResendRequestMessage) returns (google.protobuf.Empty);
+    
+    // ==================== 订单管理 ====================
+    
+    // SendOrder 发送订单 (通过 FIX)
+    rpc SendOrder(SendOrderRequest) returns (SendOrderResponse);
+    
+    // CancelOrder 取消订单
+    rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+    
+    // ReplaceOrder 修改订单 (OrderCancelReplaceRequest)
+    rpc ReplaceOrder(ReplaceOrderRequest) returns (ReplaceOrderResponse);
+    
+    // GetOrderStatus 查询订单状态 (OrderStatusRequest)
+    rpc GetOrderStatus(GetOrderStatusRequest) returns (ExecutionReport);
+    
+    // MassCancel 批量取消订单
+    rpc MassCancel(MassCancelRequest) returns (MassCancelResponse);
+    
+    // ==================== 市场数据 ====================
+    
+    // SubscribeMarketData 订阅市场数据
+    rpc SubscribeMarketData(SubscribeMarketDataRequest) returns (stream MarketDataSnapshot);
+    
+    // UnsubscribeMarketData 取消订阅市场数据
+    rpc UnsubscribeMarketData(UnsubscribeMarketDataRequest) returns (google.protobuf.Empty);
+    
+    // RequestMarketDataSnapshot 请求市场数据快照
+    rpc RequestMarketDataSnapshot(MarketDataSnapshotRequest) returns (MarketDataSnapshot);
+    
+    // ==================== 消息路由 ====================
+    
+    // SendMessage 发送原始 FIX 消息
+    rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+    
+    // SubscribeMessages 订阅 FIX 消息流
+    rpc SubscribeMessages(SubscribeMessagesRequest) returns (stream FixMessage);
+    
+    // GetMessageHistory 获取消息历史
+    rpc GetMessageHistory(GetMessageHistoryRequest) returns (GetMessageHistoryResponse);
+    
+    // ==================== 连接管理 ====================
+    
+    // ListConnections 列出所有连接
+    rpc ListConnections(ListConnectionsRequest) returns (ListConnectionsResponse);
+    
+    // CreateConnection 创建连接配置
+    rpc CreateConnection(CreateConnectionRequest) returns (Connection);
+    
+    // UpdateConnection 更新连接配置
+    rpc UpdateConnection(UpdateConnectionRequest) returns (Connection);
+    
+    // DeleteConnection 删除连接配置
+    rpc DeleteConnection(DeleteConnectionRequest) returns (google.protobuf.Empty);
+    
+    // Connect 连接到 FIX 服务端
+    rpc Connect(ConnectRequest) returns (ConnectResponse);
+    
+    // Disconnect 断开连接
+    rpc Disconnect(DisconnectRequest) returns (google.protobuf.Empty);
+    
+    // ==================== 统计与监控 ====================
+    
+    // GetStatistics 获取网关统计信息
+    rpc GetStatistics(GetStatisticsRequest) returns (GatewayStatistics);
+    
+    // GetMessageMetrics 获取消息指标
+    rpc GetMessageMetrics(GetMessageMetricsRequest) returns (MessageMetrics);
 }
 
+// ==================== 枚举定义 ====================
+
+// 会话状态枚举
+enum SessionState {
+    SESSION_STATE_UNSPECIFIED = 0;
+    SESSION_STATE_DISCONNECTED = 1;
+    SESSION_STATE_CONNECTING = 2;
+    SESSION_STATE_LOGGING_ON = 3;
+    SESSION_STATE_ACTIVE = 4;
+    SESSION_STATE_LOGGING_OUT = 5;
+    SESSION_STATE_RECONNECTING = 6;
+    SESSION_STATE_ERROR = 7;
+}
+
+// 订单方向枚举 (FIX Side field)
+enum Side {
+    SIDE_UNSPECIFIED = 0;
+    SIDE_BUY = 1;               // 买入
+    SIDE_SELL = 2;              // 卖出
+    SIDE_BUY_MINUS = 3;         // 买入（减仓）
+    SIDE_SELL_PLUS = 4;         // 卖出（加仓）
+    SIDE_SELL_SHORT = 5;        // 卖空
+    SIDE_SELL_SHORT_EXEMPT = 6; // 卖空（豁免）
+    SIDE_CROSS = 8;             // 交叉
+    SIDE_CROSS_SHORT = 9;       // 交叉卖空
+}
+
+// 订单类型枚举 (FIX OrdType field)
+enum OrdType {
+    ORD_TYPE_UNSPECIFIED = 0;
+    ORD_TYPE_MARKET = 1;        // 市价单
+    ORD_TYPE_LIMIT = 2;         // 限价单
+    ORD_TYPE_STOP = 3;          // 止损单
+    ORD_TYPE_STOP_LIMIT = 4;    // 止损限价单
+    ORD_TYPE_MARKET_ON_CLOSE = 5;   // 收盘市价单
+    ORD_TYPE_WITH_CROSS = 6;    // 交叉单
+    ORD_TYPE_LIMIT_ON_CLOSE = 7;    // 收盘限价单
+    ORD_TYPE_FOREX_MARKET = 8;  // 外汇市价单
+    ORD_TYPE_PREVIOUSLY_QUOTED = 9; // 之前报价
+    ORD_TYPE_PREVIOUSLY_INDICATED = 10; // 之前指示
+    ORD_TYPE_FOREX_LIMIT = 11;  // 外汇限价单
+    ORD_TYPE_FOREX_SWAP = 12;   // 外汇掉期
+    ORD_TYPE_FUNARI = 13;       // 或更好
+    ORD_TYPE_MARKET_IF_TOUCHED = 14; // 触发市价单
+    ORD_TYPE_LIMIT_IF_TOUCHED = 15;  // 触发限价单
+}
+
+// 订单有效期枚举 (FIX TimeInForce field)
+enum TimeInForce {
+    TIME_IN_FORCE_UNSPECIFIED = 0;
+    TIME_IN_FORCE_DAY = 1;          // 当日有效
+    TIME_IN_FORCE_GOOD_TILL_CANCEL = 2; // 撤销前有效
+    TIME_IN_FORCE_AT_THE_OPENING = 3;   // 开盘
+    TIME_IN_FORCE_IMMEDIATE_OR_CANCEL = 4; // 立即成交或撤销
+    TIME_IN_FORCE_FILL_OR_KILL = 5; // 全部成交或撤销
+    TIME_IN_FORCE_GOOD_TILL_CROSSING = 6; // 交叉前有效
+    TIME_IN_FORCE_GOOD_TILL_DATE = 7; // 指定日期前有效
+    TIME_IN_FORCE_AT_THE_CLOSE = 8; // 收盘
+}
+
+// 执行类型枚举 (FIX ExecType field)
+enum ExecType {
+    EXEC_TYPE_UNSPECIFIED = 0;
+    EXEC_TYPE_NEW = 1;              // 新订单
+    EXEC_TYPE_PARTIAL_FILL = 2;     // 部分成交
+    EXEC_TYPE_FILL = 3;             // 全部成交
+    EXEC_TYPE_DONE_FOR_DAY = 4;     // 当日完成
+    EXEC_TYPE_CANCELED = 5;         // 已取消
+    EXEC_TYPE_REPLACE = 6;          // 已修改
+    EXEC_TYPE_PENDING_CANCEL = 7;   // 待取消
+    EXEC_TYPE_STOPPED = 8;          // 已停止
+    EXEC_TYPE_REJECTED = 9;         // 已拒绝
+    EXEC_TYPE_SUSPENDED = 10;       // 已暂停
+    EXEC_TYPE_PENDING_NEW = 11;     // 待确认
+    EXEC_TYPE_CALCULATED = 12;      // 已计算
+    EXEC_TYPE_EXPIRED = 13;         // 已过期
+    EXEC_TYPE_RESTATED = 14;        // 已重述
+    EXEC_TYPE_PENDING_REPLACE = 15; // 待修改
+}
+
+// 订单状态枚举 (FIX OrdStatus field)
+enum OrdStatus {
+    ORD_STATUS_UNSPECIFIED = 0;
+    ORD_STATUS_NEW = 1;             // 新订单
+    ORD_STATUS_PARTIALLY_FILLED = 2; // 部分成交
+    ORD_STATUS_FILLED = 3;          // 全部成交
+    ORD_STATUS_DONE_FOR_DAY = 4;    // 当日完成
+    ORD_STATUS_CANCELED = 5;        // 已取消
+    ORD_STATUS_PENDING_CANCEL = 6;  // 待取消
+    ORD_STATUS_STOPPED = 7;         // 已停止
+    ORD_STATUS_REJECTED = 8;        // 已拒绝
+    ORD_STATUS_SUSPENDED = 9;       // 已暂停
+    ORD_STATUS_PENDING_NEW = 10;    // 待确认
+    ORD_STATUS_EXPIRED = 11;        // 已过期
+    ORD_STATUS_PENDING_REPLACE = 12; // 待修改
+}
+
+// 消息类型枚举
+enum MessageType {
+    MESSAGE_TYPE_UNSPECIFIED = 0;
+    MESSAGE_TYPE_HEARTBEAT = 1;
+    MESSAGE_TYPE_TEST_REQUEST = 2;
+    MESSAGE_TYPE_RESEND_REQUEST = 3;
+    MESSAGE_TYPE_REJECT = 4;
+    MESSAGE_TYPE_SEQUENCE_RESET = 5;
+    MESSAGE_TYPE_LOGOUT = 6;
+    MESSAGE_TYPE_LOGON = 7;
+    MESSAGE_TYPE_NEW_ORDER_SINGLE = 8;
+    MESSAGE_TYPE_ORDER_CANCEL_REQUEST = 9;
+    MESSAGE_TYPE_ORDER_CANCEL_REPLACE = 10;
+    MESSAGE_TYPE_ORDER_STATUS_REQUEST = 11;
+    MESSAGE_TYPE_EXECUTION_REPORT = 12;
+    MESSAGE_TYPE_ORDER_CANCEL_REJECT = 13;
+    MESSAGE_TYPE_MARKET_DATA_REQUEST = 14;
+    MESSAGE_TYPE_MARKET_DATA_SNAPSHOT = 15;
+    MESSAGE_TYPE_MARKET_DATA_INCREMENTAL = 16;
+    MESSAGE_TYPE_MARKET_DATA_REQUEST_REJECT = 17;
+    MESSAGE_TYPE_QUOTE_REQUEST = 18;
+    MESSAGE_TYPE_QUOTE = 19;
+    MESSAGE_TYPE_QUOTE_CANCEL = 20;
+    MESSAGE_TYPE_SECURITY_DEFINITION_REQUEST = 21;
+    MESSAGE_TYPE_SECURITY_DEFINITION = 22;
+}
+
+// ==================== 会话管理消息 ====================
+
 message LogonRequest {
-  string comp_id = 1;
-  string target_id = 2;
-  string password = 3;
-  string fix_version = 4; // e.g., FIX.4.4
+    string connection_id = 1;       // 连接配置ID
+    string sender_comp_id = 2;      // 发送方ID
+    string target_comp_id = 3;      // 接收方ID
+    string password = 4;            // 密码
+    string fix_version = 5;         // FIX版本 (如 FIX.4.4)
+    int32 heart_bt_int = 6;         // 心跳间隔(秒)
+    bool reset_seq_num_flag = 7;    // 是否重置序列号
+    string username = 8;            // 用户名
+    string raw_data = 9;            // 自定义数据
+    map<string, string> custom_fields = 10; // 自定义字段
 }
 
 message LogonResponse {
-  string session_id = 1;
-  string status = 2;
+    string session_id = 1;          // 会话ID
+    SessionState status = 2;        // 会话状态
+    int32 heart_bt_int = 3;         // 协商后的心跳间隔
+    string server_comp_id = 4;      // 服务端ID
+    google.protobuf.Timestamp logon_time = 5;
+    string error_message = 6;
 }
 
 message LogoutRequest {
-  string session_id = 1;
+    string session_id = 1;
+    string text = 2;                // 退出原因
 }
 
 message LogoutResponse {
-  bool success = 1;
-}
-
-message SendOrderRequest {
-  string session_id = 1;
-  string symbol = 2;
-  int32 side = 3;     // 1=Buy, 2=Sell
-  int32 ord_type = 4; // 1=Market, 2=Limit
-  double price = 5;
-  double quantity = 6;
-  string cl_ord_id = 7;
-}
-
-message SendOrderResponse {
-  string order_id = 1;
-  string status = 2;
+    bool success = 1;
+    string error_message = 2;
 }
 
 message GetSessionStatusRequest {
-  string session_id = 1;
+    string session_id = 1;
 }
 
-message GetSessionStatusResponse {
-  string status = 1;
-  int32 seq_in = 2;
-  int32 seq_out = 3;
+message SessionStatus {
+    string session_id = 1;
+    string connection_id = 2;
+    string sender_comp_id = 3;
+    string target_comp_id = 4;
+    SessionState state = 5;
+    int32 incoming_seq_num = 6;     // 入站序列号
+    int32 outgoing_seq_num = 7;     // 出站序列号
+    google.protobuf.Timestamp logon_time = 8;
+    google.protobuf.Timestamp last_heartbeat = 9;
+    int32 messages_sent = 10;
+    int32 messages_received = 11;
+    int32 reconnections = 12;
+    string error_message = 13;
+}
+
+message ListSessionsRequest {
+    string connection_id = 1;
+    SessionState state = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message ListSessionsResponse {
+    repeated SessionStatus sessions = 1;
+    int32 total = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message HeartbeatRequest {
+    string session_id = 1;
+    string test_req_id = 2;         // 响应TestRequest的ID
+}
+
+message TestRequestRequest {
+    string session_id = 1;
+    string test_req_id = 2;         // 测试请求ID
+}
+
+message ResendRequestMessage {
+    string session_id = 1;
+    int32 begin_seq_no = 2;         // 开始序列号
+    int32 end_seq_no = 3;           // 结束序列号 (0表示到最新)
+}
+
+// ==================== 订单管理消息 ====================
+
+message SendOrderRequest {
+    string session_id = 1;
+    string cl_ord_id = 2;           // 客户端订单ID
+    string symbol = 3;              // 证券代码
+    Side side = 4;                  // 买卖方向
+    OrdType ord_type = 5;           // 订单类型
+    string price = 6;               // 价格 (字符串避免精度问题)
+    string quantity = 7;            // 数量
+    TimeInForce time_in_force = 8;  // 有效期类型
+    string account = 9;             // 账户
+    string currency = 10;           // 币种
+    string security_exchange = 11;  // 交易所
+    string expire_date = 12;        // 过期日期 (YYYYMMDD)
+    string stop_price = 13;         // 止损价格
+    string min_qty = 14;            // 最小成交量
+    string max_floor = 15;          // 最大显示量
+    string order_qty = 16;          // 订单数量
+    string cash_order_qty = 17;     // 现金订单金额
+    string compliance_id = 18;      // 合规ID
+    string text = 19;               // 备注
+    map<string, string> custom_fields = 20;
+}
+
+message SendOrderResponse {
+    string cl_ord_id = 1;           // 客户端订单ID
+    string order_id = 2;            // 服务端订单ID
+    OrdStatus status = 3;           // 订单状态
+    string exec_id = 4;             // 执行ID
+    string text = 5;                // 消息文本
+    string error_code = 6;
+    string error_message = 7;
+}
+
+message CancelOrderRequest {
+    string session_id = 1;
+    string cl_ord_id = 2;           // 新的客户端订单ID (取消请求)
+    string orig_cl_ord_id = 3;      // 原客户端订单ID
+    string order_id = 4;            // 服务端订单ID
+    string symbol = 5;
+    Side side = 6;
+    string quantity = 7;            // 取消数量 (部分取消)
+    string text = 8;
+    map<string, string> custom_fields = 9;
+}
+
+message CancelOrderResponse {
+    string cl_ord_id = 1;
+    string order_id = 2;
+    OrdStatus status = 3;
+    string text = 4;
+    string error_code = 5;
+    string error_message = 6;
+}
+
+message ReplaceOrderRequest {
+    string session_id = 1;
+    string cl_ord_id = 2;           // 新的客户端订单ID
+    string orig_cl_ord_id = 3;      // 原客户端订单ID
+    string order_id = 4;
+    string symbol = 5;
+    Side side = 6;
+    OrdType ord_type = 7;
+    string price = 8;               // 新价格
+    string quantity = 9;            // 新数量
+    TimeInForce time_in_force = 10;
+    string account = 11;
+    string text = 12;
+    map<string, string> custom_fields = 13;
+}
+
+message ReplaceOrderResponse {
+    string cl_ord_id = 1;
+    string order_id = 2;
+    OrdStatus status = 3;
+    string text = 4;
+    string error_code = 5;
+    string error_message = 6;
+}
+
+message GetOrderStatusRequest {
+    string session_id = 1;
+    string cl_ord_id = 2;
+    string order_id = 3;
+    string symbol = 4;
+}
+
+message ExecutionReport {
+    string order_id = 1;
+    string cl_ord_id = 2;
+    string exec_id = 3;
+    ExecType exec_type = 4;
+    OrdStatus ord_status = 5;
+    string symbol = 6;
+    Side side = 7;
+    string leaves_qty = 8;          // 剩余数量
+    string cum_qty = 9;             // 累计成交数量
+    string avg_px = 10;             // 成交均价
+    string last_qty = 11;           // 最新成交量
+    string last_px = 12;            // 最新成交价
+    string text = 13;
+    google.protobuf.Timestamp transact_time = 14;
+    string account = 15;
+    string currency = 16;
+    repeated Fill fills = 17;
+}
+
+message Fill {
+    string exec_id = 1;
+    string quantity = 2;
+    string price = 3;
+    google.protobuf.Timestamp transact_time = 4;
+    string liquidity_indicator = 5;
+}
+
+message MassCancelRequest {
+    string session_id = 1;
+    string cl_ord_id = 2;
+    string symbol = 3;              // 空=取消所有
+    string security_exchange = 4;
+    Side side = 5;                  // 空=取消双向
+    string account = 6;
+    string text = 7;
+}
+
+message MassCancelResponse {
+    string cl_ord_id = 1;
+    int32 total_affected_orders = 2;
+    string text = 3;
+    string error_code = 4;
+    string error_message = 5;
+}
+
+// ==================== 市场数据消息 ====================
+
+message SubscribeMarketDataRequest {
+    string session_id = 1;
+    repeated string symbols = 2;
+    string security_exchange = 3;
+    int32 market_depth = 4;         // 0=Top of Book, 1=Full Depth
+    repeated string entry_types = 5; // BID, OFFER, TRADE
+    bool subscribe = 6;             // true=订阅, false=取消订阅
+}
+
+message MarketDataSnapshot {
+    string symbol = 1;
+    string security_exchange = 2;
+    google.protobuf.Timestamp sending_time = 3;
+    repeated MarketDataEntry bids = 4;
+    repeated MarketDataEntry offers = 5;
+    repeated TradeEntry trades = 6;
+    string currency = 7;
+}
+
+message MarketDataEntry {
+    string price = 1;
+    string quantity = 2;
+    int32 level = 3;
+    string update_action = 4;       // NEW, CHANGE, DELETE
+}
+
+message TradeEntry {
+    string price = 1;
+    string quantity = 2;
+    google.protobuf.Timestamp trade_time = 3;
+    string trade_id = 4;
+}
+
+message UnsubscribeMarketDataRequest {
+    string session_id = 1;
+    repeated string symbols = 2;
+    string security_exchange = 3;
+}
+
+message MarketDataSnapshotRequest {
+    string session_id = 1;
+    repeated string symbols = 2;
+    string security_exchange = 3;
+    int32 market_depth = 4;
+}
+
+// ==================== 消息路由消息 ====================
+
+message SendMessageRequest {
+    string session_id = 1;
+    string message_type = 2;        // FIX消息类型
+    map<string, string> fields = 3; // 字段映射
+    string raw_message = 4;         // 原始FIX消息 (可选)
+}
+
+message SendMessageResponse {
+    bool success = 1;
+    int32 seq_num = 2;
+    string error_message = 3;
+}
+
+message SubscribeMessagesRequest {
+    string session_id = 1;
+    repeated MessageType message_types = 2; // 空=订阅所有
+}
+
+message FixMessage {
+    string session_id = 1;
+    string message_type = 2;
+    int32 seq_num = 3;
+    google.protobuf.Timestamp sending_time = 4;
+    map<string, string> fields = 5;
+    string raw_message = 6;
+    bool is_incoming = 7;           // 是否入站消息
+}
+
+message GetMessageHistoryRequest {
+    string session_id = 1;
+    int32 begin_seq_no = 2;
+    int32 end_seq_no = 3;
+    bool is_incoming = 4;
+    int32 page = 5;
+    int32 page_size = 6;
+}
+
+message GetMessageHistoryResponse {
+    repeated FixMessage messages = 1;
+    int32 total = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+// ==================== 连接管理消息 ====================
+
+message Connection {
+    string connection_id = 1;
+    string name = 2;
+    string description = 3;
+    string sender_comp_id = 4;
+    string target_comp_id = 5;
+    string fix_version = 6;
+    string host = 7;
+    int32 port = 8;
+    bool use_ssl = 9;
+    int32 heart_bt_int = 10;
+    string username = 11;
+    string password = 12;
+    bool auto_reconnect = 13;
+    int32 reconnect_interval = 14;  // 重连间隔(秒)
+    int32 max_reconnect_attempts = 15;
+    bool reset_on_logon = 16;       // 登录时重置序列号
+    bool is_active = 17;
+    google.protobuf.Timestamp created_at = 18;
+    google.protobuf.Timestamp updated_at = 19;
+}
+
+message ListConnectionsRequest {
+    bool is_active = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message ListConnectionsResponse {
+    repeated Connection connections = 1;
+    int32 total = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message CreateConnectionRequest {
+    string name = 1;
+    string description = 2;
+    string sender_comp_id = 3;
+    string target_comp_id = 4;
+    string fix_version = 5;
+    string host = 6;
+    int32 port = 7;
+    bool use_ssl = 8;
+    int32 heart_bt_int = 9;
+    string username = 10;
+    string password = 11;
+    bool auto_reconnect = 12;
+    int32 reconnect_interval = 13;
+    int32 max_reconnect_attempts = 14;
+    bool reset_on_logon = 15;
+}
+
+message UpdateConnectionRequest {
+    string connection_id = 1;
+    string name = 2;
+    string description = 3;
+    string host = 4;
+    int32 port = 5;
+    bool use_ssl = 6;
+    int32 heart_bt_int = 7;
+    string username = 8;
+    string password = 9;
+    bool auto_reconnect = 10;
+    int32 reconnect_interval = 11;
+    int32 max_reconnect_attempts = 12;
+    bool is_active = 13;
+}
+
+message DeleteConnectionRequest {
+    string connection_id = 1;
+}
+
+message ConnectRequest {
+    string connection_id = 1;
+    bool auto_logon = 2;            // 是否自动登录
+    string password = 3;            // 覆盖配置中的密码
+}
+
+message ConnectResponse {
+    string session_id = 1;
+    SessionState status = 2;
+    string error_message = 3;
+}
+
+message DisconnectRequest {
+    string connection_id = 1;
+    bool send_logout = 2;           // 是否发送Logout消息
+    string logout_text = 3;
+}
+
+// ==================== 统计与监控消息 ====================
+
+message GetStatisticsRequest {
+    string connection_id = 1;
+    string session_id = 2;
+    google.protobuf.Timestamp start_time = 3;
+    google.protobuf.Timestamp end_time = 4;
+}
+
+message GatewayStatistics {
+    int64 total_sessions = 1;
+    int64 active_sessions = 2;
+    int64 total_messages_sent = 3;
+    int64 total_messages_received = 4;
+    int64 total_orders_sent = 5;
+    int64 total_orders_filled = 6;
+    int64 total_orders_cancelled = 7;
+    int64 total_order_rejections = 8;
+    double avg_latency_ms = 9;
+    double messages_per_second = 10;
+    int64 connection_errors = 11;
+    int64 heartbeat_failures = 12;
+    int64 sequence_resets = 13;
+    map<string, int64> messages_by_type = 14;
+}
+
+message GetMessageMetricsRequest {
+    string session_id = 1;
+    google.protobuf.Timestamp start_time = 2;
+    google.protobuf.Timestamp end_time = 3;
+}
+
+message MessageMetrics {
+    string session_id = 1;
+    int64 total_messages = 2;
+    double avg_processing_time_ms = 3;
+    double max_processing_time_ms = 4;
+    double min_processing_time_ms = 5;
+    int64 messages_by_hour = 6;     // 每小时消息数
+    map<string, int64> messages_by_type = 7;
+    map<string, double> latency_by_type_ms = 8;
+    repeated LatencyPercentile latency_percentiles = 9;
+}
+
+message LatencyPercentile {
+    string percentile = 1;          // 如 "p50", "p95", "p99"
+    double latency_ms = 2;
 }

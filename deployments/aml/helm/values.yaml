@@ -1,0 +1,80 @@
+image:
+  repository: financialtrading/aml
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+service:
+  type: ClusterIP
+  grpcPort: 9094
+  httpPort: 8080
+
+config:
+  server:
+    grpc_port: 9094
+    http_port: 8080
+  database:
+    driver: "mysql"
+    source: "root:root@tcp(mysql:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+  redis:
+    addr: "redis:6379"
+    password: ""
+    db: 0
+  kafka:
+    brokers:
+      - "kafka:9092"
+    consumer_group: "aml-service"
+  log:
+    level: "info"
+    format: "json"
+  aml:
+    risk_threshold_high: 80
+    risk_threshold_medium: 50
+    risk_threshold_low: 20
+    alert_retention_days: 365
+    watchlist_update_interval: "24h"
+    transaction_monitoring_enabled: true
+    sanctions_screening_enabled: true
+    pep_screening_enabled: true
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: financial-trading
+      ports:
+        - port: 9094
+          protocol: TCP

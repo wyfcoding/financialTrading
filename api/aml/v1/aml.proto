@@ -3,20 +3,155 @@ syntax = "proto3";
 package aml.v1;
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
 
 option go_package = "github.com/wyfcoding/financialtrading/go-api/aml/v1;amlv1";
 
 // AMLService 反洗钱监控服务
+// 提供完整的反洗钱监控能力，包括交易监控、风险评估、警报管理、规则配置等
 service AMLService {
-    // MonitorTransaction 监控交易并检查风险
+    // ==================== 交易监控 ====================
+    
+    // MonitorTransaction 实时监控交易并检查风险
     rpc MonitorTransaction(MonitorTransactionRequest) returns (MonitorTransactionResponse);
+    
+    // BatchMonitorTransactions 批量监控交易
+    rpc BatchMonitorTransactions(BatchMonitorTransactionsRequest) returns (BatchMonitorTransactionsResponse);
+    
+    // ScreenTransaction 交易前筛查（制裁名单、黑名单检查）
+    rpc ScreenTransaction(ScreenTransactionRequest) returns (ScreenTransactionResponse);
+    
+    // ==================== 风险评估 ====================
     
     // GetRiskScore 获取用户的风险评分
     rpc GetRiskScore(GetRiskScoreRequest) returns (GetRiskScoreResponse);
     
+    // CalculateRiskScore 计算并更新用户风险评分
+    rpc CalculateRiskScore(CalculateRiskScoreRequest) returns (CalculateRiskScoreResponse);
+    
+    // GetUserRiskProfile 获取用户风险画像
+    rpc GetUserRiskProfile(GetUserRiskProfileRequest) returns (UserRiskProfile);
+    
+    // UpdateUserRiskProfile 更新用户风险画像
+    rpc UpdateUserRiskProfile(UpdateUserRiskProfileRequest) returns (UserRiskProfile);
+    
+    // ==================== 警报管理 ====================
+    
     // ListAlerts 获取待处理的反洗钱警报
     rpc ListAlerts(ListAlertsRequest) returns (ListAlertsResponse);
+    
+    // GetAlert 获取警报详情
+    rpc GetAlert(GetAlertRequest) returns (AMLAlert);
+    
+    // ReviewAlert 审核警报（批准/拒绝/升级）
+    rpc ReviewAlert(ReviewAlertRequest) returns (AMLAlert);
+    
+    // EscalateAlert 升级警报
+    rpc EscalateAlert(EscalateAlertRequest) returns (AMLAlert);
+    
+    // CloseAlert 关闭警报
+    rpc CloseAlert(CloseAlertRequest) returns (AMLAlert);
+    
+    // ==================== 规则管理 ====================
+    
+    // ListRules 获取监控规则列表
+    rpc ListRules(ListRulesRequest) returns (ListRulesResponse);
+    
+    // CreateRule 创建监控规则
+    rpc CreateRule(CreateRuleRequest) returns (AMLRule);
+    
+    // UpdateRule 更新监控规则
+    rpc UpdateRule(UpdateRuleRequest) returns (AMLRule);
+    
+    // DeleteRule 删除监控规则
+    rpc DeleteRule(DeleteRuleRequest) returns (google.protobuf.Empty);
+    
+    // TestRule 测试规则（使用历史数据）
+    rpc TestRule(TestRuleRequest) returns (TestRuleResponse);
+    
+    // ==================== 名单管理 ====================
+    
+    // ScreenAgainstLists 名单筛查
+    rpc ScreenAgainstLists(ScreenAgainstListsRequest) returns (ScreenAgainstListsResponse);
+    
+    // AddToWatchlist 添加到监控名单
+    rpc AddToWatchlist(AddToWatchlistRequest) returns (WatchlistEntry);
+    
+    // RemoveFromWatchlist 从监控名单移除
+    rpc RemoveFromWatchlist(RemoveFromWatchlistRequest) returns (google.protobuf.Empty);
+    
+    // ListWatchlist 获取监控名单列表
+    rpc ListWatchlist(ListWatchlistRequest) returns (ListWatchlistResponse);
+    
+    // ==================== 报告生成 ====================
+    
+    // GenerateSARReport 生成可疑活动报告(SAR)
+    rpc GenerateSARReport(GenerateSARReportRequest) returns (SARReport);
+    
+    // GenerateCTRReport 生成现金交易报告(CTR)
+    rpc GenerateCTRReport(GenerateCTRReportRequest) returns (CTRReport);
+    
+    // ListReports 获取报告列表
+    rpc ListReports(ListReportsRequest) returns (ListReportsResponse);
+    
+    // ==================== 统计分析 ====================
+    
+    // GetAMLStatistics 获取AML统计数据
+    rpc GetAMLStatistics(GetAMLStatisticsRequest) returns (AMLStatistics);
+    
+    // GetTransactionPatterns 获取交易模式分析
+    rpc GetTransactionPatterns(GetTransactionPatternsRequest) returns (TransactionPatterns);
 }
+
+// ==================== 风险等级枚举 ====================
+
+enum RiskLevel {
+    RISK_LEVEL_UNSPECIFIED = 0;
+    RISK_LEVEL_LOW = 1;        // 低风险
+    RISK_LEVEL_MEDIUM = 2;     // 中风险
+    RISK_LEVEL_HIGH = 3;       // 高风险
+    RISK_LEVEL_CRITICAL = 4;   // 极高风险
+}
+
+// 警报状态枚举
+enum AlertStatus {
+    ALERT_STATUS_UNSPECIFIED = 0;
+    ALERT_STATUS_NEW = 1;           // 新警报
+    ALERT_STATUS_UNDER_REVIEW = 2;  // 审核中
+    ALERT_STATUS_ESCALATED = 3;     // 已升级
+    ALERT_STATUS_FALSE_POSITIVE = 4; // 误报
+    ALERT_STATUS_CONFIRMED = 5;     // 确认可疑
+    ALERT_STATUS_REPORTED = 6;      // 已上报
+    ALERT_STATUS_CLOSED = 7;        // 已关闭
+}
+
+// 警报类型枚举
+enum AlertType {
+    ALERT_TYPE_UNSPECIFIED = 0;
+    ALERT_TYPE_LARGE_TRANSACTION = 1;       // 大额交易
+    ALERT_TYPE_FREQUENT_TRANSACTION = 2;    // 频繁交易
+    ALERT_TYPE_STRUCTURING = 3;             // 结构化交易（拆分规避）
+    ALERT_TYPE_RAPID_MOVEMENT = 4;          // 资金快速流动
+    ALERT_TYPE_HIGH_RISK_COUNTRY = 5;       // 高风险国家交易
+    ALERT_TYPE_SANCTIONS_MATCH = 6;         // 制裁名单匹配
+    ALERT_TYPE_PEP_ASSOCIATION = 7;         // PEP关联
+    ALERT_TYPE_UNUSUAL_PATTERN = 8;         // 异常交易模式
+    ALERT_TYPE_ROUND_TRIPPING = 9;          // 往返交易
+    ALERT_TYPE_SHELL_COMPANY = 10;          // 空壳公司
+}
+
+// 规则类型枚举
+enum RuleType {
+    RULE_TYPE_UNSPECIFIED = 0;
+    RULE_TYPE_THRESHOLD = 1;        // 阈值规则
+    RULE_TYPE_VELOCITY = 2;         // 速度规则
+    RULE_TYPE_PATTERN = 3;          // 模式规则
+    RULE_TYPE_AGGREGATION = 4;      // 聚合规则
+    RULE_TYPE_BEHAVIORAL = 5;       // 行为规则
+    RULE_TYPE_MACHINE_LEARNING = 6; // 机器学习规则
+}
+
+// ==================== 交易监控消息 ====================
 
 message MonitorTransactionRequest {
     string transaction_id = 1;
@@ -24,13 +159,67 @@ message MonitorTransactionRequest {
     string amount = 3;
     string currency = 4;
     string counterparty_id = 5;
+    string transaction_type = 6;     // DEPOSIT, WITHDRAWAL, TRANSFER, TRADE
+    string source_country = 7;
+    string destination_country = 8;
+    map<string, string> metadata = 9;
 }
 
 message MonitorTransactionResponse {
     bool is_suspicious = 1;
     string alert_id = 2;
-    string risk_level = 3;
+    RiskLevel risk_level = 3;
+    repeated string triggered_rules = 4;
+    double risk_score = 5;
+    string screening_result = 6;
+    repeated string recommendations = 7;
 }
+
+message BatchMonitorTransactionsRequest {
+    repeated MonitorTransactionRequest transactions = 1;
+}
+
+message BatchMonitorTransactionsResponse {
+    repeated MonitorTransactionResponse results = 1;
+    int32 total_processed = 2;
+    int32 suspicious_count = 3;
+}
+
+message ScreenTransactionRequest {
+    string user_id = 1;
+    string counterparty_id = 2;
+    string counterparty_name = 3;
+    string source_country = 4;
+    string destination_country = 5;
+    string amount = 6;
+    string currency = 7;
+}
+
+message ScreenTransactionResponse {
+    bool passed = 1;
+    repeated SanctionsMatch sanctions_matches = 2;
+    repeated WatchlistMatch watchlist_matches = 3;
+    repeated string warnings = 4;
+    RiskLevel overall_risk = 5;
+}
+
+message SanctionsMatch {
+    string list_name = 1;
+    string matched_name = 2;
+    double match_score = 3;
+    string matched_entity_id = 4;
+    string program = 5;  // OFAC, UN, EU, etc.
+}
+
+message WatchlistMatch {
+    string list_name = 1;
+    string matched_name = 2;
+    double match_score = 3;
+    string matched_entity_id = 4;
+    string reason = 5;
+}
+
+// ==================== 风险评估消息 ====================
 
 message GetRiskScoreRequest {
     string user_id = 1;
@@ -38,23 +227,416 @@ message GetRiskScoreRequest {
 
 message GetRiskScoreResponse {
     string user_id = 1;
-    double score = 2;
-    string risk_level = 3;
+    double score = 2;              // 0-100
+    RiskLevel risk_level = 3;
+    google.protobuf.Timestamp last_updated = 4;
+    repeated RiskFactor factors = 5;
 }
 
-message AlertItem {
+message RiskFactor {
+    string name = 1;
+    double weight = 2;
+    double value = 3;
+    string description = 4;
+}
+
+message CalculateRiskScoreRequest {
+    string user_id = 1;
+    bool force_recalculate = 2;
+}
+
+message CalculateRiskScoreResponse {
+    string user_id = 1;
+    double score = 2;
+    RiskLevel risk_level = 3;
+    repeated RiskFactor factors = 4;
+    google.protobuf.Timestamp calculated_at = 5;
+}
+
+message GetUserRiskProfileRequest {
+    string user_id = 1;
+}
+
+message UserRiskProfile {
+    string user_id = 1;
+    double overall_score = 2;
+    RiskLevel risk_level = 3;
+    string kyc_level = 4;
+    bool is_pep = 5;                    // 政治敏感人物
+    bool is_sanctioned = 6;
+    repeated string high_risk_countries = 7;
+    repeated string associated_entities = 8;
+    TransactionBehaviorProfile behavior_profile = 9;
+    google.protobuf.Timestamp created_at = 10;
+    google.protobuf.Timestamp updated_at = 11;
+}
+
+message TransactionBehaviorProfile {
+    double avg_transaction_amount = 1;
+    double std_deviation = 2;
+    int32 transaction_frequency = 3;     // 每月交易次数
+    repeated string common_counterparties = 4;
+    repeated string common_countries = 5;
+    string preferred_transaction_type = 6;
+    google.protobuf.Timestamp last_transaction = 7;
+}
+
+message UpdateUserRiskProfileRequest {
+    string user_id = 1;
+    bool is_pep = 2;
+    repeated string high_risk_countries = 3;
+    repeated string associated_entities = 4;
+    map<string, string> custom_attributes = 5;
+}
+
+// ==================== 警报管理消息 ====================
+
+message AMLAlert {
     string alert_id = 1;
     string user_id = 2;
-    string type = 3;
-    string description = 4;
-    string status = 5;
-    google.protobuf.Timestamp created_at = 6;
+    AlertType type = 3;
+    AlertStatus status = 4;
+    RiskLevel risk_level = 5;
+    string title = 6;
+    string description = 7;
+    repeated string triggered_rules = 8;
+    repeated TransactionSummary related_transactions = 9;
+    string assigned_to = 10;
+    google.protobuf.Timestamp created_at = 11;
+    google.protobuf.Timestamp updated_at = 12;
+    google.protobuf.Timestamp resolved_at = 13;
+    string resolution_notes = 14;
+    repeated AlertHistory history = 15;
+}
+
+message TransactionSummary {
+    string transaction_id = 1;
+    string amount = 2;
+    string currency = 3;
+    string type = 4;
+    google.protobuf.Timestamp timestamp = 5;
+}
+
+message AlertHistory {
+    string action = 1;
+    string performed_by = 2;
+    string notes = 3;
+    google.protobuf.Timestamp timestamp = 4;
+    AlertStatus old_status = 5;
+    AlertStatus new_status = 6;
 }
 
 message ListAlertsRequest {
-    string status = 1; // PENDING, RESOLVED
+    AlertStatus status = 1;
+    RiskLevel risk_level = 2;
+    AlertType type = 3;
+    string assigned_to = 4;
+    int32 page = 5;
+    int32 page_size = 6;
+    google.protobuf.Timestamp start_time = 7;
+    google.protobuf.Timestamp end_time = 8;
 }
 
 message ListAlertsResponse {
-    repeated AlertItem alerts = 1;
+    repeated AMLAlert alerts = 1;
+    int32 total = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message GetAlertRequest {
+    string alert_id = 1;
+}
+
+message ReviewAlertRequest {
+    string alert_id = 1;
+    bool is_false_positive = 2;
+    string notes = 3;
+    string reviewer_id = 4;
+}
+
+message EscalateAlertRequest {
+    string alert_id = 1;
+    string escalate_to = 2;
+    string reason = 3;
+    string escalated_by = 4;
+}
+
+message CloseAlertRequest {
+    string alert_id = 1;
+    string resolution = 2;
+    string notes = 3;
+    string closed_by = 4;
+}
+
+// ==================== 规则管理消息 ====================
+
+message AMLRule {
+    string rule_id = 1;
+    string name = 2;
+    string description = 3;
+    RuleType type = 4;
+    bool is_active = 5;
+    int32 priority = 6;
+    string condition = 7;           // JSON格式的规则条件
+    repeated string actions = 8;
+    RiskLevel default_risk_level = 9;
+    google.protobuf.Timestamp created_at = 10;
+    google.protobuf.Timestamp updated_at = 11;
+    string created_by = 12;
+}
+
+message ListRulesRequest {
+    RuleType type = 1;
+    bool is_active = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message ListRulesResponse {
+    repeated AMLRule rules = 1;
+    int32 total = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message CreateRuleRequest {
+    string name = 1;
+    string description = 2;
+    RuleType type = 3;
+    string condition = 4;
+    repeated string actions = 5;
+    RiskLevel default_risk_level = 6;
+    int32 priority = 7;
+    string created_by = 8;
+}
+
+message UpdateRuleRequest {
+    string rule_id = 1;
+    string name = 2;
+    string description = 3;
+    string condition = 4;
+    repeated string actions = 5;
+    RiskLevel default_risk_level = 6;
+    int32 priority = 7;
+    bool is_active = 8;
+    string updated_by = 9;
+}
+
+message DeleteRuleRequest {
+    string rule_id = 1;
+}
+
+message TestRuleRequest {
+    string rule_id = 1;
+    google.protobuf.Timestamp start_time = 2;
+    google.protobuf.Timestamp end_time = 3;
+}
+
+message TestRuleResponse {
+    string rule_id = 1;
+    int32 total_transactions_tested = 2;
+    int32 matches = 3;
+    double false_positive_rate = 4;
+    repeated TransactionSummary sample_matches = 5;
+}
+
+// ==================== 名单管理消息 ====================
+
+message ScreenAgainstListsRequest {
+    string name = 1;
+    string entity_type = 2;         // INDIVIDUAL, ORGANIZATION
+    string country = 3;
+    string date_of_birth = 4;
+    repeated string aliases = 5;
+    repeated string identification_numbers = 6;
+}
+
+message ScreenAgainstListsResponse {
+    bool has_matches = 1;
+    repeated SanctionsMatch sanctions_matches = 2;
+    repeated WatchlistMatch watchlist_matches = 3;
+    repeated PEPMatch pep_matches = 4;
+    double overall_match_score = 5;
+}
+
+message PEPMatch {
+    string name = 1;
+    string position = 2;
+    string country = 3;
+    double match_score = 4;
+    string source = 5;
+}
+
+message WatchlistEntry {
+    string entry_id = 1;
+    string name = 2;
+    string entity_type = 3;
+    string country = 4;
+    string list_type = 5;           // BLACK, GRAY, INTERNAL
+    string reason = 6;
+    google.protobuf.Timestamp added_at = 7;
+    string added_by = 8;
+    google.protobuf.Timestamp expires_at = 9;
+}
+
+message AddToWatchlistRequest {
+    string name = 1;
+    string entity_type = 2;
+    string country = 3;
+    string list_type = 4;
+    string reason = 5;
+    string added_by = 6;
+    google.protobuf.Timestamp expires_at = 7;
+    map<string, string> metadata = 8;
+}
+
+message RemoveFromWatchlistRequest {
+    string entry_id = 1;
+    string removed_by = 2;
+    string reason = 3;
+}
+
+message ListWatchlistRequest {
+    string list_type = 1;
+    string country = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+message ListWatchlistResponse {
+    repeated WatchlistEntry entries = 1;
+    int32 total = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+}
+
+// ==================== 报告生成消息 ====================
+
+message SARReport {
+    string report_id = 1;
+    string user_id = 2;
+    repeated string alert_ids = 3;
+    string narrative = 4;
+    repeated TransactionSummary transactions = 5;
+    string filing_status = 6;
+    google.protobuf.Timestamp created_at = 7;
+    google.protobuf.Timestamp filed_at = 8;
+    string filed_by = 9;
+    string regulatory_body = 10;
+}
+
+message CTRReport {
+    string report_id = 1;
+    string user_id = 2;
+    string total_amount = 3;
+    string currency = 4;
+    int32 transaction_count = 5;
+    google.protobuf.Timestamp period_start = 6;
+    google.protobuf.Timestamp period_end = 7;
+    string filing_status = 8;
+    google.protobuf.Timestamp created_at = 9;
+    google.protobuf.Timestamp filed_at = 10;
+}
+
+message GenerateSARReportRequest {
+    string user_id = 1;
+    repeated string alert_ids = 2;
+    string narrative = 3;
+    string regulatory_body = 4;
+    string generated_by = 5;
+}
+
+message GenerateCTRReportRequest {
+    string user_id = 1;
+    google.protobuf.Timestamp period_start = 2;
+    google.protobuf.Timestamp period_end = 3;
+    string generated_by = 4;
+}
+
+message ListReportsRequest {
+    string report_type = 1;         // SAR, CTR
+    string filing_status = 2;
+    int32 page = 3;
+    int32 page_size = 4;
+    google.protobuf.Timestamp start_time = 5;
+    google.protobuf.Timestamp end_time = 6;
+}
+
+message ListReportsResponse {
+    repeated SARReport sar_reports = 1;
+    repeated CTRReport ctr_reports = 2;
+    int32 total = 3;
+    int32 page = 4;
+    int32 page_size = 5;
+}
+
+// ==================== 统计分析消息 ====================
+
+message GetAMLStatisticsRequest {
+    google.protobuf.Timestamp start_time = 1;
+    google.protobuf.Timestamp end_time = 2;
+}
+
+message AMLStatistics {
+    int64 total_transactions_monitored = 1;
+    int64 total_alerts_generated = 2;
+    int64 alerts_by_risk_critical = 3;
+    int64 alerts_by_risk_high = 4;
+    int64 alerts_by_risk_medium = 5;
+    int64 alerts_by_risk_low = 6;
+    int64 false_positives = 7;
+    int64 confirmed_suspicious = 8;
+    int64 sar_reports_filed = 9;
+    double average_resolution_time_hours = 10;
+    map<string, int64> alerts_by_type = 11;
+    map<string, int64> alerts_by_country = 12;
+}
+
+message GetTransactionPatternsRequest {
+    string user_id = 1;
+    google.protobuf.Timestamp start_time = 2;
+    google.protobuf.Timestamp end_time = 3;
+}
+
+message TransactionPatterns {
+    string user_id = 1;
+    repeated TimePattern time_patterns = 2;
+    repeated AmountPattern amount_patterns = 3;
+    repeated CounterpartyPattern counterparty_patterns = 4;
+    repeated GeographicPattern geographic_patterns = 5;
+    repeated Anomaly anomalies = 6;
+}
+
+message TimePattern {
+    string pattern_type = 1;        // HOURLY, DAILY, WEEKLY
+    string description = 2;
+    double frequency = 3;
+}
+
+message AmountPattern {
+    string range = 1;
+    int32 count = 2;
+    double percentage = 3;
+}
+
+message CounterpartyPattern {
+    string counterparty_id = 1;
+    int32 transaction_count = 2;
+    string total_amount = 3;
+    string relationship_type = 4;
+}
+
+message GeographicPattern {
+    string country = 1;
+    int32 transaction_count = 2;
+    string total_amount = 3;
+    double risk_score = 4;
+}
+
+message Anomaly {
+    string type = 1;
+    string description = 2;
+    double severity = 3;
+    google.protobuf.Timestamp detected_at = 4;
 }

@@ -1,0 +1,51 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "aml.fullname" . }}
+  labels:
+    {{- include "aml.labels" . | nindent 4 }}
+    release: prometheus
+spec:
+  groups:
+    - name: aml.rules
+      rules:
+        - alert: AMLServiceDown
+          expr: up{job="{{ include "aml.fullname" . }}"} == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "AML Service is down"
+            description: "AML Service {{ include "aml.fullname" . }} has been down for more than 1 minute."
+        - alert: AMLHighErrorRate
+          expr: rate(grpc_server_handled_total{job="{{ include "aml.fullname" . }}",grpc_code!="OK"}[5m]) / rate(grpc_server_handled_total{job="{{ include "aml.fullname" . }}"}[5m]) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High error rate in AML Service"
+            description: "AML Service error rate is above 10% for more than 5 minutes."
+        - alert: AMLHighLatency
+          expr: histogram_quantile(0.99, rate(grpc_server_handling_seconds_bucket{job="{{ include "aml.fullname" . }}"}[5m])) > 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High latency in AML Service"
+            description: "AML Service P99 latency is above 1 second for more than 5 minutes."
+        - alert: AMLHighRiskAlertsPending
+          expr: aml_alerts_pending_total{risk_level="high"} > 100
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High number of pending high-risk AML alerts"
+            description: "There are more than 100 pending high-risk AML alerts for more than 10 minutes."
+        - alert: AMLWatchlistSyncFailed
+          expr: aml_watchlist_sync_success == 0
+          for: 1h
+          labels:
+            severity: critical
+          annotations:
+            summary: "AML watchlist sync failed"
+            description: "AML watchlist synchronization has been failing for more than 1 hour."

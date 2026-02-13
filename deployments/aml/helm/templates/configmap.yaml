@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "aml.fullname" . }}-config
+  labels:
+    {{- include "aml.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    server:
+      grpc_port: {{ .Values.config.server.grpc_port }}
+      http_port: {{ .Values.config.server.http_port }}
+    database:
+      driver: {{ .Values.config.database.driver }}
+      source: {{ .Values.config.database.source }}
+    redis:
+      addr: {{ .Values.config.redis.addr }}
+      password: {{ .Values.config.redis.password }}
+      db: {{ .Values.config.redis.db }}
+    kafka:
+      brokers:
+        {{- range .Values.config.kafka.brokers }}
+        - {{ . }}
+        {{- end }}
+      consumer_group: {{ .Values.config.kafka.consumer_group }}
+    log:
+      level: {{ .Values.config.log.level }}
+      format: {{ .Values.config.log.format }}
+    aml:
+      risk_threshold_high: {{ .Values.config.aml.risk_threshold_high }}
+      risk_threshold_medium: {{ .Values.config.aml.risk_threshold_medium }}
+      risk_threshold_low: {{ .Values.config.aml.risk_threshold_low }}
+      alert_retention_days: {{ .Values.config.aml.alert_retention_days }}
+      watchlist_update_interval: {{ .Values.config.aml.watchlist_update_interval }}
+      transaction_monitoring_enabled: {{ .Values.config.aml.transaction_monitoring_enabled }}
+      sanctions_screening_enabled: {{ .Values.config.aml.sanctions_screening_enabled }}
+      pep_screening_enabled: {{ .Values.config.aml.pep_screening_enabled }}
