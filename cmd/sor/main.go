@@ -24,10 +24,10 @@ func main() {
 	// SOR might not need DB for now, purely calculation based on market data feeds
 
 	// 3. Domain Engine
-	engine := &domain.DefaultSOREngine{}
+	engine := domain.NewDefaultSOREngine()
 
 	// 4. Layers
-	app := application.NewSORApplicationService(engine, logger)
+	app := application.NewSORApplicationService(engine, nil, nil, nil, logger)
 	svc := grpc_server.NewServer(app)
 
 	// 5. Server

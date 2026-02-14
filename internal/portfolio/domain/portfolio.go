@@ -13,34 +13,34 @@ import (
 // Portfolio 投资组合聚合根
 type Portfolio struct {
 	gorm.Model
-	PortfolioID     string          `gorm:"column:portfolio_id;type:varchar(32);uniqueIndex;not null" json:"portfolio_id"`
-	UserID          string          `gorm:"column:user_id;type:varchar(32);index;not null" json:"user_id"`
-	Name            string          `gorm:"column:name;type:varchar(128);not null" json:"name"`
-	Description     string          `gorm:"column:description;type:text" json:"description"`
-	BaseCurrency    string          `gorm:"column:base_currency;type:varchar(3);not null;default:'USD'" json:"base_currency"`
-	TotalValue      decimal.Decimal `gorm:"column:total_value;type:decimal(20,4);not null;default:0" json:"total_value"`
-	CashValue       decimal.Decimal `gorm:"column:cash_value;type:decimal(20,4);not null;default:0" json:"cash_value"`
-	PositionsValue  decimal.Decimal `gorm:"column:positions_value;type:decimal(20,4);not null;default:0" json:"positions_value"`
-	CostBasis       decimal.Decimal `gorm:"column:cost_basis;type:decimal(20,4);not null;default:0" json:"cost_basis"`
-	UnrealizedPL    decimal.Decimal `gorm:"column:unrealized_pl;type:decimal(20,4);not null;default:0" json:"unrealized_pl"`
-	RealizedPL      decimal.Decimal `gorm:"column:realized_pl;type:decimal(20,4);not null;default:0" json:"realized_pl"`
-	TotalReturn     decimal.Decimal `gorm:"column:total_return;type:decimal(10,6);not null;default:0" json:"total_return"`
-	DayReturn       decimal.Decimal `gorm:"column:day_return;type:decimal(10,6);not null;default:0" json:"day_return"`
-	RiskLevel       string          `gorm:"column:risk_level;type:varchar(10);not null;default:'MODERATE'" json:"risk_level"`
-	RebalanceFreq   string          `gorm:"column:rebalance_freq;type:varchar(20);not null;default:'MONTHLY'" json:"rebalance_freq"`
-	LastRebalanced  *time.Time      `gorm:"column:last_rebalanced" json:"last_rebalanced"`
+	PortfolioID    string          `gorm:"column:portfolio_id;type:varchar(32);uniqueIndex;not null" json:"portfolio_id"`
+	UserID         string          `gorm:"column:user_id;type:varchar(32);index;not null" json:"user_id"`
+	Name           string          `gorm:"column:name;type:varchar(128);not null" json:"name"`
+	Description    string          `gorm:"column:description;type:text" json:"description"`
+	BaseCurrency   string          `gorm:"column:base_currency;type:varchar(3);not null;default:'USD'" json:"base_currency"`
+	TotalValue     decimal.Decimal `gorm:"column:total_value;type:decimal(20,4);not null;default:0" json:"total_value"`
+	CashValue      decimal.Decimal `gorm:"column:cash_value;type:decimal(20,4);not null;default:0" json:"cash_value"`
+	PositionsValue decimal.Decimal `gorm:"column:positions_value;type:decimal(20,4);not null;default:0" json:"positions_value"`
+	CostBasis      decimal.Decimal `gorm:"column:cost_basis;type:decimal(20,4);not null;default:0" json:"cost_basis"`
+	UnrealizedPL   decimal.Decimal `gorm:"column:unrealized_pl;type:decimal(20,4);not null;default:0" json:"unrealized_pl"`
+	RealizedPL     decimal.Decimal `gorm:"column:realized_pl;type:decimal(20,4);not null;default:0" json:"realized_pl"`
+	TotalReturn    decimal.Decimal `gorm:"column:total_return;type:decimal(10,6);not null;default:0" json:"total_return"`
+	DayReturn      decimal.Decimal `gorm:"column:day_return;type:decimal(10,6);not null;default:0" json:"day_return"`
+	RiskLevel      string          `gorm:"column:risk_level;type:varchar(10);not null;default:'MODERATE'" json:"risk_level"`
+	RebalanceFreq  string          `gorm:"column:rebalance_freq;type:varchar(20);not null;default:'MONTHLY'" json:"rebalance_freq"`
+	LastRebalanced *time.Time      `gorm:"column:last_rebalanced" json:"last_rebalanced"`
 }
 
 // PortfolioPosition 组合持仓关联
 type PortfolioPosition struct {
 	gorm.Model
-	PortfolioID     string          `gorm:"column:portfolio_id;type:varchar(32);index;not null" json:"portfolio_id"`
-	PositionID      uint            `gorm:"column:position_id;not null" json:"position_id"`
-	Symbol          string          `gorm:"column:symbol;type:varchar(20);index;not null" json:"symbol"`
-	AssetClass      string          `gorm:"column:asset_class;type:varchar(20);not null" json:"asset_class"`
-	Sector          string          `gorm:"column:sector;type:varchar(50)" json:"sector"`
-	Weight          decimal.Decimal `gorm:"column:weight;type:decimal(10,6);not null" json:"weight"`
-	TargetWeight    decimal.Decimal `gorm:"column:target_weight;type:decimal(10,6);not null" json:"target_weight"`
+	PortfolioID  string          `gorm:"column:portfolio_id;type:varchar(32);index;not null" json:"portfolio_id"`
+	PositionID   uint            `gorm:"column:position_id;not null" json:"position_id"`
+	Symbol       string          `gorm:"column:symbol;type:varchar(20);index;not null" json:"symbol"`
+	AssetClass   string          `gorm:"column:asset_class;type:varchar(20);not null" json:"asset_class"`
+	Sector       string          `gorm:"column:sector;type:varchar(50)" json:"sector"`
+	Weight       decimal.Decimal `gorm:"column:weight;type:decimal(10,6);not null" json:"weight"`
+	TargetWeight decimal.Decimal `gorm:"column:target_weight;type:decimal(10,6);not null" json:"target_weight"`
 }
 
 // AssetAllocation 资产配置
@@ -104,6 +104,16 @@ type PortfolioSnapshot struct {
 	Currency       string          `gorm:"column:currency;type:varchar(3);not null" json:"currency"`
 }
 
+// UserPerformance 用户绩效指标
+type UserPerformance struct {
+	gorm.Model
+	UserID      string          `gorm:"column:user_id;type:varchar(32);uniqueIndex;not null" json:"user_id"`
+	TotalReturn decimal.Decimal `gorm:"column:total_return;type:decimal(10,6);not null;default:0" json:"total_return"`
+	SharpeRatio decimal.Decimal `gorm:"column:sharpe_ratio;type:decimal(10,6);not null;default:0" json:"sharpe_ratio"`
+	MaxDrawdown decimal.Decimal `gorm:"column:max_drawdown;type:decimal(10,6);not null;default:0" json:"max_drawdown"`
+	UpdatedAt   time.Time       `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
+}
+
 // RebalanceSuggestion 再平衡建议
 type RebalanceSuggestion struct {
 	Symbol        string          `json:"symbol"`
@@ -119,6 +129,7 @@ type RebalanceSuggestion struct {
 func (Portfolio) TableName() string         { return "portfolios" }
 func (PortfolioPosition) TableName() string { return "portfolio_positions" }
 func (PortfolioSnapshot) TableName() string { return "portfolio_snapshots" }
+func (UserPerformance) TableName() string   { return "user_performance" }
 
 // NewPortfolio 创建新组合
 func NewPortfolio(userID, name, baseCurrency string) *Portfolio {
@@ -151,26 +162,41 @@ func (p *Portfolio) CreateSnapshot(snapshotDate time.Time) *PortfolioSnapshot {
 	}
 }
 
+// NewPortfolioSnapshot creates a snapshot for a user-level portfolio view.
+func NewPortfolioSnapshot(userID string, snapshotDate time.Time, totalValue decimal.Decimal, currency string) *PortfolioSnapshot {
+	return &PortfolioSnapshot{
+		PortfolioID:    "",
+		UserID:         userID,
+		SnapshotDate:   snapshotDate,
+		TotalValue:     totalValue,
+		CashValue:      decimal.Zero,
+		PositionsValue: totalValue,
+		DayReturn:      decimal.Zero,
+		TotalReturn:    decimal.Zero,
+		Currency:       currency,
+	}
+}
+
 // CalculateRebalance 计算再平衡建议
 func CalculateRebalance(positions []PortfolioPosition, totalValue decimal.Decimal, threshold decimal.Decimal) []RebalanceSuggestion {
 	suggestions := []RebalanceSuggestion{}
-	
+
 	for _, pos := range positions {
 		if pos.TargetWeight.IsZero() {
 			continue
 		}
-		
+
 		deviation := pos.Weight.Sub(pos.TargetWeight).Abs()
 		if deviation.GreaterThan(threshold) {
 			action := "HOLD"
 			quantity := decimal.Zero
-			
+
 			if pos.Weight.GreaterThan(pos.TargetWeight) {
 				action = "SELL"
 			} else {
 				action = "BUY"
 			}
-			
+
 			suggestions = append(suggestions, RebalanceSuggestion{
 				Symbol:        pos.Symbol,
 				AssetClass:    pos.AssetClass,
@@ -178,18 +204,19 @@ func CalculateRebalance(positions []PortfolioPosition, totalValue decimal.Decima
 				TargetWeight:  pos.TargetWeight,
 				Deviation:     deviation,
 				Action:        action,
+				Quantity:      quantity,
 				Amount:        totalValue.Mul(deviation),
 			})
 		}
 	}
-	
+
 	return suggestions
 }
 
 // CalculateBrinsonAttribution 计算Brinson业绩归因
 func CalculateBrinsonAttribution(portfolioWeights, benchmarkWeights, portfolioReturns, benchmarkReturns map[string]decimal.Decimal) []BrinsonAttribution {
 	attributions := []BrinsonAttribution{}
-	
+
 	assetClasses := make(map[string]bool)
 	for ac := range benchmarkWeights {
 		assetClasses[ac] = true
@@ -197,25 +224,25 @@ func CalculateBrinsonAttribution(portfolioWeights, benchmarkWeights, portfolioRe
 	for ac := range portfolioWeights {
 		assetClasses[ac] = true
 	}
-	
+
 	totalBenchReturn := decimal.Zero
 	for ac, w := range benchmarkWeights {
 		if r, ok := benchmarkReturns[ac]; ok {
 			totalBenchReturn = totalBenchReturn.Add(w.Mul(r))
 		}
 	}
-	
+
 	for assetClass := range assetClasses {
 		benchWeight := benchmarkWeights[assetClass]
 		benchReturn := benchmarkReturns[assetClass]
 		portWeight := portfolioWeights[assetClass]
 		portReturn := portfolioReturns[assetClass]
-		
+
 		allocationEffect := portWeight.Sub(benchWeight).Mul(benchReturn.Sub(totalBenchReturn))
 		selectionEffect := benchWeight.Mul(portReturn.Sub(benchReturn))
 		interactionEffect := portWeight.Sub(benchWeight).Mul(portReturn.Sub(benchReturn))
 		totalEffect := allocationEffect.Add(selectionEffect).Add(interactionEffect)
-		
+
 		attributions = append(attributions, BrinsonAttribution{
 			AssetClass:        assetClass,
 			AllocationEffect:  allocationEffect,
@@ -224,18 +251,18 @@ func CalculateBrinsonAttribution(portfolioWeights, benchmarkWeights, portfolioRe
 			TotalEffect:       totalEffect,
 		})
 	}
-	
+
 	return attributions
 }
 
 // CalculateRiskAttribution 计算风险归因
 func CalculateRiskAttribution(weights map[string]decimal.Decimal, factorReturns map[string]decimal.Decimal) []RiskAttribution {
 	attributions := []RiskAttribution{}
-	
+
 	for symbol, weight := range weights {
 		for factorName, factorReturn := range factorReturns {
 			contribution := weight.Mul(factorReturn)
-			
+
 			attributions = append(attributions, RiskAttribution{
 				FactorName:     fmt.Sprintf("%s_%s", symbol, factorName),
 				FactorExposure: weight,
@@ -244,7 +271,7 @@ func CalculateRiskAttribution(weights map[string]decimal.Decimal, factorReturns 
 			})
 		}
 	}
-	
+
 	return attributions
 }
 

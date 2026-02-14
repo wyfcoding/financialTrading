@@ -21,7 +21,7 @@ func NewServer(app *application.FixApplicationService) *Server {
 }
 
 func (s *Server) Logon(ctx context.Context, req *v1.LogonRequest) (*v1.LogonResponse, error) {
-	session, err := s.app.Logon(ctx, req.CompId, req.TargetId, req.Password, req.FixVersion)
+	session, err := s.app.Logon(ctx, req.CompId, req.TargetId, req.Password, req.FixVersion, 30)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "logon failed: %v", err)
 	}
@@ -33,7 +33,7 @@ func (s *Server) Logon(ctx context.Context, req *v1.LogonRequest) (*v1.LogonResp
 }
 
 func (s *Server) Logout(ctx context.Context, req *v1.LogoutRequest) (*v1.LogoutResponse, error) {
-	err := s.app.Logout(ctx, req.SessionId)
+	err := s.app.Logout(ctx, req.SessionId, "client_logout")
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "logout failed: %v", err)
 	}

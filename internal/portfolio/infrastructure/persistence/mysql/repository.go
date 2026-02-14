@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"context"
+	"time"
 
 	"github.com/wyfcoding/financialtrading/internal/portfolio/domain"
 	"gorm.io/gorm"
@@ -20,7 +21,7 @@ func (r *PortfolioRepo) SaveSnapshot(ctx context.Context, s *domain.PortfolioSna
 	// But GORM upsert syntax depends on implementation.
 	// We can just check exist.
 	var exist domain.PortfolioSnapshot
-	if err := r.db.WithContext(ctx).Where("user_id = ? AND date = ?", s.UserID, s.Date.Format("2006-01-02")).First(&exist).Error; err == nil {
+	if err := r.db.WithContext(ctx).Where("user_id = ? AND snapshot_date = ?", s.UserID, s.SnapshotDate.Format("2006-01-02")).First(&exist).Error; err == nil {
 		s.ID = exist.ID
 		s.CreatedAt = exist.CreatedAt
 	}
@@ -29,15 +30,24 @@ func (r *PortfolioRepo) SaveSnapshot(ctx context.Context, s *domain.PortfolioSna
 
 func (r *PortfolioRepo) GetLatestSnapshot(ctx context.Context, userID string) (*domain.PortfolioSnapshot, error) {
 	var s domain.PortfolioSnapshot
-	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Order("date desc").First(&s).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Order("snapshot_date desc").First(&s).Error; err != nil {
 		return nil, err
 	}
 	return &s, nil
 }
 
+func (r *PortfolioRepo) GetSnapshots(ctx context.Context, userID string, start, end time.Time) ([]domain.PortfolioSnapshot, error) {
+	var snapshots []domain.PortfolioSnapshot
+	err := r.db.WithContext(ctx).
+		Where("user_id = ? AND snapshot_date >= ? AND snapshot_date <= ?", userID, start, end).
+		Order("snapshot_date asc").
+		Find(&snapshots).Error
+	return snapshots, err
+}
+
 func (r *PortfolioRepo) ListSnapshots(ctx context.Context, userID string, limit int) ([]*domain.PortfolioSnapshot, error) {
 	var snapshots []*domain.PortfolioSnapshot
-	err := r.db.WithContext(ctx).Where("user_id = ?", userID).Order("date desc").Limit(limit).Find(&snapshots).Error
+	err := r.db.WithContext(ctx).Where("user_id = ?", userID).Order("snapshot_date desc").Limit(limit).Find(&snapshots).Error
 	return snapshots, err
 }
 

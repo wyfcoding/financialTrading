@@ -29,7 +29,7 @@ func toDomainSession(m *FixSessionModel) *domain.FixSession {
 		SessionID:     m.SessionID,
 		CompID:        m.CompID,
 		TargetID:      m.TargetID,
-		Version:       m.FixVersion,
+		Version:       domain.FixVersion(m.FixVersion),
 		Status:        domain.FixSessionStatus(m.Status),
 		LastMsgSeqIn:  m.LastMsgSeqIn,
 		LastMsgSeqOut: m.LastMsgSeqOut,

@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"time"
 
 	pb "github.com/wyfcoding/financialtrading/go-api/custody/v1"
 	"github.com/wyfcoding/financialtrading/internal/custody/application"
@@ -19,7 +20,7 @@ func NewServer(app *application.CustodyAppService) *Server {
 }
 
 func (s *Server) TransferInternal(ctx context.Context, req *pb.TransferInternalRequest) (*pb.TransferInternalResponse, error) {
-	txID, err := s.app.TransferInternal(ctx, req.FromVault, req.ToVault, req.Amount, req.Reason)
+	txID, err := s.app.TransferInternal(ctx, req.FromVault, req.ToVault, req.Symbol, req.Amount, req.Reason)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "transfer failed: %v", err)
 	}
@@ -50,7 +51,17 @@ func (s *Server) GetHolding(ctx context.Context, req *pb.GetHoldingRequest) (*pb
 }
 
 func (s *Server) AnnounceAction(ctx context.Context, req *pb.AnnounceActionRequest) (*pb.AnnounceActionResponse, error) {
-	id, err := s.app.AnnounceAction(ctx, req.Symbol, req.Type, req.Ratio, req.RecordDate.AsTime(), req.ExDate.AsTime(), req.PayDate.AsTime())
+	var recordDate, exDate, payDate time.Time
+	if ts := req.GetRecordDate(); ts != nil {
+		recordDate = ts.AsTime()
+	}
+	if ts := req.GetExDate(); ts != nil {
+		exDate = ts.AsTime()
+	}
+	if ts := req.GetPayDate(); ts != nil {
+		payDate = ts.AsTime()
+	}
+	id, err := s.app.AnnounceAction(ctx, req.Symbol, req.Type, req.Ratio, recordDate, exDate, payDate)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "announce failed: %v", err)
 	}

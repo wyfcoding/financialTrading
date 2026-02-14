@@ -69,10 +69,9 @@ func (s *Server) GetPerformance(ctx context.Context, req *pb.GetPerformanceReque
 
 	var points []*pb.PerformancePoint
 	for _, snap := range snaps {
-		val, _ := snap.TotalEquity.Float64()
 		points = append(points, &pb.PerformancePoint{
-			Timestamp: snap.Date.Format("2006-01-02"),
-			Equity:    val,
+			Timestamp: snap.Timestamp,
+			Equity:    snap.Equity,
 		})
 	}
 

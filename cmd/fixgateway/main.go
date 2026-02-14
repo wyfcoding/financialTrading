@@ -42,7 +42,7 @@ func main() {
 
 	// 4. Layers
 	repo := persistence_mysql.NewGormFixRepository(db)
-	app := application.NewFixApplicationService(repo, logger)
+	app := application.NewFixApplicationService(repo, nil, logger)
 	svc := grpc_server.NewServer(app)
 
 	// 5. Server

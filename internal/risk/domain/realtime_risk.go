@@ -11,20 +11,20 @@ import (
 type RiskAction string
 
 const (
-	RiskActionAllow      RiskAction = "ALLOW"
-	RiskActionWarn       RiskAction = "WARN"
-	RiskActionBlock      RiskAction = "BLOCK"
-	RiskActionReview     RiskAction = "REVIEW"
-	RiskActionChallenge  RiskAction = "CHALLENGE"
+	RiskActionAllow     RiskAction = "ALLOW"
+	RiskActionWarn      RiskAction = "WARN"
+	RiskActionBlock     RiskAction = "BLOCK"
+	RiskActionReview    RiskAction = "REVIEW"
+	RiskActionChallenge RiskAction = "CHALLENGE"
 )
 
 type RiskCheckType string
 
 const (
-	RiskCheckPreTrade    RiskCheckType = "PRE_TRADE"
-	RiskCheckPostTrade   RiskCheckType = "POST_TRADE"
-	RiskCheckRealTime    RiskCheckType = "REAL_TIME"
-	RiskCheckEndOfDay    RiskCheckType = "END_OF_DAY"
+	RiskCheckPreTrade  RiskCheckType = "PRE_TRADE"
+	RiskCheckPostTrade RiskCheckType = "POST_TRADE"
+	RiskCheckRealTime  RiskCheckType = "REAL_TIME"
+	RiskCheckEndOfDay  RiskCheckType = "END_OF_DAY"
 )
 
 type RiskRuleCategory string
@@ -77,20 +77,20 @@ type PositionCache struct {
 }
 
 type UserPosition struct {
-	UserID       string                     `json:"user_id"`
-	Positions    map[string]*SymbolPosition `json:"positions"`
-	TotalValue   decimal.Decimal            `json:"total_value"`
-	TotalExposure decimal.Decimal           `json:"total_exposure"`
-	UpdatedAt    time.Time                  `json:"updated_at"`
+	UserID        string                     `json:"user_id"`
+	Positions     map[string]*SymbolPosition `json:"positions"`
+	TotalValue    decimal.Decimal            `json:"total_value"`
+	TotalExposure decimal.Decimal            `json:"total_exposure"`
+	UpdatedAt     time.Time                  `json:"updated_at"`
 }
 
 type SymbolPosition struct {
-	Symbol       string          `json:"symbol"`
-	Quantity     decimal.Decimal `json:"quantity"`
-	AvgPrice     decimal.Decimal `json:"avg_price"`
-	MarketValue  decimal.Decimal `json:"market_value"`
+	Symbol        string          `json:"symbol"`
+	Quantity      decimal.Decimal `json:"quantity"`
+	AvgPrice      decimal.Decimal `json:"avg_price"`
+	MarketValue   decimal.Decimal `json:"market_value"`
 	UnrealizedPnL decimal.Decimal `json:"unrealized_pnl"`
-	UpdatedAt    time.Time       `json:"updated_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
 }
 
 type ExposureCache struct {
@@ -99,19 +99,19 @@ type ExposureCache struct {
 }
 
 type UserExposure struct {
-	UserID           string          `json:"user_id"`
-	GrossExposure    decimal.Decimal `json:"gross_exposure"`
-	NetExposure      decimal.Decimal `json:"net_exposure"`
-	LongExposure     decimal.Decimal `json:"long_exposure"`
-	ShortExposure    decimal.Decimal `json:"short_exposure"`
-	DeltaExposure    decimal.Decimal `json:"delta_exposure"`
-	GammaExposure    decimal.Decimal `json:"gamma_exposure"`
-	VegaExposure     decimal.Decimal `json:"vega_exposure"`
-	ThetaExposure    decimal.Decimal `json:"theta_exposure"`
-	MaxDrawdown      decimal.Decimal `json:"max_drawdown"`
-	ValueAtRisk95    decimal.Decimal `json:"var_95"`
-	ValueAtRisk99    decimal.Decimal `json:"var_99"`
-	UpdatedAt        time.Time       `json:"updated_at"`
+	UserID        string          `json:"user_id"`
+	GrossExposure decimal.Decimal `json:"gross_exposure"`
+	NetExposure   decimal.Decimal `json:"net_exposure"`
+	LongExposure  decimal.Decimal `json:"long_exposure"`
+	ShortExposure decimal.Decimal `json:"short_exposure"`
+	DeltaExposure decimal.Decimal `json:"delta_exposure"`
+	GammaExposure decimal.Decimal `json:"gamma_exposure"`
+	VegaExposure  decimal.Decimal `json:"vega_exposure"`
+	ThetaExposure decimal.Decimal `json:"theta_exposure"`
+	MaxDrawdown   decimal.Decimal `json:"max_drawdown"`
+	ValueAtRisk95 decimal.Decimal `json:"var_95"`
+	ValueAtRisk99 decimal.Decimal `json:"var_99"`
+	UpdatedAt     time.Time       `json:"updated_at"`
 }
 
 type RiskAlertManager struct {
@@ -121,8 +121,8 @@ type RiskAlertManager struct {
 }
 
 type CircuitBreakerManager struct {
-	breakers   map[string]*CircuitBreakerState
-	mu         sync.RWMutex
+	breakers map[string]*CircuitBreakerState
+	mu       sync.RWMutex
 }
 
 type CircuitBreakerState struct {
@@ -148,19 +148,19 @@ type RiskCheckContext struct {
 	IPAddress    string          `json:"ip_address"`
 	DeviceID     string          `json:"device_id"`
 	Timestamp    time.Time       `json:"timestamp"`
-	Extra        map[string]interface{} `json:"extra,omitempty"`
+	Extra        map[string]any  `json:"extra,omitempty"`
 }
 
 type RiskCheckResult struct {
-	CheckID      string          `json:"check_id"`
-	UserID       string          `json:"user_id"`
-	Passed       bool            `json:"passed"`
-	Action       RiskAction      `json:"action"`
-	RiskLevel    RiskLevel       `json:"risk_level"`
-	RiskScore    decimal.Decimal `json:"risk_score"`
+	CheckID        string           `json:"check_id"`
+	UserID         string           `json:"user_id"`
+	Passed         bool             `json:"passed"`
+	Action         RiskAction       `json:"action"`
+	RiskLevel      RiskLevel        `json:"risk_level"`
+	RiskScore      decimal.Decimal  `json:"risk_score"`
 	TriggeredRules []*TriggeredRule `json:"triggered_rules,omitempty"`
-	Reason       string          `json:"reason"`
-	CheckedAt    time.Time       `json:"checked_at"`
+	Reason         string           `json:"reason"`
+	CheckedAt      time.Time        `json:"checked_at"`
 }
 
 type TriggeredRule struct {

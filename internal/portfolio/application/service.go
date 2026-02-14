@@ -10,11 +10,11 @@ import (
 )
 
 type PortfolioQueryService struct {
-	portfolioRepo  domain.PortfolioRepository
-	positionRepo   domain.PositionRepository
-	eventRepo      domain.PortfolioEventRepository
-	priceService   PriceService
-	logger         *slog.Logger
+	portfolioRepo domain.PortfolioRepository
+	positionRepo  domain.PositionRepository
+	eventRepo     domain.PortfolioEventRepository
+	priceService  PriceService
+	logger        *slog.Logger
 }
 
 type PriceService interface {
@@ -62,7 +62,7 @@ func (s *PortfolioQueryService) GetPortfolioOverview(ctx context.Context, userID
 
 	previousSnapshot, err := s.portfolioRepo.GetLatestSnapshot(ctx, userID)
 	if err == nil && previousSnapshot != nil {
-		overview.UpdateDailyPnL(previousSnapshot.TotalEquity)
+		overview.UpdateDailyPnL(previousSnapshot.TotalValue)
 	}
 
 	overview.LastUpdated = time.Now()
@@ -259,4 +259,93 @@ func NewPortfolioError(msg string) *PortfolioError {
 
 func (e *PortfolioError) Error() string {
 	return e.message
+}
+
+type PortfolioPositionView struct {
+	Symbol       string
+	Quantity     float64
+	AvgPrice     float64
+	CurrentPrice float64
+	Type         string
+}
+
+type PortfolioSnapshotView struct {
+	Timestamp string
+	Equity    float64
+}
+
+type PortfolioAppService struct {
+	portfolioRepo domain.PortfolioRepository
+	logger        *slog.Logger
+}
+
+func NewPortfolioAppService(repo domain.PortfolioRepository, logger *slog.Logger) *PortfolioAppService {
+	return &PortfolioAppService{
+		portfolioRepo: repo,
+		logger:        logger,
+	}
+}
+
+func (s *PortfolioAppService) GetPortfolio(ctx context.Context, userID, currency string) (float64, float64, float64, float64, error) {
+	snapshot, err := s.portfolioRepo.GetLatestSnapshot(ctx, userID)
+	if err != nil || snapshot == nil {
+		return 0, 0, 0, 0, err
+	}
+
+	totalEquity, _ := snapshot.TotalValue.Float64()
+	dailyPnLPct, _ := snapshot.DayReturn.Float64()
+	return totalEquity, 0, 0, dailyPnLPct, nil
+}
+
+func (s *PortfolioAppService) GetPositions(ctx context.Context, userID string) ([]PortfolioPositionView, error) {
+	// Stage A: this entrypoint keeps cmd/portfolio buildable even when position read model is not wired.
+	return []PortfolioPositionView{}, nil
+}
+
+func (s *PortfolioAppService) GetPerformance(ctx context.Context, userID, timeframe string) ([]PortfolioSnapshotView, float64, float64, float64, error) {
+	limit := timeframeToLimit(timeframe)
+	snapshots, err := s.portfolioRepo.ListSnapshots(ctx, userID, limit)
+	if err != nil {
+		return nil, 0, 0, 0, err
+	}
+
+	history := make([]PortfolioSnapshotView, 0, len(snapshots))
+	for _, snapshot := range snapshots {
+		if snapshot == nil {
+			continue
+		}
+		equity, _ := snapshot.TotalValue.Float64()
+		history = append(history, PortfolioSnapshotView{
+			Timestamp: snapshot.SnapshotDate.Format("2006-01-02"),
+			Equity:    equity,
+		})
+	}
+
+	var totalReturn, sharpeRatio, maxDrawdown float64
+	if perf, perfErr := s.portfolioRepo.GetPerformance(ctx, userID); perfErr == nil && perf != nil {
+		totalReturn, _ = perf.TotalReturn.Float64()
+		sharpeRatio, _ = perf.SharpeRatio.Float64()
+		maxDrawdown, _ = perf.MaxDrawdown.Float64()
+	}
+
+	return history, totalReturn, sharpeRatio, maxDrawdown, nil
+}
+
+func timeframeToLimit(timeframe string) int {
+	switch timeframe {
+	case "1D":
+		return 1
+	case "1W":
+		return 7
+	case "1M":
+		return 30
+	case "3M":
+		return 90
+	case "6M":
+		return 180
+	case "1Y":
+		return 365
+	default:
+		return 30
+	}
 }

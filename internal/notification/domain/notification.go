@@ -2,25 +2,26 @@ package domain
 
 import (
 	"errors"
+	"slices"
 	"time"
 )
 
 type NotificationType string
 
 const (
-	NotificationTypeTrade         NotificationType = "TRADE"
-	NotificationTypeOrder         NotificationType = "ORDER"
-	NotificationTypePosition      NotificationType = "POSITION"
-	NotificationTypeRisk          NotificationType = "RISK"
-	NotificationTypeMargin        NotificationType = "MARGIN"
-	NotificationTypeSettlement    NotificationType = "SETTLEMENT"
-	NotificationTypeDeposit       NotificationType = "DEPOSIT"
-	NotificationTypeWithdrawal    NotificationType = "WITHDRAWAL"
-	NotificationTypeKYC           NotificationType = "KYC"
-	NotificationTypeAML           NotificationType = "AML"
-	NotificationTypeSystem        NotificationType = "SYSTEM"
-	NotificationTypePriceAlert    NotificationType = "PRICE_ALERT"
-	NotificationTypeExecution     NotificationType = "EXECUTION"
+	NotificationTypeTrade      NotificationType = "TRADE"
+	NotificationTypeOrder      NotificationType = "ORDER"
+	NotificationTypePosition   NotificationType = "POSITION"
+	NotificationTypeRisk       NotificationType = "RISK"
+	NotificationTypeMargin     NotificationType = "MARGIN"
+	NotificationTypeSettlement NotificationType = "SETTLEMENT"
+	NotificationTypeDeposit    NotificationType = "DEPOSIT"
+	NotificationTypeWithdrawal NotificationType = "WITHDRAWAL"
+	NotificationTypeKYC        NotificationType = "KYC"
+	NotificationTypeAML        NotificationType = "AML"
+	NotificationTypeSystem     NotificationType = "SYSTEM"
+	NotificationTypePriceAlert NotificationType = "PRICE_ALERT"
+	NotificationTypeExecution  NotificationType = "EXECUTION"
 )
 
 type NotificationPriority string
@@ -45,35 +46,35 @@ const (
 type NotificationChannel string
 
 const (
-	ChannelEmail    NotificationChannel = "EMAIL"
-	ChannelSMS      NotificationChannel = "SMS"
-	ChannelPush     NotificationChannel = "PUSH"
-	ChannelInApp    NotificationChannel = "IN_APP"
-	ChannelWebhook  NotificationChannel = "WEBHOOK"
+	ChannelEmail     NotificationChannel = "EMAIL"
+	ChannelSMS       NotificationChannel = "SMS"
+	ChannelPush      NotificationChannel = "PUSH"
+	ChannelInApp     NotificationChannel = "IN_APP"
+	ChannelWebhook   NotificationChannel = "WEBHOOK"
 	ChannelWebSocket NotificationChannel = "WEBSOCKET"
 )
 
 type Notification struct {
-	ID             uint64               `json:"id"`
-	NotificationID string               `json:"notification_id"`
-	UserID         uint64               `json:"user_id"`
-	Type           NotificationType     `json:"type"`
-	Priority       NotificationPriority `json:"priority"`
-	Title          string               `json:"title"`
-	Content        string               `json:"content"`
-	Data           map[string]any       `json:"data"`
+	ID             uint64                `json:"id"`
+	NotificationID string                `json:"notification_id"`
+	UserID         uint64                `json:"user_id"`
+	Type           NotificationType      `json:"type"`
+	Priority       NotificationPriority  `json:"priority"`
+	Title          string                `json:"title"`
+	Content        string                `json:"content"`
+	Data           map[string]any        `json:"data"`
 	Channels       []NotificationChannel `json:"channels"`
-	Status         NotificationStatus   `json:"status"`
-	SentAt         *time.Time           `json:"sent_at"`
-	DeliveredAt    *time.Time           `json:"delivered_at"`
-	ReadAt         *time.Time           `json:"read_at"`
-	FailReason     string               `json:"fail_reason"`
-	RetryCount     int                  `json:"retry_count"`
-	MaxRetries     int                  `json:"max_retries"`
-	ScheduledAt    *time.Time           `json:"scheduled_at"`
-	ExpiresAt      *time.Time           `json:"expires_at"`
-	CreatedAt      time.Time            `json:"created_at"`
-	UpdatedAt      time.Time            `json:"updated_at"`
+	Status         NotificationStatus    `json:"status"`
+	SentAt         *time.Time            `json:"sent_at"`
+	DeliveredAt    *time.Time            `json:"delivered_at"`
+	ReadAt         *time.Time            `json:"read_at"`
+	FailReason     string                `json:"fail_reason"`
+	RetryCount     int                   `json:"retry_count"`
+	MaxRetries     int                   `json:"max_retries"`
+	ScheduledAt    *time.Time            `json:"scheduled_at"`
+	ExpiresAt      *time.Time            `json:"expires_at"`
+	CreatedAt      time.Time             `json:"created_at"`
+	UpdatedAt      time.Time             `json:"updated_at"`
 }
 
 func NewNotification(notificationID string, userID uint64, notifType NotificationType, priority NotificationPriority, title, content string) *Notification {
@@ -100,10 +101,8 @@ func (n *Notification) SetData(data map[string]any) {
 }
 
 func (n *Notification) AddChannel(channel NotificationChannel) {
-	for _, c := range n.Channels {
-		if c == channel {
-			return
-		}
+	if slices.Contains(n.Channels, channel) {
+		return
 	}
 	n.Channels = append(n.Channels, channel)
 	n.UpdatedAt = time.Now()
@@ -155,15 +154,15 @@ func (n *Notification) IsExpired() bool {
 }
 
 type NotificationTemplate struct {
-	ID          uint64           `json:"id"`
-	Code        string           `json:"code"`
-	Type        NotificationType `json:"type"`
-	Title       string           `json:"title"`
-	Content     string           `json:"content"`
-	Channels    []NotificationChannel `json:"channels"`
-	IsActive    bool             `json:"is_active"`
-	CreatedAt   time.Time        `json:"created_at"`
-	UpdatedAt   time.Time        `json:"updated_at"`
+	ID        uint64                `json:"id"`
+	Code      string                `json:"code"`
+	Type      NotificationType      `json:"type"`
+	Title     string                `json:"title"`
+	Content   string                `json:"content"`
+	Channels  []NotificationChannel `json:"channels"`
+	IsActive  bool                  `json:"is_active"`
+	CreatedAt time.Time             `json:"created_at"`
+	UpdatedAt time.Time             `json:"updated_at"`
 }
 
 func NewNotificationTemplate(code string, notifType NotificationType, title, content string) *NotificationTemplate {
@@ -180,14 +179,14 @@ func NewNotificationTemplate(code string, notifType NotificationType, title, con
 }
 
 type UserNotificationPreference struct {
-	ID           uint64              `json:"id"`
-	UserID       uint64              `json:"user_id"`
-	Type         NotificationType    `json:"type"`
-	Channels     []NotificationChannel `json:"channels"`
-	Enabled      bool                `json:"enabled"`
-	QuietHours   *QuietHours         `json:"quiet_hours"`
-	CreatedAt    time.Time           `json:"created_at"`
-	UpdatedAt    time.Time           `json:"updated_at"`
+	ID         uint64                `json:"id"`
+	UserID     uint64                `json:"user_id"`
+	Type       NotificationType      `json:"type"`
+	Channels   []NotificationChannel `json:"channels"`
+	Enabled    bool                  `json:"enabled"`
+	QuietHours *QuietHours           `json:"quiet_hours"`
+	CreatedAt  time.Time             `json:"created_at"`
+	UpdatedAt  time.Time             `json:"updated_at"`
 }
 
 type QuietHours struct {

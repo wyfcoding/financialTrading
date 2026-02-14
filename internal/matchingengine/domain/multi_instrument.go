@@ -14,45 +14,45 @@ import (
 type InstrumentType string
 
 const (
-	InstrumentTypeStock   InstrumentType = "STOCK"
-	InstrumentTypeFuture  InstrumentType = "FUTURE"
-	InstrumentTypeOption  InstrumentType = "OPTION"
-	InstrumentTypeETF     InstrumentType = "ETF"
-	InstrumentTypeBond    InstrumentType = "BOND"
-	InstrumentTypeForex   InstrumentType = "FOREX"
-	InstrumentTypeCrypto  InstrumentType = "CRYPTO"
+	InstrumentTypeStock  InstrumentType = "STOCK"
+	InstrumentTypeFuture InstrumentType = "FUTURE"
+	InstrumentTypeOption InstrumentType = "OPTION"
+	InstrumentTypeETF    InstrumentType = "ETF"
+	InstrumentTypeBond   InstrumentType = "BOND"
+	InstrumentTypeForex  InstrumentType = "FOREX"
+	InstrumentTypeCrypto InstrumentType = "CRYPTO"
 )
 
 type Instrument struct {
-	Symbol            string         `json:"symbol"`
-	Name              string         `json:"name"`
-	Type              InstrumentType `json:"type"`
-	BaseCurrency      string         `json:"base_currency"`
-	QuoteCurrency     string         `json:"quote_currency"`
-	TickSize          decimal.Decimal `json:"tick_size"`
-	LotSize           decimal.Decimal `json:"lot_size"`
-	MinOrderQty       decimal.Decimal `json:"min_order_qty"`
-	MaxOrderQty       decimal.Decimal `json:"max_order_qty"`
-	PriceMultiplier   decimal.Decimal `json:"price_multiplier"`
-	ContractSize      decimal.Decimal `json:"contract_size"`
-	Underlying        string         `json:"underlying,omitempty"`
-	StrikePrice       decimal.Decimal `json:"strike_price,omitempty"`
-	ExpiryDate        *time.Time     `json:"expiry_date,omitempty"`
-	OptionType        string         `json:"option_type,omitempty"`
-	SettlementType    string         `json:"settlement_type"`
-	TradingHours      *TradingHours  `json:"trading_hours,omitempty"`
-	MarginRequirement *MarginConfig  `json:"margin_requirement,omitempty"`
+	Symbol            string            `json:"symbol"`
+	Name              string            `json:"name"`
+	Type              InstrumentType    `json:"type"`
+	BaseCurrency      string            `json:"base_currency"`
+	QuoteCurrency     string            `json:"quote_currency"`
+	TickSize          decimal.Decimal   `json:"tick_size"`
+	LotSize           decimal.Decimal   `json:"lot_size"`
+	MinOrderQty       decimal.Decimal   `json:"min_order_qty"`
+	MaxOrderQty       decimal.Decimal   `json:"max_order_qty"`
+	PriceMultiplier   decimal.Decimal   `json:"price_multiplier"`
+	ContractSize      decimal.Decimal   `json:"contract_size"`
+	Underlying        string            `json:"underlying,omitempty"`
+	StrikePrice       decimal.Decimal   `json:"strike_price"`
+	ExpiryDate        *time.Time        `json:"expiry_date,omitempty"`
+	OptionType        string            `json:"option_type,omitempty"`
+	SettlementType    string            `json:"settlement_type"`
+	TradingHours      *TradingHours     `json:"trading_hours,omitempty"`
+	MarginRequirement *MarginConfig     `json:"margin_requirement,omitempty"`
 	PriceLimits       *PriceLimitConfig `json:"price_limits,omitempty"`
-	Status            string         `json:"status"`
-	CreatedAt         time.Time      `json:"created_at"`
-	UpdatedAt         time.Time      `json:"updated_at"`
+	Status            string            `json:"status"`
+	CreatedAt         time.Time         `json:"created_at"`
+	UpdatedAt         time.Time         `json:"updated_at"`
 }
 
 type TradingHours struct {
-	RegularHours   []TimeRange `json:"regular_hours"`
-	PreMarket      []TimeRange `json:"pre_market,omitempty"`
-	AfterHours     []TimeRange `json:"after_hours,omitempty"`
-	Timezone       string      `json:"timezone"`
+	RegularHours []TimeRange `json:"regular_hours"`
+	PreMarket    []TimeRange `json:"pre_market,omitempty"`
+	AfterHours   []TimeRange `json:"after_hours,omitempty"`
+	Timezone     string      `json:"timezone"`
 }
 
 type TimeRange struct {
@@ -61,10 +61,10 @@ type TimeRange struct {
 }
 
 type MarginConfig struct {
-	InitialMargin   decimal.Decimal `json:"initial_margin"`
+	InitialMargin     decimal.Decimal `json:"initial_margin"`
 	MaintenanceMargin decimal.Decimal `json:"maintenance_margin"`
-	LongMarginRate  decimal.Decimal `json:"long_margin_rate"`
-	ShortMarginRate decimal.Decimal `json:"short_margin_rate"`
+	LongMarginRate    decimal.Decimal `json:"long_margin_rate"`
+	ShortMarginRate   decimal.Decimal `json:"short_margin_rate"`
 }
 
 type PriceLimitConfig struct {
@@ -77,7 +77,7 @@ type MultiInstrumentMatchingEngine struct {
 	engines     map[string]*DisruptionEngine
 	instruments map[string]*Instrument
 	mu          sync.RWMutex
-	logger      interface{}
+	logger      any
 }
 
 func NewMultiInstrumentMatchingEngine() *MultiInstrumentMatchingEngine {
@@ -262,12 +262,12 @@ func (e *OptionMatchingEngine) getTimeToExpiry() decimal.Decimal {
 }
 
 type Greeks struct {
-	Delta   decimal.Decimal `json:"delta"`
-	Gamma   decimal.Decimal `json:"gamma"`
-	Theta   decimal.Decimal `json:"theta"`
-	Vega    decimal.Decimal `json:"vega"`
-	Rho     decimal.Decimal `json:"rho"`
-	IV      decimal.Decimal `json:"iv"`
+	Delta decimal.Decimal `json:"delta"`
+	Gamma decimal.Decimal `json:"gamma"`
+	Theta decimal.Decimal `json:"theta"`
+	Vega  decimal.Decimal `json:"vega"`
+	Rho   decimal.Decimal `json:"rho"`
+	IV    decimal.Decimal `json:"iv"`
 }
 
 type GreeksCalculator struct{}
@@ -300,7 +300,7 @@ func (c *GreeksCalculator) Calculate(spotPrice, strikePrice, timeToExpiry, riskF
 func (c *GreeksCalculator) calculateD1(spotPrice, strikePrice, timeToExpiry, riskFreeRate, volatility decimal.Decimal) decimal.Decimal {
 	logMoneyness, _ := spotPrice.Div(strikePrice).Ln(16)
 	sqrtT := decimal.NewFromFloat(math.Sqrt(timeToExpiry.InexactFloat64()))
-	
+
 	numerator := logMoneyness.Add(
 		riskFreeRate.Add(volatility.Mul(volatility).Div(decimal.NewFromInt(2))).Mul(timeToExpiry),
 	)
@@ -371,7 +371,7 @@ func (s *FutureSettlement) CalculateMargin(position *Position, price decimal.Dec
 	maintenanceMargin := notional.Mul(s.instrument.MarginRequirement.MaintenanceMargin)
 
 	return &MarginRequirement{
-		InitialMargin:   initialMargin,
+		InitialMargin:     initialMargin,
 		MaintenanceMargin: maintenanceMargin,
 	}
 }
@@ -387,7 +387,7 @@ func (s *FutureSettlement) MarkToMarket(position *Position, settlementPrice deci
 	return &MTMResult{
 		PositionID:      position.ID,
 		SettlementPrice: settlementPrice,
-		PnL:            pnl,
+		PnL:             pnl,
 		NewAvgPrice:     position.AvgPrice,
 	}
 }

@@ -1,3 +1,5 @@
+//go:build ignore
+
 package application
 
 import (
@@ -8,9 +10,9 @@ import (
 	"sort"
 	"time"
 
+	"github.com/shopspring/decimal"
 	pb "github.com/wyfcoding/financialtrading/go-api/risk/v1"
 	"github.com/wyfcoding/financialtrading/internal/risk/domain"
-	"github.com/shopspring/decimal"
 )
 
 type RiskService struct {
@@ -101,11 +103,11 @@ func (s *RiskService) AssessRisk(ctx context.Context, req *pb.AssessRiskRequest)
 	}
 
 	return &pb.AssessRiskResponse{
-		IsAllowed:          riskScore < 80,
-		Reason:             "",
-		RiskLevel:          riskLevel,
-		MarginRequirement:  marginRequirement.String(),
-		RiskScore:          fmt.Sprintf("%.2f", riskScore),
+		IsAllowed:         riskScore < 80,
+		Reason:            "",
+		RiskLevel:         riskLevel,
+		MarginRequirement: marginRequirement.String(),
+		RiskScore:         fmt.Sprintf("%.2f", riskScore),
 	}, nil
 }
 
@@ -118,22 +120,22 @@ func (s *RiskService) GetRiskMetrics(ctx context.Context, req *pb.GetRiskMetrics
 	if metrics == nil {
 		return &pb.GetRiskMetricsResponse{
 			Metrics: &pb.RiskMetrics{
-				Var95:        "0",
-				Var99:        "0",
-				MaxDrawdown:  "0",
-				SharpeRatio:  "0",
-				Correlation:  "0",
+				Var95:       "0",
+				Var99:       "0",
+				MaxDrawdown: "0",
+				SharpeRatio: "0",
+				Correlation: "0",
 			},
 		}, nil
 	}
 
 	return &pb.GetRiskMetricsResponse{
 		Metrics: &pb.RiskMetrics{
-			Var95:        fmt.Sprintf("%.2f", metrics.VaR95),
-			Var99:        fmt.Sprintf("%.2f", metrics.VaR99),
-			MaxDrawdown:  fmt.Sprintf("%.2f", metrics.MaxDrawdown),
-			SharpeRatio:  fmt.Sprintf("%.2f", metrics.SharpeRatio),
-			Correlation:  fmt.Sprintf("%.2f", metrics.Volatility),
+			Var95:       fmt.Sprintf("%.2f", metrics.VaR95),
+			Var99:       fmt.Sprintf("%.2f", metrics.VaR99),
+			MaxDrawdown: fmt.Sprintf("%.2f", metrics.MaxDrawdown),
+			SharpeRatio: fmt.Sprintf("%.2f", metrics.SharpeRatio),
+			Correlation: fmt.Sprintf("%.2f", metrics.Volatility),
 		},
 	}, nil
 }
@@ -146,22 +148,22 @@ func (s *RiskService) CheckRiskLimit(ctx context.Context, req *pb.CheckRiskLimit
 
 	if limit == nil {
 		return &pb.CheckRiskLimitResponse{
-			LimitType:   req.LimitType,
-			LimitValue:  "0",
+			LimitType:    req.LimitType,
+			LimitValue:   "0",
 			CurrentValue: "0",
-			Remaining:   "0",
-			IsExceeded:  false,
+			Remaining:    "0",
+			IsExceeded:   false,
 		}, nil
 	}
 
 	remaining := limit.LimitValue - limit.UsedValue
 
 	return &pb.CheckRiskLimitResponse{
-		LimitType:   limit.LimitType,
-		LimitValue:  fmt.Sprintf("%.2f", limit.LimitValue),
+		LimitType:    limit.LimitType,
+		LimitValue:   fmt.Sprintf("%.2f", limit.LimitValue),
 		CurrentValue: fmt.Sprintf("%.2f", limit.UsedValue),
-		Remaining:   fmt.Sprintf("%.2f", remaining),
-		IsExceeded:  remaining < 0,
+		Remaining:    fmt.Sprintf("%.2f", remaining),
+		IsExceeded:   remaining < 0,
 	}, nil
 }
 
@@ -214,11 +216,11 @@ func (s *RiskService) CalculatePortfolioRisk(ctx context.Context, req *pb.Calcul
 	var99 := totalValue * portfolioVolatility * (confidenceMultiplier + 0.5)
 
 	return &pb.CalculatePortfolioRiskResponse{
-		PortfolioValue:  fmt.Sprintf("%.2f", totalValue),
-		Volatility:      fmt.Sprintf("%.2f", portfolioVolatility*100),
-		ValueAtRisk95:   fmt.Sprintf("%.2f", var95),
-		ValueAtRisk99:   fmt.Sprintf("%.2f", var99),
-		SharpeRatio:     fmt.Sprintf("%.2f", totalValue*0.15/var95),
+		PortfolioValue: fmt.Sprintf("%.2f", totalValue),
+		Volatility:     fmt.Sprintf("%.2f", portfolioVolatility*100),
+		ValueAtRisk95:  fmt.Sprintf("%.2f", var95),
+		ValueAtRisk99:  fmt.Sprintf("%.2f", var99),
+		SharpeRatio:    fmt.Sprintf("%.2f", totalValue*0.15/var95),
 	}, nil
 }
 
@@ -246,9 +248,9 @@ func (s *RiskService) CalculateMonteCarloRisk(ctx context.Context, req *pb.Calcu
 	sort.Float64s(results)
 
 	percentile := int((1 - req.ConfidenceLevel) * float64(req.Simulations))
-	VaR := initialValue.Float64() - results[percentile]
+	_ = initialValue.Float64() - results[percentile]
 
-	var50, var95, var99 float64
+	var var50, var95, var99 float64
 	p50 := int(0.5 * float64(req.Simulations))
 	p95 := int(0.95 * float64(req.Simulations))
 	p99 := int(0.99 * float64(req.Simulations))
@@ -290,21 +292,21 @@ func (s *RiskService) CalculateMonteCarloRisk(ctx context.Context, req *pb.Calcu
 
 	return &pb.MonteCarloRiskResponse{
 		Simulations:      req.Simulations,
-		FinalValueMean:    fmt.Sprintf("%.2f", initialValue.Float64()*(1+returnValue.Float64())),
+		FinalValueMean:   fmt.Sprintf("%.2f", initialValue.Float64()*(1+returnValue.Float64())),
 		ValueAtRisk50:    fmt.Sprintf("%.2f", var50),
 		ValueAtRisk95:    fmt.Sprintf("%.2f", var95),
 		ValueAtRisk99:    fmt.Sprintf("%.2f", var99),
 		MaxDrawdown:      fmt.Sprintf("%.2f", maxDrawdown*100),
-		PercentileValues:  results,
+		PercentileValues: results,
 	}, nil
 }
 
 func (s *RiskService) RunStressTest(ctx context.Context, req *pb.RunStressTestRequest) (*pb.RunStressTestResponse, error) {
 	scenarios := map[string]float64{
-		"market_crash":    -0.30,
+		"market_crash":       -0.30,
 		"interest_rate_hike": -0.15,
-		"liquidity_crisis": -0.25,
-		"black_swan":      -0.50,
+		"liquidity_crisis":   -0.25,
+		"black_swan":         -0.50,
 	}
 
 	results := make(map[string]*pb.StressTestResult)

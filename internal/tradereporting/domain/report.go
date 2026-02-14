@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	ErrReportNotFound      = errors.New("report not found")
-	ErrReportAlreadySent   = errors.New("report already sent")
+	ErrReportNotFound         = errors.New("report not found")
+	ErrReportAlreadySent      = errors.New("report already sent")
 	ErrReportValidationFailed = errors.New("report validation failed")
 )
 
@@ -29,140 +29,140 @@ const (
 type ReportStatus string
 
 const (
-	ReportStatusPending    ReportStatus = "PENDING"
-	ReportStatusValidated  ReportStatus = "VALIDATED"
-	ReportStatusSubmitted  ReportStatus = "SUBMITTED"
-	ReportStatusAccepted   ReportStatus = "ACCEPTED"
-	ReportStatusRejected   ReportStatus = "REJECTED"
-	ReportStatusFailed     ReportStatus = "FAILED"
+	ReportStatusPending   ReportStatus = "PENDING"
+	ReportStatusValidated ReportStatus = "VALIDATED"
+	ReportStatusSubmitted ReportStatus = "SUBMITTED"
+	ReportStatusAccepted  ReportStatus = "ACCEPTED"
+	ReportStatusRejected  ReportStatus = "REJECTED"
+	ReportStatusFailed    ReportStatus = "FAILED"
 )
 
 type RegulatoryAuthority string
 
 const (
-	RegulatorSEC    RegulatoryAuthority = "SEC"
-	RegulatorFINRA  RegulatoryAuthority = "FINRA"
-	RegulatorCFTC   RegulatoryAuthority = "CFTC"
-	RegulatorFCA    RegulatoryAuthority = "FCA"
-	RegulatorESMA   RegulatoryAuthority = "ESMA"
-	RegulatorCSRC   RegulatoryAuthority = "CSRC"
-	RegulatorSFC    RegulatoryAuthority = "SFC"
+	RegulatorSEC   RegulatoryAuthority = "SEC"
+	RegulatorFINRA RegulatoryAuthority = "FINRA"
+	RegulatorCFTC  RegulatoryAuthority = "CFTC"
+	RegulatorFCA   RegulatoryAuthority = "FCA"
+	RegulatorESMA  RegulatoryAuthority = "ESMA"
+	RegulatorCSRC  RegulatoryAuthority = "CSRC"
+	RegulatorSFC   RegulatoryAuthority = "SFC"
 )
 
 type TradeReport struct {
-	ID              string             `json:"id"`
-	ReportNo        string             `json:"report_no"`
-	ReportType      ReportType         `json:"report_type"`
-	Status          ReportStatus       `json:"status"`
-	Regulator       RegulatoryAuthority `json:"regulator"`
-	TradeID         string             `json:"trade_id"`
-	OrderID         string             `json:"order_id"`
-	Symbol          string             `json:"symbol"`
-	ISIN            string             `json:"isin"`
-	Side            string             `json:"side"`
-	Quantity        decimal.Decimal    `json:"quantity"`
-	Price           decimal.Decimal    `json:"price"`
-	Amount          decimal.Decimal    `json:"amount"`
-	Currency        string             `json:"currency"`
-	TradeTime       time.Time          `json:"trade_time"`
-	SettlementDate  time.Time          `json:"settlement_date"`
-	BuyerID         string             `json:"buyer_id"`
-	SellerID        string             `json:"seller_id"`
-	BrokerID        string             `json:"broker_id"`
-	Venue           string             `json:"venue"`
-	ExecutionVenue  string             `json:"execution_venue"`
-	TransactionType string             `json:"transaction_type"`
-	WaiverIndicator string             `json:"waiver_indicator"`
-	ShortSaleIndicator string          `json:"short_sale_indicator"`
-	PriceMultiplier decimal.Decimal    `json:"price_multiplier"`
-	NotionalAmount  decimal.Decimal    `json:"notional_amount"`
-	ClearingFlag    bool               `json:"clearing_flag"`
-	ValidationResult *ValidationResult `json:"validation_result,omitempty"`
-	SubmittedAt     *time.Time         `json:"submitted_at,omitempty"`
-	AcknowledgedAt  *time.Time         `json:"acknowledged_at,omitempty"`
-	RejectedAt      *time.Time         `json:"rejected_at,omitempty"`
-	RejectionReason string             `json:"rejection_reason,omitempty"`
-	CreatedAt       time.Time          `json:"created_at"`
-	UpdatedAt       time.Time          `json:"updated_at"`
+	ID                 string              `json:"id"`
+	ReportNo           string              `json:"report_no"`
+	ReportType         ReportType          `json:"report_type"`
+	Status             ReportStatus        `json:"status"`
+	Regulator          RegulatoryAuthority `json:"regulator"`
+	TradeID            string              `json:"trade_id"`
+	OrderID            string              `json:"order_id"`
+	Symbol             string              `json:"symbol"`
+	ISIN               string              `json:"isin"`
+	Side               string              `json:"side"`
+	Quantity           decimal.Decimal     `json:"quantity"`
+	Price              decimal.Decimal     `json:"price"`
+	Amount             decimal.Decimal     `json:"amount"`
+	Currency           string              `json:"currency"`
+	TradeTime          time.Time           `json:"trade_time"`
+	SettlementDate     time.Time           `json:"settlement_date"`
+	BuyerID            string              `json:"buyer_id"`
+	SellerID           string              `json:"seller_id"`
+	BrokerID           string              `json:"broker_id"`
+	Venue              string              `json:"venue"`
+	ExecutionVenue     string              `json:"execution_venue"`
+	TransactionType    string              `json:"transaction_type"`
+	WaiverIndicator    string              `json:"waiver_indicator"`
+	ShortSaleIndicator string              `json:"short_sale_indicator"`
+	PriceMultiplier    decimal.Decimal     `json:"price_multiplier"`
+	NotionalAmount     decimal.Decimal     `json:"notional_amount"`
+	ClearingFlag       bool                `json:"clearing_flag"`
+	ValidationResult   *ValidationResult   `json:"validation_result,omitempty"`
+	SubmittedAt        *time.Time          `json:"submitted_at,omitempty"`
+	AcknowledgedAt     *time.Time          `json:"acknowledged_at,omitempty"`
+	RejectedAt         *time.Time          `json:"rejected_at,omitempty"`
+	RejectionReason    string              `json:"rejection_reason,omitempty"`
+	CreatedAt          time.Time           `json:"created_at"`
+	UpdatedAt          time.Time           `json:"updated_at"`
 }
 
 type ValidationResult struct {
-	IsValid    bool     `json:"is_valid"`
-	Errors     []string `json:"errors,omitempty"`
-	Warnings   []string `json:"warnings,omitempty"`
+	IsValid     bool      `json:"is_valid"`
+	Errors      []string  `json:"errors,omitempty"`
+	Warnings    []string  `json:"warnings,omitempty"`
 	ValidatedAt time.Time `json:"validated_at"`
 }
 
 type PositionReport struct {
-	ID            string             `json:"id"`
-	ReportNo      string             `json:"report_no"`
-	ReportType    ReportType         `json:"report_type"`
-	Status        ReportStatus       `json:"status"`
+	ID            string              `json:"id"`
+	ReportNo      string              `json:"report_no"`
+	ReportType    ReportType          `json:"report_type"`
+	Status        ReportStatus        `json:"status"`
 	Regulator     RegulatoryAuthority `json:"regulator"`
-	ReportDate    time.Time          `json:"report_date"`
-	ParticipantID string             `json:"participant_id"`
-	Symbol        string             `json:"symbol"`
-	ISIN          string             `json:"isin"`
-	LongPosition  decimal.Decimal    `json:"long_position"`
-	ShortPosition decimal.Decimal    `json:"short_position"`
-	NetPosition   decimal.Decimal    `json:"net_position"`
-	MarketValue   decimal.Decimal    `json:"market_value"`
-	Currency      string             `json:"currency"`
-	CreatedAt     time.Time          `json:"created_at"`
-	UpdatedAt     time.Time          `json:"updated_at"`
+	ReportDate    time.Time           `json:"report_date"`
+	ParticipantID string              `json:"participant_id"`
+	Symbol        string              `json:"symbol"`
+	ISIN          string              `json:"isin"`
+	LongPosition  decimal.Decimal     `json:"long_position"`
+	ShortPosition decimal.Decimal     `json:"short_position"`
+	NetPosition   decimal.Decimal     `json:"net_position"`
+	MarketValue   decimal.Decimal     `json:"market_value"`
+	Currency      string              `json:"currency"`
+	CreatedAt     time.Time           `json:"created_at"`
+	UpdatedAt     time.Time           `json:"updated_at"`
 }
 
 type LargeTradeReport struct {
-	ID           string             `json:"id"`
-	ReportNo     string             `json:"report_no"`
-	ReportType   ReportType         `json:"report_type"`
-	Status       ReportStatus       `json:"status"`
+	ID           string              `json:"id"`
+	ReportNo     string              `json:"report_no"`
+	ReportType   ReportType          `json:"report_type"`
+	Status       ReportStatus        `json:"status"`
 	Regulator    RegulatoryAuthority `json:"regulator"`
-	TradeID      string             `json:"trade_id"`
-	Symbol       string             `json:"symbol"`
-	Quantity     decimal.Decimal    `json:"quantity"`
-	Amount       decimal.Decimal    `json:"amount"`
-	Threshold    decimal.Decimal    `json:"threshold"`
-	ThresholdPct decimal.Decimal    `json:"threshold_pct"`
-	ReportReason string             `json:"report_reason"`
-	CreatedAt    time.Time          `json:"created_at"`
+	TradeID      string              `json:"trade_id"`
+	Symbol       string              `json:"symbol"`
+	Quantity     decimal.Decimal     `json:"quantity"`
+	Amount       decimal.Decimal     `json:"amount"`
+	Threshold    decimal.Decimal     `json:"threshold"`
+	ThresholdPct decimal.Decimal     `json:"threshold_pct"`
+	ReportReason string              `json:"report_reason"`
+	CreatedAt    time.Time           `json:"created_at"`
 }
 
 type RegulatorySubmission struct {
-	ID           string             `json:"id"`
-	SubmissionNo string             `json:"submission_no"`
-	ReportType   ReportType         `json:"report_type"`
-	Regulator    RegulatoryAuthority `json:"regulator"`
-	Status       ReportStatus       `json:"status"`
-	ReportCount  int                `json:"report_count"`
-	FileName     string             `json:"file_name"`
-	FileContent  []byte             `json:"file_content,omitempty"`
-	Checksum     string             `json:"checksum"`
-	SubmittedAt  *time.Time         `json:"submitted_at,omitempty"`
-	AcknowledgedAt *time.Time       `json:"acknowledged_at,omitempty"`
-	ErrorMessage string             `json:"error_message,omitempty"`
-	CreatedAt    time.Time          `json:"created_at"`
+	ID             string              `json:"id"`
+	SubmissionNo   string              `json:"submission_no"`
+	ReportType     ReportType          `json:"report_type"`
+	Regulator      RegulatoryAuthority `json:"regulator"`
+	Status         ReportStatus        `json:"status"`
+	ReportCount    int                 `json:"report_count"`
+	FileName       string              `json:"file_name"`
+	FileContent    []byte              `json:"file_content,omitempty"`
+	Checksum       string              `json:"checksum"`
+	SubmittedAt    *time.Time          `json:"submitted_at,omitempty"`
+	AcknowledgedAt *time.Time          `json:"acknowledged_at,omitempty"`
+	ErrorMessage   string              `json:"error_message,omitempty"`
+	CreatedAt      time.Time           `json:"created_at"`
 }
 
 type ReportingRule struct {
-	ID              string             `json:"id"`
-	RuleCode        string             `json:"rule_code"`
-	Name            string             `json:"name"`
+	ID              string              `json:"id"`
+	RuleCode        string              `json:"rule_code"`
+	Name            string              `json:"name"`
 	Regulator       RegulatoryAuthority `json:"regulator"`
-	ReportType      ReportType         `json:"report_type"`
-	ThresholdAmount decimal.Decimal    `json:"threshold_amount,omitempty"`
-	ThresholdPct    decimal.Decimal    `json:"threshold_pct,omitempty"`
-	TimeLimit       int                `json:"time_limit"` 
-	Enabled         bool               `json:"enabled"`
-	CreatedAt       time.Time          `json:"created_at"`
-	UpdatedAt       time.Time          `json:"updated_at"`
+	ReportType      ReportType          `json:"report_type"`
+	ThresholdAmount decimal.Decimal     `json:"threshold_amount"`
+	ThresholdPct    decimal.Decimal     `json:"threshold_pct"`
+	TimeLimit       int                 `json:"time_limit"`
+	Enabled         bool                `json:"enabled"`
+	CreatedAt       time.Time           `json:"created_at"`
+	UpdatedAt       time.Time           `json:"updated_at"`
 }
 
 type TradeReportingEngine struct {
-	reports    map[string]*TradeReport
-	rules      map[string]*ReportingRule
+	reports     map[string]*TradeReport
+	rules       map[string]*ReportingRule
 	submissions map[string]*RegulatorySubmission
-	mu         sync.RWMutex
+	mu          sync.RWMutex
 }
 
 func NewTradeReportingEngine() *TradeReportingEngine {
@@ -184,34 +184,34 @@ func (e *TradeReportingEngine) CreateTradeReport(trade *TradeForReport) (*TradeR
 	defer e.mu.Unlock()
 
 	report := &TradeReport{
-		ID:               generateReportID(),
-		ReportNo:         "TR" + time.Now().Format("20060102150405"),
-		ReportType:       ReportTypeTradeReport,
-		Status:           ReportStatusPending,
-		Regulator:        trade.Regulator,
-		TradeID:          trade.TradeID,
-		OrderID:          trade.OrderID,
-		Symbol:           trade.Symbol,
-		ISIN:             trade.ISIN,
-		Side:             trade.Side,
-		Quantity:         trade.Quantity,
-		Price:            trade.Price,
-		Amount:           trade.Amount,
-		Currency:         trade.Currency,
-		TradeTime:        trade.TradeTime,
-		SettlementDate:   trade.SettlementDate,
-		BuyerID:          trade.BuyerID,
-		SellerID:         trade.SellerID,
-		BrokerID:         trade.BrokerID,
-		Venue:            trade.Venue,
-		ExecutionVenue:   trade.ExecutionVenue,
-		TransactionType:  trade.TransactionType,
+		ID:                 generateReportID(),
+		ReportNo:           "TR" + time.Now().Format("20060102150405"),
+		ReportType:         ReportTypeTradeReport,
+		Status:             ReportStatusPending,
+		Regulator:          trade.Regulator,
+		TradeID:            trade.TradeID,
+		OrderID:            trade.OrderID,
+		Symbol:             trade.Symbol,
+		ISIN:               trade.ISIN,
+		Side:               trade.Side,
+		Quantity:           trade.Quantity,
+		Price:              trade.Price,
+		Amount:             trade.Amount,
+		Currency:           trade.Currency,
+		TradeTime:          trade.TradeTime,
+		SettlementDate:     trade.SettlementDate,
+		BuyerID:            trade.BuyerID,
+		SellerID:           trade.SellerID,
+		BrokerID:           trade.BrokerID,
+		Venue:              trade.Venue,
+		ExecutionVenue:     trade.ExecutionVenue,
+		TransactionType:    trade.TransactionType,
 		ShortSaleIndicator: trade.ShortSaleIndicator,
-		PriceMultiplier:  trade.PriceMultiplier,
-		NotionalAmount:   trade.NotionalAmount,
-		ClearingFlag:     trade.ClearingFlag,
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
+		PriceMultiplier:    trade.PriceMultiplier,
+		NotionalAmount:     trade.NotionalAmount,
+		ClearingFlag:       trade.ClearingFlag,
+		CreatedAt:          time.Now(),
+		UpdatedAt:          time.Now(),
 	}
 
 	e.reports[report.ID] = report
@@ -239,9 +239,9 @@ func (e *TradeReportingEngine) ValidateReport(reportID string) (*ValidationResul
 	}
 
 	result := &ValidationResult{
-		IsValid:    true,
-		Errors:     make([]string, 0),
-		Warnings:   make([]string, 0),
+		IsValid:     true,
+		Errors:      make([]string, 0),
+		Warnings:    make([]string, 0),
 		ValidatedAt: time.Now(),
 	}
 
@@ -403,29 +403,29 @@ func (e *TradeReportingEngine) CreateSubmission(reports []*TradeReport, regulato
 }
 
 type TradeForReport struct {
-	TradeID             string             `json:"trade_id"`
-	OrderID             string             `json:"order_id"`
-	Symbol              string             `json:"symbol"`
-	ISIN                string             `json:"isin"`
-	Side                string             `json:"side"`
-	Quantity            decimal.Decimal    `json:"quantity"`
-	Price               decimal.Decimal    `json:"price"`
-	Amount              decimal.Decimal    `json:"amount"`
-	Currency            string             `json:"currency"`
-	TradeTime           time.Time          `json:"trade_time"`
-	SettlementDate      time.Time          `json:"settlement_date"`
-	BuyerID             string             `json:"buyer_id"`
-	SellerID            string             `json:"seller_id"`
-	BrokerID            string             `json:"broker_id"`
-	Venue               string             `json:"venue"`
-	ExecutionVenue      string             `json:"execution_venue"`
-	TransactionType     string             `json:"transaction_type"`
-	WaiverIndicator     string             `json:"waiver_indicator"`
-	ShortSaleIndicator  string             `json:"short_sale_indicator"`
-	PriceMultiplier     decimal.Decimal    `json:"price_multiplier"`
-	NotionalAmount      decimal.Decimal    `json:"notional_amount"`
-	ClearingFlag        bool               `json:"clearing_flag"`
-	Regulator           RegulatoryAuthority `json:"regulator"`
+	TradeID            string              `json:"trade_id"`
+	OrderID            string              `json:"order_id"`
+	Symbol             string              `json:"symbol"`
+	ISIN               string              `json:"isin"`
+	Side               string              `json:"side"`
+	Quantity           decimal.Decimal     `json:"quantity"`
+	Price              decimal.Decimal     `json:"price"`
+	Amount             decimal.Decimal     `json:"amount"`
+	Currency           string              `json:"currency"`
+	TradeTime          time.Time           `json:"trade_time"`
+	SettlementDate     time.Time           `json:"settlement_date"`
+	BuyerID            string              `json:"buyer_id"`
+	SellerID           string              `json:"seller_id"`
+	BrokerID           string              `json:"broker_id"`
+	Venue              string              `json:"venue"`
+	ExecutionVenue     string              `json:"execution_venue"`
+	TransactionType    string              `json:"transaction_type"`
+	WaiverIndicator    string              `json:"waiver_indicator"`
+	ShortSaleIndicator string              `json:"short_sale_indicator"`
+	PriceMultiplier    decimal.Decimal     `json:"price_multiplier"`
+	NotionalAmount     decimal.Decimal     `json:"notional_amount"`
+	ClearingFlag       bool                `json:"clearing_flag"`
+	Regulator          RegulatoryAuthority `json:"regulator"`
 }
 
 type TradeReportRepository interface {

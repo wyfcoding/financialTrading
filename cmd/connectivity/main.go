@@ -81,7 +81,16 @@ func main() {
 
 	// 7. FIX Engine
 	sessionMgr := fix.NewSessionManager()
-	sessionMgr.AddSession(fix.NewSession("INST_001", "TRANS_GATEWAY", "INST_CLIENT"))
+	sessionCfg := fix.SessionConfig{
+		SenderCompID:      "TRANS_GATEWAY",
+		TargetCompID:      "INST_CLIENT",
+		HeartBtInt:        30,
+		ReconnectInterval: 3 * time.Second,
+		HeartbeatTimeout:  60 * time.Second,
+		HeartbeatInterval: 30 * time.Second,
+		MaxMessageSize:    1 << 20,
+	}
+	sessionMgr.AddSession(fix.NewSession("INST_001", "TRANS_GATEWAY", "INST_CLIENT", sessionCfg))
 
 	// 8. Downstream Clients
 	execAddr := cfg.GetGRPCAddr("execution")

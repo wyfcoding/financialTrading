@@ -10,46 +10,46 @@ import (
 )
 
 var (
-	ErrCurrencyNotSupported = errors.New("currency not supported")
-	ErrInsufficientBalance  = errors.New("insufficient balance")
-	ErrAccountNotFound      = errors.New("account not found")
-	ErrInvalidExchangeRate  = errors.New("invalid exchange rate")
+	ErrCurrencyNotSupported    = errors.New("currency not supported")
+	ErrInsufficientBalance     = errors.New("insufficient balance")
+	ErrAccountNotFound         = errors.New("account not found")
+	ErrInvalidExchangeRate     = errors.New("invalid exchange rate")
 	ErrCrossCurrencyNotAllowed = errors.New("cross currency operation not allowed")
 )
 
 type CurrencyType string
 
 const (
-	CurrencyTypeFiat     CurrencyType = "FIAT"
-	CurrencyTypeCrypto   CurrencyType = "CRYPTO"
+	CurrencyTypeFiat       CurrencyType = "FIAT"
+	CurrencyTypeCrypto     CurrencyType = "CRYPTO"
 	CurrencyTypeStablecoin CurrencyType = "STABLECOIN"
 )
 
 type CurrencyConfig struct {
-	Code         string       `json:"code"`
-	Name         string       `json:"name"`
-	Symbol       string       `json:"symbol"`
-	Type         CurrencyType `json:"type"`
-	Decimals     int          `json:"decimals"`
+	Code         string          `json:"code"`
+	Name         string          `json:"name"`
+	Symbol       string          `json:"symbol"`
+	Type         CurrencyType    `json:"type"`
+	Decimals     int             `json:"decimals"`
 	MinAmount    decimal.Decimal `json:"min_amount"`
 	MaxAmount    decimal.Decimal `json:"max_amount"`
-	IsBase       bool         `json:"is_base"`
-	IsEnabled    bool         `json:"is_enabled"`
+	IsBase       bool            `json:"is_base"`
+	IsEnabled    bool            `json:"is_enabled"`
 	ExchangeRate decimal.Decimal `json:"exchange_rate"`
 }
 
 type MultiCurrencyAccount struct {
 	eventsourcing.AggregateRoot
-	ID               uint                     `json:"id"`
-	CreatedAt        time.Time                `json:"created_at"`
-	UpdatedAt        time.Time                `json:"updated_at"`
-	AccountID        string                   `json:"account_id"`
-	UserID           string                   `json:"user_id"`
-	AccountType      AccountType              `json:"account_type"`
-	BaseCurrency     string                   `json:"base_currency"`
+	ID               uint                        `json:"id"`
+	CreatedAt        time.Time                   `json:"created_at"`
+	UpdatedAt        time.Time                   `json:"updated_at"`
+	AccountID        string                      `json:"account_id"`
+	UserID           string                      `json:"user_id"`
+	AccountType      AccountType                 `json:"account_type"`
+	BaseCurrency     string                      `json:"base_currency"`
 	CurrencyAccounts map[string]*CurrencyAccount `json:"currency_accounts"`
-	VIPLevel         int                      `json:"vip_level"`
-	Status           string                   `json:"status"`
+	VIPLevel         int                         `json:"vip_level"`
+	Status           string                      `json:"status"`
 }
 
 type CurrencyAccount struct {
@@ -64,14 +64,14 @@ type CurrencyAccount struct {
 }
 
 type ExchangeRate struct {
-	BaseCurrency   string          `json:"base_currency"`
-	QuoteCurrency  string          `json:"quote_currency"`
-	Rate           decimal.Decimal `json:"rate"`
-	BidRate        decimal.Decimal `json:"bid_rate"`
-	AskRate        decimal.Decimal `json:"ask_rate"`
-	Source         string          `json:"source"`
-	UpdatedAt      time.Time       `json:"updated_at"`
-	ValidUntil     time.Time       `json:"valid_until"`
+	BaseCurrency  string          `json:"base_currency"`
+	QuoteCurrency string          `json:"quote_currency"`
+	Rate          decimal.Decimal `json:"rate"`
+	BidRate       decimal.Decimal `json:"bid_rate"`
+	AskRate       decimal.Decimal `json:"ask_rate"`
+	Source        string          `json:"source"`
+	UpdatedAt     time.Time       `json:"updated_at"`
+	ValidUntil    time.Time       `json:"valid_until"`
 }
 
 type ExchangeRateProvider interface {
@@ -81,31 +81,31 @@ type ExchangeRateProvider interface {
 }
 
 type CurrencyConversion struct {
-	ID              string          `json:"id"`
-	AccountID       string          `json:"account_id"`
-	UserID          string          `json:"user_id"`
-	FromCurrency    string          `json:"from_currency"`
-	ToCurrency      string          `json:"to_currency"`
-	FromAmount      decimal.Decimal `json:"from_amount"`
-	ToAmount        decimal.Decimal `json:"to_amount"`
-	ExchangeRate    decimal.Decimal `json:"exchange_rate"`
-	Fee             decimal.Decimal `json:"fee"`
-	FeeCurrency     string          `json:"fee_currency"`
-	Status          string          `json:"status"`
-	ConvertedAt     time.Time       `json:"converted_at"`
+	ID           string          `json:"id"`
+	AccountID    string          `json:"account_id"`
+	UserID       string          `json:"user_id"`
+	FromCurrency string          `json:"from_currency"`
+	ToCurrency   string          `json:"to_currency"`
+	FromAmount   decimal.Decimal `json:"from_amount"`
+	ToAmount     decimal.Decimal `json:"to_amount"`
+	ExchangeRate decimal.Decimal `json:"exchange_rate"`
+	Fee          decimal.Decimal `json:"fee"`
+	FeeCurrency  string          `json:"fee_currency"`
+	Status       string          `json:"status"`
+	ConvertedAt  time.Time       `json:"converted_at"`
 }
 
 type CrossCurrencyTransfer struct {
-	ID             string          `json:"id"`
-	FromAccountID  string          `json:"from_account_id"`
-	ToAccountID    string          `json:"to_account_id"`
-	FromCurrency   string          `json:"from_currency"`
-	ToCurrency     string          `json:"to_currency"`
-	FromAmount     decimal.Decimal `json:"from_amount"`
-	ToAmount       decimal.Decimal `json:"to_amount"`
-	ExchangeRate   decimal.Decimal `json:"exchange_rate"`
-	Status         string          `json:"status"`
-	TransferredAt  time.Time       `json:"transferred_at"`
+	ID            string          `json:"id"`
+	FromAccountID string          `json:"from_account_id"`
+	ToAccountID   string          `json:"to_account_id"`
+	FromCurrency  string          `json:"from_currency"`
+	ToCurrency    string          `json:"to_currency"`
+	FromAmount    decimal.Decimal `json:"from_amount"`
+	ToAmount      decimal.Decimal `json:"to_amount"`
+	ExchangeRate  decimal.Decimal `json:"exchange_rate"`
+	Status        string          `json:"status"`
+	TransferredAt time.Time       `json:"transferred_at"`
 }
 
 func NewMultiCurrencyAccount(accountID, userID, baseCurrency string, accType AccountType) *MultiCurrencyAccount {
@@ -126,7 +126,7 @@ func (a *MultiCurrencyAccount) GetOrCreateCurrencyAccount(currency string) *Curr
 	if acc, exists := a.CurrencyAccounts[currency]; exists {
 		return acc
 	}
-	
+
 	acc := &CurrencyAccount{
 		Currency:         currency,
 		Balance:          decimal.Zero,
@@ -153,13 +153,13 @@ func (a *MultiCurrencyAccount) Deposit(currency string, amount decimal.Decimal) 
 	if amount.LessThanOrEqual(decimal.Zero) {
 		return errors.New("amount must be positive")
 	}
-	
+
 	acc := a.GetOrCreateCurrencyAccount(currency)
 	acc.Balance = acc.Balance.Add(amount)
 	acc.AvailableBalance = acc.AvailableBalance.Add(amount)
 	acc.LastUpdated = time.Now()
 	a.UpdatedAt = time.Now()
-	
+
 	return nil
 }
 
@@ -168,16 +168,16 @@ func (a *MultiCurrencyAccount) Withdraw(currency string, amount decimal.Decimal)
 	if err != nil {
 		return err
 	}
-	
+
 	if acc.AvailableBalance.LessThan(amount) {
 		return ErrInsufficientBalance
 	}
-	
+
 	acc.Balance = acc.Balance.Sub(amount)
 	acc.AvailableBalance = acc.AvailableBalance.Sub(amount)
 	acc.LastUpdated = time.Now()
 	a.UpdatedAt = time.Now()
-	
+
 	return nil
 }
 
@@ -186,16 +186,16 @@ func (a *MultiCurrencyAccount) Freeze(currency string, amount decimal.Decimal, r
 	if err != nil {
 		return err
 	}
-	
+
 	if acc.AvailableBalance.LessThan(amount) {
 		return ErrInsufficientBalance
 	}
-	
+
 	acc.AvailableBalance = acc.AvailableBalance.Sub(amount)
 	acc.FrozenBalance = acc.FrozenBalance.Add(amount)
 	acc.LastUpdated = time.Now()
 	a.UpdatedAt = time.Now()
-	
+
 	return nil
 }
 
@@ -204,16 +204,16 @@ func (a *MultiCurrencyAccount) Unfreeze(currency string, amount decimal.Decimal)
 	if err != nil {
 		return err
 	}
-	
+
 	if acc.FrozenBalance.LessThan(amount) {
 		return ErrInsufficientBalance
 	}
-	
+
 	acc.FrozenBalance = acc.FrozenBalance.Sub(amount)
 	acc.AvailableBalance = acc.AvailableBalance.Add(amount)
 	acc.LastUpdated = time.Now()
 	a.UpdatedAt = time.Now()
-	
+
 	return nil
 }
 
@@ -222,16 +222,16 @@ func (a *MultiCurrencyAccount) DeductFrozen(currency string, amount decimal.Deci
 	if err != nil {
 		return err
 	}
-	
+
 	if acc.FrozenBalance.LessThan(amount) {
 		return ErrInsufficientBalance
 	}
-	
+
 	acc.Balance = acc.Balance.Sub(amount)
 	acc.FrozenBalance = acc.FrozenBalance.Sub(amount)
 	acc.LastUpdated = time.Now()
 	a.UpdatedAt = time.Now()
-	
+
 	return nil
 }
 
@@ -243,36 +243,36 @@ func (a *MultiCurrencyAccount) ConvertCurrency(
 	if fromCurrency == toCurrency {
 		return nil, errors.New("same currency conversion not needed")
 	}
-	
+
 	fromAcc, err := a.GetCurrencyAccount(fromCurrency)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if fromAcc.AvailableBalance.LessThan(fromAmount) {
 		return nil, ErrInsufficientBalance
 	}
-	
+
 	rate, err := rateProvider.GetRate(fromCurrency, toCurrency)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	toAmount := fromAmount.Mul(rate.Rate)
 	fee := toAmount.Mul(decimal.NewFromFloat(0.001))
 	toAmount = toAmount.Sub(fee)
-	
+
 	fromAcc.AvailableBalance = fromAcc.AvailableBalance.Sub(fromAmount)
 	fromAcc.Balance = fromAcc.Balance.Sub(fromAmount)
 	fromAcc.LastUpdated = time.Now()
-	
+
 	toAcc := a.GetOrCreateCurrencyAccount(toCurrency)
 	toAcc.AvailableBalance = toAcc.AvailableBalance.Add(toAmount)
 	toAcc.Balance = toAcc.Balance.Add(toAmount)
 	toAcc.LastUpdated = time.Now()
-	
+
 	a.UpdatedAt = time.Now()
-	
+
 	conversion := &CurrencyConversion{
 		ID:           generateConversionID(),
 		AccountID:    a.AccountID,
@@ -287,13 +287,13 @@ func (a *MultiCurrencyAccount) ConvertCurrency(
 		Status:       "COMPLETED",
 		ConvertedAt:  time.Now(),
 	}
-	
+
 	return conversion, nil
 }
 
 func (a *MultiCurrencyAccount) GetTotalBalanceInBaseCurrency(rateProvider ExchangeRateProvider) (decimal.Decimal, error) {
 	total := decimal.Zero
-	
+
 	for currency, acc := range a.CurrencyAccounts {
 		if currency == a.BaseCurrency {
 			total = total.Add(acc.Balance)
@@ -305,13 +305,13 @@ func (a *MultiCurrencyAccount) GetTotalBalanceInBaseCurrency(rateProvider Exchan
 			total = total.Add(acc.Balance.Mul(rate.Rate))
 		}
 	}
-	
+
 	return total, nil
 }
 
 func (a *MultiCurrencyAccount) GetAvailableBalanceInBaseCurrency(rateProvider ExchangeRateProvider) (decimal.Decimal, error) {
 	total := decimal.Zero
-	
+
 	for currency, acc := range a.CurrencyAccounts {
 		if currency == a.BaseCurrency {
 			total = total.Add(acc.AvailableBalance)
@@ -323,7 +323,7 @@ func (a *MultiCurrencyAccount) GetAvailableBalanceInBaseCurrency(rateProvider Ex
 			total = total.Add(acc.AvailableBalance.Mul(rate.Rate))
 		}
 	}
-	
+
 	return total, nil
 }
 
@@ -336,7 +336,7 @@ func (a *MultiCurrencyAccount) TransferTo(
 	if err := a.Withdraw(fromCurrency, amount); err != nil {
 		return nil, err
 	}
-	
+
 	var toAmount decimal.Decimal
 	if fromCurrency == toCurrency {
 		toAmount = amount
@@ -348,12 +348,12 @@ func (a *MultiCurrencyAccount) TransferTo(
 		}
 		toAmount = amount.Mul(rate.Rate)
 	}
-	
+
 	if err := toAccount.Deposit(toCurrency, toAmount); err != nil {
 		a.Deposit(fromCurrency, amount)
 		return nil, err
 	}
-	
+
 	transfer := &CrossCurrencyTransfer{
 		ID:            generateTransferID(),
 		FromAccountID: a.AccountID,
@@ -365,7 +365,7 @@ func (a *MultiCurrencyAccount) TransferTo(
 		Status:        "COMPLETED",
 		TransferredAt: time.Now(),
 	}
-	
+
 	return transfer, nil
 }
 
@@ -373,14 +373,14 @@ func (a *MultiCurrencyAccount) Borrow(currency string, amount decimal.Decimal) e
 	if a.AccountType != AccountTypeMargin {
 		return errors.New("only margin accounts can borrow")
 	}
-	
+
 	acc := a.GetOrCreateCurrencyAccount(currency)
 	acc.Balance = acc.Balance.Add(amount)
 	acc.AvailableBalance = acc.AvailableBalance.Add(amount)
 	acc.BorrowedAmount = acc.BorrowedAmount.Add(amount)
 	acc.LastUpdated = time.Now()
 	a.UpdatedAt = time.Now()
-	
+
 	return nil
 }
 
@@ -389,22 +389,22 @@ func (a *MultiCurrencyAccount) Repay(currency string, amount decimal.Decimal) er
 	if err != nil {
 		return err
 	}
-	
+
 	if acc.AvailableBalance.LessThan(amount) {
 		return ErrInsufficientBalance
 	}
-	
+
 	repayAmount := amount
 	if repayAmount.GreaterThan(acc.BorrowedAmount) {
 		repayAmount = acc.BorrowedAmount
 	}
-	
+
 	acc.AvailableBalance = acc.AvailableBalance.Sub(amount)
 	acc.Balance = acc.Balance.Sub(amount)
 	acc.BorrowedAmount = acc.BorrowedAmount.Sub(repayAmount)
 	acc.LastUpdated = time.Now()
 	a.UpdatedAt = time.Now()
-	
+
 	return nil
 }
 
@@ -413,7 +413,7 @@ func (a *MultiCurrencyAccount) AccrueInterest(currency string, rate decimal.Deci
 	if !exists || !acc.BorrowedAmount.IsPositive() {
 		return
 	}
-	
+
 	interest := acc.BorrowedAmount.Mul(rate)
 	acc.AccruedInterest = acc.AccruedInterest.Add(interest)
 	acc.LastUpdated = time.Now()
@@ -425,11 +425,11 @@ func (a *MultiCurrencyAccount) SettleInterest(currency string) {
 	if !exists || acc.AccruedInterest.IsZero() {
 		return
 	}
-	
+
 	if a.AccountType == AccountTypeMargin {
 		acc.BorrowedAmount = acc.BorrowedAmount.Add(acc.AccruedInterest)
 	}
-	
+
 	acc.AccruedInterest = decimal.Zero
 	acc.LastUpdated = time.Now()
 	a.UpdatedAt = time.Now()
@@ -452,23 +452,23 @@ func NewMultiCurrencyAccountService(
 }
 
 func (s *MultiCurrencyAccountService) CreateAccount(
-	ctx interface{},
+	ctx any,
 	userID, baseCurrency string,
 	accountType AccountType,
 ) (*MultiCurrencyAccount, error) {
 	accountID := generateAccountID()
 	account := NewMultiCurrencyAccount(accountID, userID, baseCurrency, accountType)
 	account.GetOrCreateCurrencyAccount(baseCurrency)
-	
+
 	if err := s.accountRepo.Save(account); err != nil {
 		return nil, err
 	}
-	
+
 	return account, nil
 }
 
 func (s *MultiCurrencyAccountService) Deposit(
-	ctx interface{},
+	ctx any,
 	accountID, currency string,
 	amount decimal.Decimal,
 ) error {
@@ -476,19 +476,19 @@ func (s *MultiCurrencyAccountService) Deposit(
 	if err != nil {
 		return err
 	}
-	
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	if err := account.Deposit(currency, amount); err != nil {
 		return err
 	}
-	
+
 	return s.accountRepo.Save(account)
 }
 
 func (s *MultiCurrencyAccountService) ConvertCurrency(
-	ctx interface{},
+	ctx any,
 	accountID, fromCurrency, toCurrency string,
 	amount decimal.Decimal,
 ) (*CurrencyConversion, error) {
@@ -496,48 +496,48 @@ func (s *MultiCurrencyAccountService) ConvertCurrency(
 	if err != nil {
 		return nil, err
 	}
-	
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	conversion, err := account.ConvertCurrency(fromCurrency, toCurrency, amount, s.rateProvider)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if err := s.accountRepo.Save(account); err != nil {
 		return nil, err
 	}
-	
+
 	return conversion, nil
 }
 
 func (s *MultiCurrencyAccountService) GetTotalBalance(
-	ctx interface{},
+	ctx any,
 	accountID string,
 ) (map[string]decimal.Decimal, error) {
 	account, err := s.accountRepo.FindByID(accountID)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	balances := make(map[string]decimal.Decimal)
 	for currency, acc := range account.CurrencyAccounts {
 		balances[currency] = acc.Balance
 	}
-	
+
 	return balances, nil
 }
 
 func (s *MultiCurrencyAccountService) GetTotalBalanceInBase(
-	ctx interface{},
+	ctx any,
 	accountID string,
 ) (decimal.Decimal, error) {
 	account, err := s.accountRepo.FindByID(accountID)
 	if err != nil {
 		return decimal.Zero, err
 	}
-	
+
 	return account.GetTotalBalanceInBaseCurrency(s.rateProvider)
 }
 

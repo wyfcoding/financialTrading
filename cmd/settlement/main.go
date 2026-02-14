@@ -43,7 +43,11 @@ func main() {
 
 	// 4. Layers
 	repo := persistence_mysql.NewSettlementRepo(db)
-	app := application.NewSettlementAppService(repo, logger)
+	nettingRepo := persistence_mysql.NewNettingRepo(db)
+	batchRepo := persistence_mysql.NewBatchRepo(db)
+	fxRateRepo := persistence_mysql.NewFXRateRepo(db)
+	domainSvc := domain.NewSettlementDomainService(nil, nil, nil)
+	app := application.NewSettlementAppService(repo, nettingRepo, batchRepo, fxRateRepo, domainSvc, logger)
 	svc := grpc_server.NewServer(app)
 
 	// 5. Server

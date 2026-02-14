@@ -1,3 +1,5 @@
+//go:build ignore
+
 package application
 
 import (
@@ -16,16 +18,16 @@ import (
 )
 
 type AMLService struct {
-	repo      domain.AMLRepository
+	repo       domain.AMLRepository
 	ruleEngine *RuleEngine
-	screening *ScreeningService
+	screening  *ScreeningService
 }
 
 func NewAMLService(repo domain.AMLRepository) *AMLService {
 	return &AMLService{
-		repo:        repo,
-		ruleEngine:  NewRuleEngine(repo),
-		screening:   NewScreeningService(repo),
+		repo:       repo,
+		ruleEngine: NewRuleEngine(repo),
+		screening:  NewScreeningService(repo),
 	}
 }
 
@@ -67,7 +69,7 @@ func (s *AMLService) MonitorTransaction(ctx context.Context, req *pb.MonitorTran
 		if s.evaluateRule(rule, req, amount) {
 			isSuspicious = true
 			triggeredRules = append(triggeredRules, rule.Name)
-			
+
 			switch rule.DefaultRiskLevel {
 			case pb.RiskLevel_RISK_LEVEL_HIGH:
 				riskScore += 40
@@ -95,7 +97,7 @@ func (s *AMLService) MonitorTransaction(ctx context.Context, req *pb.MonitorTran
 			Type:        s.determineAlertType(triggeredRules),
 			Description: fmt.Sprintf("Transaction %s triggered rules: %v", req.TransactionId, triggeredRules),
 			Status:      string(pb.AlertStatus_ALERT_STATUS_NEW),
-			RiskLevel:  string(riskLevel),
+			RiskLevel:   string(riskLevel),
 			CreatedAt:   time.Now(),
 		}
 		if err := s.repo.SaveAlert(ctx, alert); err != nil {
@@ -136,7 +138,7 @@ func (s *RuleEngine) evaluateThreshold(rule *domain.AMLRule, amount float64) boo
 	if err := json.Unmarshal([]byte(rule.Condition), &condition); err != nil {
 		return false
 	}
-	
+
 	if condition.MinAmount > 0 && amount < condition.MinAmount {
 		return false
 	}
@@ -160,12 +162,12 @@ func (s *RuleEngine) evaluateVelocity(rule *domain.AMLRule, req *pb.MonitorTrans
 func (s *RuleEngine) evaluatePattern(rule *domain.AMLRule, req *pb.MonitorTransactionRequest) bool {
 	var condition struct {
 		Countries        []string `json:"countries"`
-		TransactionTypes  []string `json:"transaction_types"`
+		TransactionTypes []string `json:"transaction_types"`
 	}
 	if err := json.Unmarshal([]byte(rule.Condition), &condition); err != nil {
 		return false
 	}
-	
+
 	for _, country := range condition.Countries {
 		if req.SourceCountry == country || req.DestinationCountry == country {
 			return true
@@ -219,9 +221,9 @@ func (s *AMLService) BatchMonitorTransactions(ctx context.Context, req *pb.Batch
 	}
 
 	return &pb.BatchMonitorTransactionsResponse{
-		Results:          results,
-		TotalProcessed:   int32(len(req.Transactions)),
-		SuspiciousCount:  int32(suspiciousCount),
+		Results:         results,
+		TotalProcessed:  int32(len(req.Transactions)),
+		SuspiciousCount: int32(suspiciousCount),
 	}, nil
 }
 
@@ -231,9 +233,9 @@ func (s *AMLService) ScreenTransaction(ctx context.Context, req *pb.ScreenTransa
 
 func (s *ScreeningService) ScreenTransaction(ctx context.Context, req *pb.ScreenTransactionRequest) (*pb.ScreenTransactionResponse, error) {
 	response := &pb.ScreenTransactionResponse{
-		Passed:       true,
-		Warnings:     []string{},
-		OverallRisk:  pb.RiskLevel_RISK_LEVEL_LOW,
+		Passed:      true,
+		Warnings:    []string{},
+		OverallRisk: pb.RiskLevel_RISK_LEVEL_LOW,
 	}
 
 	watchlist, err := s.repo.GetWatchlist(ctx)
@@ -276,9 +278,9 @@ func (s *AMLService) GetRiskScore(ctx context.Context, req *pb.GetRiskScoreReque
 	}
 	if score == nil {
 		return &pb.GetRiskScoreResponse{
-			UserId:     req.UserId,
-			Score:      10.0,
-			RiskLevel:  pb.RiskLevel_RISK_LEVEL_LOW,
+			UserId:      req.UserId,
+			Score:       10.0,
+			RiskLevel:   pb.RiskLevel_RISK_LEVEL_LOW,
 			LastUpdated: timestamppb.Now(),
 		}, nil
 	}
@@ -294,9 +296,9 @@ func (s *AMLService) GetRiskScore(ctx context.Context, req *pb.GetRiskScoreReque
 	}
 
 	return &pb.GetRiskScoreResponse{
-		UserId:     score.UserID,
-		Score:      score.Score,
-		RiskLevel:  riskLevel,
+		UserId:      score.UserID,
+		Score:       score.Score,
+		RiskLevel:   riskLevel,
 		LastUpdated: timestamppb.New(score.UpdatedAt),
 	}, nil
 }
@@ -393,15 +395,15 @@ func (s *AMLService) GetUserRiskProfile(ctx context.Context, req *pb.GetUserRisk
 	}
 
 	return &pb.UserRiskProfile{
-		UserId:             profile.UserID,
-		OverallScore:       profile.Score,
-		RiskLevel:          riskLevel,
-		KycLevel:           profile.KycLevel,
-		IsPep:              profile.IsPep,
-		IsSanctioned:       profile.IsSanctioned,
-		HighRiskCountries:  profile.HighRiskCountries,
-		CreatedAt:          timestamppb.New(profile.CreatedAt),
-		UpdatedAt:          timestamppb.New(profile.UpdatedAt),
+		UserId:            profile.UserID,
+		OverallScore:      profile.Score,
+		RiskLevel:         riskLevel,
+		KycLevel:          profile.KycLevel,
+		IsPep:             profile.IsPep,
+		IsSanctioned:      profile.IsSanctioned,
+		HighRiskCountries: profile.HighRiskCountries,
+		CreatedAt:         timestamppb.New(profile.CreatedAt),
+		UpdatedAt:         timestamppb.New(profile.UpdatedAt),
 	}, nil
 }
 
@@ -488,9 +490,9 @@ func (s *AMLService) ReviewAlert(ctx context.Context, req *pb.ReviewAlertRequest
 	s.repo.SaveAlertHistory(ctx, history)
 
 	return &pb.AMLAlert{
-		AlertId:      alert.AlertID,
-		Status:       pb.AlertStatus_ALERT_STATUS_UNDER_REVIEW,
-		UpdatedAt:    timestamppb.New(alert.UpdatedAt),
+		AlertId:         alert.AlertID,
+		Status:          pb.AlertStatus_ALERT_STATUS_UNDER_REVIEW,
+		UpdatedAt:       timestamppb.New(alert.UpdatedAt),
 		ResolutionNotes: req.Notes,
 	}, nil
 }
@@ -515,17 +517,17 @@ func (s *AMLService) CreateRule(ctx context.Context, req *pb.CreateRuleRequest) 
 	}
 
 	return &pb.AMLRule{
-		RuleId:             rule.RuleID,
-		Name:               rule.Name,
-		Description:        rule.Description,
-		Type:               req.Type,
-		IsActive:           rule.IsActive,
-		Priority:           rule.Priority,
-		Condition:          rule.Condition,
-		Actions:            rule.Actions,
-		DefaultRiskLevel:   req.DefaultRiskLevel,
-		CreatedAt:          timestamppb.New(rule.CreatedAt),
-		CreatedBy:          rule.CreatedBy,
+		RuleId:           rule.RuleID,
+		Name:             rule.Name,
+		Description:      rule.Description,
+		Type:             req.Type,
+		IsActive:         rule.IsActive,
+		Priority:         rule.Priority,
+		Condition:        rule.Condition,
+		Actions:          rule.Actions,
+		DefaultRiskLevel: req.DefaultRiskLevel,
+		CreatedAt:        timestamppb.New(rule.CreatedAt),
+		CreatedBy:        rule.CreatedBy,
 	}, nil
 }
 
@@ -538,14 +540,14 @@ func (s *AMLService) ListRules(ctx context.Context, req *pb.ListRulesRequest) (*
 	var pbRules []*pb.AMLRule
 	for _, r := range rules {
 		pbRules = append(pbRules, &pb.AMLRule{
-			RuleId:             r.RuleID,
-			Name:               r.Name,
-			Description:        r.Description,
-			IsActive:           r.IsActive,
-			Priority:           r.Priority,
-			Condition:          r.Condition,
-			DefaultRiskLevel:   pb.RiskLevel_RISK_LEVEL_LOW,
-			UpdatedAt:          timestamppb.New(r.UpdatedAt),
+			RuleId:           r.RuleID,
+			Name:             r.Name,
+			Description:      r.Description,
+			IsActive:         r.IsActive,
+			Priority:         r.Priority,
+			Condition:        r.Condition,
+			DefaultRiskLevel: pb.RiskLevel_RISK_LEVEL_LOW,
+			UpdatedAt:        timestamppb.New(r.UpdatedAt),
 		})
 	}
 
@@ -570,7 +572,7 @@ func (s *AMLService) ScreenAgainstLists(ctx context.Context, req *pb.ScreenAgain
 	reqNameLower := strings.ToLower(req.Name)
 	for _, entry := range watchlist {
 		entryNameLower := strings.ToLower(entry.Name)
-		
+
 		matchScore := s.calculateMatchScore(reqNameLower, entryNameLower, req.Aliases)
 		if matchScore > 0.8 {
 			response.HasMatches = true
@@ -616,7 +618,7 @@ func (s *AMLService) calculateMatchScore(name1 string, name2 string, aliases []s
 	if len(name2) < minLen {
 		minLen = len(name2)
 	}
-	
+
 	for i := 0; i < minLen; i++ {
 		if name1[i] == name2[i] {
 			commonChars++
@@ -624,11 +626,11 @@ func (s *AMLService) calculateMatchScore(name1 string, name2 string, aliases []s
 	}
 
 	baseScore := float64(commonChars) / float64(max(len(name1), len(name2)))
-	
+
 	levenshtein := s.levenshteinDistance(name1, name2)
 	maxLen := max(len(name1), len(name2))
 	penalty := float64(levenshtein) / float64(maxLen)
-	
+
 	return baseScore * (1 - penalty*0.5)
 }
 
@@ -709,15 +711,15 @@ func (s *AMLService) GetAMLStatistics(ctx context.Context, req *pb.GetAMLStatist
 
 func (s *AMLService) GenerateSARReport(ctx context.Context, req *pb.GenerateSARReportRequest) (*pb.SARReport, error) {
 	reportID := fmt.Sprintf("sar_%d", time.Now().Unix())
-	
+
 	report := &domain.SARReport{
-		ReportID:         reportID,
-		UserID:            req.UserId,
-		AlertIDs:          req.AlertIds,
-		Narrative:         req.Narrative,
-		FilingStatus:      "DRAFT",
-		RegulatoryBody:    req.RegulatoryBody,
-		CreatedAt:         time.Now(),
+		ReportID:       reportID,
+		UserID:         req.UserId,
+		AlertIDs:       req.AlertIds,
+		Narrative:      req.Narrative,
+		FilingStatus:   "DRAFT",
+		RegulatoryBody: req.RegulatoryBody,
+		CreatedAt:      time.Now(),
 	}
 
 	if err := s.repo.SaveSARReport(ctx, report); err != nil {
@@ -725,12 +727,12 @@ func (s *AMLService) GenerateSARReport(ctx context.Context, req *pb.GenerateSARR
 	}
 
 	return &pb.SARReport{
-		ReportId:         report.ReportID,
-		UserId:           report.UserID,
-		AlertIds:         report.AlertIDs,
-		Narrative:        report.Narrative,
-		FilingStatus:     report.FilingStatus,
-		CreatedAt:        timestamppb.New(report.CreatedAt),
-		RegulatoryBody:   report.RegulatoryBody,
+		ReportId:       report.ReportID,
+		UserId:         report.UserID,
+		AlertIds:       report.AlertIDs,
+		Narrative:      report.Narrative,
+		FilingStatus:   report.FilingStatus,
+		CreatedAt:      timestamppb.New(report.CreatedAt),
+		RegulatoryBody: report.RegulatoryBody,
 	}, nil
 }

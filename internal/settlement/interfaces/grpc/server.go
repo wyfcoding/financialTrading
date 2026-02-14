@@ -22,14 +22,14 @@ func NewServer(app *application.SettlementAppService) *Server {
 
 func (s *Server) CreateInstruction(ctx context.Context, req *pb.CreateInstructionRequest) (*pb.CreateInstructionResponse, error) {
 	cmd := application.CreateInstructionCommand{
-		TradeID:   req.TradeId,
-		Symbol:    req.Symbol,
-		Quantity:  req.Quantity,
-		Price:     req.Price,
-		BuyerID:   req.BuyerAccountId,
-		SellerID:  req.SellerAccountId,
-		Currency:  req.Currency,
-		CycleDays: int(req.SettlementCycleDays),
+		TradeID:         req.TradeId,
+		Symbol:          req.Symbol,
+		Quantity:        float64(req.Quantity),
+		Price:           req.Price,
+		BuyerAccountID:  req.BuyerAccountId,
+		SellerAccountID: req.SellerAccountId,
+		Currency:        req.Currency,
+		CycleDays:       int(req.SettlementCycleDays),
 	}
 
 	ins, err := s.app.CreateInstruction(ctx, cmd)
@@ -39,7 +39,7 @@ func (s *Server) CreateInstruction(ctx context.Context, req *pb.CreateInstructio
 
 	return &pb.CreateInstructionResponse{
 		InstructionId:  ins.InstructionID,
-		SettlementDate: ins.SettleDate.Unix(),
+		SettlementDate: ins.SettlementDate.Unix(),
 	}, nil
 }
 
@@ -56,32 +56,53 @@ func (s *Server) GetInstruction(ctx context.Context, req *pb.GetInstructionReque
 
 func (s *Server) BatchSettle(ctx context.Context, req *pb.BatchSettleRequest) (*pb.BatchSettleResponse, error) {
 	targetDate := time.Unix(req.TargetDate, 0)
-	processed, success, failed, failedIDs, err := s.app.BatchSettle(ctx, targetDate)
+	result, err := s.app.BatchSettle(ctx, application.BatchSettleCommand{
+		SettlementDate: targetDate,
+		BatchSize:      1000,
+	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "batch settle failed: %v", err)
 	}
 
 	return &pb.BatchSettleResponse{
-		ProcessedCount:       int32(processed),
-		SuccessCount:         int32(success),
-		FailureCount:         int32(failed),
-		FailedInstructionIds: failedIDs,
+		ProcessedCount:       int32(result.TotalCount),
+		SuccessCount:         int32(result.SuccessCount),
+		FailureCount:         int32(result.FailedCount),
+		FailedInstructionIds: result.FailedIDs,
 	}, nil
 }
 
 func toProtoInstruction(ins *domain.SettlementInstruction) *pb.SettlementInstruction {
+	quantity, _ := ins.Quantity.Float64()
+	price, _ := ins.Price.Float64()
+	amount, _ := ins.Amount.Float64()
 	return &pb.SettlementInstruction{
 		Id:              ins.InstructionID,
 		TradeId:         ins.TradeID,
 		Symbol:          ins.Symbol,
-		Quantity:        ins.Quantity,
-		Price:           ins.Price,
-		Amount:          ins.Amount,
-		BuyerAccountId:  ins.BuyerAccount,
-		SellerAccountId: ins.SellerAccount,
+		Quantity:        int64(quantity),
+		Price:           price,
+		Amount:          amount,
+		BuyerAccountId:  ins.BuyerAccountID,
+		SellerAccountId: ins.SellerAccountID,
 		TradeDate:       ins.TradeDate.Unix(),
-		SettlementDate:  ins.SettleDate.Unix(),
-		Status:          pb.SettlementStatus(ins.Status),
+		SettlementDate:  ins.SettlementDate.Unix(),
+		Status:          toProtoStatus(ins.Status),
 		Currency:        ins.Currency,
+	}
+}
+
+func toProtoStatus(status domain.SettlementStatus) pb.SettlementStatus {
+	switch status {
+	case domain.SettlementStatusPending:
+		return pb.SettlementStatus_SETTLEMENT_STATUS_PENDING
+	case domain.SettlementStatusCleared:
+		return pb.SettlementStatus_SETTLEMENT_STATUS_CLEARED
+	case domain.SettlementStatusSettled:
+		return pb.SettlementStatus_SETTLEMENT_STATUS_SETTLED
+	case domain.SettlementStatusFailed:
+		return pb.SettlementStatus_SETTLEMENT_STATUS_FAILED
+	default:
+		return pb.SettlementStatus_SETTLEMENT_STATUS_UNSPECIFIED
 	}
 }

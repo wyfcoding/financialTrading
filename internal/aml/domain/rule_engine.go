@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"time"
 )
@@ -16,22 +17,22 @@ var (
 type AMLRuleType string
 
 const (
-	AMLRuleTypeTransaction    AMLRuleType = "TRANSACTION"
-	AMLRuleTypeBehavior       AMLRuleType = "BEHAVIOR"
-	AMLRuleTypePattern        AMLRuleType = "PATTERN"
-	AMLRuleTypeVelocity       AMLRuleType = "VELOCITY"
-	AMLRuleTypeThreshold      AMLRuleType = "THRESHOLD"
-	AMLRuleTypeSanction       AMLRuleType = "SANCTION"
-	AMLRuleTypePEP            AMLRuleType = "PEP"
+	AMLRuleTypeTransaction AMLRuleType = "TRANSACTION"
+	AMLRuleTypeBehavior    AMLRuleType = "BEHAVIOR"
+	AMLRuleTypePattern     AMLRuleType = "PATTERN"
+	AMLRuleTypeVelocity    AMLRuleType = "VELOCITY"
+	AMLRuleTypeThreshold   AMLRuleType = "THRESHOLD"
+	AMLRuleTypeSanction    AMLRuleType = "SANCTION"
+	AMLRuleTypePEP         AMLRuleType = "PEP"
 )
 
 type AMLRuleStatus string
 
 const (
-	AMLRuleStatusDraft     AMLRuleStatus = "DRAFT"
-	AMLRuleStatusActive    AMLRuleStatus = "ACTIVE"
-	AMLRuleStatusInactive  AMLRuleStatus = "INACTIVE"
-	AMLRuleStatusArchived  AMLRuleStatus = "ARCHIVED"
+	AMLRuleStatusDraft    AMLRuleStatus = "DRAFT"
+	AMLRuleStatusActive   AMLRuleStatus = "ACTIVE"
+	AMLRuleStatusInactive AMLRuleStatus = "INACTIVE"
+	AMLRuleStatusArchived AMLRuleStatus = "ARCHIVED"
 )
 
 type AlertSeverity string
@@ -44,23 +45,23 @@ const (
 )
 
 type AMLRuleDefinition struct {
-	ID          string            `json:"id"`
-	RuleCode    string            `json:"rule_code"`
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	Type        AMLRuleType       `json:"type"`
-	Status      AMLRuleStatus     `json:"status"`
-	Priority    int               `json:"priority"`
-	Conditions  []RuleCondition   `json:"conditions"`
-	Actions     []RuleAction      `json:"actions"`
-	Parameters  map[string]string `json:"parameters"`
-	Version     int               `json:"version"`
-	CreatedBy   string            `json:"created_by"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedBy   string            `json:"updated_by"`
-	UpdatedAt   time.Time         `json:"updated_at"`
-	EffectiveFrom *time.Time      `json:"effective_from,omitempty"`
-	EffectiveTo   *time.Time      `json:"effective_to,omitempty"`
+	ID            string            `json:"id"`
+	RuleCode      string            `json:"rule_code"`
+	Name          string            `json:"name"`
+	Description   string            `json:"description"`
+	Type          AMLRuleType       `json:"type"`
+	Status        AMLRuleStatus     `json:"status"`
+	Priority      int               `json:"priority"`
+	Conditions    []RuleCondition   `json:"conditions"`
+	Actions       []RuleAction      `json:"actions"`
+	Parameters    map[string]string `json:"parameters"`
+	Version       int               `json:"version"`
+	CreatedBy     string            `json:"created_by"`
+	CreatedAt     time.Time         `json:"created_at"`
+	UpdatedBy     string            `json:"updated_by"`
+	UpdatedAt     time.Time         `json:"updated_at"`
+	EffectiveFrom *time.Time        `json:"effective_from,omitempty"`
+	EffectiveTo   *time.Time        `json:"effective_to,omitempty"`
 }
 
 type RuleCondition struct {
@@ -84,123 +85,123 @@ type RuleAction struct {
 }
 
 type AMLAlertDetail struct {
-	ID             string        `json:"id"`
-	AlertNo        string        `json:"alert_no"`
-	RuleID         string        `json:"rule_id"`
-	RuleCode       string        `json:"rule_code"`
-	RuleName       string        `json:"rule_name"`
-	UserID         string        `json:"user_id"`
-	TransactionID  string        `json:"transaction_id,omitempty"`
-	AlertType      AMLRuleType   `json:"alert_type"`
-	Severity       AlertSeverity `json:"severity"`
-	Status         string        `json:"status"`
-	RiskScore      float64       `json:"risk_score"`
-	TriggerReason  string        `json:"trigger_reason"`
-	Details        string        `json:"details"`
-	Evidence       []Evidence    `json:"evidence,omitempty"`
-	AssignedTo     string        `json:"assigned_to,omitempty"`
-	AssignedAt     *time.Time    `json:"assigned_at,omitempty"`
-	ReviewedBy     string        `json:"reviewed_by,omitempty"`
-	ReviewedAt     *time.Time    `json:"reviewed_at,omitempty"`
-	ReviewNotes    string        `json:"review_notes,omitempty"`
-	Disposition    string        `json:"disposition,omitempty"`
-	DispositionAt  *time.Time    `json:"disposition_at,omitempty"`
-	CreatedAt      time.Time     `json:"created_at"`
-	UpdatedAt      time.Time     `json:"updated_at"`
+	ID            string        `json:"id"`
+	AlertNo       string        `json:"alert_no"`
+	RuleID        string        `json:"rule_id"`
+	RuleCode      string        `json:"rule_code"`
+	RuleName      string        `json:"rule_name"`
+	UserID        string        `json:"user_id"`
+	TransactionID string        `json:"transaction_id,omitempty"`
+	AlertType     AMLRuleType   `json:"alert_type"`
+	Severity      AlertSeverity `json:"severity"`
+	Status        string        `json:"status"`
+	RiskScore     float64       `json:"risk_score"`
+	TriggerReason string        `json:"trigger_reason"`
+	Details       string        `json:"details"`
+	Evidence      []Evidence    `json:"evidence,omitempty"`
+	AssignedTo    string        `json:"assigned_to,omitempty"`
+	AssignedAt    *time.Time    `json:"assigned_at,omitempty"`
+	ReviewedBy    string        `json:"reviewed_by,omitempty"`
+	ReviewedAt    *time.Time    `json:"reviewed_at,omitempty"`
+	ReviewNotes   string        `json:"review_notes,omitempty"`
+	Disposition   string        `json:"disposition,omitempty"`
+	DispositionAt *time.Time    `json:"disposition_at,omitempty"`
+	CreatedAt     time.Time     `json:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at"`
 }
 
 type Evidence struct {
-	ID          string                 `json:"id"`
-	AlertID     string                 `json:"alert_id"`
-	Type        string                 `json:"type"`
-	Description string                 `json:"description"`
-	Data        map[string]interface{} `json:"data"`
-	Source      string                 `json:"source"`
-	CreatedAt   time.Time              `json:"created_at"`
+	ID          string         `json:"id"`
+	AlertID     string         `json:"alert_id"`
+	Type        string         `json:"type"`
+	Description string         `json:"description"`
+	Data        map[string]any `json:"data"`
+	Source      string         `json:"source"`
+	CreatedAt   time.Time      `json:"created_at"`
 }
 
 type SanctionList struct {
-	ID           string    `json:"id"`
-	ListName     string    `json:"list_name"`
-	ListType     string    `json:"list_type"`
-	Source       string    `json:"source"`
-	LastUpdated  time.Time `json:"last_updated"`
-	RecordCount  int       `json:"record_count"`
-	Status       string    `json:"status"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID          string    `json:"id"`
+	ListName    string    `json:"list_name"`
+	ListType    string    `json:"list_type"`
+	Source      string    `json:"source"`
+	LastUpdated time.Time `json:"last_updated"`
+	RecordCount int       `json:"record_count"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type SanctionEntry struct {
-	ID              string    `json:"id"`
-	ListID          string    `json:"list_id"`
-	EntryType       string    `json:"entry_type"`
-	Name            string    `json:"name"`
-	NameOriginal    string    `json:"name_original,omitempty"`
-	NameVariants    []string  `json:"name_variants,omitempty"`
-	DateOfBirth     string    `json:"date_of_birth,omitempty"`
-	PlaceOfBirth    string    `json:"place_of_birth,omitempty"`
-	Nationality     string    `json:"nationality,omitempty"`
-	PassportNo      string    `json:"passport_no,omitempty"`
-	IDNumber        string    `json:"id_number,omitempty"`
-	Address         string    `json:"address,omitempty"`
-	Programs        []string  `json:"programs,omitempty"`
-	Aliases         []string  `json:"aliases,omitempty"`
-	MatchStrength   float64   `json:"match_strength"`
-	LastUpdated     time.Time `json:"last_updated"`
-	CreatedAt       time.Time `json:"created_at"`
+	ID            string    `json:"id"`
+	ListID        string    `json:"list_id"`
+	EntryType     string    `json:"entry_type"`
+	Name          string    `json:"name"`
+	NameOriginal  string    `json:"name_original,omitempty"`
+	NameVariants  []string  `json:"name_variants,omitempty"`
+	DateOfBirth   string    `json:"date_of_birth,omitempty"`
+	PlaceOfBirth  string    `json:"place_of_birth,omitempty"`
+	Nationality   string    `json:"nationality,omitempty"`
+	PassportNo    string    `json:"passport_no,omitempty"`
+	IDNumber      string    `json:"id_number,omitempty"`
+	Address       string    `json:"address,omitempty"`
+	Programs      []string  `json:"programs,omitempty"`
+	Aliases       []string  `json:"aliases,omitempty"`
+	MatchStrength float64   `json:"match_strength"`
+	LastUpdated   time.Time `json:"last_updated"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 type ScreeningResult struct {
-	ID               string            `json:"id"`
-	ScreeningID      string            `json:"screening_id"`
-	UserID           string            `json:"user_id"`
-	ScreeningType    string            `json:"screening_type"`
-	InputName        string            `json:"input_name"`
-	InputDOB         string            `json:"input_dob,omitempty"`
-	InputNationality string            `json:"input_nationality,omitempty"`
-	InputIDNumber    string            `json:"input_id_number,omitempty"`
-	Matches          []*SanctionMatch  `json:"matches,omitempty"`
-	HasMatch         bool              `json:"has_match"`
-	HighestScore     float64           `json:"highest_score"`
-	Status           string            `json:"status"`
-	ScreenedAt       time.Time         `json:"screened_at"`
-	CreatedAt        time.Time         `json:"created_at"`
+	ID               string           `json:"id"`
+	ScreeningID      string           `json:"screening_id"`
+	UserID           string           `json:"user_id"`
+	ScreeningType    string           `json:"screening_type"`
+	InputName        string           `json:"input_name"`
+	InputDOB         string           `json:"input_dob,omitempty"`
+	InputNationality string           `json:"input_nationality,omitempty"`
+	InputIDNumber    string           `json:"input_id_number,omitempty"`
+	Matches          []*SanctionMatch `json:"matches,omitempty"`
+	HasMatch         bool             `json:"has_match"`
+	HighestScore     float64          `json:"highest_score"`
+	Status           string           `json:"status"`
+	ScreenedAt       time.Time        `json:"screened_at"`
+	CreatedAt        time.Time        `json:"created_at"`
 }
 
 type SanctionMatch struct {
-	ID              string    `json:"id"`
-	ResultID        string    `json:"result_id"`
-	EntryID         string    `json:"entry_id"`
-	EntryName       string    `json:"entry_name"`
-	ListName        string    `json:"list_name"`
-	MatchScore      float64   `json:"match_score"`
-	NameScore       float64   `json:"name_score"`
-	DOBScore        float64   `json:"dob_score"`
-	IDScore         float64   `json:"id_score"`
-	MatchFields     []string  `json:"match_fields"`
-	MatchType       string    `json:"match_type"`
-	IsFalsePositive bool      `json:"is_false_positive"`
-	ReviewedBy      string    `json:"reviewed_by,omitempty"`
+	ID              string     `json:"id"`
+	ResultID        string     `json:"result_id"`
+	EntryID         string     `json:"entry_id"`
+	EntryName       string     `json:"entry_name"`
+	ListName        string     `json:"list_name"`
+	MatchScore      float64    `json:"match_score"`
+	NameScore       float64    `json:"name_score"`
+	DOBScore        float64    `json:"dob_score"`
+	IDScore         float64    `json:"id_score"`
+	MatchFields     []string   `json:"match_fields"`
+	MatchType       string     `json:"match_type"`
+	IsFalsePositive bool       `json:"is_false_positive"`
+	ReviewedBy      string     `json:"reviewed_by,omitempty"`
 	ReviewedAt      *time.Time `json:"reviewed_at,omitempty"`
-	ReviewNotes     string    `json:"review_notes,omitempty"`
+	ReviewNotes     string     `json:"review_notes,omitempty"`
 }
 
 type SARReportDetail struct {
-	ID              string        `json:"id"`
-	ReportNo        string        `json:"report_no"`
-	AlertID         string        `json:"alert_id,omitempty"`
-	UserID          string        `json:"user_id"`
-	ReportType      string        `json:"report_type"`
-	Status          string        `json:"status"`
-	FilingDate      *time.Time    `json:"filing_date,omitempty"`
-	SubjectInfo     SubjectInfo   `json:"subject_info"`
+	ID                 string             `json:"id"`
+	ReportNo           string             `json:"report_no"`
+	AlertID            string             `json:"alert_id,omitempty"`
+	UserID             string             `json:"user_id"`
+	ReportType         string             `json:"report_type"`
+	Status             string             `json:"status"`
+	FilingDate         *time.Time         `json:"filing_date,omitempty"`
+	SubjectInfo        SubjectInfo        `json:"subject_info"`
 	SuspiciousActivity SuspiciousActivity `json:"suspicious_activity"`
-	Narrative       string        `json:"narrative"`
-	PreparedBy      string        `json:"prepared_by"`
-	ReviewedBy      string        `json:"reviewed_by,omitempty"`
-	ApprovedBy      string        `json:"approved_by,omitempty"`
-	CreatedAt       time.Time     `json:"created_at"`
-	UpdatedAt       time.Time     `json:"updated_at"`
+	Narrative          string             `json:"narrative"`
+	PreparedBy         string             `json:"prepared_by"`
+	ReviewedBy         string             `json:"reviewed_by,omitempty"`
+	ApprovedBy         string             `json:"approved_by,omitempty"`
+	CreatedAt          time.Time          `json:"created_at"`
+	UpdatedAt          time.Time          `json:"updated_at"`
 }
 
 type SubjectInfo struct {
@@ -224,26 +225,26 @@ type SuspiciousActivity struct {
 }
 
 type CTRReportDetail struct {
-	ID              string    `json:"id"`
-	ReportNo        string    `json:"report_no"`
-	UserID          string    `json:"user_id"`
-	TransactionID   string    `json:"transaction_id"`
-	TransactionType string    `json:"transaction_type"`
-	Amount          float64   `json:"amount"`
-	Currency        string    `json:"currency"`
-	TransactionDate time.Time `json:"transaction_date"`
-	Status          string    `json:"status"`
+	ID              string     `json:"id"`
+	ReportNo        string     `json:"report_no"`
+	UserID          string     `json:"user_id"`
+	TransactionID   string     `json:"transaction_id"`
+	TransactionType string     `json:"transaction_type"`
+	Amount          float64    `json:"amount"`
+	Currency        string     `json:"currency"`
+	TransactionDate time.Time  `json:"transaction_date"`
+	Status          string     `json:"status"`
 	FilingDate      *time.Time `json:"filing_date,omitempty"`
-	PreparedBy      string    `json:"prepared_by"`
-	CreatedAt       time.Time `json:"created_at"`
+	PreparedBy      string     `json:"prepared_by"`
+	CreatedAt       time.Time  `json:"created_at"`
 }
 
 type AMLRuleEngine struct {
-	rules         map[string]*AMLRuleDefinition
-	ruleVersions  map[string][]*AMLRuleDefinition
-	alertManager  *AMLAlertManagerEnhanced
-	screeningSvc  *SanctionScreeningService
-	mu            sync.RWMutex
+	rules        map[string]*AMLRuleDefinition
+	ruleVersions map[string][]*AMLRuleDefinition
+	alertManager *AMLAlertManagerEnhanced
+	screeningSvc *SanctionScreeningService
+	mu           sync.RWMutex
 }
 
 type AMLAlertManagerEnhanced struct {
@@ -253,9 +254,9 @@ type AMLAlertManagerEnhanced struct {
 }
 
 type SanctionScreeningService struct {
-	lists    map[string]*SanctionList
-	entries  map[string][]*SanctionEntry
-	mu       sync.RWMutex
+	lists   map[string]*SanctionList
+	entries map[string][]*SanctionEntry
+	mu      sync.RWMutex
 }
 
 func NewAMLRuleEngine() *AMLRuleEngine {
@@ -360,11 +361,11 @@ func (e *AMLRuleEngine) EvaluateTransaction(ctx context.Context, txCtx *Transact
 		if triggered {
 			result.Passed = false
 			result.TriggeredRules = append(result.TriggeredRules, &TriggeredRuleResult{
-				RuleID:    rule.ID,
-				RuleCode:  rule.RuleCode,
-				RuleName:  rule.Name,
-				Severity:  rule.Actions[0].Severity,
-				Evidence:  evidence,
+				RuleID:   rule.ID,
+				RuleCode: rule.RuleCode,
+				RuleName: rule.Name,
+				Severity: rule.Actions[0].Severity,
+				Evidence: evidence,
 			})
 
 			alert := e.createAlert(rule, txCtx, evidence)
@@ -386,7 +387,7 @@ func (e *AMLRuleEngine) evaluateRule(rule *AMLRuleDefinition, txCtx *Transaction
 			evidence = append(evidence, Evidence{
 				Type:        "CONDITION_MATCH",
 				Description: condition.Field + " " + condition.Operator + " " + condition.Value,
-				Data:        map[string]interface{}{"condition": condition},
+				Data:        map[string]any{"condition": condition},
 				Source:      "RULE_ENGINE",
 				CreatedAt:   time.Now(),
 			})
@@ -397,7 +398,7 @@ func (e *AMLRuleEngine) evaluateRule(rule *AMLRuleDefinition, txCtx *Transaction
 }
 
 func (e *AMLRuleEngine) evaluateCondition(condition RuleCondition, txCtx *TransactionContext) bool {
-	var value interface{}
+	var value any
 	switch condition.Field {
 	case "amount":
 		value = txCtx.Amount
@@ -418,27 +419,27 @@ func (e *AMLRuleEngine) evaluateCondition(condition RuleCondition, txCtx *Transa
 	return e.compareValue(value, condition.Operator, condition.Value)
 }
 
-func (e *AMLRuleEngine) compareValue(value interface{}, operator, expected string) bool {
+func (e *AMLRuleEngine) compareValue(value any, operator, expected string) bool {
 	return true
 }
 
 func (e *AMLRuleEngine) createAlert(rule *AMLRuleDefinition, txCtx *TransactionContext, evidence []Evidence) *AMLAlertDetail {
 	now := time.Now()
 	return &AMLAlertDetail{
-		AlertNo:        generateAlertNo(),
-		RuleID:         rule.ID,
-		RuleCode:       rule.RuleCode,
-		RuleName:       rule.Name,
-		UserID:         txCtx.UserID,
-		TransactionID:  txCtx.TransactionID,
-		AlertType:      rule.Type,
-		Severity:       rule.Actions[0].Severity,
-		Status:         "NEW",
-		TriggerReason:  rule.Description,
-		Details:        "Transaction triggered AML rule",
-		Evidence:       evidence,
-		CreatedAt:      now,
-		UpdatedAt:      now,
+		AlertNo:       generateAlertNo(),
+		RuleID:        rule.ID,
+		RuleCode:      rule.RuleCode,
+		RuleName:      rule.Name,
+		UserID:        txCtx.UserID,
+		TransactionID: txCtx.TransactionID,
+		AlertType:     rule.Type,
+		Severity:      rule.Actions[0].Severity,
+		Status:        "NEW",
+		TriggerReason: rule.Description,
+		Details:       "Transaction triggered AML rule",
+		Evidence:      evidence,
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
 }
 
@@ -465,19 +466,19 @@ func (e *AMLRuleEngine) calculateRiskScore(triggeredRules []*TriggeredRuleResult
 }
 
 type TransactionContext struct {
-	TransactionID         string                 `json:"transaction_id"`
-	UserID                string                 `json:"user_id"`
-	Amount                float64                `json:"amount"`
-	Currency              string                 `json:"currency"`
-	TransactionType       string                 `json:"transaction_type"`
-	Country               string                 `json:"country"`
-	IPAddress             string                 `json:"ip_address"`
-	DeviceID              string                 `json:"device_id"`
-	UserRiskLevel         string                 `json:"user_risk_level"`
-	DailyTransactionCount int                    `json:"daily_transaction_count"`
-	DailyTransactionAmount float64               `json:"daily_transaction_amount"`
-	TransactionHistory    []TransactionSummary   `json:"transaction_history"`
-	Extra                 map[string]interface{} `json:"extra,omitempty"`
+	TransactionID          string               `json:"transaction_id"`
+	UserID                 string               `json:"user_id"`
+	Amount                 float64              `json:"amount"`
+	Currency               string               `json:"currency"`
+	TransactionType        string               `json:"transaction_type"`
+	Country                string               `json:"country"`
+	IPAddress              string               `json:"ip_address"`
+	DeviceID               string               `json:"device_id"`
+	UserRiskLevel          string               `json:"user_risk_level"`
+	DailyTransactionCount  int                  `json:"daily_transaction_count"`
+	DailyTransactionAmount float64              `json:"daily_transaction_amount"`
+	TransactionHistory     []TransactionSummary `json:"transaction_history"`
+	Extra                  map[string]any       `json:"extra,omitempty"`
 }
 
 type TransactionSummary struct {
@@ -498,11 +499,11 @@ type EvaluationResult struct {
 }
 
 type TriggeredRuleResult struct {
-	RuleID    string        `json:"rule_id"`
-	RuleCode  string        `json:"rule_code"`
-	RuleName  string        `json:"rule_name"`
-	Severity  AlertSeverity `json:"severity"`
-	Evidence  []Evidence    `json:"evidence,omitempty"`
+	RuleID   string        `json:"rule_id"`
+	RuleCode string        `json:"rule_code"`
+	RuleName string        `json:"rule_name"`
+	Severity AlertSeverity `json:"severity"`
+	Evidence []Evidence    `json:"evidence,omitempty"`
 }
 
 func (am *AMLAlertManagerEnhanced) AddAlert(alert *AMLAlertDetail) {
@@ -572,14 +573,14 @@ func (ss *SanctionScreeningService) AddEntry(listID string, entry *SanctionEntry
 
 func (ss *SanctionScreeningService) Screen(ctx context.Context, name, dob, nationality, idNumber string) (*ScreeningResult, error) {
 	result := &ScreeningResult{
-		ScreeningID:        generateScreeningID(),
-		InputName:          name,
-		InputDOB:           dob,
-		InputNationality:   nationality,
-		InputIDNumber:      idNumber,
-		Matches:            make([]*SanctionMatch, 0),
-		ScreenedAt:         time.Now(),
-		CreatedAt:          time.Now(),
+		ScreeningID:      generateScreeningID(),
+		InputName:        name,
+		InputDOB:         dob,
+		InputNationality: nationality,
+		InputIDNumber:    idNumber,
+		Matches:          make([]*SanctionMatch, 0),
+		ScreenedAt:       time.Now(),
+		CreatedAt:        time.Now(),
 	}
 
 	ss.mu.RLock()
@@ -632,15 +633,11 @@ func (ss *SanctionScreeningService) calculateNameScore(name string, entry *Sanct
 	if name == entry.Name {
 		return 1.0
 	}
-	for _, alias := range entry.Aliases {
-		if name == alias {
-			return 0.95
-		}
+	if slices.Contains(entry.Aliases, name) {
+		return 0.95
 	}
-	for _, variant := range entry.NameVariants {
-		if name == variant {
-			return 0.9
-		}
+	if slices.Contains(entry.NameVariants, name) {
+		return 0.9
 	}
 	return 0.3
 }

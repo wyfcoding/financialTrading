@@ -10,11 +10,11 @@ import (
 )
 
 type CheckLimitCommand struct {
-	AccountID        uint64
-	LimitType        domain.LimitType
-	Scope            domain.LimitScope
-	Symbol           string
-	AdditionalValue  decimal.Decimal
+	AccountID       uint64
+	LimitType       domain.LimitType
+	Scope           domain.LimitScope
+	Symbol          string
+	AdditionalValue decimal.Decimal
 }
 
 type CheckLimitResult struct {
@@ -166,26 +166,19 @@ func (s *LimitApplicationService) CreateInstrumentLimit(ctx context.Context, acc
 	return s.limitRepo.Save(ctx, limit)
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 type LimitDTO struct {
-	ID               uint64  `json:"id"`
-	LimitID          string  `json:"limit_id"`
-	AccountID        uint64  `json:"account_id"`
-	Type             string  `json:"type"`
-	Scope            string  `json:"scope"`
-	Symbol           string  `json:"symbol"`
-	CurrentValue     string  `json:"current_value"`
-	LimitValue       string  `json:"limit_value"`
-	WarningThreshold string  `json:"warning_threshold"`
-	UsedPercent      string  `json:"used_percent"`
-	Status           string  `json:"status"`
-	IsActive         bool    `json:"is_active"`
+	ID               uint64 `json:"id"`
+	LimitID          string `json:"limit_id"`
+	AccountID        uint64 `json:"account_id"`
+	Type             string `json:"type"`
+	Scope            string `json:"scope"`
+	Symbol           string `json:"symbol"`
+	CurrentValue     string `json:"current_value"`
+	LimitValue       string `json:"limit_value"`
+	WarningThreshold string `json:"warning_threshold"`
+	UsedPercent      string `json:"used_percent"`
+	Status           string `json:"status"`
+	IsActive         bool   `json:"is_active"`
 }
 
 func ToLimitDTO(l *domain.Limit) *LimitDTO {

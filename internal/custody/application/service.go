@@ -371,9 +371,59 @@ func (s *CustodyQueryService) GetVaultSummary(ctx context.Context, vaultType dom
 }
 
 type VaultSummary struct {
-	VaultType   string
-	TotalVaults int
+	VaultType    string
+	TotalVaults  int
 	TotalBalance int64
 	TotalLocked  int64
-	BySymbol    map[string]int64
+	BySymbol     map[string]int64
+}
+
+type CustodyAppService struct {
+	cmd   *CustodyCommandService
+	query *CustodyQueryService
+}
+
+func NewCustodyAppService(
+	vaultRepo domain.CustodyRepository,
+	actionRepo domain.CorpActionRepository,
+	logger *slog.Logger,
+) *CustodyAppService {
+	return &CustodyAppService{
+		cmd:   NewCustodyCommandService(vaultRepo, actionRepo, logger),
+		query: NewCustodyQueryService(vaultRepo, actionRepo, logger),
+	}
+}
+
+func (s *CustodyAppService) TransferInternal(ctx context.Context, fromVault, toVault, symbol string, amount int64, reason string) (string, error) {
+	return s.cmd.TransferInternal(ctx, TransferInternalCommand{
+		FromVault: fromVault,
+		ToVault:   toVault,
+		Symbol:    symbol,
+		Amount:    amount,
+		Reason:    reason,
+	})
+}
+
+func (s *CustodyAppService) Segregate(ctx context.Context, userID uint64) error {
+	return s.cmd.SegregateAllUserAssets(ctx, userID)
+}
+
+func (s *CustodyAppService) GetHolding(ctx context.Context, vaultID string) (*domain.AssetVault, error) {
+	return s.query.GetHolding(ctx, vaultID)
+}
+
+func (s *CustodyAppService) AnnounceAction(ctx context.Context, symbol, actionType string, ratio float64, recordDate, exDate, payDate time.Time) (string, error) {
+	return s.cmd.AnnounceAction(ctx, AnnounceActionCommand{
+		Symbol:     symbol,
+		Type:       domain.CorpActionType(actionType),
+		Ratio:      ratio,
+		RecordDate: recordDate,
+		ExDate:     exDate,
+		PayDate:    payDate,
+	})
+}
+
+func (s *CustodyAppService) ExecuteBatchAction(ctx context.Context, actionID string) error {
+	_, err := s.cmd.ExecuteBatchAction(ctx, actionID)
+	return err
 }

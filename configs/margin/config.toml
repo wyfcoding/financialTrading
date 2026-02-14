@@ -1,0 +1,4 @@
+service_name = "margin"
+
+[server]
+http_addr = ":8080"

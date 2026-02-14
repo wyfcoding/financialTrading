@@ -23,6 +23,28 @@ func (r *CustodyRepo) FindVaultByID(ctx context.Context, vaultID string) (*domai
 	return toDomainVault(&model), nil
 }
 
+func (r *CustodyRepo) FindVaultByUser(ctx context.Context, userID uint64, symbol string) (*domain.AssetVault, error) {
+	var model AssetVaultModel
+	if err := r.db.WithContext(ctx).
+		Where("user_id = ? AND symbol = ? AND type = ?", userID, symbol, string(domain.VaultCustomer)).
+		First(&model).Error; err != nil {
+		return nil, err
+	}
+	return toDomainVault(&model), nil
+}
+
+func (r *CustodyRepo) FindVaultByType(ctx context.Context, vaultType domain.VaultType, symbol string) (*domain.AssetVault, error) {
+	var model AssetVaultModel
+	query := r.db.WithContext(ctx).Where("type = ?", string(vaultType))
+	if symbol != "" {
+		query = query.Where("symbol = ?", symbol)
+	}
+	if err := query.First(&model).Error; err != nil {
+		return nil, err
+	}
+	return toDomainVault(&model), nil
+}
+
 func (r *CustodyRepo) FindVaultsByUserID(ctx context.Context, userID uint64) ([]*domain.AssetVault, error) {
 	var models []AssetVaultModel
 	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&models).Error; err != nil {
@@ -31,6 +53,34 @@ func (r *CustodyRepo) FindVaultsByUserID(ctx context.Context, userID uint64) ([]
 	var vaults []*domain.AssetVault
 	for _, m := range models {
 		vaults = append(vaults, toDomainVault(&m))
+	}
+	return vaults, nil
+}
+
+func (r *CustodyRepo) ListVaultsByUser(ctx context.Context, userID uint64) ([]*domain.AssetVault, error) {
+	return r.FindVaultsByUserID(ctx, userID)
+}
+
+func (r *CustodyRepo) ListVaultsByType(ctx context.Context, vaultType domain.VaultType) ([]*domain.AssetVault, error) {
+	var models []AssetVaultModel
+	if err := r.db.WithContext(ctx).Where("type = ?", string(vaultType)).Find(&models).Error; err != nil {
+		return nil, err
+	}
+	vaults := make([]*domain.AssetVault, 0, len(models))
+	for i := range models {
+		vaults = append(vaults, toDomainVault(&models[i]))
+	}
+	return vaults, nil
+}
+
+func (r *CustodyRepo) ListVaultsBySymbol(ctx context.Context, symbol string) ([]*domain.AssetVault, error) {
+	var models []AssetVaultModel
+	if err := r.db.WithContext(ctx).Where("symbol = ?", symbol).Find(&models).Error; err != nil {
+		return nil, err
+	}
+	vaults := make([]*domain.AssetVault, 0, len(models))
+	for i := range models {
+		vaults = append(vaults, toDomainVault(&models[i]))
 	}
 	return vaults, nil
 }
@@ -64,6 +114,24 @@ func (r *CustodyRepo) SaveTransfer(ctx context.Context, transfer *domain.Custody
 		Timestamp:  transfer.Timestamp,
 	}
 	return r.db.WithContext(ctx).Save(&model).Error
+}
+
+func (r *CustodyRepo) ListTransfersByVault(ctx context.Context, vaultID string, limit int) ([]*domain.CustodyTransfer, error) {
+	var models []CustodyTransferModel
+	query := r.db.WithContext(ctx).
+		Where("from_vault = ? OR to_vault = ?", vaultID, vaultID).
+		Order("timestamp DESC")
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if err := query.Find(&models).Error; err != nil {
+		return nil, err
+	}
+	transfers := make([]*domain.CustodyTransfer, 0, len(models))
+	for i := range models {
+		transfers = append(transfers, toDomainTransfer(&models[i]))
+	}
+	return transfers, nil
 }
 
 // Helper
@@ -127,6 +195,22 @@ func (r *CorpActionRepo) ListActionsBySymbol(ctx context.Context, symbol string)
 	return actions, nil
 }
 
+func (r *CorpActionRepo) ListPendingActions(ctx context.Context, symbol string) ([]*domain.CorpAction, error) {
+	var models []CorpActionModel
+	query := r.db.WithContext(ctx).Where("status = ?", "ANNOUNCED")
+	if symbol != "" {
+		query = query.Where("symbol = ?", symbol)
+	}
+	if err := query.Find(&models).Error; err != nil {
+		return nil, err
+	}
+	actions := make([]*domain.CorpAction, 0, len(models))
+	for i := range models {
+		actions = append(actions, toDomainAction(&models[i]))
+	}
+	return actions, nil
+}
+
 func (r *CorpActionRepo) SaveExecution(ctx context.Context, execution *domain.CorpActionExecution) error {
 	model := CorpActionExecutionModel{
 		ExecutionID: execution.ExecutionID,
@@ -152,3 +236,23 @@ func toDomainAction(m *CorpActionModel) *domain.CorpAction {
 		Status:     m.Status,
 	}
 }
+
+func toDomainTransfer(m *CustodyTransferModel) *domain.CustodyTransfer {
+	if m == nil {
+		return nil
+	}
+	return &domain.CustodyTransfer{
+		TransferID: m.TransferID,
+		FromVault:  m.FromVault,
+		ToVault:    m.ToVault,
+		Symbol:     m.Symbol,
+		Amount:     m.Amount,
+		Reason:     m.Reason,
+		Timestamp:  m.Timestamp,
+	}
+}
+
+var (
+	_ domain.CustodyRepository    = (*CustodyRepo)(nil)
+	_ domain.CorpActionRepository = (*CorpActionRepo)(nil)
+)
