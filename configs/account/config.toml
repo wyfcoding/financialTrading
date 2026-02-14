@@ -1,36 +1,65 @@
+# 金融交易系统 - 账户服务配置文件
+version = "1.0.0"
+
 [server]
-name = "account-service"
+name = "account"
 environment = "dev"
 
 [server.http]
-port = 8080
-timeout = "10s"
+addr = "0.0.0.0"
+port = 8103
+timeout = "3s"
 
 [server.grpc]
-port = 9090
-timeout = "10s"
+addr = "0.0.0.0"
+port = 9103
+timeout = "3s"
 
 [log]
 level = "info"
 format = "json"
 output = "stdout"
 
+[tracing]
+enabled = true
+service_name = "account"
+otlp_endpoint = "localhost:4317"
+
+[metrics]
+enabled = true
+port = "18103"
+path = "/metrics"
+
+[cache]
+prefix = "account:"
+default_expiration = "1h"
+
+[lock]
+prefix = "account:lock:"
+default_expiration = "10s"
+
 [data.database]
 driver = "mysql"
-dsn = "root:password@tcp(localhost:3306)/financial_account?charset=utf8mb4&parseTime=True&loc=Local"
-max_idle_conns = 10
-max_open_conns = 100
+dsn = "root:root@tcp(127.0.0.1:3306)/trading_account?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 20
+max_open_conns = 200
 conn_max_lifetime = "1h"
 
 [data.redis]
-addrs = ["localhost:6379"]
+addrs = ["127.0.0.1:6379"]
+password = "redis_password"
 db = 0
+pool_size = 20
 
 [messagequeue.kafka]
 brokers = ["localhost:9092"]
-topic = "financial.account.events"
+topic = "account-events"
+group_id = "account-group"
 
-[tracing]
-enabled = false
-service_name = "account-service"
-otlp_endpoint = "localhost:4317"
+[services]
+[services.order]
+grpc_addr = "127.0.0.1:9001"
+[services.position]
+grpc_addr = "127.0.0.1:9104"
+[services.risk]
+grpc_addr = "127.0.0.1:9115"

@@ -1,46 +1,61 @@
+# 金融交易系统 - 市场数据服务配置文件
+version = "1.0.0"
+
 [server]
-name = "marketdata-service"
+name = "marketdata"
 environment = "dev"
 
 [server.http]
-port = 8083
-timeout = "10s"
+addr = "0.0.0.0"
+port = 8112
+timeout = "3s"
 
 [server.grpc]
-port = 9093
-timeout = "10s"
+addr = "0.0.0.0"
+port = 9112
+timeout = "3s"
 
 [log]
 level = "info"
 format = "json"
 output = "stdout"
 
+[tracing]
+enabled = true
+service_name = "marketdata"
+otlp_endpoint = "localhost:4317"
+
+[metrics]
+enabled = true
+port = "18112"
+path = "/metrics"
+
+[cache]
+prefix = "marketdata:"
+default_expiration = "1s"
+
 [data.database]
 driver = "mysql"
-dsn = "root:password@tcp(localhost:3306)/financial_marketdata?charset=utf8mb4&parseTime=True&loc=Local"
-max_idle_conns = 10
-max_open_conns = 100
-conn_max_lifetime = "1h"
+dsn = "root:root@tcp(127.0.0.1:3306)/trading_marketdata?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 20
+max_open_conns = 200
 
 [data.redis]
-addrs = ["localhost:6379"]
-password = ""
+addrs = ["127.0.0.1:6379"]
+password = "redis_password"
 db = 0
-pool_size = 10
-min_idle_conns = 5
-read_timeout = "3s"
-write_timeout = "3s"
+pool_size = 50
 
 [data.elasticsearch]
-addresses = ["http://localhost:9200"]
-username = ""
-password = ""
+addresses = ["http://127.0.0.1:9200"]
+username = "elastic"
+password = "elastic_password"
 
 [messagequeue.kafka]
 brokers = ["localhost:9092"]
-topic = "market.price"
+topic = "marketdata-events"
+group_id = "marketdata-group"
 
-[tracing]
-enabled = false
-service_name = "marketdata-service"
-otlp_endpoint = "localhost:4317"
+[services]
+[services.referencedata]
+grpc_addr = "127.0.0.1:9116"

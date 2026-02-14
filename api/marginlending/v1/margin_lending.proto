@@ -1,50 +1,981 @@
 syntax = "proto3";
 
-package marginlending.v1;
-
-option go_package = "github.com/wyfcoding/financialTrading/go-api/marginlending/v1;pb";
+package api.marginlending.v1;
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
 
+option go_package = "github.com/wyfcoding/financialtrading/go-api/marginlending/v1;marginlendingv1";
+
+// 融资融券服务，提供融资买入、融券卖出、利息计算、抵押品管理等能力
 service MarginLendingService {
-    // 保证金评估
-    rpc EvaluateMargin(EvaluateMarginRequest) returns (EvaluateMarginResponse);
-    // 抵押品锁定
-    rpc LockCollateral(LockCollateralRequest) returns (LockCollateralResponse);
-    // 强制平仓预警
-    rpc MarginCall(MarginCallRequest) returns (MarginCallResponse);
+  // ==================== 融资服务 ====================
+  
+  // 申请融资
+  rpc ApplyForFinancing(ApplyForFinancingRequest) returns (FinancingApplication);
+  // 获取融资申请详情
+  rpc GetFinancingApplication(GetFinancingApplicationRequest) returns (FinancingApplication);
+  // 审批融资申请
+  rpc ApproveFinancingApplication(ApproveFinancingApplicationRequest) returns (FinancingApplication);
+  // 拒绝融资申请
+  rpc RejectFinancingApplication(RejectFinancingApplicationRequest) returns (FinancingApplication);
+  
+  // 融资买入
+  rpc BorrowCash(BorrowCashRequest) returns (BorrowCashResponse);
+  // 融资还款
+  rpc RepayBorrowing(RepayBorrowingRequest) returns (RepayBorrowingResponse);
+  // 获取融资记录
+  rpc GetBorrowingRecord(GetBorrowingRecordRequest) returns (BorrowingRecord);
+  // 获取融资记录列表
+  rpc ListBorrowingRecords(ListBorrowingRecordsRequest) returns (ListBorrowingRecordsResponse);
+  
+  // ==================== 融券服务 ====================
+  
+  // 申请融券
+  rpc ApplyForStockBorrowing(ApplyForStockBorrowingRequest) returns (StockBorrowingApplication);
+  // 获取融券申请详情
+  rpc GetStockBorrowingApplication(GetStockBorrowingApplicationRequest) returns (StockBorrowingApplication);
+  // 审批融券申请
+  rpc ApproveStockBorrowingApplication(ApproveStockBorrowingApplicationRequest) returns (StockBorrowingApplication);
+  
+  // 融券卖出
+  rpc BorrowStock(BorrowStockRequest) returns (BorrowStockResponse);
+  // 买券还券
+  rpc ReturnStock(ReturnStockRequest) returns (ReturnStockResponse);
+  // 现券还券
+  rpc ReturnStockFromAccount(ReturnStockFromAccountRequest) returns (ReturnStockResponse);
+  // 获取融券记录
+  rpc GetStockBorrowingRecord(GetStockBorrowingRecordRequest) returns (StockBorrowingRecord);
+  // 获取融券记录列表
+  rpc ListStockBorrowingRecords(ListStockBorrowingRecordsRequest) returns (ListStockBorrowingRecordsResponse);
+  
+  // ==================== 可融证券管理 ====================
+  
+  // 获取可融证券列表
+  rpc GetAvailableStocks(GetAvailableStocksRequest) returns (GetAvailableStocksResponse);
+  // 更新可融证券
+  rpc UpdateStockAvailability(UpdateStockAvailabilityRequest) returns (StockAvailability);
+  // 获取证券可融数量
+  rpc GetStockBorrowableQuantity(GetStockBorrowableQuantityRequest) returns (StockBorrowableQuantity);
+  
+  // ==================== 抵押品管理 ====================
+  
+  // 锁定抵押品
+  rpc LockCollateral(LockCollateralRequest) returns (LockCollateralResponse);
+  // 解锁抵押品
+  rpc UnlockCollateral(UnlockCollateralRequest) returns (UnlockCollateralResponse);
+  // 获取抵押品列表
+  rpc GetCollaterals(GetCollateralsRequest) returns (GetCollateralsResponse);
+  // 评估抵押品价值
+  rpc EvaluateCollateral(EvaluateCollateralRequest) returns (CollateralEvaluation);
+  // 抵押品折算率配置
+  rpc SetCollateralHaircut(SetCollateralHaircutRequest) returns (CollateralHaircut);
+  
+  // ==================== 利息计算 ====================
+  
+  // 计算利息
+  rpc CalculateInterest(CalculateInterestRequest) returns (InterestCalculation);
+  // 获取利率
+  rpc GetInterestRate(GetInterestRateRequest) returns (InterestRate);
+  // 设置利率
+  rpc SetInterestRate(SetInterestRateRequest) returns (InterestRate);
+  // 获取利息账单
+  rpc GetInterestBill(GetInterestBillRequest) returns (InterestBill);
+  // 获取利息账单列表
+  rpc ListInterestBills(ListInterestBillsRequest) returns (ListInterestBillsResponse);
+  // 支付利息
+  rpc PayInterest(PayInterestRequest) returns (PayInterestResponse);
+  
+  // ==================== 保证金管理 ====================
+  
+  // 评估保证金
+  rpc EvaluateMargin(EvaluateMarginRequest) returns (EvaluateMarginResponse);
+  // 保证金追缴
+  rpc MarginCall(MarginCallRequest) returns (MarginCallResponse);
+  // 强制平仓预警
+  rpc GetLiquidationWarning(GetLiquidationWarningRequest) returns (LiquidationWarning);
+  
+  // ==================== 账户管理 ====================
+  
+  // 获取融资融券账户
+  rpc GetMarginLendingAccount(GetMarginLendingAccountRequest) returns (MarginLendingAccount);
+  // 获取账户汇总
+  rpc GetAccountSummary(GetAccountSummaryRequest) returns (AccountSummary);
+  // 获取融资融券额度
+  rpc GetCreditLimit(GetCreditLimitRequest) returns (CreditLimit);
+  // 设置融资融券额度
+  rpc SetCreditLimit(SetCreditLimitRequest) returns (CreditLimit);
+  
+  // ==================== 风险管理 ====================
+  
+  // 获取风险指标
+  rpc GetRiskIndicators(GetRiskIndicatorsRequest) returns (RiskIndicators);
+  // 维持担保比例检查
+  rpc CheckMaintenanceRatio(CheckMaintenanceRatioRequest) returns (MaintenanceRatioResult);
+  // 集中度风险检查
+  rpc CheckConcentrationRisk(CheckConcentrationRiskRequest) returns (ConcentrationRiskResult);
+  
+  // ==================== 分布式事务支持 ====================
+  
+  // TCC Try: 预锁定抵押品
+  rpc TccTryLockCollateral(TccCollateralRequest) returns (TccCollateralResponse);
+  // TCC Confirm: 确认锁定
+  rpc TccConfirmLockCollateral(TccCollateralRequest) returns (TccCollateralResponse);
+  // TCC Cancel: 取消锁定
+  rpc TccCancelLockCollateral(TccCollateralRequest) returns (TccCollateralResponse);
+  
+  // Saga: 记录融资
+  rpc SagaRecordBorrowing(SagaBorrowingRequest) returns (SagaBorrowingResponse);
+  // Saga: 冲正融资
+  rpc SagaReverseBorrowing(SagaBorrowingRequest) returns (SagaBorrowingResponse);
 }
 
-message EvaluateMarginRequest {
-    uint64 user_id = 1;
-    string symbol = 2;
-    int64 quantity = 3;
-    int64 price = 4;
+// ==================== 枚举定义 ====================
+
+enum FinancingStatus {
+  FINANCING_STATUS_UNSPECIFIED = 0;
+  FINANCING_STATUS_PENDING = 1;         // 待审批
+  FINANCING_STATUS_APPROVED = 2;        // 已批准
+  FINANCING_STATUS_REJECTED = 3;        // 已拒绝
+  FINANCING_STATUS_ACTIVE = 4;          // 进行中
+  FINANCING_STATUS_REPAID = 5;          // 已还款
+  FINANCING_STATUS_OVERDUE = 6;         // 逾期
+  FINANCING_STATUS_DEFAULTED = 7;       // 违约
 }
 
-message EvaluateMarginResponse {
-    bool eligible = 1;
-    double required_margin = 2;
-    double available_leverage = 3;
+enum StockBorrowingStatus {
+  STOCK_BORROWING_STATUS_UNSPECIFIED = 0;
+  STOCK_BORROWING_STATUS_PENDING = 1;       // 待审批
+  STOCK_BORROWING_STATUS_APPROVED = 2;      // 已批准
+  STOCK_BORROWING_STATUS_BORROWED = 3;      // 已借入
+  STOCK_BORROWING_STATUS_PARTIAL_RETURN = 4; // 部分归还
+  STOCK_BORROWING_STATUS_RETURNED = 5;      // 已归还
+  STOCK_BORROWING_STATUS_OVERDUE = 6;       // 逾期
+  STOCK_BORROWING_STATUS_DEFAULTED = 7;     // 违约
 }
+
+enum CollateralType {
+  COLLATERAL_TYPE_UNSPECIFIED = 0;
+  COLLATERAL_TYPE_CASH = 1;             // 现金
+  COLLATERAL_TYPE_STOCK = 2;            // 股票
+  COLLATERAL_TYPE_BOND = 3;             // 债券
+  COLLATERAL_TYPE_FUND = 4;             // 基金
+  COLLATERAL_TYPE_ETF = 5;              // ETF
+}
+
+enum InterestType {
+  INTEREST_TYPE_UNSPECIFIED = 0;
+  INTEREST_TYPE_FIXED = 1;              // 固定利率
+  INTEREST_TYPE_FLOATING = 2;           // 浮动利率
+  INTEREST_TYPE_TIERED = 3;             // 分层利率
+}
+
+// ==================== 融资服务消息 ====================
+
+message ApplyForFinancingRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string amount = 3;                    // 申请金额
+  string currency = 4;
+  string purpose = 5;                   // 用途
+  int32 term_days = 6;                  // 期限（天）
+  string collateral_type = 7;           // 抵押品类型
+  string collateral_value = 8;          // 抵押品价值
+}
+
+message FinancingApplication {
+  string application_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  string amount = 4;
+  string currency = 5;
+  string purpose = 6;
+  int32 term_days = 7;
+  FinancingStatus status = 8;
+  
+  string approved_amount = 9;           // 批准金额
+  string interest_rate = 10;            // 利率
+  
+  string reject_reason = 11;
+  string reviewer_id = 12;
+  
+  google.protobuf.Timestamp applied_at = 13;
+  google.protobuf.Timestamp reviewed_at = 14;
+  google.protobuf.Timestamp expires_at = 15;
+}
+
+message GetFinancingApplicationRequest {
+  string application_id = 1;
+}
+
+message ApproveFinancingApplicationRequest {
+  string application_id = 1;
+  string approved_amount = 2;
+  string interest_rate = 3;
+  string reviewer_id = 4;
+  string remark = 5;
+}
+
+message RejectFinancingApplicationRequest {
+  string application_id = 1;
+  string reject_reason = 2;
+  string reviewer_id = 3;
+}
+
+message BorrowCashRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string amount = 3;
+  string currency = 4;
+  string purpose = 5;
+  int32 term_days = 6;
+  string collateral_id = 7;             // 抵押品ID
+}
+
+message BorrowCashResponse {
+  string borrowing_id = 1;
+  string amount = 2;
+  string currency = 3;
+  string interest_rate = 4;
+  string daily_interest = 5;
+  string due_date = 6;
+  google.protobuf.Timestamp borrowed_at = 7;
+}
+
+message RepayBorrowingRequest {
+  string borrowing_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  string principal = 4;                 // 还款本金
+  string interest = 5;                  // 还款利息
+  string currency = 6;
+}
+
+message RepayBorrowingResponse {
+  string repayment_id = 1;
+  string borrowing_id = 2;
+  string principal_paid = 3;
+  string interest_paid = 4;
+  string remaining_principal = 5;
+  string remaining_interest = 6;
+  google.protobuf.Timestamp repaid_at = 7;
+}
+
+message BorrowingRecord {
+  string borrowing_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  string principal = 4;                 // 借款本金
+  string interest_rate = 5;             // 利率
+  string accrued_interest = 6;          // 应计利息
+  string paid_interest = 7;             // 已付利息
+  string remaining_principal = 8;       // 剩余本金
+  string currency = 9;
+  
+  FinancingStatus status = 10;
+  string purpose = 11;
+  
+  string collateral_id = 12;
+  string collateral_value = 13;
+  
+  google.protobuf.Timestamp borrowed_at = 14;
+  google.protobuf.Timestamp due_date = 15;
+  google.protobuf.Timestamp repaid_at = 16;
+  
+  repeated RepaymentRecord repayments = 17;
+}
+
+message RepaymentRecord {
+  string repayment_id = 1;
+  string principal = 2;
+  string interest = 3;
+  google.protobuf.Timestamp repaid_at = 4;
+}
+
+message GetBorrowingRecordRequest {
+  string borrowing_id = 1;
+}
+
+message ListBorrowingRecordsRequest {
+  string user_id = 1;
+  string account_id = 2;
+  FinancingStatus status = 3;
+  int32 page = 4;
+  int32 page_size = 5;
+}
+
+message ListBorrowingRecordsResponse {
+  repeated BorrowingRecord records = 1;
+  int32 total = 2;
+}
+
+// ==================== 融券服务消息 ====================
+
+message ApplyForStockBorrowingRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string symbol = 3;
+  string quantity = 4;
+  int32 term_days = 5;
+  string purpose = 6;
+}
+
+message StockBorrowingApplication {
+  string application_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  string symbol = 4;
+  string quantity = 5;
+  int32 term_days = 6;
+  StockBorrowingStatus status = 7;
+  
+  string approved_quantity = 8;
+  string borrowing_rate = 9;            // 融券费率
+  
+  string reject_reason = 10;
+  string reviewer_id = 11;
+  
+  google.protobuf.Timestamp applied_at = 12;
+  google.protobuf.Timestamp reviewed_at = 13;
+}
+
+message GetStockBorrowingApplicationRequest {
+  string application_id = 1;
+}
+
+message ApproveStockBorrowingApplicationRequest {
+  string application_id = 1;
+  string approved_quantity = 2;
+  string borrowing_rate = 3;
+  string reviewer_id = 4;
+  string remark = 5;
+}
+
+message BorrowStockRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string symbol = 3;
+  string quantity = 4;
+  string collateral_id = 5;
+  int32 term_days = 6;
+}
+
+message BorrowStockResponse {
+  string borrowing_id = 1;
+  string symbol = 2;
+  string quantity = 3;
+  string borrowing_rate = 4;
+  string daily_fee = 5;
+  string due_date = 6;
+  google.protobuf.Timestamp borrowed_at = 7;
+}
+
+message ReturnStockRequest {
+  string borrowing_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  string quantity = 4;
+  string price = 5;                     // 买入价格
+}
+
+message ReturnStockFromAccountRequest {
+  string borrowing_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  string quantity = 4;
+}
+
+message ReturnStockResponse {
+  string return_id = 1;
+  string borrowing_id = 2;
+  string quantity_returned = 3;
+  string quantity_remaining = 4;
+  string fee_paid = 5;
+  google.protobuf.Timestamp returned_at = 6;
+}
+
+message StockBorrowingRecord {
+  string borrowing_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  string symbol = 4;
+  string quantity = 5;
+  string borrowed_quantity = 6;
+  string returned_quantity = 7;
+  
+  string borrowing_rate = 8;            // 融券费率
+  string accrued_fee = 9;               // 应计费用
+  string paid_fee = 10;                 // 已付费用
+  
+  string collateral_id = 11;
+  string collateral_value = 12;
+  
+  StockBorrowingStatus status = 13;
+  
+  google.protobuf.Timestamp borrowed_at = 14;
+  google.protobuf.Timestamp due_date = 15;
+  google.protobuf.Timestamp returned_at = 16;
+  
+  repeated StockReturnRecord returns = 17;
+}
+
+message StockReturnRecord {
+  string return_id = 1;
+  string quantity = 2;
+  string price = 3;
+  string fee = 4;
+  google.protobuf.Timestamp returned_at = 5;
+}
+
+message GetStockBorrowingRecordRequest {
+  string borrowing_id = 1;
+}
+
+message ListStockBorrowingRecordsRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string symbol = 3;
+  StockBorrowingStatus status = 4;
+  int32 page = 5;
+  int32 page_size = 6;
+}
+
+message ListStockBorrowingRecordsResponse {
+  repeated StockBorrowingRecord records = 1;
+  int32 total = 2;
+}
+
+// ==================== 可融证券管理消息 ====================
+
+message GetAvailableStocksRequest {
+  string symbol = 1;                    // 可选过滤
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message GetAvailableStocksResponse {
+  repeated StockAvailability stocks = 1;
+  int32 total = 2;
+}
+
+message StockAvailability {
+  string symbol = 1;
+  string total_quantity = 2;            // 总可融数量
+  string available_quantity = 3;        // 可用数量
+  string borrowed_quantity = 4;         // 已借出数量
+  string reserved_quantity = 5;         // 预留数量
+  
+  string borrowing_rate = 6;            // 融券费率
+  string min_borrowing_days = 7;        // 最小借入天数
+  string max_borrowing_days = 8;        // 最大借入天数
+  
+  bool is_available = 9;
+  string unavailable_reason = 10;
+  
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message UpdateStockAvailabilityRequest {
+  string symbol = 1;
+  string total_quantity = 2;
+  string borrowing_rate = 3;
+  string min_borrowing_days = 4;
+  string max_borrowing_days = 5;
+  bool is_available = 6;
+}
+
+message GetStockBorrowableQuantityRequest {
+  string symbol = 1;
+}
+
+message StockBorrowableQuantity {
+  string symbol = 1;
+  string available_quantity = 2;
+  string max_borrowable_per_user = 3;
+  string current_borrowed_by_user = 4;
+  google.protobuf.Timestamp checked_at = 5;
+}
+
+// ==================== 抵押品管理消息 ====================
 
 message LockCollateralRequest {
-    uint64 user_id = 1;
-    string asset = 2;
-    int64 amount = 3;
+  string user_id = 1;
+  string account_id = 2;
+  CollateralType type = 3;
+  string asset = 4;                     // 资产代码
+  string quantity = 5;
+  string value = 6;
+  string currency = 7;
+  string reference_id = 8;              // 关联业务ID
 }
 
 message LockCollateralResponse {
-    string lock_id = 1;
-    bool success = 2;
+  string collateral_id = 1;
+  bool success = 2;
+  string locked_value = 3;
+  string haircut_value = 4;             // 折算后价值
+  string message = 5;
+}
+
+message UnlockCollateralRequest {
+  string collateral_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  string reason = 4;
+}
+
+message UnlockCollateralResponse {
+  bool success = 1;
+  string unlocked_value = 2;
+  string message = 3;
+}
+
+message GetCollateralsRequest {
+  string user_id = 1;
+  string account_id = 2;
+  CollateralType type = 3;
+  bool locked_only = 4;
+}
+
+message GetCollateralsResponse {
+  repeated Collateral collaterals = 1;
+  string total_value = 2;
+  string total_haircut_value = 3;
+}
+
+message Collateral {
+  string collateral_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  CollateralType type = 4;
+  string asset = 5;
+  string quantity = 6;
+  string market_value = 7;
+  string haircut_rate = 8;              // 折算率
+  string haircut_value = 9;             // 折算后价值
+  string currency = 10;
+  
+  bool is_locked = 11;
+  string locked_by = 12;                // 锁定业务ID
+  
+  google.protobuf.Timestamp locked_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+message EvaluateCollateralRequest {
+  string user_id = 1;
+  string account_id = 2;
+  repeated CollateralItem items = 3;
+}
+
+message CollateralItem {
+  CollateralType type = 1;
+  string asset = 2;
+  string quantity = 3;
+}
+
+message CollateralEvaluation {
+  string total_market_value = 1;
+  string total_haircut_value = 2;
+  repeated CollateralEvaluationItem items = 3;
+  google.protobuf.Timestamp evaluated_at = 4;
+}
+
+message CollateralEvaluationItem {
+  CollateralType type = 1;
+  string asset = 2;
+  string quantity = 3;
+  string market_value = 4;
+  string haircut_rate = 5;
+  string haircut_value = 6;
+}
+
+message SetCollateralHaircutRequest {
+  CollateralType type = 1;
+  string asset = 2;                     // 资产代码，空表示该类型默认
+  string haircut_rate = 3;              // 折算率
+  string min_haircut_rate = 4;          // 最低折算率
+  string max_haircut_rate = 5;          // 最高折算率
+}
+
+message CollateralHaircut {
+  CollateralType type = 1;
+  string asset = 2;
+  string haircut_rate = 3;
+  string min_haircut_rate = 4;
+  string max_haircut_rate = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+// ==================== 利息计算消息 ====================
+
+message CalculateInterestRequest {
+  string borrowing_id = 1;
+  string start_date = 2;
+  string end_date = 3;
+}
+
+message InterestCalculation {
+  string borrowing_id = 1;
+  string principal = 2;
+  string interest_rate = 3;
+  string daily_interest = 4;
+  string total_interest = 5;
+  int32 days = 6;
+  google.protobuf.Timestamp calculated_at = 7;
+}
+
+message GetInterestRateRequest {
+  string currency = 1;                  // 融资币种
+  string symbol = 2;                    // 融券证券
+  int32 term_days = 3;
+}
+
+message InterestRate {
+  string currency = 1;
+  string symbol = 2;
+  InterestType type = 3;
+  string base_rate = 4;                 // 基础利率
+  string spread = 5;                    // 利差
+  string total_rate = 6;                // 总利率
+  repeated TieredRate tiers = 7;        // 分层利率
+  google.protobuf.Timestamp effective_from = 8;
+  google.protobuf.Timestamp effective_until = 9;
+}
+
+message TieredRate {
+  string min_amount = 1;
+  string max_amount = 2;
+  string rate = 3;
+}
+
+message SetInterestRateRequest {
+  string currency = 1;
+  string symbol = 2;
+  InterestType type = 3;
+  string base_rate = 4;
+  string spread = 5;
+  repeated TieredRate tiers = 6;
+  google.protobuf.Timestamp effective_from = 7;
+}
+
+message GetInterestBillRequest {
+  string bill_id = 1;
+}
+
+message InterestBill {
+  string bill_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  string period_start = 4;
+  string period_end = 5;
+  
+  string financing_interest = 6;        // 融资利息
+  string stock_borrowing_fee = 7;       // 融券费用
+  string total_amount = 8;
+  string currency = 9;
+  
+  string status = 10;                   // UNPAID, PAID, OVERDUE
+  google.protobuf.Timestamp due_date = 11;
+  google.protobuf.Timestamp paid_at = 12;
+  
+  repeated InterestBillDetail details = 13;
+}
+
+message InterestBillDetail {
+  string borrowing_id = 1;
+  string type = 2;                      // FINANCING, STOCK_BORROWING
+  string symbol = 3;
+  string principal = 4;
+  string rate = 5;
+  string interest = 6;
+  int32 days = 7;
+}
+
+message ListInterestBillsRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string status = 3;
+  int32 page = 4;
+  int32 page_size = 5;
+}
+
+message ListInterestBillsResponse {
+  repeated InterestBill bills = 1;
+  int32 total = 2;
+}
+
+message PayInterestRequest {
+  string bill_id = 1;
+  string user_id = 2;
+  string account_id = 3;
+  string amount = 4;
+}
+
+message PayInterestResponse {
+  string payment_id = 1;
+  string bill_id = 2;
+  string amount_paid = 3;
+  string remaining_amount = 4;
+  google.protobuf.Timestamp paid_at = 5;
+}
+
+// ==================== 保证金管理消息 ====================
+
+message EvaluateMarginRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string symbol = 3;
+  string quantity = 4;
+  string price = 5;
+  string side = 6;                      // BUY, SELL
+}
+
+message EvaluateMarginResponse {
+  bool eligible = 1;
+  string required_margin = 2;
+  string available_margin = 3;
+  string available_leverage = 4;
+  string maintenance_margin = 5;
+  string margin_ratio = 6;
+  repeated string warnings = 7;
 }
 
 message MarginCallRequest {
-    uint64 user_id = 1;
+  string user_id = 1;
+  string account_id = 2;
 }
 
 message MarginCallResponse {
-    double maintenance_margin = 1;
-    double current_equity = 2;
-    bool is_liquidatable = 3;
+  string account_id = 1;
+  string maintenance_margin = 2;
+  string current_equity = 3;
+  string margin_ratio = 4;
+  bool is_margin_call = 5;
+  bool is_liquidatable = 6;
+  string margin_call_amount = 7;
+  string deadline = 8;
+  repeated string actions = 9;
+}
+
+message GetLiquidationWarningRequest {
+  string user_id = 1;
+  string account_id = 2;
+}
+
+message LiquidationWarning {
+  string account_id = 1;
+  string warning_level = 2;             // NONE, LOW, MEDIUM, HIGH, CRITICAL
+  string margin_ratio = 3;
+  string distance_to_liquidation = 4;
+  repeated PositionRisk positions = 5;
+  google.protobuf.Timestamp generated_at = 6;
+}
+
+message PositionRisk {
+  string symbol = 1;
+  string side = 2;
+  string quantity = 3;
+  string market_value = 4;
+  string risk_contribution = 5;
+}
+
+// ==================== 账户管理消息 ====================
+
+message GetMarginLendingAccountRequest {
+  string account_id = 1;
+  string user_id = 2;
+}
+
+message MarginLendingAccount {
+  string account_id = 1;
+  string user_id = 2;
+  
+  string total_equity = 3;              // 总权益
+  string total_debt = 4;                // 总负债
+  string net_equity = 5;                // 净权益
+  
+  string financing_balance = 6;         // 融资余额
+  string stock_borrowing_value = 7;     // 融券市值
+  
+  string collateral_value = 8;          // 抵押品价值
+  string available_collateral = 9;      // 可用抵押品
+  
+  string margin_ratio = 10;             // 维持担保比例
+  string maintenance_ratio = 11;        // 维持担保比例
+  
+  string credit_limit = 12;             // 信用额度
+  string used_credit = 13;              // 已用额度
+  string available_credit = 14;         // 可用额度
+  
+  string total_interest_payable = 15;   // 应付利息
+  
+  string status = 16;
+  google.protobuf.Timestamp last_updated = 17;
+}
+
+message GetAccountSummaryRequest {
+  string user_id = 1;
+}
+
+message AccountSummary {
+  string user_id = 1;
+  
+  string total_financing = 2;           // 总融资
+  string total_stock_borrowing = 3;     // 总融券
+  string total_collateral = 4;          // 总抵押品
+  string total_interest_payable = 5;    // 总应付利息
+  
+  string total_available_credit = 6;    // 总可用额度
+  
+  int32 active_financing_count = 7;
+  int32 active_stock_borrowing_count = 8;
+  
+  repeated MarginLendingAccount accounts = 9;
+}
+
+message GetCreditLimitRequest {
+  string user_id = 1;
+  string account_id = 2;
+}
+
+message CreditLimit {
+  string user_id = 1;
+  string account_id = 2;
+  
+  string financing_limit = 3;           // 融资额度
+  string stock_borrowing_limit = 4;     // 融券额度
+  string total_limit = 5;               // 总额度
+  
+  string financing_used = 6;
+  string stock_borrowing_used = 7;
+  string total_used = 8;
+  
+  string financing_available = 9;
+  string stock_borrowing_available = 10;
+  string total_available = 11;
+  
+  string credit_rating = 12;            // 信用评级
+  string risk_level = 13;               // 风险等级
+  
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+message SetCreditLimitRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string financing_limit = 3;
+  string stock_borrowing_limit = 4;
+  string total_limit = 5;
+  string reason = 6;
+  string set_by = 7;
+}
+
+// ==================== 风险管理消息 ====================
+
+message GetRiskIndicatorsRequest {
+  string user_id = 1;
+  string account_id = 2;
+}
+
+message RiskIndicators {
+  string account_id = 1;
+  
+  string margin_ratio = 2;              // 维持担保比例
+  string leverage_ratio = 3;            // 杠杆比率
+  string concentration_ratio = 4;       // 集中度
+  string utilization_ratio = 5;         // 额度使用率
+  
+  string risk_score = 6;                // 风险评分
+  string risk_level = 7;                // 风险等级
+  
+  string days_to_margin_call = 8;       // 距离追缴天数
+  string days_to_liquidation = 9;       // 距离平仓天数
+  
+  repeated RiskIndicator indicators = 10;
+  
+  google.protobuf.Timestamp calculated_at = 11;
+}
+
+message RiskIndicator {
+  string name = 1;
+  string value = 2;
+  string threshold = 3;
+  string status = 4;                    // SAFE, WARNING, DANGER
+  string description = 5;
+}
+
+message CheckMaintenanceRatioRequest {
+  string user_id = 1;
+  string account_id = 2;
+}
+
+message MaintenanceRatioResult {
+  string account_id = 1;
+  string current_ratio = 2;
+  string required_ratio = 3;
+  string warning_ratio = 4;
+  string liquidation_ratio = 5;
+  
+  bool is_below_required = 6;
+  bool is_below_warning = 7;
+  bool is_below_liquidation = 8;
+  
+  string shortfall = 9;                 // 缺口金额
+  
+  google.protobuf.Timestamp checked_at = 10;
+}
+
+message CheckConcentrationRiskRequest {
+  string user_id = 1;
+  string account_id = 2;
+}
+
+message ConcentrationRiskResult {
+  string account_id = 1;
+  bool has_concentration_risk = 2;
+  repeated ConcentrationItem items = 3;
+  string max_concentration = 4;
+  string recommended_max = 5;
+  google.protobuf.Timestamp checked_at = 6;
+}
+
+message ConcentrationItem {
+  string symbol = 1;
+  string value = 2;
+  string percentage = 3;
+  bool exceeds_limit = 4;
+}
+
+// ==================== 分布式事务消息 ====================
+
+message TccCollateralRequest {
+  string user_id = 1;
+  string account_id = 2;
+  CollateralType type = 3;
+  string asset = 4;
+  string quantity = 5;
+  string value = 6;
+  string currency = 7;
+  string order_id = 8;
+}
+
+message TccCollateralResponse {
+  bool success = 1;
+  string collateral_id = 2;
+  string message = 3;
+}
+
+message SagaBorrowingRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string borrowing_id = 3;
+  string amount = 4;
+  string currency = 5;
+  string type = 6;                      // FINANCING, STOCK_BORROWING
+}
+
+message SagaBorrowingResponse {
+  bool success = 1;
+  string message = 2;
 }

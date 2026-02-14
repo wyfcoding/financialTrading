@@ -1,56 +1,63 @@
+# 金融交易系统 - 撮合引擎配置文件
+version = "1.0.0"
+
 [server]
-name = "matchingengine-service"
+name = "matchingengine"
 environment = "dev"
 
 [server.http]
-port = 8085
-timeout = "10s"
+addr = "0.0.0.0"
+port = 8101
+timeout = "3s"
 
 [server.grpc]
-port = 9085
-timeout = "10s"
+addr = "0.0.0.0"
+port = 9101
+timeout = "3s"
 
 [log]
 level = "info"
 format = "json"
 output = "stdout"
 
+[tracing]
+enabled = true
+service_name = "matchingengine"
+otlp_endpoint = "localhost:4317"
+
+[metrics]
+enabled = true
+port = "18101"
+path = "/metrics"
+
+[cache]
+prefix = "matching:"
+default_expiration = "1h"
+
+[lock]
+prefix = "matching:lock:"
+default_expiration = "10s"
+
 [data.database]
 driver = "mysql"
-dsn = "root:password@tcp(localhost:3306)/financial_matchingengine?charset=utf8mb4&parseTime=True&loc=Local"
-max_idle_conns = 10
-max_open_conns = 100
+dsn = "root:root@tcp(127.0.0.1:3306)/trading_matching?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 20
+max_open_conns = 200
 conn_max_lifetime = "1h"
 
 [data.redis]
-addrs = ["localhost:6379"]
-password = ""
+addrs = ["127.0.0.1:6379"]
+password = "redis_password"
 db = 0
-pool_size = 10
-min_idle_conns = 5
-read_timeout = "3s"
-write_timeout = "3s"
-
-[data.elasticsearch]
-addresses = ["http://localhost:9200"]
-username = ""
-password = ""
+pool_size = 20
 
 [messagequeue.kafka]
 brokers = ["localhost:9092"]
-topic = "financial.matching.events"
-group_id = "matching-projection-group"
+topic = "match-events"
+group_id = "matching-group"
 
+[services]
 [services.order]
-grpc_addr = "localhost:50051"
-
+grpc_addr = "127.0.0.1:9001"
 [services.clearing]
-grpc_addr = "localhost:50053"
-
-[matching]
-symbol = "BTC-USDT"
-
-[tracing]
-enabled = false
-service_name = "matchingengine-service"
-otlp_endpoint = "localhost:4317"
+grpc_addr = "127.0.0.1:9102"

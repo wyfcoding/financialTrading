@@ -1,26 +1,45 @@
-# 资金服务配置文件
+# 金融交易系统 - 资金服务配置文件
+version = "1.0.0"
+
 [server]
-http_port = 8084
-grpc_port = 9084
-read_timeout = "15s"
-write_timeout = "15s"
-shutdown_timeout = "30s"
+name = "treasury"
+environment = "dev"
 
-[database]
-dsn = "${MYSQL_DSN:root:password@tcp(localhost:3306)/treasury?charset=utf8mb4&parseTime=True&loc=Local}"
-max_open_conns = 100
-max_idle_conns = 10
+[server.http]
+addr = "0.0.0.0"
+port = 8106
 
-[redis]
-addr = "${REDIS_ADDR:localhost:6379}"
-db = 4
-pool_size = 100
-
-[kafka]
-brokers = ["${KAFKA_BROKER:localhost:9092}"]
-group_id = "treasury-service"
-topics = ["treasury.events"]
+[server.grpc]
+addr = "0.0.0.0"
+port = 9106
 
 [log]
-level = "${LOG_LEVEL:info}"
+level = "info"
 format = "json"
+
+[tracing]
+enabled = true
+service_name = "treasury"
+
+[metrics]
+enabled = true
+port = "18106"
+
+[data.database]
+driver = "mysql"
+dsn = "root:root@tcp(127.0.0.1:3306)/trading_treasury?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 20
+max_open_conns = 200
+
+[data.redis]
+addrs = ["127.0.0.1:6379"]
+password = "redis_password"
+db = 0
+
+[messagequeue.kafka]
+brokers = ["localhost:9092"]
+topic = "treasury-events"
+
+[services]
+[services.account]
+grpc_addr = "127.0.0.1:9103"

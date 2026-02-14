@@ -1,21 +1,34 @@
-FROM golang:1.21 AS builder
+# Build stage
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
+# Install dependencies
+RUN apk add --no-cache git make
+
+# Copy go mod and sum files
 COPY go.mod go.sum ./
 RUN go mod download
 
+# Copy source code
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o order cmd/order/main.go
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -o bin/server cmd/order/main.go
 
+# Final stage
 FROM alpine:latest
 
 WORKDIR /app
 
-COPY --from=builder /app/order .
-COPY --from=builder /app/configs/order/config.toml ./configs/order/
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates tzdata
 
-EXPOSE 8088 9088
+# Copy binary from builder
+COPY --from=builder /app/bin/server .
 
-CMD ["./order", "-config", "configs/order/config.toml"]
+# Expose ports
+EXPOSE 8080 9090
+
+# Run the application
+CMD ["./server"]

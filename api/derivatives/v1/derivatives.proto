@@ -3,74 +3,1585 @@ syntax = "proto3";
 package derivatives.v1;
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/duration.proto";
 
 option go_package = "github.com/wyfcoding/financialtrading/go-api/derivatives/v1;derivativesv1";
 
-// DerivativesService 衍生品服务
 service DerivativesService {
-    // CreateContract 创建合约
-    rpc CreateContract(CreateContractRequest) returns (CreateContractResponse);
-
-    // GetContract 获取合约详情
-    rpc GetContract(GetContractRequest) returns (GetContractResponse);
+    rpc CreateOptionContract(CreateOptionContractRequest) returns (OptionContract);
+    rpc GetOptionContract(GetOptionContractRequest) returns (OptionContract);
+    rpc ListOptionContracts(ListOptionContractsRequest) returns (ListOptionContractsResponse);
+    rpc UpdateOptionContract(UpdateOptionContractRequest) returns (OptionContract);
+    rpc DeleteOptionContract(DeleteOptionContractRequest) returns (google.protobuf.Empty);
     
-    // ListContracts 列出合约
-    rpc ListContracts(ListContractsRequest) returns (ListContractsResponse);
-
-    // ExerciseContract 行权
-    rpc ExerciseContract(ExerciseContractRequest) returns (ExerciseContractResponse);
+    rpc GetOptionChain(GetOptionChainRequest) returns (OptionChain);
+    rpc BuildOptionChain(BuildOptionChainRequest) returns (OptionChain);
+    rpc GetOptionChainByExpiry(GetOptionChainByExpiryRequest) returns (OptionChain);
+    
+    rpc CalculateOptionPrice(CalculateOptionPriceRequest) returns (OptionPriceResult);
+    rpc CalculateGreeks(CalculateGreeksRequest) returns (Greeks);
+    rpc CalculateImpliedVolatility(CalculateImpliedVolatilityRequest) returns (ImpliedVolatilityResult);
+    rpc CalculateHistoricalVolatility(CalculateHistoricalVolatilityRequest) returns (HistoricalVolatilityResult);
+    rpc BatchCalculateGreeks(BatchCalculateGreeksRequest) returns (BatchCalculateGreeksResponse);
+    
+    rpc CalculateDelta(CalculateDeltaRequest) returns (DeltaResult);
+    rpc CalculateGamma(CalculateGammaRequest) returns (GammaResult);
+    rpc CalculateTheta(CalculateThetaRequest) returns (ThetaResult);
+    rpc CalculateVega(CalculateVegaRequest) returns (VegaResult);
+    rpc CalculateRho(CalculateRhoRequest) returns (RhoResult);
+    
+    rpc GetVolatilitySurface(GetVolatilitySurfaceRequest) returns (VolatilitySurface);
+    rpc GetVolatilitySmile(GetVolatilitySmileRequest) returns (VolatilitySmile);
+    rpc GetVolatilityTermStructure(GetVolatilityTermStructureRequest) returns (VolatilityTermStructure);
+    rpc InterpolateVolatility(InterpolateVolatilityRequest) returns (InterpolatedVolatility);
+    
+    rpc CreateOptionPosition(CreateOptionPositionRequest) returns (OptionPosition);
+    rpc GetOptionPosition(GetOptionPositionRequest) returns (OptionPosition);
+    rpc ListOptionPositions(ListOptionPositionsRequest) returns (ListOptionPositionsResponse);
+    rpc CloseOptionPosition(CloseOptionPositionRequest) returns (CloseOptionPositionResponse);
+    rpc GetOptionPositionGreeks(GetOptionPositionGreeksRequest) returns (PositionGreeks);
+    rpc GetPortfolioGreeks(GetPortfolioGreeksRequest) returns (PortfolioGreeks);
+    
+    rpc ExerciseOption(ExerciseOptionRequest) returns (ExerciseOptionResponse);
+    rpc AutoExercise(AutoExerciseRequest) returns (AutoExerciseResponse);
+    rpc CheckExerciseEligibility(CheckExerciseEligibilityRequest) returns (ExerciseEligibility);
+    rpc GetExerciseHistory(GetExerciseHistoryRequest) returns (GetExerciseHistoryResponse);
+    rpc AssignOption(AssignOptionRequest) returns (AssignOptionResponse);
+    
+    rpc CreateOptionStrategy(CreateOptionStrategyRequest) returns (OptionStrategy);
+    rpc GetOptionStrategy(GetOptionStrategyRequest) returns (OptionStrategy);
+    rpc ListOptionStrategies(ListOptionStrategiesRequest) returns (ListOptionStrategiesResponse);
+    rpc AnalyzeStrategy(AnalyzeStrategyRequest) returns (StrategyAnalysis);
+    rpc GetStrategyPayoff(GetStrategyPayoffRequest) returns (StrategyPayoff);
+    rpc GetStrategyBreakeven(GetStrategyBreakevenRequest) returns (StrategyBreakeven);
+    rpc GetStrategyGreeks(GetStrategyGreeksRequest) returns (StrategyGreeks);
+    
+    rpc CalculateCoveredCall(CalculateCoveredCallRequest) returns (CoveredCallAnalysis);
+    rpc CalculateProtectivePut(CalculateProtectivePutRequest) returns (ProtectivePutAnalysis);
+    rpc CalculateStraddle(CalculateStraddleRequest) returns (StraddleAnalysis);
+    rpc CalculateStrangle(CalculateStrangleRequest) returns (StrangleAnalysis);
+    rpc CalculateSpread(CalculateSpreadRequest) returns (SpreadAnalysis);
+    rpc CalculateIronCondor(CalculateIronCondorRequest) returns (IronCondorAnalysis);
+    rpc CalculateButterfly(CalculateButterflyRequest) returns (ButterflyAnalysis);
+    rpc CalculateCollar(CalculateCollarRequest) returns (CollarAnalysis);
+    
+    rpc CreateOptionOrder(CreateOptionOrderRequest) returns (OptionOrder);
+    rpc GetOptionOrder(GetOptionOrderRequest) returns (OptionOrder);
+    rpc ListOptionOrders(ListOptionOrdersRequest) returns (ListOptionOrdersResponse);
+    rpc CancelOptionOrder(CancelOptionOrderRequest) returns (CancelOptionOrderResponse);
+    rpc ModifyOptionOrder(ModifyOptionOrderRequest) returns (OptionOrder);
+    
+    rpc CalculateMarginRequirement(CalculateMarginRequirementRequest) returns (MarginRequirement);
+    rpc CheckMarginCall(CheckMarginCallRequest) returns (MarginCallStatus);
+    rpc GetMarginImpact(GetMarginImpactRequest) returns (MarginImpact);
+    
+    rpc GetOptionRiskProfile(GetOptionRiskProfileRequest) returns (OptionRiskProfile);
+    rpc CalculateVarForOptions(CalculateVarForOptionsRequest) returns (VarResult);
+    rpc StressTestOptions(StressTestOptionsRequest) returns (StressTestResult);
+    rpc GetScenarioAnalysis(GetScenarioAnalysisRequest) returns (ScenarioAnalysis);
+    
+    rpc SettleOption(SettleOptionRequest) returns (SettlementResult);
+    rpc GetSettlementPrice(GetSettlementPriceRequest) returns (SettlementPrice);
+    rpc ProcessExpiration(ProcessExpirationRequest) returns (ExpirationResult);
+    rpc GetExpirationCalendar(GetExpirationCalendarRequest) returns (ExpirationCalendar);
+    
+    rpc GetOptionStatistics(GetOptionStatisticsRequest) returns (OptionStatistics);
+    rpc GetOpenInterest(GetOpenInterestRequest) returns (OpenInterestData);
+    rpc GetVolumeAnalysis(GetVolumeAnalysisRequest) returns (VolumeAnalysis);
+    rpc GetPutCallRatio(GetPutCallRatioRequest) returns (PutCallRatio);
+    
+    rpc SubscribeGreeksUpdate(SubscribeGreeksUpdateRequest) returns (stream GreeksUpdate);
+    rpc SubscribeVolatilityUpdate(SubscribeVolatilityUpdateRequest) returns (stream VolatilityUpdate);
+    rpc SubscribeOptionChainUpdate(SubscribeOptionChainUpdateRequest) returns (stream OptionChainUpdate);
+    
+    rpc TccReserveOption(TccReserveOptionRequest) returns (TccReserveOptionResponse);
+    rpc TccConfirmOption(TccConfirmOptionRequest) returns (TccConfirmOptionResponse);
+    rpc TccCancelOption(TccCancelOptionRequest) returns (TccCancelOptionResponse);
+    rpc SagaCreateOptionPosition(SagaCreateOptionPositionRequest) returns (SagaCreateOptionPositionResponse);
 }
 
-message CreateContractRequest {
-    string symbol = 1;
-    string underlying = 2; // e.g. BTC, ETH
-    string type = 3;       // CALL, PUT, FUTURE
-    double strike_price = 4;
-    google.protobuf.Timestamp expiry_date = 5;
-    double multiplier = 6; // e.g. 1 contract = 0.1 BTC
+enum OptionType {
+    OPTION_TYPE_UNSPECIFIED = 0;
+    OPTION_TYPE_CALL = 1;
+    OPTION_TYPE_PUT = 2;
 }
 
-message CreateContractResponse {
-    string contract_id = 1;
+enum OptionStyle {
+    OPTION_STYLE_UNSPECIFIED = 0;
+    OPTION_STYLE_EUROPEAN = 1;
+    OPTION_STYLE_AMERICAN = 2;
+    OPTION_STYLE_BERMUDAN = 3;
+    OPTION_STYLE_ASIAN = 4;
 }
 
-message GetContractRequest {
-    string contract_id = 1;
+enum ExerciseType {
+    EXERCISE_TYPE_UNSPECIFIED = 0;
+    EXERCISE_TYPE_PHYSICAL = 1;
+    EXERCISE_TYPE_CASH = 2;
 }
 
-message Contract {
+enum SettlementType {
+    SETTLEMENT_TYPE_UNSPECIFIED = 0;
+    SETTLEMENT_TYPE_T_PLUS_0 = 1;
+    SETTLEMENT_TYPE_T_PLUS_1 = 2;
+    SETTLEMENT_TYPE_T_PLUS_2 = 3;
+}
+
+enum OptionStatus {
+    OPTION_STATUS_UNSPECIFIED = 0;
+    OPTION_STATUS_ACTIVE = 1;
+    OPTION_STATUS_EXERCISED = 2;
+    OPTION_STATUS_EXPIRED = 3;
+    OPTION_STATUS_ASSIGNED = 4;
+    OPTION_STATUS_CANCELLED = 5;
+}
+
+enum PricingModel {
+    PRICING_MODEL_UNSPECIFIED = 0;
+    PRICING_MODEL_BLACK_SCHOLES = 1;
+    PRICING_MODEL_BINOMIAL = 2;
+    PRICING_MODEL_MONTE_CARLO = 3;
+    PRICING_MODEL_FINITE_DIFFERENCE = 4;
+    PRICING_MODEL_BAW = 5;
+    PRICING_MODEL_BJERKSUND_STENSAND = 6;
+}
+
+enum StrategyType {
+    STRATEGY_TYPE_UNSPECIFIED = 0;
+    STRATEGY_TYPE_COVERED_CALL = 1;
+    STRATEGY_TYPE_PROTECTIVE_PUT = 2;
+    STRATEGY_TYPE_STRADDLE = 3;
+    STRATEGY_TYPE_STRANGLE = 4;
+    STRATEGY_TYPE_BULL_CALL_SPREAD = 5;
+    STRATEGY_TYPE_BEAR_PUT_SPREAD = 6;
+    STRATEGY_TYPE_IRON_CONDOR = 7;
+    STRATEGY_TYPE_IRON_BUTTERFLY = 8;
+    STRATEGY_TYPE_BUTTERFLY = 9;
+    STRATEGY_TYPE_COLLAR = 10;
+    STRATEGY_TYPE_CALENDAR_SPREAD = 11;
+    STRATEGY_TYPE_DIAGONAL_SPREAD = 12;
+    STRATEGY_TYPE_RATIO_SPREAD = 13;
+    STRATEGY_TYPE_BACKSPREAD = 14;
+    STRATEGY_TYPE_BOX_SPREAD = 15;
+}
+
+message OptionContract {
     string contract_id = 1;
     string symbol = 2;
     string underlying = 3;
-    string type = 4;
-    double strike_price = 5;
-    string expiry_date = 6;
-    double multiplier = 7;
-    string status = 8; // TRADING, SETTLED, EXPIRED
+    OptionType option_type = 4;
+    OptionStyle option_style = 5;
+    ExerciseType exercise_type = 6;
+    string strike_price = 7;
+    google.protobuf.Timestamp expiry_date = 8;
+    string multiplier = 9;
+    string contract_size = 10;
+    SettlementType settlement_type = 11;
+    OptionStatus status = 12;
+    string tick_size = 13;
+    string tick_value = 14;
+    google.protobuf.Timestamp listing_date = 15;
+    google.protobuf.Timestamp first_trade_date = 16;
+    string exchange = 17;
+    string currency = 18;
+    bool is_standard = 19;
+    map<string, string> metadata = 20;
+    google.protobuf.Timestamp created_at = 21;
+    google.protobuf.Timestamp updated_at = 22;
 }
 
-message GetContractResponse {
-    Contract contract = 1;
+message CreateOptionContractRequest {
+    string symbol = 1;
+    string underlying = 2;
+    OptionType option_type = 3;
+    OptionStyle option_style = 4;
+    ExerciseType exercise_type = 5;
+    string strike_price = 6;
+    google.protobuf.Timestamp expiry_date = 7;
+    string multiplier = 8;
+    string contract_size = 9;
+    SettlementType settlement_type = 10;
+    string tick_size = 11;
+    string exchange = 12;
+    string currency = 13;
+    bool is_standard = 14;
+    map<string, string> metadata = 15;
 }
 
-message ListContractsRequest {
-    string underlying = 1;
-    string type = 2; // Optional
-    bool active_only = 3;
-}
-
-message ListContractsResponse {
-    repeated Contract contracts = 1;
-}
-
-message ExerciseContractRequest {
+message GetOptionContractRequest {
     string contract_id = 1;
-    string user_id = 2;
-    double quantity = 3;
 }
 
-message ExerciseContractResponse {
-    bool success = 1;
+message ListOptionContractsRequest {
+    string underlying = 1;
+    OptionType option_type = 2;
+    repeated string strike_prices = 3;
+    google.protobuf.Timestamp expiry_from = 4;
+    google.protobuf.Timestamp expiry_to = 5;
+    OptionStatus status = 6;
+    int32 page_size = 7;
+    string page_token = 8;
+}
+
+message ListOptionContractsResponse {
+    repeated OptionContract contracts = 1;
+    string next_page_token = 2;
+    int32 total_count = 3;
+}
+
+message UpdateOptionContractRequest {
+    string contract_id = 1;
+    OptionStatus status = 2;
+    map<string, string> metadata = 3;
+}
+
+message DeleteOptionContractRequest {
+    string contract_id = 1;
+}
+
+message OptionChain {
+    string underlying = 1;
+    google.protobuf.Timestamp expiry_date = 2;
+    repeated OptionChainEntry calls = 3;
+    repeated OptionChainEntry puts = 4;
+    string underlying_price = 5;
+    google.protobuf.Timestamp updated_at = 6;
+    int32 days_to_expiry = 7;
+    string implied_volatility = 8;
+}
+
+message OptionChainEntry {
+    OptionContract contract = 1;
+    string strike_price = 2;
+    string last_price = 3;
+    string bid_price = 4;
+    string ask_price = 5;
+    string bid_size = 6;
+    string ask_size = 7;
+    string volume = 8;
+    string open_interest = 9;
+    string implied_volatility = 10;
+    Greeks greeks = 11;
+    string in_the_money = 12;
+    string intrinsic_value = 13;
+    string time_value = 14;
+}
+
+message GetOptionChainRequest {
+    string underlying = 1;
+    google.protobuf.Timestamp expiry_date = 2;
+}
+
+message BuildOptionChainRequest {
+    string underlying = 1;
+    google.protobuf.Timestamp expiry_date = 2;
+    repeated string strike_prices = 3;
+    bool include_greeks = 4;
+    bool include_iv = 5;
+}
+
+message GetOptionChainByExpiryRequest {
+    string underlying = 1;
+    int32 days_to_expiry_min = 2;
+    int32 days_to_expiry_max = 3;
+}
+
+message Greeks {
+    string delta = 1;
+    string gamma = 2;
+    string theta = 3;
+    string vega = 4;
+    string rho = 5;
+    string vanna = 6;
+    string charm = 7;
+    string speed = 8;
+    string zomma = 9;
+    string color = 10;
+    string dvega_dtime = 11;
+    string dvega_dvol = 12;
+}
+
+message OptionPriceResult {
+    string option_price = 1;
+    string intrinsic_value = 2;
+    string time_value = 3;
+    PricingModel model_used = 4;
+    Greeks greeks = 5;
+    string implied_volatility = 6;
+    map<string, string> model_parameters = 7;
+    string confidence_interval_low = 8;
+    string confidence_interval_high = 9;
+}
+
+message CalculateOptionPriceRequest {
+    string contract_id = 1;
+    PricingModel model = 2;
+    string underlying_price = 3;
+    string strike_price = 4;
+    google.protobuf.Timestamp expiry_date = 5;
+    OptionType option_type = 6;
+    OptionStyle option_style = 7;
+    string risk_free_rate = 8;
+    string dividend_yield = 9;
+    string volatility = 10;
+    int32 steps = 11;
+    int32 simulations = 12;
+}
+
+message CalculateGreeksRequest {
+    string contract_id = 1;
+    PricingModel model = 2;
+    string underlying_price = 3;
+    string strike_price = 4;
+    google.protobuf.Timestamp expiry_date = 5;
+    OptionType option_type = 6;
+    string risk_free_rate = 7;
+    string dividend_yield = 8;
+    string volatility = 9;
+}
+
+message ImpliedVolatilityResult {
+    string implied_volatility = 1;
+    PricingModel model_used = 2;
+    int32 iterations = 3;
+    string precision = 4;
+    bool converged = 5;
+    string option_price = 6;
+}
+
+message CalculateImpliedVolatilityRequest {
+    string contract_id = 1;
+    string option_price = 2;
+    string underlying_price = 3;
+    string strike_price = 4;
+    google.protobuf.Timestamp expiry_date = 5;
+    OptionType option_type = 6;
+    string risk_free_rate = 7;
+    string dividend_yield = 8;
+    PricingModel model = 9;
+    string initial_guess = 10;
+    string precision = 11;
+    int32 max_iterations = 12;
+}
+
+message HistoricalVolatilityResult {
+    string volatility = 1;
+    string annualized_volatility = 2;
+    string parkinson_volatility = 3;
+    string garman_klass_volatility = 4;
+    string hodges_tompkins_volatility = 5;
+    string rogers_satchell_volatility = 6;
+    string yang_zhang_volatility = 7;
+    int32 data_points = 8;
+    google.protobuf.Duration lookback_period = 9;
+}
+
+message CalculateHistoricalVolatilityRequest {
+    string underlying = 1;
+    google.protobuf.Duration lookback_period = 2;
+    string returns_type = 3;
+    int32 trading_days_per_year = 4;
+}
+
+message BatchCalculateGreeksRequest {
+    repeated CalculateGreeksRequest requests = 1;
+}
+
+message BatchCalculateGreeksResponse {
+    repeated Greeks results = 1;
+    repeated string errors = 2;
+}
+
+message DeltaResult {
+    string delta = 1;
+    string probability_itm = 2;
+    string share_equivalent = 3;
+}
+
+message CalculateDeltaRequest {
+    string contract_id = 1;
+    string underlying_price = 2;
+    string volatility = 3;
+    string risk_free_rate = 4;
+    string dividend_yield = 5;
+    google.protobuf.Timestamp expiry_date = 6;
+}
+
+message GammaResult {
+    string gamma = 1;
+    string dollar_gamma = 2;
+    string gamma_scalping_quantity = 3;
+}
+
+message CalculateGammaRequest {
+    string contract_id = 1;
+    string underlying_price = 2;
+    string volatility = 3;
+    string risk_free_rate = 4;
+    string dividend_yield = 5;
+    google.protobuf.Timestamp expiry_date = 6;
+}
+
+message ThetaResult {
+    string theta = 3;
+    string theta_per_day = 2;
+    string weekly_decay = 3;
+    string monthly_decay = 4;
+}
+
+message CalculateThetaRequest {
+    string contract_id = 1;
+    string underlying_price = 2;
+    string volatility = 3;
+    string risk_free_rate = 4;
+    string dividend_yield = 5;
+    google.protobuf.Timestamp expiry_date = 6;
+}
+
+message VegaResult {
+    string vega = 1;
+    string dollar_vega = 2;
+    string vega_per_vol_point = 3;
+}
+
+message CalculateVegaRequest {
+    string contract_id = 1;
+    string underlying_price = 2;
+    string volatility = 3;
+    string risk_free_rate = 4;
+    string dividend_yield = 5;
+    google.protobuf.Timestamp expiry_date = 6;
+}
+
+message RhoResult {
+    string rho = 1;
+    string dollar_rho = 2;
+    string rho_per_rate_point = 3;
+}
+
+message CalculateRhoRequest {
+    string contract_id = 1;
+    string underlying_price = 2;
+    string volatility = 3;
+    string risk_free_rate = 4;
+    string dividend_yield = 5;
+    google.protobuf.Timestamp expiry_date = 6;
+}
+
+message VolatilitySurface {
+    string underlying = 1;
+    google.protobuf.Timestamp as_of = 2;
+    repeated VolatilitySurfacePoint points = 3;
+    string interpolation_method = 4;
+    string extrapolation_method = 5;
+}
+
+message VolatilitySurfacePoint {
+    string strike_price = 1;
+    string moneyness = 2;
+    int32 days_to_expiry = 3;
+    string implied_volatility = 4;
+    string bid_iv = 5;
+    string ask_iv = 6;
+}
+
+message GetVolatilitySurfaceRequest {
+    string underlying = 1;
+    google.protobuf.Timestamp as_of = 2;
+}
+
+message VolatilitySmile {
+    string underlying = 1;
+    google.protobuf.Timestamp expiry_date = 2;
+    repeated VolatilitySmilePoint points = 3;
+    string skew = 4;
+    string kurtosis = 5;
+}
+
+message VolatilitySmilePoint {
+    string strike_price = 1;
+    string delta = 2;
+    string implied_volatility = 3;
+    string moneyness = 4;
+}
+
+message GetVolatilitySmileRequest {
+    string underlying = 1;
+    google.protobuf.Timestamp expiry_date = 2;
+}
+
+message VolatilityTermStructure {
+    string underlying = 1;
+    string moneyness = 2;
+    repeated VolatilityTermPoint points = 3;
+    string contango = 4;
+}
+
+message VolatilityTermPoint {
+    int32 days_to_expiry = 1;
+    google.protobuf.Timestamp expiry_date = 2;
+    string implied_volatility = 3;
+}
+
+message GetVolatilityTermStructureRequest {
+    string underlying = 1;
+    string moneyness = 2;
+}
+
+message InterpolatedVolatility {
+    string implied_volatility = 1;
+    string strike_price = 2;
+    int32 days_to_expiry = 3;
+    string confidence = 4;
+}
+
+message InterpolateVolatilityRequest {
+    string underlying = 1;
+    string strike_price = 2;
+    int32 days_to_expiry = 3;
+    string interpolation_method = 4;
+}
+
+message OptionPosition {
+    string position_id = 1;
+    string account_id = 2;
+    string contract_id = 3;
+    OptionContract contract = 4;
+    string quantity = 5;
+    string avg_price = 6;
+    string market_value = 7;
+    string unrealized_pnl = 8;
+    string realized_pnl = 9;
+    string delta = 10;
+    string gamma = 11;
+    string theta = 12;
+    string vega = 13;
+    OptionStatus status = 14;
+    google.protobuf.Timestamp opened_at = 15;
+    google.protobuf.Timestamp updated_at = 16;
+    map<string, string> metadata = 17;
+}
+
+message CreateOptionPositionRequest {
+    string account_id = 1;
+    string contract_id = 2;
+    string quantity = 3;
+    string price = 4;
+    string order_id = 5;
+    map<string, string> metadata = 6;
+}
+
+message GetOptionPositionRequest {
+    string position_id = 1;
+}
+
+message ListOptionPositionsRequest {
+    string account_id = 1;
+    string underlying = 2;
+    OptionType option_type = 3;
+    OptionStatus status = 4;
+    int32 page_size = 5;
+    string page_token = 6;
+}
+
+message ListOptionPositionsResponse {
+    repeated OptionPosition positions = 1;
+    string next_page_token = 2;
+    int32 total_count = 3;
+}
+
+message CloseOptionPositionRequest {
+    string position_id = 1;
+    string quantity = 2;
+    string price = 3;
+    string order_id = 4;
+}
+
+message CloseOptionPositionResponse {
+    OptionPosition position = 1;
+    string realized_pnl = 2;
+    string settlement_id = 3;
+}
+
+message PositionGreeks {
+    string position_id = 1;
+    string quantity = 2;
+    Greeks greeks = 3;
+    Greeks dollar_greeks = 4;
+    Greeks weighted_greeks = 5;
+}
+
+message GetOptionPositionGreeksRequest {
+    string position_id = 1;
+    string underlying_price = 2;
+    string volatility = 3;
+}
+
+message PortfolioGreeks {
+    string account_id = 1;
+    string total_delta = 2;
+    string total_gamma = 3;
+    string total_theta = 4;
+    string total_vega = 5;
+    string total_rho = 6;
+    string dollar_delta = 7;
+    string dollar_gamma = 8;
+    string dollar_theta = 9;
+    string dollar_vega = 10;
+    string dollar_rho = 11;
+    repeated PositionGreeks position_greeks = 12;
+    string net_gamma_exposure = 13;
+    string net_vega_exposure = 14;
+}
+
+message GetPortfolioGreeksRequest {
+    string account_id = 1;
+    string underlying = 2;
+    string underlying_price = 3;
+    string volatility = 4;
+}
+
+message ExerciseOptionRequest {
+    string position_id = 1;
+    string quantity = 2;
+    string account_id = 3;
+    bool force_exercise = 4;
+}
+
+message ExerciseOptionResponse {
+    string exercise_id = 1;
     string settlement_id = 2;
-    double pnl = 3;
+    string exercise_value = 3;
+    string settlement_amount = 4;
+    ExerciseType exercise_type = 5;
+    google.protobuf.Timestamp exercised_at = 6;
+}
+
+message AutoExerciseRequest {
+    string account_id = 1;
+    google.protobuf.Timestamp expiry_date = 2;
+    string min_intrinsic_value = 3;
+}
+
+message AutoExerciseResponse {
+    repeated ExerciseResult exercises = 1;
+    int32 total_exercised = 2;
+    int32 total_expired = 3;
+}
+
+message ExerciseResult {
+    string position_id = 1;
+    string contract_id = 2;
+    string quantity = 3;
+    string exercise_value = 4;
+    string settlement_id = 5;
+    bool exercised = 6;
+}
+
+message CheckExerciseEligibilityRequest {
+    string position_id = 1;
+    string quantity = 2;
+}
+
+message ExerciseEligibility {
+    bool is_eligible = 1;
+    string reason = 2;
+    string intrinsic_value = 3;
+    string time_value = 4;
+    bool is_itm = 5;
+    int32 days_to_expiry = 6;
+    bool auto_exercise_eligible = 7;
+}
+
+message GetExerciseHistoryRequest {
+    string account_id = 1;
+    string contract_id = 2;
+    google.protobuf.Timestamp from = 3;
+    google.protobuf.Timestamp to = 4;
+    int32 page_size = 5;
+    string page_token = 6;
+}
+
+message GetExerciseHistoryResponse {
+    repeated ExerciseRecord records = 1;
+    string next_page_token = 2;
+    int32 total_count = 3;
+}
+
+message ExerciseRecord {
+    string exercise_id = 1;
+    string position_id = 2;
+    string contract_id = 3;
+    string quantity = 4;
+    string exercise_price = 5;
+    string settlement_amount = 6;
+    google.protobuf.Timestamp exercised_at = 7;
+    ExerciseType exercise_type = 8;
+}
+
+message AssignOptionRequest {
+    string contract_id = 1;
+    string account_id = 2;
+    string quantity = 3;
+    string assignment_notice_id = 4;
+}
+
+message AssignOptionResponse {
+    string assignment_id = 1;
+    string settlement_id = 2;
+    string assignment_amount = 3;
+    google.protobuf.Timestamp assigned_at = 4;
+}
+
+message OptionStrategy {
+    string strategy_id = 1;
+    string account_id = 2;
+    StrategyType strategy_type = 3;
+    string underlying = 4;
+    repeated StrategyLeg legs = 5;
+    string net_debit = 6;
+    string net_credit = 7;
+    string max_profit = 8;
+    string max_loss = 9;
+    repeated string breakeven_points = 10;
+    Greeks net_greeks = 11;
+    string status = 12;
+    google.protobuf.Timestamp created_at = 13;
+    google.protobuf.Timestamp updated_at = 14;
+    map<string, string> metadata = 15;
+}
+
+message StrategyLeg {
+    string leg_id = 1;
+    string contract_id = 2;
+    OptionContract contract = 3;
+    string quantity = 4;
+    string price = 5;
+    string side = 6;
+    string position_effect = 7;
+}
+
+message CreateOptionStrategyRequest {
+    string account_id = 1;
+    StrategyType strategy_type = 2;
+    string underlying = 3;
+    repeated StrategyLeg legs = 4;
+    map<string, string> metadata = 5;
+}
+
+message GetOptionStrategyRequest {
+    string strategy_id = 1;
+}
+
+message ListOptionStrategiesRequest {
+    string account_id = 1;
+    StrategyType strategy_type = 2;
+    string underlying = 3;
+    string status = 4;
+    int32 page_size = 5;
+    string page_token = 6;
+}
+
+message ListOptionStrategiesResponse {
+    repeated OptionStrategy strategies = 1;
+    string next_page_token = 2;
+    int32 total_count = 3;
+}
+
+message StrategyAnalysis {
+    string strategy_id = 1;
+    string max_profit = 2;
+    string max_loss = 3;
+    string risk_reward_ratio = 4;
+    repeated string breakeven_points = 5;
+    Greeks net_greeks = 6;
+    repeated PayoffPoint payoff_diagram = 7;
+    string probability_of_profit = 8;
+    string expected_return = 9;
+    string margin_requirement = 10;
+    string return_on_capital = 11;
+}
+
+message AnalyzeStrategyRequest {
+    string strategy_id = 1;
+    string underlying_price = 2;
+    string volatility = 3;
+    string days_to_expiry = 4;
+    string risk_free_rate = 5;
+}
+
+message PayoffPoint {
+    string underlying_price = 1;
+    string payoff = 2;
+    string profit_probability = 3;
+}
+
+message StrategyPayoff {
+    string strategy_id = 1;
+    repeated PayoffPoint payoff_points = 2;
+    string max_profit = 3;
+    string max_loss = 4;
+    string current_payoff = 5;
+}
+
+message GetStrategyPayoffRequest {
+    string strategy_id = 1;
+    string price_range_low = 2;
+    string price_range_high = 3;
+    int32 num_points = 4;
+}
+
+message StrategyBreakeven {
+    string strategy_id = 1;
+    repeated string breakeven_points = 2;
+    string probability_of_breakeven = 3;
+    string distance_to_breakeven = 4;
+}
+
+message GetStrategyBreakevenRequest {
+    string strategy_id = 1;
+    string underlying_price = 2;
+    string volatility = 3;
+    google.protobuf.Timestamp expiry_date = 4;
+}
+
+message StrategyGreeks {
+    string strategy_id = 1;
+    Greeks net_greeks = 2;
+    repeated LegGreeks leg_greeks = 3;
+    string dollar_delta = 4;
+    string dollar_gamma = 5;
+    string dollar_theta = 6;
+    string dollar_vega = 7;
+}
+
+message LegGreeks {
+    string leg_id = 1;
+    string contract_id = 2;
+    string quantity = 3;
+    Greeks greeks = 4;
+    Greeks weighted_greeks = 5;
+}
+
+message GetStrategyGreeksRequest {
+    string strategy_id = 1;
+    string underlying_price = 2;
+    string volatility = 3;
+}
+
+message CoveredCallAnalysis {
+    string underlying_position = 1;
+    string call_contract = 2;
+    string premium_received = 3;
+    string max_profit = 4;
+    string max_loss = 5;
+    string breakeven = 6;
+    string upside_cap = 7;
+    string downside_protection = 8;
+    Greeks net_greeks = 9;
+    string return_if_called = 10;
+    string return_if_unexercised = 11;
+}
+
+message CalculateCoveredCallRequest {
+    string underlying = 1;
+    string shares_owned = 2;
+    string share_price = 3;
+    string strike_price = 4;
+    string premium = 5;
+    google.protobuf.Timestamp expiry_date = 6;
+}
+
+message ProtectivePutAnalysis {
+    string underlying_position = 1;
+    string put_contract = 2;
+    string premium_paid = 3;
+    string max_profit = 4;
+    string max_loss = 5;
+    string breakeven = 6;
+    string floor_price = 7;
+    string protection_level = 8;
+    Greeks net_greeks = 9;
+    string insurance_cost = 10;
+}
+
+message CalculateProtectivePutRequest {
+    string underlying = 1;
+    string shares_owned = 2;
+    string share_price = 3;
+    string strike_price = 4;
+    string premium = 5;
+    google.protobuf.Timestamp expiry_date = 6;
+}
+
+message StraddleAnalysis {
+    string call_contract = 1;
+    string put_contract = 2;
+    string net_debit = 3;
+    string max_profit = 4;
+    string max_loss = 5;
+    repeated string breakeven_points = 6;
+    string lower_breakeven = 7;
+    string upper_breakeven = 8;
+    Greeks net_greeks = 9;
+    string implied_move = 10;
+}
+
+message CalculateStraddleRequest {
+    string underlying = 1;
+    string strike_price = 2;
+    string call_premium = 3;
+    string put_premium = 4;
+    string underlying_price = 5;
+    google.protobuf.Timestamp expiry_date = 6;
+}
+
+message StrangleAnalysis {
+    string call_contract = 1;
+    string put_contract = 2;
+    string net_debit = 3;
+    string max_profit = 4;
+    string max_loss = 5;
+    repeated string breakeven_points = 6;
+    string lower_breakeven = 7;
+    string upper_breakeven = 8;
+    Greeks net_greeks = 9;
+    string width = 10;
+}
+
+message CalculateStrangleRequest {
+    string underlying = 1;
+    string call_strike = 2;
+    string put_strike = 3;
+    string call_premium = 4;
+    string put_premium = 5;
+    string underlying_price = 6;
+    google.protobuf.Timestamp expiry_date = 7;
+}
+
+message SpreadAnalysis {
+    StrategyType spread_type = 1;
+    string long_contract = 2;
+    string short_contract = 3;
+    string net_debit_credit = 4;
+    string max_profit = 5;
+    string max_loss = 6;
+    repeated string breakeven_points = 7;
+    Greeks net_greeks = 8;
+    string margin_requirement = 9;
+    string risk_reward_ratio = 10;
+}
+
+message CalculateSpreadRequest {
+    StrategyType spread_type = 1;
+    string underlying = 2;
+    string long_strike = 3;
+    string short_strike = 4;
+    string long_premium = 5;
+    string short_premium = 6;
+    string quantity = 7;
+    google.protobuf.Timestamp expiry_date = 8;
+}
+
+message IronCondorAnalysis {
+    string put_short_contract = 1;
+    string put_long_contract = 2;
+    string call_short_contract = 3;
+    string call_long_contract = 4;
+    string net_credit = 5;
+    string max_profit = 6;
+    string max_loss = 7;
+    repeated string breakeven_points = 8;
+    Greeks net_greeks = 9;
+    string margin_requirement = 10;
+    string probability_of_profit = 11;
+}
+
+message CalculateIronCondorRequest {
+    string underlying = 1;
+    string put_short_strike = 2;
+    string put_long_strike = 3;
+    string call_short_strike = 4;
+    string call_long_strike = 5;
+    string put_short_premium = 6;
+    string put_long_premium = 7;
+    string call_short_premium = 8;
+    string call_long_premium = 9;
+    string quantity = 10;
+    google.protobuf.Timestamp expiry_date = 11;
+}
+
+message ButterflyAnalysis {
+    string lower_wing_contract = 1;
+    string body_contract = 2;
+    string upper_wing_contract = 3;
+    string net_debit_credit = 4;
+    string max_profit = 5;
+    string max_loss = 6;
+    repeated string breakeven_points = 7;
+    Greeks net_greeks = 8;
+    string center_strike = 9;
+    string wing_width = 10;
+}
+
+message CalculateButterflyRequest {
+    string underlying = 1;
+    string lower_strike = 2;
+    string middle_strike = 3;
+    string upper_strike = 4;
+    string lower_premium = 5;
+    string middle_premium = 6;
+    string upper_premium = 7;
+    OptionType option_type = 8;
+    string quantity = 9;
+    google.protobuf.Timestamp expiry_date = 10;
+}
+
+message CollarAnalysis {
+    string underlying_position = 1;
+    string put_contract = 2;
+    string call_contract = 3;
+    string net_debit_credit = 4;
+    string max_profit = 5;
+    string max_loss = 6;
+    string floor_price = 7;
+    string cap_price = 8;
+    Greeks net_greeks = 9;
+    string cost_of_collar = 10;
+}
+
+message CalculateCollarRequest {
+    string underlying = 1;
+    string shares_owned = 2;
+    string share_price = 3;
+    string put_strike = 4;
+    string call_strike = 5;
+    string put_premium = 6;
+    string call_premium = 7;
+    google.protobuf.Timestamp expiry_date = 8;
+}
+
+message OptionOrder {
+    string order_id = 1;
+    string account_id = 2;
+    string contract_id = 3;
+    OptionContract contract = 4;
+    string side = 5;
+    string order_type = 6;
+    string quantity = 7;
+    string price = 8;
+    string filled_quantity = 9;
+    string avg_fill_price = 10;
+    string status = 11;
+    string time_in_force = 12;
+    google.protobuf.Timestamp created_at = 13;
+    google.protobuf.Timestamp updated_at = 14;
+    google.protobuf.Timestamp expiry_time = 15;
+    string parent_order_id = 16;
+    string strategy_id = 17;
+    string commission = 18;
+    map<string, string> metadata = 19;
+}
+
+message CreateOptionOrderRequest {
+    string account_id = 1;
+    string contract_id = 2;
+    string side = 3;
+    string order_type = 4;
+    string quantity = 5;
+    string price = 6;
+    string time_in_force = 7;
+    google.protobuf.Timestamp expiry_time = 8;
+    string parent_order_id = 9;
+    string strategy_id = 10;
+    map<string, string> metadata = 11;
+}
+
+message GetOptionOrderRequest {
+    string order_id = 1;
+}
+
+message ListOptionOrdersRequest {
+    string account_id = 1;
+    string contract_id = 2;
+    string underlying = 3;
+    string status = 4;
+    google.protobuf.Timestamp from = 5;
+    google.protobuf.Timestamp to = 6;
+    int32 page_size = 7;
+    string page_token = 8;
+}
+
+message ListOptionOrdersResponse {
+    repeated OptionOrder orders = 1;
+    string next_page_token = 2;
+    int32 total_count = 3;
+}
+
+message CancelOptionOrderRequest {
+    string order_id = 1;
+    string reason = 2;
+}
+
+message CancelOptionOrderResponse {
+    OptionOrder order = 1;
+    string cancelled_quantity = 2;
+}
+
+message ModifyOptionOrderRequest {
+    string order_id = 1;
+    string quantity = 2;
+    string price = 3;
+    string time_in_force = 4;
+}
+
+message MarginRequirement {
+    string account_id = 1;
+    string initial_margin = 2;
+    string maintenance_margin = 3;
+    string margin_ratio = 4;
+    repeated PositionMargin position_margins = 5;
+    string total_requirement = 6;
+    string available_margin = 7;
+}
+
+message PositionMargin {
+    string position_id = 1;
+    string contract_id = 2;
+    string initial_margin = 3;
+    string maintenance_margin = 4;
+    string margin_type = 5;
+}
+
+message CalculateMarginRequirementRequest {
+    string account_id = 1;
+    string strategy_id = 2;
+    repeated PositionMarginInput positions = 3;
+}
+
+message PositionMarginInput {
+    string contract_id = 1;
+    string quantity = 2;
+    string side = 3;
+}
+
+message MarginCallStatus {
+    string account_id = 1;
+    bool in_margin_call = 2;
+    string margin_deficiency = 3;
+    string time_to_liquidation = 4;
+    repeated string required_actions = 5;
+    google.protobuf.Timestamp margin_call_time = 6;
+}
+
+message CheckMarginCallRequest {
+    string account_id = 1;
+}
+
+message MarginImpact {
+    string order_id = 1;
+    string additional_margin_required = 2;
+    string margin_after_order = 3;
+    bool would_cause_margin_call = 4;
+    string margin_ratio_after = 5;
+}
+
+message GetMarginImpactRequest {
+    string account_id = 1;
+    string contract_id = 2;
+    string quantity = 3;
+    string side = 4;
+    string price = 5;
+}
+
+message OptionRiskProfile {
+    string account_id = 1;
+    string total_delta = 2;
+    string total_gamma = 3;
+    string total_theta = 4;
+    string total_vega = 5;
+    string delta_neutral_price = 6;
+    string gamma_risk = 7;
+    string theta_decay_rate = 8;
+    string vega_sensitivity = 9;
+    repeated RiskScenario scenarios = 10;
+}
+
+message RiskScenario {
+    string name = 1;
+    string underlying_move = 2;
+    string volatility_move = 3;
+    string pnl_impact = 4;
+    string margin_impact = 5;
+}
+
+message GetOptionRiskProfileRequest {
+    string account_id = 1;
+    string underlying = 2;
+}
+
+message VarResult {
+    string var_95 = 1;
+    string var_99 = 2;
+    string expected_shortfall_95 = 3;
+    string expected_shortfall_99 = 4;
+    string confidence_level = 5;
+    google.protobuf.Duration time_horizon = 6;
+    string methodology = 7;
+    repeated VarComponent components = 8;
+}
+
+message VarComponent {
+    string position_id = 1;
+    string contract_id = 2;
+    string var_contribution = 3;
+    string percentage = 4;
+}
+
+message CalculateVarForOptionsRequest {
+    string account_id = 1;
+    string confidence_level = 2;
+    google.protobuf.Duration time_horizon = 3;
+    string methodology = 4;
+}
+
+message StressTestResult {
+    string test_id = 1;
+    repeated StressScenarioResult scenarios = 2;
+    string worst_case_loss = 3;
+    string best_case_gain = 4;
+    string average_impact = 5;
+    google.protobuf.Timestamp tested_at = 6;
+}
+
+message StressScenarioResult {
+    string scenario_name = 1;
+    string underlying_shock = 2;
+    string volatility_shock = 3;
+    string rate_shock = 4;
+    string pnl_impact = 5;
+    string margin_impact = 6;
+    string greeks_impact = 7;
+}
+
+message StressTestOptionsRequest {
+    string account_id = 1;
+    repeated StressScenario scenarios = 2;
+}
+
+message StressScenario {
+    string name = 1;
+    string underlying_shock_pct = 2;
+    string volatility_shock_pct = 3;
+    string rate_shock_bps = 4;
+    string time_decay_days = 5;
+}
+
+message ScenarioAnalysis {
+    string account_id = 1;
+    repeated ScenarioResult scenarios = 2;
+    string current_portfolio_value = 3;
+    string current_delta = 4;
+    string current_gamma = 5;
+    string current_vega = 6;
+}
+
+message ScenarioResult {
+    string scenario_name = 1;
+    string underlying_price = 2;
+    string volatility = 3;
+    int32 days_forward = 4;
+    string portfolio_value = 5;
+    string pnl = 6;
+    Greeks greeks = 7;
+}
+
+message GetScenarioAnalysisRequest {
+    string account_id = 1;
+    repeated ScenarioInput scenarios = 2;
+}
+
+message ScenarioInput {
+    string name = 1;
+    string underlying_price = 2;
+    string volatility = 3;
+    int32 days_forward = 4;
+}
+
+message SettlementResult {
+    string settlement_id = 1;
+    string contract_id = 2;
+    string settlement_type = 3;
+    string settlement_price = 4;
+    string settlement_value = 5;
+    string cash_settlement = 6;
+    google.protobuf.Timestamp settled_at = 7;
+    string status = 8;
+}
+
+message SettleOptionRequest {
+    string contract_id = 1;
+    string settlement_price = 2;
+    SettlementType settlement_type = 3;
+}
+
+message SettlementPrice {
+    string contract_id = 1;
+    string settlement_price = 2;
+    string underlying_settlement = 3;
+    google.protobuf.Timestamp settlement_time = 4;
+    string source = 5;
+}
+
+message GetSettlementPriceRequest {
+    string contract_id = 1;
+    google.protobuf.Timestamp as_of = 2;
+}
+
+message ExpirationResult {
+    google.protobuf.Timestamp expiry_date = 1;
+    int32 total_contracts = 2;
+    int32 exercised_contracts = 3;
+    int32 expired_contracts = 4;
+    int32 assigned_contracts = 5;
+    string total_settlement = 6;
+    repeated ExpirationDetail details = 7;
+}
+
+message ExpirationDetail {
+    string contract_id = 1;
+    string symbol = 2;
+    int32 exercised = 3;
+    int32 expired = 4;
+    string settlement_value = 5;
+}
+
+message ProcessExpirationRequest {
+    google.protobuf.Timestamp expiry_date = 1;
+    repeated string underlyings = 2;
+    bool auto_exercise = 3;
+    string min_intrinsic_value = 4;
+}
+
+message ExpirationCalendar {
+    repeated ExpirationEvent events = 1;
+    google.protobuf.Timestamp next_expiry = 2;
+    int32 contracts_expiring_this_week = 3;
+    int32 contracts_expiring_this_month = 4;
+}
+
+message ExpirationEvent {
+    google.protobuf.Timestamp expiry_date = 1;
+    string underlying = 2;
+    int32 contract_count = 3;
+    string total_open_interest = 4;
+    string max_pain = 5;
+    repeated string notable_strikes = 6;
+}
+
+message GetExpirationCalendarRequest {
+    string underlying = 1;
+    google.protobuf.Timestamp from = 2;
+    google.protobuf.Timestamp to = 3;
+}
+
+message OptionStatistics {
+    string contract_id = 1;
+    string volume = 2;
+    string open_interest = 3;
+    string avg_volume_30d = 4;
+    string volume_vs_avg = 5;
+    string implied_volatility = 6;
+    string iv_rank = 7;
+    string iv_percentile = 8;
+    string iv_vs_hv = 9;
+    string historical_volatility = 10;
+    google.protobuf.Timestamp updated_at = 11;
+}
+
+message GetOptionStatisticsRequest {
+    string contract_id = 1;
+    int32 lookback_days = 2;
+}
+
+message OpenInterestData {
+    string underlying = 1;
+    google.protobuf.Timestamp as_of = 2;
+    repeated OpenInterestByStrike strikes = 3;
+    string total_call_oi = 4;
+    string total_put_oi = 5;
+    string put_call_ratio = 6;
+    string max_pain = 7;
+}
+
+message OpenInterestByStrike {
+    string strike_price = 1;
+    string call_oi = 2;
+    string put_oi = 3;
+    string call_volume = 4;
+    string put_volume = 5;
+    string call_iv = 6;
+    string put_iv = 7;
+}
+
+message GetOpenInterestRequest {
+    string underlying = 1;
+    google.protobuf.Timestamp expiry_date = 2;
+}
+
+message VolumeAnalysis {
+    string underlying = 1;
+    google.protobuf.Timestamp as_of = 2;
+    string total_volume = 3;
+    string call_volume = 4;
+    string put_volume = 5;
+    string unusual_volume = 6;
+    repeated VolumeByExpiry expiry_breakdown = 7;
+    repeated UnusualActivity unusual_activity = 8;
+}
+
+message VolumeByExpiry {
+    google.protobuf.Timestamp expiry_date = 1;
+    string volume = 2;
+    string open_interest = 3;
+    string volume_oi_ratio = 4;
+}
+
+message UnusualActivity {
+    string contract_id = 1;
+    string strike_price = 2;
+    OptionType option_type = 3;
+    string volume = 4;
+    string open_interest = 5;
+    string volume_oi_ratio = 6;
+    string avg_volume = 7;
+    string volume_vs_avg = 8;
+    string premium = 9;
+    string sentiment = 10;
+}
+
+message GetVolumeAnalysisRequest {
+    string underlying = 1;
+    bool include_unusual = 2;
+}
+
+message PutCallRatio {
+    string underlying = 1;
+    google.protobuf.Timestamp as_of = 2;
+    string total_ratio = 3;
+    string volume_ratio = 4;
+    string oi_ratio = 5;
+    repeated RatioByExpiry expiry_ratios = 6;
+    string avg_ratio_30d = 7;
+    string ratio_percentile = 8;
+}
+
+message RatioByExpiry {
+    google.protobuf.Timestamp expiry_date = 1;
+    string ratio = 2;
+    string call_volume = 3;
+    string put_volume = 4;
+}
+
+message GetPutCallRatioRequest {
+    string underlying = 1;
+    int32 lookback_days = 2;
+}
+
+message GreeksUpdate {
+    string contract_id = 1;
+    Greeks greeks = 2;
+    string underlying_price = 3;
+    google.protobuf.Timestamp timestamp = 4;
+}
+
+message SubscribeGreeksUpdateRequest {
+    repeated string contract_ids = 1;
+    string update_interval_ms = 2;
+}
+
+message VolatilityUpdate {
+    string underlying = 1;
+    string atm_volatility = 2;
+    VolatilitySmile smile = 3;
+    google.protobuf.Timestamp timestamp = 4;
+}
+
+message SubscribeVolatilityUpdateRequest {
+    repeated string underlyings = 1;
+    string update_interval_ms = 2;
+}
+
+message OptionChainUpdate {
+    string underlying = 1;
+    OptionChain chain = 2;
+    google.protobuf.Timestamp timestamp = 3;
+}
+
+message SubscribeOptionChainUpdateRequest {
+    repeated string underlyings = 1;
+    repeated google.protobuf.Timestamp expiry_dates = 2;
+    string update_interval_ms = 3;
+}
+
+message TccReserveOptionRequest {
+    string transaction_id = 1;
+    string account_id = 2;
+    string contract_id = 3;
+    string quantity = 4;
+    string price = 5;
+    string reserve_minutes = 6;
+}
+
+message TccReserveOptionResponse {
+    bool success = 1;
+    string reserve_id = 2;
+    string reserved_quantity = 3;
+    google.protobuf.Timestamp expires_at = 4;
+    string message = 5;
+}
+
+message TccConfirmOptionRequest {
+    string transaction_id = 1;
+    string reserve_id = 2;
+    string account_id = 3;
+    string actual_quantity = 4;
+}
+
+message TccConfirmOptionResponse {
+    bool success = 1;
+    string position_id = 2;
+    string order_id = 3;
+    string message = 4;
+}
+
+message TccCancelOptionRequest {
+    string transaction_id = 1;
+    string reserve_id = 2;
+    string reason = 3;
+}
+
+message TccCancelOptionResponse {
+    bool success = 1;
+    string released_quantity = 2;
+    string message = 3;
+}
+
+message SagaCreateOptionPositionRequest {
+    string saga_id = 1;
+    string step_id = 2;
+    string account_id = 3;
+    string contract_id = 4;
+    string quantity = 5;
+    string price = 6;
+    string order_id = 7;
+    bool compensate = 8;
+}
+
+message SagaCreateOptionPositionResponse {
+    bool success = 1;
+    string position_id = 2;
+    string message = 3;
+    string compensation_action = 4;
 }

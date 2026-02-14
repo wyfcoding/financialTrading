@@ -1,44 +1,58 @@
+# 金融交易系统 - 清算服务配置文件
+version = "1.0.0"
+
 [server]
-name = "clearing-service"
+name = "clearing"
 environment = "dev"
 
 [server.http]
-port = 8081
-timeout = "10s"
+addr = "0.0.0.0"
+port = 8102
+timeout = "3s"
 
 [server.grpc]
-port = 9091
-timeout = "10s"
+addr = "0.0.0.0"
+port = 9102
+timeout = "3s"
 
 [log]
 level = "info"
 format = "json"
 output = "stdout"
 
+[tracing]
+enabled = true
+service_name = "clearing"
+otlp_endpoint = "localhost:4317"
+
+[metrics]
+enabled = true
+port = "18102"
+path = "/metrics"
+
 [data.database]
 driver = "mysql"
-dsn = "root:password@tcp(localhost:3306)/financial_clearing?charset=utf8mb4&parseTime=True&loc=Local"
-max_idle_conns = 10
-max_open_conns = 100
-conn_max_lifetime = "1h"
+dsn = "root:root@tcp(127.0.0.1:3306)/trading_clearing?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 20
+max_open_conns = 200
 
 [data.redis]
-addrs = ["localhost:6379"]
+addrs = ["127.0.0.1:6379"]
+password = "redis_password"
 db = 0
-
-[data.elasticsearch]
-addresses = ["http://localhost:9200"]
-username = ""
-password = ""
+pool_size = 20
 
 [messagequeue.kafka]
 brokers = ["localhost:9092"]
-topic = "financial.clearing.events"
+topic = "clearing-events"
+group_id = "clearing-group"
 
-[tracing]
-enabled = false
-service_name = "clearing-service"
-otlp_endpoint = "localhost:4317"
-
+[services]
+[services.order]
+grpc_addr = "127.0.0.1:9001"
+[services.matchingengine]
+grpc_addr = "127.0.0.1:9101"
 [services.account]
-grpc_addr = "localhost:9090" # Local dev addr, k8s should be account.default.svc:9090
+grpc_addr = "127.0.0.1:9103"
+[services.position]
+grpc_addr = "127.0.0.1:9104"

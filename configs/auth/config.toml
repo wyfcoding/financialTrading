@@ -1,36 +1,46 @@
+# 金融交易系统 - 认证服务配置文件
+version = "1.0.0"
+
 [server]
-name = "auth-service"
+name = "auth"
 environment = "dev"
 
 [server.http]
-port = 8085
-timeout = "10s"
+addr = "0.0.0.0"
+port = 8000
 
 [server.grpc]
-port = 9095
-timeout = "10s"
+addr = "0.0.0.0"
+port = 9000
 
 [log]
 level = "info"
 format = "json"
-output = "stdout"
+
+[tracing]
+enabled = true
+service_name = "auth"
+
+[metrics]
+enabled = true
+port = "18000"
+
+[jwt]
+secret = "trading-secret-key"
+issuer = "financial-trading"
+expire_duration = "24h"
 
 [data.database]
 driver = "mysql"
-dsn = "root:password@tcp(localhost:3306)/financial_auth?charset=utf8mb4&parseTime=True&loc=Local"
+dsn = "root:root@tcp(127.0.0.1:3306)/trading_auth?charset=utf8mb4&parseTime=True&loc=Local"
 max_idle_conns = 10
 max_open_conns = 100
-conn_max_lifetime = "1h"
 
 [data.redis]
-addrs = ["localhost:6379"]
+addrs = ["127.0.0.1:6379"]
+password = "redis_password"
 db = 0
 
 [messagequeue.kafka]
 brokers = ["localhost:9092"]
-topic = "financial.auth.events"
-
-[tracing]
-enabled = false
-service_name = "auth-service"
-otlp_endpoint = "localhost:4317"
+topic = "auth-events"

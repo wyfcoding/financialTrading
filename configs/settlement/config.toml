@@ -1,10 +1,52 @@
-[server]
-  name = "settlement"
-  port = 9094
+# 金融交易系统 - 结算服务配置文件
+version = "1.0.0"
 
-[database]
-  driver = "mysql"
-  source = "root:password@tcp(127.0.0.1:3306)/financial_settlement?charset=utf8mb4&parseTime=True&loc=Local"
+[server]
+name = "settlement"
+environment = "dev"
+
+[server.http]
+addr = "0.0.0.0"
+port = 8105
+timeout = "3s"
+
+[server.grpc]
+addr = "0.0.0.0"
+port = 9105
+timeout = "3s"
 
 [log]
-  level = "info"
+level = "info"
+format = "json"
+output = "stdout"
+
+[tracing]
+enabled = true
+service_name = "settlement"
+
+[metrics]
+enabled = true
+port = "18105"
+
+[data.database]
+driver = "mysql"
+dsn = "root:root@tcp(127.0.0.1:3306)/trading_settlement?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 20
+max_open_conns = 200
+
+[data.redis]
+addrs = ["127.0.0.1:6379"]
+password = "redis_password"
+db = 0
+pool_size = 20
+
+[messagequeue.kafka]
+brokers = ["localhost:9092"]
+topic = "settlement-events"
+group_id = "settlement-group"
+
+[services]
+[services.account]
+grpc_addr = "127.0.0.1:9103"
+[services.clearing]
+grpc_addr = "127.0.0.1:9102"
