@@ -424,7 +424,7 @@ message CalculateGammaRequest {
 }
 
 message ThetaResult {
-    string theta = 3;
+    string theta = 1;
     string theta_per_day = 2;
     string weekly_decay = 3;
     string monthly_decay = 4;

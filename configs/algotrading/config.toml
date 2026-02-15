@@ -1,24 +1,42 @@
-# 算法交易服务配置文件
+# AlgoTrading Service Configuration
+
 [server]
-http_port = 8085
-grpc_port = 9085
+name = "algotrading"
+environment = "dev"
+version = "v1.0.0"
 
-[database]
-dsn = "${MYSQL_DSN:root:password@tcp(localhost:3306)/algotrading?charset=utf8mb4&parseTime=True&loc=Local}"
-max_open_conns = 100
-max_idle_conns = 10
+[server.http]
+port = 8085
+timeout = "30s"
 
-[kafka]
-brokers = ["${KAFKA_BROKER:localhost:9092}"]
-group_id = "algotrading-service"
-topics = ["algotrading.events"]
+[server.grpc]
+port = 9085
+timeout = "30s"
 
 [log]
-level = "${LOG_LEVEL:info}"
+level = "info"
 format = "json"
 
+[data]
+[data.database]
+driver = "mysql"
+source = "root:password@tcp(127.0.0.1:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 10
+max_open_conns = 100
+conn_max_lifetime = "1h"
+
+[message_queue]
+[message_queue.kafka]
+brokers = ["127.0.0.1:9092"]
+topic = "algotrading.events"
+group_id = "algotrading-group"
+
+[circuit_breaker]
+[circuit_breaker.thresholds]
+error_rate = 0.5
+min_requests = 10
+timeout = "10s"
+
 [algotrading]
-# 回测服务并发限制
 backtest_concurrency = 5
-# 市场数据服务地址
-market_data_service_addr = "localhost:9099"
+market_data_service_addr = "marketdata:9081"

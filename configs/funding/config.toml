@@ -1,22 +1,32 @@
+# Funding Service Configuration
+
 [server]
-name = "funding-service"
+name = "funding"
 environment = "dev"
+version = "v1.0.0"
+
+[server.http]
+port = 8087
+timeout = "30s"
 
 [server.grpc]
-port = 50051
-
-[data.database]
-driver = "mysql"
-dsn = "root:123456@tcp(localhost:3306)/financialtrading?charset=utf8mb4&parseTime=True&loc=Local"
-
-[data.redis]
-addr = "localhost:6379"
-password = ""
-db = 0
+port = 9087
+timeout = "30s"
 
 [log]
-level = "debug"
+level = "info"
 format = "json"
 
-[circuitbreaker]
-enabled = false
+[data]
+[data.database]
+driver = "mysql"
+source = "root:password@tcp(127.0.0.1:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 10
+max_open_conns = 100
+conn_max_lifetime = "1h"
+
+[circuit_breaker]
+[circuit_breaker.thresholds]
+error_rate = 0.5
+min_requests = 10
+timeout = "10s"

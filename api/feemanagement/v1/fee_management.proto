@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package api.feemanagement.v1;
+
+option go_package = "github.com/wyfcoding/financialTrading/go-api/feemanagement/v1;feemanagement";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// FeeManagementService calculates and manages trading-related fees.
+service FeeManagementService {
+  // Fee Calculation
+  rpc EstimateFees(EstimateFeesRequest) returns (FeeEstimationResponse) {}
+  rpc CalculateTradeFees(CalculateTradeFeesRequest) returns (TradeFeesResponse) {}
+
+  // Fee Schedule Management
+  rpc CreateFeeSchedule(CreateFeeScheduleRequest) returns (FeeSchedule) {}
+  rpc GetFeeSchedule(GetFeeScheduleRequest) returns (FeeSchedule) {}
+  rpc ListFeeSchedules(ListFeeSchedulesRequest) returns (ListFeeSchedulesResponse) {}
+  
+  // Rebates
+  rpc CalculateRebate(CalculateRebateRequest) returns (RebateResponse) {}
+}
+
+enum FeeType {
+  FEE_TYPE_UNSPECIFIED = 0;
+  FEE_TYPE_COMMISSION = 1;
+  FEE_TYPE_EXCHANGE_FEE = 2;
+  FEE_TYPE_REGULATORY_FEE = 3;
+  FEE_TYPE_CLEARING_FEE = 4;
+}
+
+message Variation {
+  string fee_type = 1;
+  double amount = 2;
+  string currency = 3;
+}
+
+message EstimateFeesRequest {
+  string user_id = 1;
+  string symbol = 2;
+  string side = 3; // "buy", "sell"
+  double price = 4;
+  double quantity = 5;
+}
+
+message FeeEstimationResponse {
+  double total_estimated_fee = 1;
+  repeated FeeBreakdown components = 2;
+}
+
+message FeeBreakdown {
+  FeeType type = 1;
+  double amount = 2;
+  string currency = 3;
+  string description = 4;
+}
+
+message CalculateTradeFeesRequest {
+  string trade_id = 1;
+  string order_id = 2;
+  string user_id = 3;
+  string symbol = 4;
+  double price = 5;
+  double quantity = 6;
+}
+
+message TradeFeesResponse {
+  string trade_id = 1;
+  double total_fee = 2;
+  repeated FeeBreakdown components = 3;
+}
+
+message CreateFeeScheduleRequest {
+  string name = 1;
+  string user_tier = 2;
+  string asset_class = 3; // "equity", "crypto", "forex"
+  double base_rate = 4; // e.g. 0.001 (0.1%)
+  double min_fee = 5;
+  double max_fee = 6;
+}
+
+message FeeSchedule {
+  string id = 1;
+  string name = 2;
+  string user_tier = 3;
+  string asset_class = 4;
+  double base_rate = 5;
+  double min_fee = 6;
+  double max_fee = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message GetFeeScheduleRequest {
+  string id = 1;
+}
+
+message ListFeeSchedulesRequest {
+  string user_tier = 1;
+  string asset_class = 2;
+}
+
+message ListFeeSchedulesResponse {
+  repeated FeeSchedule schedules = 1;
+}
+
+message CalculateRebateRequest {
+  string user_id = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+}
+
+message RebateResponse {
+  string user_id = 1;
+  double total_rebate = 2;
+  string currency = 3;
+}

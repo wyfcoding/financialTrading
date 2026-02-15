@@ -1,150 +1,132 @@
-// Package main 算法交易服务启动入口
 package main
 
 import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/wyfcoding/financialtrading/internal/algotrading/application"
-	"github.com/wyfcoding/financialtrading/internal/algotrading/infrastructure"
-	"github.com/wyfcoding/financialtrading/internal/algotrading/interfaces"
-	"github.com/wyfcoding/pkg/messagequeue"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
+
+	"github.com/wyfcoding/financialtrading/internal/algotrading/application"
+	"github.com/wyfcoding/financialtrading/internal/algotrading/domain"
+	"github.com/wyfcoding/financialtrading/internal/algotrading/infrastructure/persistence/mysql"
+	"github.com/wyfcoding/financialtrading/internal/algotrading/interfaces"
+	"github.com/wyfcoding/pkg/app"
+	"github.com/wyfcoding/pkg/config"
+	"github.com/wyfcoding/pkg/database"
+	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/messagequeue/kafka"
+	"github.com/wyfcoding/pkg/messagequeue/outbox"
+	"github.com/wyfcoding/pkg/metrics"
+	"github.com/wyfcoding/pkg/middleware"
 )
 
-// noopEventPublisher 空操作事件发布者
-type noopEventPublisher struct{}
+// BootstrapName 服务唯一标识
+const BootstrapName = "algotrading"
 
-var _ messagequeue.EventPublisher = (*noopEventPublisher)(nil)
-
-func (p *noopEventPublisher) Publish(_ context.Context, _ string, _ string, _ any) error { return nil }
-func (p *noopEventPublisher) PublishInTx(_ context.Context, _ any, _ string, _ string, _ any) error {
-	return nil
+// Config 服务扩展配置
+type Config struct {
+	config.Config `mapstructure:",squash"`
+	AlgoTrading   struct {
+		BacktestConcurrency   int    `mapstructure:"backtest_concurrency" toml:"backtest_concurrency"`
+		MarketDataServiceAddr string `mapstructure:"market_data_service_addr" toml:"market_data_service_addr"`
+	} `mapstructure:"algotrading" toml:"algotrading"`
 }
 
-// Config 服务配置
-type Config struct {
-	HTTPPort    int
-	GRPCPort    int
-	MySQLDSN    string
-	KafkaBroker string
-	LogLevel    string
+// AppContext 应用上下文
+type AppContext struct {
+	Config       *Config
+	CmdService   *application.CommandService
+	QueryService *application.QueryService
+	HTTPHandler  *interfaces.HTTPHandler
+	Metrics      *metrics.Metrics
 }
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	slog.SetDefault(logger)
-
-	// 配置
-	cfg := &Config{
-		HTTPPort:    8085,
-		GRPCPort:    9085,
-		MySQLDSN:    "root:password@tcp(localhost:3306)/algotrading?charset=utf8mb4&parseTime=True&loc=Local",
-		KafkaBroker: "localhost:9092",
+	if err := app.NewBuilder[*Config, *AppContext](BootstrapName).
+		WithConfig(&Config{}).
+		WithService(initService).
+		WithGRPC(registerGRPC).
+		WithGin(registerGin).
+		WithGinMiddleware(
+			middleware.CORS(),
+			middleware.TimeoutMiddleware(30*time.Second),
+		).
+		Build().
+		Run(); err != nil {
+		slog.Error("service bootstrap failed", "error", err)
 	}
+}
 
-	// 数据库
-	db, err := gorm.Open(mysql.Open(cfg.MySQLDSN), &gorm.Config{})
+func registerGRPC(s *grpc.Server, ctx *AppContext) {
+	// 注册 gRPC 服务实现 (假设 interfaces 层已有实现)
+	// pb.RegisterAlgoTradingServiceServer(s, interfaces.NewGRPCServer(ctx.CmdService, ctx.QueryService))
+}
+
+func registerGin(e *gin.Engine, ctx *AppContext) {
+	if ctx.Config.Server.Environment == "prod" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+	api := e.Group("/api/v1")
+	{
+		ctx.HTTPHandler.RegisterRoutes(api)
+	}
+}
+
+func initService(cfg *Config, m *metrics.Metrics) (*AppContext, func(), error) {
+	bootLog := slog.With("module", "bootstrap")
+	logger := logging.Default()
+
+	// 1. 数据库
+	dbWrapper, err := database.NewDB(cfg.Data.Database, cfg.CircuitBreaker, logger, m)
 	if err != nil {
-		logger.Error("failed to connect database", "error", err)
-		os.Exit(1)
+		return nil, nil, fmt.Errorf("failed to init db: %w", err)
+	}
+	db := dbWrapper.RawDB()
+
+	// 自动迁移
+	if err := db.AutoMigrate(&domain.Strategy{}, &domain.Backtest{}, &outbox.Message{}); err != nil {
+		return nil, nil, fmt.Errorf("failed to migrate tables: %w", err)
 	}
 
-	// 仓储
-	strategyRepo := infrastructure.NewGormStrategyRepository(db)
-	backtestRepo := infrastructure.NewGormBacktestRepository(db)
+	// 2. 消息队列 & Outbox
+	producer := kafka.NewProducer(&cfg.MessageQueue.Kafka, logger, m)
+	outboxMgr := outbox.NewManager(db, logger.Logger)
+	outboxProc := outbox.NewProcessor(outboxMgr, func(ctx context.Context, topic, key string, payload []byte) error {
+		return producer.PublishToTopic(ctx, topic, []byte(key), payload)
+	}, 100, 5*time.Second)
+	outboxProc.Start()
 
-	// 事件
-	eventPublisher := &noopEventPublisher{}
+	// 3. 仓储
+	strategyRepo := mysql.NewStrategyRepository(db)
+	backtestRepo := mysql.NewBacktestRepository(db)
 
-	// 服务
-	cmdService := application.NewCommandService(strategyRepo, backtestRepo, eventPublisher, logger)
-	queryService := application.NewQueryService(strategyRepo, backtestRepo, logger)
+	// 4. 服务
+	publisher := outbox.NewPublisher(outboxMgr)
+	cmdService := application.NewCommandService(strategyRepo, backtestRepo, publisher, logger.Logger)
+	queryService := application.NewQueryService(strategyRepo, backtestRepo, logger.Logger)
 
-	// Handler
+	// 5. Handler
 	httpHandler := interfaces.NewHTTPHandler(cmdService, queryService)
 
-	// Gin
-	gin.SetMode(gin.ReleaseMode)
-	router := gin.New()
-	router.Use(gin.Recovery())
-
-	// Health
-	router.GET("/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
-
-	// API
-	api := router.Group("/api/v1")
-	httpHandler.RegisterRoutes(api)
-
-	// HTTP Server
-	httpServer := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.HTTPPort),
-		Handler:      router,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
+	cleanup := func() {
+		bootLog.Info("shutting down...")
+		outboxProc.Stop()
+		if producer != nil {
+			producer.Close()
+		}
+		if sqlDB, err := db.DB(); err == nil && sqlDB != nil {
+			sqlDB.Close()
+		}
 	}
 
-	// gRPC Server
-	grpcServer := grpc.NewServer()
-
-	// Lifecycle
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	g, ctx := errgroup.WithContext(ctx)
-
-	// Start HTTP
-	g.Go(func() error {
-		logger.Info("starting HTTP server", "port", cfg.HTTPPort)
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			return fmt.Errorf("HTTP server error: %w", err)
-		}
-		return nil
-	})
-
-	// Start gRPC
-	g.Go(func() error {
-		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.GRPCPort))
-		if err != nil {
-			return fmt.Errorf("failed to listen gRPC: %w", err)
-		}
-		logger.Info("starting gRPC server", "port", cfg.GRPCPort)
-		if err := grpcServer.Serve(lis); err != nil {
-			return fmt.Errorf("gRPC server error: %w", err)
-		}
-		return nil
-	})
-
-	// Signals
-	g.Go(func() error {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-		select {
-		case <-sigCh:
-			cancel()
-		case <-ctx.Done():
-		}
-
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer shutdownCancel()
-
-		httpServer.Shutdown(shutdownCtx)
-		grpcServer.GracefulStop()
-		return nil
-	})
-
-	if err := g.Wait(); err != nil {
-		logger.Error("server error", "error", err)
-		os.Exit(1)
-	}
+	return &AppContext{
+		Config:       cfg,
+		CmdService:   cmdService,
+		QueryService: queryService,
+		HTTPHandler:  httpHandler,
+		Metrics:      m,
+	}, cleanup, nil
 }

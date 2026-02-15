@@ -1,70 +1,82 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"log/slog"
-	"net"
-	"os"
-	"os/signal"
-	"syscall"
+
+	"google.golang.org/grpc"
 
 	v1 "github.com/wyfcoding/financialtrading/go-api/fixgateway/v1"
 	"github.com/wyfcoding/financialtrading/internal/fixgateway/application"
 	persistence_mysql "github.com/wyfcoding/financialtrading/internal/fixgateway/infrastructure/persistence/mysql"
 	grpc_server "github.com/wyfcoding/financialtrading/internal/fixgateway/interfaces/grpc"
-	"google.golang.org/grpc"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
+	"github.com/wyfcoding/pkg/app"
+	"github.com/wyfcoding/pkg/config"
+	"github.com/wyfcoding/pkg/database"
+	"github.com/wyfcoding/pkg/logging"
+	"github.com/wyfcoding/pkg/metrics"
 )
 
+// BootstrapName 服务唯一标识
+const BootstrapName = "fixgateway"
+
+// Config 服务扩展配置
+type Config struct {
+	config.Config `mapstructure:",squash"`
+}
+
+// AppContext 应用上下文
+type AppContext struct {
+	Config     *Config
+	AppService *application.FixApplicationService
+	Metrics    *metrics.Metrics
+}
+
 func main() {
-	// 1. Logger
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
-
-	// 2. Config (Simplified)
-	dsn := os.Getenv("To be replaced by config loader")
-	if dsn == "" {
-		dsn = "root:password@tcp(127.0.0.1:3306)/financial_fixgateway?charset=utf8mb4&parseTime=True&loc=Local"
+	if err := app.NewBuilder[*Config, *AppContext](BootstrapName).
+		WithConfig(&Config{}).
+		WithService(initService).
+		WithGRPC(registerGRPC).
+		Build().
+		Run(); err != nil {
+		slog.Error("service bootstrap failed", "error", err)
 	}
+}
 
-	// 3. Database
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+func registerGRPC(s *grpc.Server, ctx *AppContext) {
+	v1.RegisterFixGatewayServiceServer(s, grpc_server.NewServer(ctx.AppService))
+}
+
+func initService(cfg *Config, m *metrics.Metrics) (*AppContext, func(), error) {
+	bootLog := slog.With("module", "bootstrap")
+	logger := logging.Default()
+
+	// 1. 数据库
+	dbWrapper, err := database.NewDB(cfg.Data.Database, cfg.CircuitBreaker, logger, m)
 	if err != nil {
-		log.Fatalf("failed to connect database: %v", err)
+		return nil, nil, fmt.Errorf("failed to init db: %w", err)
+	}
+	db := dbWrapper.RawDB()
+
+	// 自动迁移
+	if err := db.AutoMigrate(&persistence_mysql.FixSessionModel{}); err != nil {
+		return nil, nil, fmt.Errorf("failed to migrate tables: %w", err)
 	}
 
-	// Auto Migrate
-	err = db.AutoMigrate(&persistence_mysql.FixSessionModel{})
-	if err != nil {
-		log.Fatalf("failed to migrate database: %v", err)
-	}
-
-	// 4. Layers
+	// 2. 依赖注入
 	repo := persistence_mysql.NewGormFixRepository(db)
-	app := application.NewFixApplicationService(repo, nil, logger)
-	svc := grpc_server.NewServer(app)
+	appService := application.NewFixApplicationService(repo, nil, logger.Logger)
 
-	// 5. Server
-	lis, err := net.Listen("tcp", ":9092")
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+	cleanup := func() {
+		bootLog.Info("shutting down...")
+		if sqlDB, err := db.DB(); err == nil && sqlDB != nil {
+			sqlDB.Close()
+		}
 	}
 
-	s := grpc.NewServer()
-	v1.RegisterFixGatewayServiceServer(s, svc)
-
-	go func() {
-		logger.Info("server started", "addr", ":9092")
-		if err := s.Serve(lis); err != nil {
-			log.Fatalf("failed to serve: %v", err)
-		}
-	}()
-
-	// 6. Graceful Shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	logger.Info("shutting down server...")
-	s.GracefulStop()
+	return &AppContext{
+		Config:     cfg,
+		AppService: appService,
+		Metrics:    m,
+	}, cleanup, nil
 }

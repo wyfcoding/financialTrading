@@ -2,80 +2,82 @@ package main
 
 import (
 	"fmt"
-	"net"
-	"os"
-	"os/signal"
-	"syscall"
+	"log/slog"
 
-	fundingv1 "github.com/wyfcoding/financialtrading/go-api/funding/v1"
+	"google.golang.org/grpc"
+
+	pb "github.com/wyfcoding/financialtrading/go-api/funding/v1"
 	"github.com/wyfcoding/financialtrading/internal/funding/application"
 	"github.com/wyfcoding/financialtrading/internal/funding/domain"
-	"github.com/wyfcoding/financialtrading/internal/funding/infrastructure"
+	"github.com/wyfcoding/financialtrading/internal/funding/infrastructure/persistence/mysql"
 	"github.com/wyfcoding/financialtrading/internal/funding/interfaces"
+	"github.com/wyfcoding/pkg/app"
 	"github.com/wyfcoding/pkg/config"
 	"github.com/wyfcoding/pkg/database"
 	"github.com/wyfcoding/pkg/logging"
 	"github.com/wyfcoding/pkg/metrics"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
+// BootstrapName 服务唯一标识
+const BootstrapName = "funding"
+
+// Config 服务扩展配置
+type Config struct {
+	config.Config `mapstructure:",squash"`
+}
+
+// AppContext 应用上下文
+type AppContext struct {
+	Config     *Config
+	AppService *application.FundingService
+	Metrics    *metrics.Metrics
+}
+
 func main() {
-	// 1. 加载配置
-	cfg := &config.Config{}
-	if err := config.Load("configs/funding/config.toml", cfg); err != nil {
-		fmt.Printf("failed to load config: %v\n", err)
-		os.Exit(1)
+	if err := app.NewBuilder[*Config, *AppContext](BootstrapName).
+		WithConfig(&Config{}).
+		WithService(initService).
+		WithGRPC(registerGRPC).
+		Build().
+		Run(); err != nil {
+		slog.Error("service bootstrap failed", "error", err)
 	}
+}
 
-	// 2. 初始化日志
-	logger := logging.NewLogger(cfg.Server.Name, "main", cfg.Log.Level)
+func registerGRPC(s *grpc.Server, ctx *AppContext) {
+	pb.RegisterFundingServiceServer(s, interfaces.NewFundingHandler(ctx.AppService))
+}
 
-	// 3. 初始化指标
-	m := metrics.NewMetrics(cfg.Server.Name)
+func initService(cfg *Config, m *metrics.Metrics) (*AppContext, func(), error) {
+	bootLog := slog.With("module", "bootstrap")
+	logger := logging.Default()
 
-	// 4. 初始化数据库
-	db, err := database.NewDB(cfg.Data.Database, cfg.CircuitBreaker, logger, m)
+	// 1. 数据库
+	dbWrapper, err := database.NewDB(cfg.Data.Database, cfg.CircuitBreaker, logger, m)
 	if err != nil {
-		logger.Error("failed to connect to database", "error", err)
-		os.Exit(1)
+		return nil, nil, fmt.Errorf("failed to init db: %w", err)
+	}
+	db := dbWrapper.RawDB()
+
+	// 自动迁移
+	if err := db.AutoMigrate(&domain.MarginLoan{}, &domain.FundingRate{}); err != nil {
+		return nil, nil, fmt.Errorf("failed to migrate tables: %w", err)
 	}
 
-	// 5. 自动迁移 (使用 Unwrap 获取原始 *gorm.DB)
-	if err := db.DB.AutoMigrate(&domain.MarginLoan{}, &domain.FundingRate{}); err != nil {
-		logger.Error("failed to migrate database", "error", err)
-		os.Exit(1)
-	}
+	// 2. 依赖注入
+	repo := mysql.NewFundingRepository(db)
+	appService := application.NewFundingService(repo)
 
-	// 6. 依赖注入
-	repo := infrastructure.NewGormFundingRepository(db.DB)
-	app := application.NewFundingService(repo)
-	handler := interfaces.NewFundingHandler(app)
-
-	// 7. 启动 gRPC 服务
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.Server.GRPC.Port))
-	if err != nil {
-		logger.Error("failed to listen", "error", err)
-		os.Exit(1)
-	}
-
-	s := grpc.NewServer()
-	fundingv1.RegisterFundingServiceServer(s, handler)
-	reflection.Register(s)
-
-	fmt.Printf("%s listening at %v\n", cfg.Server.Name, lis.Addr())
-
-	go func() {
-		if err := s.Serve(lis); err != nil {
-			logger.Error("failed to serve", "error", err)
+	cleanup := func() {
+		bootLog.Info("shutting down...")
+		if sqlDB, err := db.DB(); err == nil && sqlDB != nil {
+			sqlDB.Close()
 		}
-	}()
+	}
 
-	// 7. 优雅关停
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	<-stop
-
-	s.GracefulStop()
-	logger.Info("server stopped")
+	return &AppContext{
+		Config:     cfg,
+		AppService: appService,
+		Metrics:    m,
+	}, cleanup, nil
 }

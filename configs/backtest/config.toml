@@ -1,22 +1,32 @@
-[service]
-name = "backtest"
-version = "v1.0.0"
+# Backtest Service Configuration
 
 [server]
-grpc_port = 50054
+name = "backtest"
+environment = "dev"
+version = "v1.0.0"
 
-[database]
-driver = "mysql"
-dsn = "root:root1234@tcp(127.0.0.1:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+[server.http]
+port = 8086
+timeout = "30s"
+
+[server.grpc]
+port = 9086
+timeout = "30s"
 
 [log]
 level = "info"
 format = "json"
 
-[backtest]
-# 并发回测任务数
-max_concurrent_tasks = 4
-# 数据源配置
-data_source = "market_data_service"
-# 默认手续费率
-default_fee_rate = 0.0003
+[data]
+[data.database]
+driver = "mysql"
+source = "root:password@tcp(127.0.0.1:3306)/financial_trading?charset=utf8mb4&parseTime=True&loc=Local"
+max_idle_conns = 10
+max_open_conns = 100
+conn_max_lifetime = "1h"
+
+[circuit_breaker]
+[circuit_breaker.thresholds]
+error_rate = 0.5
+min_requests = 10
+timeout = "10s"

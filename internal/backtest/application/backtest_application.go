@@ -45,7 +45,6 @@ func (s *BacktestApplicationService) RunBacktest(ctx context.Context, cmd RunBac
 		EndTime:        cmd.EndTime,
 		InitialCapital: cmd.InitialCapital,
 		Status:         "PENDING",
-		CreatedAt:      time.Now(),
 	}
 
 	if err := s.repo.SaveTask(ctx, task); err != nil {
