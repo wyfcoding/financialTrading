@@ -6,7 +6,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/pricing/domain"
-	"github.com/wyfcoding/pkg/algorithm/finance"
+	"github.com/wyfcoding/pkg/algos/finance"
 )
 
 // PricingQueryService 处理所有定价相关的查询操作（Queries）。

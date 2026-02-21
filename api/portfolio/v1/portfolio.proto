@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package portfolio.v1;
 
-import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/wyfcoding/financialtrading/go-api/portfolio/v1;portfoliov1";
 

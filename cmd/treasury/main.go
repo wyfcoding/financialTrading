@@ -88,6 +88,9 @@ func main() {
 	// 仓储
 	accountRepo := infrastructure.NewGormAccountRepository(db)
 	txRepo := infrastructure.NewGormTransactionRepository(db)
+	cashPoolRepo := infrastructure.NewGormCashPoolRepository(db)
+	liquidityRepo := infrastructure.NewGormLiquidityForecastRepository(db)
+	transferInsRepo := infrastructure.NewGormTransferInstructionRepository(db)
 
 	// 事件
 	brokers := []string{cfg.KafkaBroker}
@@ -102,9 +105,18 @@ func main() {
 	// 服务
 	cmdService := application.NewCommandService(accountRepo, txRepo, eventPublisher, logger)
 	queryService := application.NewQueryService(accountRepo, txRepo, logger)
+	treasuryService := application.NewTreasuryService(
+		cashPoolRepo,
+		liquidityRepo,
+		transferInsRepo,
+		accountRepo,
+		txRepo,
+		cmdService,
+		logger,
+	)
 
 	// Handler
-	httpHandler := interfaces.NewHTTPHandler(cmdService, queryService)
+	httpHandler := interfaces.NewHTTPHandler(cmdService, queryService, treasuryService)
 
 	// Gin
 	gin.SetMode(gin.ReleaseMode)

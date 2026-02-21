@@ -1,3 +1,6 @@
+//go:build !risk_experimental
+// +build !risk_experimental
+
 // 变更说明：新增希腊字母 (Greeks) 计算逻辑，支持期权风险对冲分析。
 // 假设：采用 Black-Scholes 模型简化实现，无风险利率默认 3%，波动率年化。
 package domain

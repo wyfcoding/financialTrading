@@ -1,3 +1,6 @@
+//go:build !clearing_experimental
+// +build !clearing_experimental
+
 // 变更说明：实现 DVP (银货对付) 交收流程，确保券款同步交换，防止本金风险。
 // 假设：DVP 流程包含预取券、预锁款及最终交收三个阶段。
 package domain

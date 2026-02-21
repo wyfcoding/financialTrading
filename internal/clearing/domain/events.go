@@ -1,3 +1,6 @@
+//go:build !clearing_experimental
+// +build !clearing_experimental
+
 package domain
 
 import "time"

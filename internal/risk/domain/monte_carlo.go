@@ -1,3 +1,6 @@
+//go:build !risk_experimental
+// +build !risk_experimental
+
 // 包 风险管理服务的领域模型
 package domain
 

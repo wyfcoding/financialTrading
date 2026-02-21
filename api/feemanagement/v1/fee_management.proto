@@ -2,10 +2,9 @@ syntax = "proto3";
 
 package api.feemanagement.v1;
 
-option go_package = "github.com/wyfcoding/financialTrading/go-api/feemanagement/v1;feemanagement";
+option go_package = "github.com/wyfcoding/financialtrading/go-api/feemanagement/v1;feemanagement";
 
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/empty.proto";
 
 // FeeManagementService calculates and manages trading-related fees.
 service FeeManagementService {

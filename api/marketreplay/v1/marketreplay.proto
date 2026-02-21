@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package api.marketreplay.v1;
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/marketreplay/v1;marketreplayv1";
+
+service Service {
+  rpc Health(HealthRequest) returns (HealthResponse);
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  string status = 1;
+}

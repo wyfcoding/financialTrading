@@ -1,0 +1,10 @@
+[server]
+name = "audittrail-service"
+
+[server.grpc]
+addr = ":9090"
+port = 9090
+
+[data.clickhouse]
+addr = "localhost:9000"
+database = "audit"

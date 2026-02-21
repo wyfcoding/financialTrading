@@ -3,7 +3,6 @@ syntax = "proto3";
 package pricing.v1;
 
 import "google/protobuf/timestamp.proto";
-import "pricing/v1/error_reason.proto";
 
 option go_package = "github.com/wyfcoding/financialtrading/go-api/pricing/v1;v1";
 

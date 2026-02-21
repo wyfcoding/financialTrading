@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package fiat.v1;
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/fiat/v1;pb";
+
+import "google/protobuf/timestamp.proto";
+
+service FiatService {
+    // 获取实时汇率
+    rpc GetRate(GetRateRequest) returns (GetRateResponse);
+    
+    // 基础货币兑换
+    rpc Exchange(ExchangeRequest) returns (ExchangeResponse);
+    
+    // 锁定汇率 (用于跨境支付确保价格一致性)
+    rpc LockRate(LockRateRequest) returns (LockRateResponse);
+    
+    // 验证锁定汇率
+    rpc VerifyLock(VerifyLockRequest) returns (VerifyLockResponse);
+}
+
+message GetRateRequest {
+    string from_currency = 1;
+    string to_currency = 2;
+}
+
+message GetRateResponse {
+    string from_currency = 1;
+    string to_currency = 2;
+    double rate = 3;
+    google.protobuf.Timestamp updated_at = 4;
+}
+
+message ExchangeRequest {
+    string from_currency = 1;
+    string to_currency = 2;
+    double amount = 3;
+}
+
+message ExchangeResponse {
+    double from_amount = 1;
+    double to_amount = 2;
+    double rate = 3;
+    string from_currency = 4;
+    string to_currency = 5;
+}
+
+message LockRateRequest {
+    string user_id = 1;
+    string payment_id = 2;
+    string from_currency = 3;
+    string to_currency = 4;
+    double amount = 5;
+}
+
+message LockRateResponse {
+    string lock_id = 1;
+    double locked_rate = 2;
+    double locked_amount = 3;
+    google.protobuf.Timestamp expires_at = 4;
+}
+
+message VerifyLockRequest {
+    string lock_id = 1;
+}
+
+message VerifyLockResponse {
+    bool valid = 1;
+    string user_id = 2;
+    string payment_id = 3;
+    double locked_rate = 4;
+}

@@ -1,8 +1,11 @@
+//go:build !clearing_experimental
+// +build !clearing_experimental
+
 package domain
 
 import (
 	"github.com/shopspring/decimal"
-	"github.com/wyfcoding/pkg/algorithm/finance"
+	"github.com/wyfcoding/pkg/algos/finance"
 )
 
 // Position 简化版持仓快照

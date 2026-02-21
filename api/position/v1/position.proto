@@ -2,9 +2,6 @@ syntax = "proto3";
 
 package position.v1;
 
-import "google/protobuf/timestamp.proto";
-import "position/v1/error_reason.proto";
-
 option go_package = "github.com/wyfcoding/financialtrading/go-api/position/v1;v1";
 
 service PositionService {

@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o backtest financialTrading/cmd/backtest/main.go
+RUN go build -o backtest financialtrading/cmd/backtest/main.go
 
 # Run stage
 FROM alpine:latest
@@ -16,7 +16,7 @@ FROM alpine:latest
 WORKDIR /app
 
 COPY --from=builder /app/backtest .
-COPY --from=builder /app/financialTrading/configs/backtest/config.toml ./configs/
+COPY --from=builder /app/financialtrading/configs/backtest/config.toml ./configs/
 
 EXPOSE 50054
 

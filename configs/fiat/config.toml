@@ -1,0 +1,21 @@
+[server]
+name = "fiat-service"
+environment = "dev"
+
+[server.grpc]
+port = 50055
+
+[server.http]
+port = 8085
+
+[log]
+level = "debug"
+
+[data.database]
+driver = "mysql"
+source = "root:123456@tcp(localhost:3306)/ft_fiat?charset=utf8mb4&parseTime=True&loc=Local"
+
+[circuit_breaker]
+enabled = true
+threshold = 5
+interval = "10s"

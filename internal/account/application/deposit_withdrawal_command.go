@@ -1,5 +1,5 @@
 // 生成摘要：充值和提现命令服务，实现充值/提现业务逻辑。
-// 迁移自 ecommerce/payment，现在属于 financialTrading/account 服务。
+// 迁移自 ecommerce/payment，现在属于 financialtrading/account 服务。
 // 集成 Account 聚合进行账户余额操作。
 package application
 

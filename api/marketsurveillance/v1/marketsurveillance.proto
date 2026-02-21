@@ -1,0 +1,275 @@
+// 市场监察服务 Proto 定义
+// 生成摘要：
+//   1) 定义市场操纵检测、异常交易告警、交易模式分析等核心 RPC
+//   2) 支持 Spoofing / Layering / WashTrading / FrontRunning 检测
+//   3) 告警生命周期管理（创建、审核、关闭）
+syntax = "proto3";
+
+package marketsurveillance.v1;
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/marketsurveillance/v1;marketsurveillancepb";
+
+import "google/protobuf/timestamp.proto";
+
+// MarketSurveillanceService 市场监察服务
+service MarketSurveillanceService {
+  // 订单事件流入检测
+  rpc SubmitOrderEvent(SubmitOrderEventRequest) returns (SubmitOrderEventResponse);
+  // 创建监察规则
+  rpc CreateRule(CreateRuleRequest) returns (CreateRuleResponse);
+  // 更新监察规则
+  rpc UpdateRule(UpdateRuleRequest) returns (UpdateRuleResponse);
+  // 获取监察规则
+  rpc GetRule(GetRuleRequest) returns (GetRuleResponse);
+  // 列出全部规则
+  rpc ListRules(ListRulesRequest) returns (ListRulesResponse);
+  // 获取告警详情
+  rpc GetAlert(GetAlertRequest) returns (GetAlertResponse);
+  // 列出告警
+  rpc ListAlerts(ListAlertsRequest) returns (ListAlertsResponse);
+  // 审核告警
+  rpc ReviewAlert(ReviewAlertRequest) returns (ReviewAlertResponse);
+  // 获取用户监察评分
+  rpc GetUserSurveillanceScore(GetUserScoreRequest) returns (GetUserScoreResponse);
+  // 批量行为分析
+  rpc AnalyzeTradingPattern(AnalyzeTradingPatternRequest) returns (AnalyzeTradingPatternResponse);
+}
+
+// ===== 枚举 =====
+
+// ManipulationType 市场操纵类型
+enum ManipulationType {
+  MANIPULATION_TYPE_UNSPECIFIED = 0;
+  // 幌骗：挂大单后快速撤单欺骗市场
+  MANIPULATION_TYPE_SPOOFING = 1;
+  // 分层：在多个价位挂梯度订单制造虚假供需
+  MANIPULATION_TYPE_LAYERING = 2;
+  // 对倒/洗售：自买自卖制造虚假成交量
+  MANIPULATION_TYPE_WASH_TRADING = 3;
+  // 抢先交易：利用预知的大额订单信息提前交易
+  MANIPULATION_TYPE_FRONT_RUNNING = 4;
+  // 尾盘操纵：在收盘前大量交易操纵收盘价
+  MANIPULATION_TYPE_CLOSING_PRICE = 5;
+  // 泵点抛售：先大量买入拉高价格再抛售
+  MANIPULATION_TYPE_PUMP_AND_DUMP = 6;
+}
+
+// AlertSeverity 告警严重程度
+enum AlertSeverity {
+  ALERT_SEVERITY_UNSPECIFIED = 0;
+  ALERT_SEVERITY_LOW = 1;
+  ALERT_SEVERITY_MEDIUM = 2;
+  ALERT_SEVERITY_HIGH = 3;
+  ALERT_SEVERITY_CRITICAL = 4;
+}
+
+// AlertStatus 告警状态
+enum AlertStatus {
+  ALERT_STATUS_UNSPECIFIED = 0;
+  ALERT_STATUS_OPEN = 1;
+  ALERT_STATUS_INVESTIGATING = 2;
+  ALERT_STATUS_ESCALATED = 3;
+  ALERT_STATUS_CLOSED_CONFIRMED = 4;
+  ALERT_STATUS_CLOSED_FALSE_POSITIVE = 5;
+}
+
+// OrderEventType 订单事件类型
+enum OrderEventType {
+  ORDER_EVENT_TYPE_UNSPECIFIED = 0;
+  ORDER_EVENT_TYPE_PLACE = 1;
+  ORDER_EVENT_TYPE_CANCEL = 2;
+  ORDER_EVENT_TYPE_FILL = 3;
+  ORDER_EVENT_TYPE_MODIFY = 4;
+}
+
+// ===== 消息 =====
+
+// OrderEvent 订单事件
+message OrderEvent {
+  string order_id = 1;
+  string user_id = 2;
+  string symbol = 3;
+  OrderEventType event_type = 4;
+  string side = 5; // BUY / SELL
+  string price = 6;
+  string quantity = 7;
+  google.protobuf.Timestamp timestamp = 8;
+  string venue = 9;
+  string account_id = 10;
+}
+
+// SurveillanceRule 监察规则
+message SurveillanceRule {
+  string rule_id = 1;
+  string name = 2;
+  ManipulationType type = 3;
+  bool enabled = 4;
+  // 检测窗口（秒）
+  int64 window_seconds = 5;
+  // 触发阈值
+  string threshold = 6;
+  // 最低撤单比率
+  string min_cancel_ratio = 7;
+  // 最大对倒交易量比率
+  string max_wash_volume_ratio = 8;
+  // 价格偏差阈值
+  string price_deviation_threshold = 9;
+  string description = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// SurveillanceAlert 监察告警
+message SurveillanceAlert {
+  string alert_id = 1;
+  ManipulationType type = 2;
+  AlertSeverity severity = 3;
+  AlertStatus status = 4;
+  string user_id = 5;
+  string symbol = 6;
+  string description = 7;
+  double confidence_score = 8;
+  // 涉及订单 IDs
+  repeated string related_order_ids = 9;
+  string rule_id = 10;
+  string reviewer_id = 11;
+  string review_comment = 12;
+  google.protobuf.Timestamp detected_at = 13;
+  google.protobuf.Timestamp reviewed_at = 14;
+}
+
+// UserSurveillanceScore 用户监察评分
+message UserSurveillanceScore {
+  string user_id = 1;
+  double overall_score = 2;
+  double spoofing_score = 3;
+  double wash_trading_score = 4;
+  double layering_score = 5;
+  int64 total_alerts = 6;
+  int64 confirmed_alerts = 7;
+  google.protobuf.Timestamp last_updated = 8;
+}
+
+// TradingPattern 交易模式分析
+message TradingPattern {
+  string user_id = 1;
+  string symbol = 2;
+  double cancel_ratio = 3;
+  double avg_order_lifetime_ms = 4;
+  double self_trade_ratio = 5;
+  int64 total_orders = 6;
+  int64 total_cancels = 7;
+  int64 total_fills = 8;
+  string risk_level = 9;
+}
+
+// ===== 请求/响应 =====
+
+message SubmitOrderEventRequest {
+  OrderEvent event = 1;
+}
+
+message SubmitOrderEventResponse {
+  bool alert_triggered = 1;
+  SurveillanceAlert alert = 2;
+}
+
+message CreateRuleRequest {
+  string name = 1;
+  ManipulationType type = 2;
+  int64 window_seconds = 3;
+  string threshold = 4;
+  string min_cancel_ratio = 5;
+  string max_wash_volume_ratio = 6;
+  string price_deviation_threshold = 7;
+  string description = 8;
+}
+
+message CreateRuleResponse {
+  SurveillanceRule rule = 1;
+}
+
+message UpdateRuleRequest {
+  string rule_id = 1;
+  string name = 2;
+  bool enabled = 3;
+  int64 window_seconds = 4;
+  string threshold = 5;
+  string min_cancel_ratio = 6;
+  string max_wash_volume_ratio = 7;
+  string price_deviation_threshold = 8;
+  string description = 9;
+}
+
+message UpdateRuleResponse {
+  SurveillanceRule rule = 1;
+}
+
+message GetRuleRequest {
+  string rule_id = 1;
+}
+
+message GetRuleResponse {
+  SurveillanceRule rule = 1;
+}
+
+message ListRulesRequest {
+  ManipulationType type_filter = 1;
+  bool enabled_only = 2;
+}
+
+message ListRulesResponse {
+  repeated SurveillanceRule rules = 1;
+}
+
+message GetAlertRequest {
+  string alert_id = 1;
+}
+
+message GetAlertResponse {
+  SurveillanceAlert alert = 1;
+}
+
+message ListAlertsRequest {
+  AlertStatus status_filter = 1;
+  AlertSeverity severity_filter = 2;
+  string user_id = 3;
+  string symbol = 4;
+  int32 page = 5;
+  int32 page_size = 6;
+}
+
+message ListAlertsResponse {
+  repeated SurveillanceAlert alerts = 1;
+  int64 total = 2;
+}
+
+message ReviewAlertRequest {
+  string alert_id = 1;
+  string reviewer_id = 2;
+  bool confirmed = 3;
+  string comment = 4;
+}
+
+message ReviewAlertResponse {
+  bool success = 1;
+}
+
+message GetUserScoreRequest {
+  string user_id = 1;
+}
+
+message GetUserScoreResponse {
+  UserSurveillanceScore score = 1;
+}
+
+message AnalyzeTradingPatternRequest {
+  string user_id = 1;
+  string symbol = 2;
+  google.protobuf.Timestamp start_time = 3;
+  google.protobuf.Timestamp end_time = 4;
+}
+
+message AnalyzeTradingPatternResponse {
+  TradingPattern pattern = 1;
+}

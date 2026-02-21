@@ -8,26 +8,26 @@ import (
 
 // MatchingQueryService 处理所有撮合引擎相关的查询操作（Queries）。
 type MatchingQueryService struct {
-	engine          *domain.DisruptionEngine
-	tradeRepo       domain.TradeRepository
-	tradeReadRepo   domain.TradeReadRepository
-	tradeSearchRepo domain.TradeSearchRepository
+	engine            *domain.MatchingEngine
+	tradeRepo         domain.TradeRepository
+	tradeReadRepo     domain.TradeReadRepository
+	tradeSearchRepo   domain.TradeSearchRepository
 	orderBookReadRepo domain.OrderBookReadRepository
 }
 
 // NewMatchingQueryService 构造函数。
 func NewMatchingQueryService(
-	engine *domain.DisruptionEngine,
+	engine *domain.MatchingEngine,
 	tradeRepo domain.TradeRepository,
 	tradeReadRepo domain.TradeReadRepository,
 	tradeSearchRepo domain.TradeSearchRepository,
 	orderBookReadRepo domain.OrderBookReadRepository,
 ) *MatchingQueryService {
 	return &MatchingQueryService{
-		engine:           engine,
-		tradeRepo:        tradeRepo,
-		tradeReadRepo:    tradeReadRepo,
-		tradeSearchRepo:  tradeSearchRepo,
+		engine:            engine,
+		tradeRepo:         tradeRepo,
+		tradeReadRepo:     tradeReadRepo,
+		tradeSearchRepo:   tradeSearchRepo,
 		orderBookReadRepo: orderBookReadRepo,
 	}
 }
@@ -43,7 +43,7 @@ func (q *MatchingQueryService) GetOrderBook(ctx context.Context, depth int) (*do
 		}
 	}
 
-	snapshot := q.engine.GetOrderBookSnapshot(depth)
+	snapshot := toDomainSnapshot(q.engine.GetOrderBookSnapshot(depth))
 	if q.orderBookReadRepo != nil {
 		_ = q.orderBookReadRepo.Save(ctx, snapshot, depth)
 	}

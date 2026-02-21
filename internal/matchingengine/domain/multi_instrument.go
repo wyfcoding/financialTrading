@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wyfcoding/pkg/algorithm/types"
+	"github.com/wyfcoding/pkg/algos/types"
 
 	"github.com/shopspring/decimal"
 )
@@ -74,7 +74,7 @@ type PriceLimitConfig struct {
 }
 
 type MultiInstrumentMatchingEngine struct {
-	engines     map[string]*DisruptionEngine
+	engines     map[string]*MatchingEngine
 	instruments map[string]*Instrument
 	mu          sync.RWMutex
 	logger      any
@@ -82,7 +82,7 @@ type MultiInstrumentMatchingEngine struct {
 
 func NewMultiInstrumentMatchingEngine() *MultiInstrumentMatchingEngine {
 	return &MultiInstrumentMatchingEngine{
-		engines:     make(map[string]*DisruptionEngine),
+		engines:     make(map[string]*MatchingEngine),
 		instruments: make(map[string]*Instrument),
 	}
 }
@@ -95,7 +95,7 @@ func (m *MultiInstrumentMatchingEngine) AddInstrument(instrument *Instrument, ca
 		return fmt.Errorf("instrument %s already exists", instrument.Symbol)
 	}
 
-	engine, err := NewDisruptionEngine(instrument.Symbol, capacity, nil)
+	engine, err := NewMatchingEngine(instrument.Symbol, capacity, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create engine for %s: %w", instrument.Symbol, err)
 	}
@@ -122,7 +122,7 @@ func (m *MultiInstrumentMatchingEngine) RemoveInstrument(symbol string) error {
 	return nil
 }
 
-func (m *MultiInstrumentMatchingEngine) GetEngine(symbol string) (*DisruptionEngine, error) {
+func (m *MultiInstrumentMatchingEngine) GetEngine(symbol string) (*MatchingEngine, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -208,11 +208,11 @@ func (m *MultiInstrumentMatchingEngine) GetAllSymbols() []string {
 	return symbols
 }
 
-func (m *MultiInstrumentMatchingEngine) GetAllSnapshots(depth int) map[string]*OrderBookSnapshot {
+func (m *MultiInstrumentMatchingEngine) GetAllSnapshots(depth int) map[string]*EngineOrderBookSnapshot {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	snapshots := make(map[string]*OrderBookSnapshot)
+	snapshots := make(map[string]*EngineOrderBookSnapshot)
 	for symbol, engine := range m.engines {
 		snapshots[symbol] = engine.GetOrderBookSnapshot(depth)
 	}
@@ -220,20 +220,20 @@ func (m *MultiInstrumentMatchingEngine) GetAllSnapshots(depth int) map[string]*O
 }
 
 type OptionMatchingEngine struct {
-	*DisruptionEngine
+	*MatchingEngine
 	instrument       *Instrument
-	underlyingEngine *DisruptionEngine
+	underlyingEngine *MatchingEngine
 	greeksCalculator *GreeksCalculator
 }
 
-func NewOptionMatchingEngine(instrument *Instrument, capacity uint64, underlyingEngine *DisruptionEngine) (*OptionMatchingEngine, error) {
-	engine, err := NewDisruptionEngine(instrument.Symbol, capacity, nil)
+func NewOptionMatchingEngine(instrument *Instrument, capacity uint64, underlyingEngine *MatchingEngine) (*OptionMatchingEngine, error) {
+	engine, err := NewMatchingEngine(instrument.Symbol, capacity, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	return &OptionMatchingEngine{
-		DisruptionEngine: engine,
+		MatchingEngine:   engine,
 		instrument:       instrument,
 		underlyingEngine: underlyingEngine,
 		greeksCalculator: NewGreeksCalculator(),
@@ -330,21 +330,21 @@ func (c *GreeksCalculator) erf(x decimal.Decimal) decimal.Decimal {
 }
 
 type FutureMatchingEngine struct {
-	*DisruptionEngine
+	*MatchingEngine
 	instrument *Instrument
 	settlement *FutureSettlement
 }
 
 func NewFutureMatchingEngine(instrument *Instrument, capacity uint64) (*FutureMatchingEngine, error) {
-	engine, err := NewDisruptionEngine(instrument.Symbol, capacity, nil)
+	engine, err := NewMatchingEngine(instrument.Symbol, capacity, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	return &FutureMatchingEngine{
-		DisruptionEngine: engine,
-		instrument:       instrument,
-		settlement:       NewFutureSettlement(instrument),
+		MatchingEngine: engine,
+		instrument:     instrument,
+		settlement:     NewFutureSettlement(instrument),
 	}, nil
 }
 
@@ -417,7 +417,7 @@ type MTMResult struct {
 
 type CallAuctionEngine struct {
 	symbol      string
-	orderBook   *OrderBook
+	orderBook   *EngineOrderBook
 	minTick     decimal.Decimal
 	auctionType string
 }
@@ -425,7 +425,7 @@ type CallAuctionEngine struct {
 func NewCallAuctionEngine(symbol string, minTick decimal.Decimal, auctionType string) *CallAuctionEngine {
 	return &CallAuctionEngine{
 		symbol:      symbol,
-		orderBook:   NewOrderBook(symbol),
+		orderBook:   NewEngineOrderBook(symbol),
 		minTick:     minTick,
 		auctionType: auctionType,
 	}
@@ -433,9 +433,9 @@ func NewCallAuctionEngine(symbol string, minTick decimal.Decimal, auctionType st
 
 func (e *CallAuctionEngine) CollectOrder(order *types.Order) {
 	if order.Side == "BUY" {
-		e.orderBook.Bids.Insert(-order.Price.InexactFloat64(), NewOrderLevel(order.Price))
+		e.orderBook.Bids.Insert(-order.Price.InexactFloat64(), NewEngineOrderLevel(order.Price))
 	} else {
-		e.orderBook.Asks.Insert(order.Price.InexactFloat64(), NewOrderLevel(order.Price))
+		e.orderBook.Asks.Insert(order.Price.InexactFloat64(), NewEngineOrderLevel(order.Price))
 	}
 }
 

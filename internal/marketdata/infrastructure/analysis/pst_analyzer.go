@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/wyfcoding/financialtrading/internal/marketdata/domain"
-	algorithm "github.com/wyfcoding/pkg/algorithm/graph"
+	algorithm "github.com/wyfcoding/pkg/algos/graph"
 )
 
 // PSTHistoryAnalyzer 基于主席树的历史价格分布分析器（技术实现）。

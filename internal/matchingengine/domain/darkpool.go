@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"github.com/wyfcoding/pkg/algorithm/types"
+	"github.com/wyfcoding/pkg/algos/types"
 )
 
 // DarkPoolEngine 暗池撮合引擎
@@ -21,10 +21,10 @@ type DarkPoolEngine struct {
 	SellQueue       *list.List      // 待成交卖单
 	mutex           sync.RWMutex
 	Logger          *slog.Logger
-	ReferenceEngine *DisruptionEngine // 用于获取参考订单簿 BBO
+	ReferenceEngine *MatchingEngine // 用于获取参考订单簿 BBO
 }
 
-func NewDarkPoolEngine(symbol string, minQty decimal.Decimal, ref *DisruptionEngine, logger *slog.Logger) *DarkPoolEngine {
+func NewDarkPoolEngine(symbol string, minQty decimal.Decimal, ref *MatchingEngine, logger *slog.Logger) *DarkPoolEngine {
 	return &DarkPoolEngine{
 		Symbol:          symbol,
 		MinOrderQty:     minQty,
@@ -134,7 +134,7 @@ func (e *DarkPoolEngine) getMidpoint() (decimal.Decimal, bool) {
 	}
 
 	snapshot := e.ReferenceEngine.GetOrderBookSnapshot(1)
-	if len(snapshot.Bids) == 0 || len(snapshot.Asks) == 0 {
+	if snapshot == nil || len(snapshot.Bids) == 0 || len(snapshot.Asks) == 0 {
 		return decimal.Zero, false
 	}
 

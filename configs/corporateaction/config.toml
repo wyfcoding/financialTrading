@@ -1,0 +1,30 @@
+# 金融交易系统 - 公司行为服务配置文件
+version = "1.0.0"
+
+[server]
+name = "corporateaction"
+environment = "dev"
+
+[server.http]
+addr = "0.0.0.0"
+port = 8119
+timeout = "3s"
+
+[server.grpc]
+addr = "0.0.0.0"
+port = 9119
+timeout = "3s"
+
+[log]
+level = "info"
+format = "json"
+output = "stdout"
+
+[data.database]
+driver = "mysql"
+dsn = "root:root@tcp(127.0.0.1:3306)/trading_corporateaction?charset=utf8mb4&parseTime=True&loc=Local"
+
+[data.redis]
+addrs = ["127.0.0.1:6379"]
+password = "redis_password"
+db = 0

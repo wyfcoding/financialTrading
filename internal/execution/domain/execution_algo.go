@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	soralgo "github.com/wyfcoding/financialtrading/internal/execution/domain/sor"
 	"github.com/wyfcoding/pkg/eventsourcing"
 )
 
@@ -298,7 +299,6 @@ type MarketDataProvider interface {
 }
 
 // SORStrategy 智能路由策略
-// 核心逻辑：在多个 Venue 之间寻找最优成交路径，平衡价格、深度、费用和延迟
 type SORStrategy struct {
 	Provider MarketDataProvider
 	Venues   []*Venue
@@ -316,11 +316,37 @@ func (s *SORStrategy) GenerateSlices(order *AlgoOrder) ([]*ChildOrder, error) {
 		return nil, nil
 	}
 
-	optimizer := NewSOROptimizer(0.0001) // 假设一个默认的延迟因子
-	routes, err := optimizer.Optimize(ctx, order.Side, remainingQty, s.Venues, depths)
-	if err != nil {
-		return nil, err
+	optimizer := &soralgo.SOROptimizer{LatencyFactor: 0.1}
+
+	var inputs []soralgo.RouteInput
+	for _, d := range depths {
+		venueMap := make(map[string]*Venue)
+		for _, v := range s.Venues {
+			venueMap[v.ID] = v
+		}
+
+		v, ok := venueMap[d.VenueID]
+		if !ok {
+			continue
+		}
+
+		levels := d.Asks
+		if order.Side == TradeSideSell {
+			levels = d.Bids
+		}
+
+		for _, l := range levels {
+			inputs = append(inputs, soralgo.RouteInput{
+				VenueID:   d.VenueID,
+				Price:     l.Price,
+				Quantity:  l.Quantity,
+				FeeRate:   v.ExecutionFee,
+				LatencyMs: float64(v.Latency.Milliseconds()),
+			})
+		}
 	}
+
+	routes := optimizer.Optimize(remainingQty, inputs, order.Side == TradeSideBuy)
 
 	var slices []*ChildOrder
 	now := time.Now().Unix()

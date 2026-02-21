@@ -1,3 +1,6 @@
+//go:build !clearing_experimental
+// +build !clearing_experimental
+
 // 变更说明：新增中央对手方 (CCP) 清算模型，实现“合同替代 (Novation)”逻辑，由清算所承担履约担保。
 // 假设：清算所作为交易双方的共同对手方，每笔交易生成的 Settlement 将被拆分为清算所与买方、清算所与卖方的两条结算路径。
 package domain

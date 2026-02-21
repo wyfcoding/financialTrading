@@ -2,6 +2,7 @@ package interfaces
 
 import (
 	"context"
+	"strings"
 
 	pb "github.com/wyfcoding/financialtrading/go-api/aml/v1"
 	"github.com/wyfcoding/financialtrading/internal/aml/application"
@@ -25,5 +26,6 @@ func (h *AMLHandler) GetRiskScore(ctx context.Context, req *pb.GetRiskScoreReque
 }
 
 func (h *AMLHandler) ListAlerts(ctx context.Context, req *pb.ListAlertsRequest) (*pb.ListAlertsResponse, error) {
-	return h.app.ListAlerts(ctx, req.Status)
+	status := strings.TrimPrefix(req.Status.String(), "ALERT_STATUS_")
+	return h.app.ListAlerts(ctx, status)
 }

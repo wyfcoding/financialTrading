@@ -9,7 +9,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/wyfcoding/financialtrading/internal/quant/domain"
-	"github.com/wyfcoding/pkg/algorithm/finance"
+	"github.com/wyfcoding/pkg/algos/finance"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/messagequeue"

@@ -4,7 +4,6 @@ package order.v1;
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/field_mask.proto";
-import "order/v1/error_reason.proto";
 
 option go_package = "github.com/wyfcoding/financialtrading/go-api/order/v1;v1";
 

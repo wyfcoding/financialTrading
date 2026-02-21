@@ -12,7 +12,7 @@ import (
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/idgen"
 	"github.com/wyfcoding/pkg/messagequeue"
-	"github.com/wyfcoding/pkg/transaction"
+	"github.com/wyfcoding/pkg/saga"
 )
 
 type SettleTradeRequest struct {
@@ -35,7 +35,7 @@ type MarkSettlementCommand struct {
 
 // DeductBuyStep 扣除买方资金步骤
 type DeductBuyStep struct {
-	transaction.BaseStep
+	saga.BaseStep
 	accountCli accountv1.AccountServiceClient
 	settlement *domain.Settlement
 }
@@ -62,7 +62,7 @@ func (s *DeductBuyStep) Compensate(ctx context.Context) error {
 
 // AddSellStep 增加卖方资金步骤
 type AddSellStep struct {
-	transaction.BaseStep
+	saga.BaseStep
 	accountCli accountv1.AccountServiceClient
 	settlement *domain.Settlement
 }
@@ -147,18 +147,18 @@ func (s *ClearingCommandService) SettleTrade(ctx context.Context, req *SettleTra
 func (s *ClearingCommandService) executeSaga(ctx context.Context, settlement *domain.Settlement) {
 	slog.InfoContext(ctx, "starting settlement saga with coordinator", "settlement_id", settlement.SettlementID)
 
-	saga := transaction.NewSagaCoordinator()
-	saga.AddStep(&DeductBuyStep{
-		BaseStep:   transaction.BaseStep{StepName: "DeductBuy"},
+	coordinator := saga.NewCoordinator()
+	coordinator.AddStep(&DeductBuyStep{
+		BaseStep:   saga.BaseStep{StepName: "DeductBuy"},
 		accountCli: s.accountClient,
 		settlement: settlement,
 	}).AddStep(&AddSellStep{
-		BaseStep:   transaction.BaseStep{StepName: "AddSell"},
+		BaseStep:   saga.BaseStep{StepName: "AddSell"},
 		accountCli: s.accountClient,
 		settlement: settlement,
 	})
 
-	if err := saga.Execute(ctx); err != nil {
+	if err := coordinator.Execute(ctx); err != nil {
 		s.markFailed(ctx, settlement.SettlementID, err.Error())
 		return
 	}
@@ -258,6 +258,57 @@ func (s *ClearingCommandService) ExecuteEODClearing(ctx context.Context, clearin
 
 // RunLiquidationCheck 对指定用户执行强平核查
 func (s *ClearingCommandService) RunLiquidationCheck(ctx context.Context, userID string) error {
+	settlements, err := s.repo.List(ctx, 5000)
+	if err != nil {
+		return err
+	}
+
+	totalExposure := decimal.Zero
+	pendingCount := 0
+	for _, st := range settlements {
+		if st == nil || st.Status != domain.StatusPending {
+			continue
+		}
+		if st.BuyUserID != userID && st.SellUserID != userID {
+			continue
+		}
+		pendingCount++
+
+		// 买方未结算暴露按全额计，卖方按折算系数计（资产交割风险）。
+		if st.BuyUserID == userID {
+			totalExposure = totalExposure.Add(st.TotalAmount)
+		}
+		if st.SellUserID == userID {
+			totalExposure = totalExposure.Add(st.TotalAmount.Mul(decimal.NewFromFloat(0.5)))
+		}
+	}
+
+	// 持久化实时清算暴露快照，供风控链路查询。
+	if s.redisRepo != nil {
+		_ = s.redisRepo.Save(ctx, userID, map[string]interface{}{
+			"user_id":         userID,
+			"pending_count":   pendingCount,
+			"total_exposure":  totalExposure.String(),
+			"checked_at_unix": time.Now().Unix(),
+		})
+	}
+
+	liquidationThreshold := decimal.NewFromInt(1_000_000) // 1,000,000
+	if totalExposure.GreaterThan(liquidationThreshold) {
+		reason := fmt.Sprintf("pending exposure %s exceeds threshold %s", totalExposure.String(), liquidationThreshold.String())
+		if s.publisher != nil {
+			_ = s.publisher.Publish(ctx, "clearing.liquidation.alert", userID, map[string]interface{}{
+				"user_id":     userID,
+				"exposure":    totalExposure.String(),
+				"threshold":   liquidationThreshold.String(),
+				"pending_cnt": pendingCount,
+				"reason":      reason,
+				"timestamp":   time.Now().Unix(),
+			})
+		}
+		return fmt.Errorf("liquidation check failed: %s", reason)
+	}
+
 	return nil
 }
 

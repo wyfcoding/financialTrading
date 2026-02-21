@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package api.corporateaction.v1;
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/corporateaction/v1;corporateactionv1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// 公司行为服务，处理股息派发、拆股、合股等事件。
+service CorporateActionService {
+  // 申报公司行为
+  rpc DeclareAction(DeclareActionRequest) returns (DeclareActionResponse);
+  // 执行公司行为
+  rpc ExecuteAction(ExecuteActionRequest) returns (google.protobuf.Empty);
+  // 查询证券的公司行为历史
+  rpc ListActionsBySymbol(ListActionsRequest) returns (ListActionsResponse);
+}
+
+message DeclareActionRequest {
+  string symbol = 1;
+  string action_type = 2; // DIVIDEND, SPLIT, MERGER
+  string factor = 3;      // 股息率或拆分比例
+  google.protobuf.Timestamp record_date = 4;
+  google.protobuf.Timestamp payment_date = 5;
+}
+
+message DeclareActionResponse {
+  string action_id = 1;
+}
+
+message ExecuteActionRequest {
+  string action_id = 1;
+}
+
+message ListActionsRequest {
+  string symbol = 1;
+}
+
+message ListActionsResponse {
+  message Action {
+    string id = 1;
+    string type = 2;
+    string status = 3;
+    google.protobuf.Timestamp processed_at = 4;
+  }
+  repeated Action actions = 5;
+}

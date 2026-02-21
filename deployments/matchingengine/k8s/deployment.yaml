@@ -1,0 +1,59 @@
+# 变更说明：
+# 极其特殊的 K8s 编排配置，为了压榨硬件性能：
+# 1. Guaranteed QoS (limits == requests)：借此激活 k8s kubelet 的 cpumanager 静态绑核策略。
+# 2. Bypass Istio/Envoy：不被边车网格劫持，直连 Pod 暴露高频端口。
+apiVersion: apps/v1
+kind: StatefulSet   # 注意：对于有状态内存机，用 StatefulSet 比 Deployment 更稳定，防脑裂双引擎同时运行。
+metadata:
+  name: matchingengine
+  namespace: e-finance
+  labels:
+    app: matchingengine
+spec:
+  serviceName: "matchingengine-headless"
+  replicas: 1       # 核心撮合引擎只能是单核/单节点，用 Sharding (如按 Trading Pair 分区) 来扩容，不能并行扩副本。
+  selector:
+    matchLabels:
+      app: matchingengine
+  template:
+    metadata:
+      labels:
+        app: matchingengine
+      annotations:
+        # 【神级优化】拒绝网格代理劫持！避免 Envoy 产生网络转发损耗
+        sidecar.istio.io/inject: "false" 
+    spec:
+      containers:
+      - name: matchingengine
+        image: registry.example.com/financialtrading/matchingengine:latest
+        ports:
+        - containerPort: 9097
+          name: grpc
+        resources:
+          # 【神级优化】Requests 完全等于 Limits
+          # K8s 检测到这个特征，会从物理机 CPU 中强行摘除 4 个 Core 给它独占！
+          requests:
+            cpu: 4000m
+            memory: 8Gi
+          limits:
+            cpu: 4000m
+            memory: 8Gi
+        readinessProbe:
+          tcpSocket:
+            port: 9097
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: matchingengine-headless
+  namespace: e-finance
+spec:
+  clusterIP: None  # 无头服务，绕过 Service Iptables，让网关直连撮合Pod的真实物理 IP
+  selector:
+    app: matchingengine
+  ports:
+  - name: grpc
+    port: 9097
+    targetPort: 9097

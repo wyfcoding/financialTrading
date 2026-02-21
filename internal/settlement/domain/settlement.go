@@ -1,3 +1,6 @@
+//go:build !settlement_experimental
+// +build !settlement_experimental
+
 // 变更说明：完善结算服务领域模型，增加 DVP 券款对付、多币种结算、结算失败处理等完整功能
 package domain
 
@@ -49,10 +52,10 @@ func (s SettlementStatus) String() string {
 type SettlementType int8
 
 const (
-	SettlementTypeDVP   SettlementType = 1 // 券款对付
-	SettlementTypeFOP   SettlementType = 2 // 只付券
-	SettlementTypeRVP   SettlementType = 3 // 只收款
-	SettlementTypeFree  SettlementType = 4 // 免费交付
+	SettlementTypeDVP  SettlementType = 1 // 券款对付
+	SettlementTypeFOP  SettlementType = 2 // 只付券
+	SettlementTypeRVP  SettlementType = 3 // 只收款
+	SettlementTypeFree SettlementType = 4 // 免费交付
 )
 
 func (t SettlementType) String() string {
@@ -73,47 +76,47 @@ func (t SettlementType) String() string {
 // SettlementInstruction 结算指令聚合根
 type SettlementInstruction struct {
 	gorm.Model
-	InstructionID    string           `gorm:"column:instruction_id;type:varchar(64);uniqueIndex;not null" json:"instruction_id"`
-	TradeID          string           `gorm:"column:trade_id;type:varchar(64);index;not null" json:"trade_id"`
-	OrderID          string           `gorm:"column:order_id;type:varchar(64);index" json:"order_id"`
-	Symbol           string           `gorm:"column:symbol;type:varchar(32);not null" json:"symbol"`
-	SecurityType     string           `gorm:"column:security_type;type:varchar(32)" json:"security_type"`
-	Quantity         decimal.Decimal  `gorm:"column:quantity;type:decimal(20,4);not null" json:"quantity"`
-	Price            decimal.Decimal  `gorm:"column:price;type:decimal(18,8);not null" json:"price"`
-	Amount           decimal.Decimal  `gorm:"column:amount;type:decimal(20,2);not null" json:"amount"`
-	Currency         string           `gorm:"column:currency;type:varchar(3);not null" json:"currency"`
-	SettlementType   SettlementType   `gorm:"column:settlement_type;type:tinyint;not null;default:1" json:"settlement_type"`
-	
-	BuyerAccountID   string           `gorm:"column:buyer_account_id;type:varchar(64);index;not null" json:"buyer_account_id"`
-	BuyerCustodian   string           `gorm:"column:buyer_custodian;type:varchar(64)" json:"buyer_custodian"`
-	BuyerSettleAcct  string           `gorm:"column:buyer_settle_account;type:varchar(64)" json:"buyer_settle_account"`
-	
-	SellerAccountID  string           `gorm:"column:seller_account_id;type:varchar(64);index;not null" json:"seller_account_id"`
-	SellerCustodian  string           `gorm:"column:seller_custodian;type:varchar(64)" json:"seller_custodian"`
-	SellerSettleAcct string           `gorm:"column:seller_settle_account;type:varchar(64)" json:"seller_settle_account"`
-	
-	TradeDate        time.Time        `gorm:"column:trade_date;not null" json:"trade_date"`
-	SettlementDate   time.Time        `gorm:"column:settlement_date;index;not null" json:"settlement_date"`
-	ValueDate        time.Time        `gorm:"column:value_date" json:"value_date"`
-	Status           SettlementStatus `gorm:"column:status;type:tinyint;not null;default:1" json:"status"`
-	FailReason       string           `gorm:"column:fail_reason;type:varchar(512)" json:"fail_reason"`
-	RetryCount       int              `gorm:"column:retry_count;default:0" json:"retry_count"`
-	MaxRetry         int              `gorm:"column:max_retry;default:3" json:"max_retry"`
-	
-	CCPFlag          bool             `gorm:"column:ccp_flag;default:false" json:"ccp_flag"`
-	CCPAccount       string           `gorm:"column:ccp_account;type:varchar(64)" json:"ccp_account"`
-	
-	NettingID        string           `gorm:"column:netting_id;type:varchar(64);index" json:"netting_id"`
-	BatchID          string           `gorm:"column:batch_id;type:varchar(64);index" json:"batch_id"`
-	
-	FeeAmount        decimal.Decimal  `gorm:"column:fee_amount;type:decimal(20,2)" json:"fee_amount"`
-	FeeCurrency      string           `gorm:"column:fee_currency;type:varchar(3)" json:"fee_currency"`
-	TaxAmount        decimal.Decimal  `gorm:"column:tax_amount;type:decimal(20,2)" json:"tax_amount"`
-	
-	ConfirmedAt      *time.Time       `gorm:"column:confirmed_at" json:"confirmed_at"`
-	SettledAt        *time.Time       `gorm:"column:settled_at" json:"settled_at"`
-	
-	Events           []SettlementEvent `gorm:"foreignKey:InstructionID;references:InstructionID" json:"events"`
+	InstructionID  string          `gorm:"column:instruction_id;type:varchar(64);uniqueIndex;not null" json:"instruction_id"`
+	TradeID        string          `gorm:"column:trade_id;type:varchar(64);index;not null" json:"trade_id"`
+	OrderID        string          `gorm:"column:order_id;type:varchar(64);index" json:"order_id"`
+	Symbol         string          `gorm:"column:symbol;type:varchar(32);not null" json:"symbol"`
+	SecurityType   string          `gorm:"column:security_type;type:varchar(32)" json:"security_type"`
+	Quantity       decimal.Decimal `gorm:"column:quantity;type:decimal(20,4);not null" json:"quantity"`
+	Price          decimal.Decimal `gorm:"column:price;type:decimal(18,8);not null" json:"price"`
+	Amount         decimal.Decimal `gorm:"column:amount;type:decimal(20,2);not null" json:"amount"`
+	Currency       string          `gorm:"column:currency;type:varchar(3);not null" json:"currency"`
+	SettlementType SettlementType  `gorm:"column:settlement_type;type:tinyint;not null;default:1" json:"settlement_type"`
+
+	BuyerAccountID  string `gorm:"column:buyer_account_id;type:varchar(64);index;not null" json:"buyer_account_id"`
+	BuyerCustodian  string `gorm:"column:buyer_custodian;type:varchar(64)" json:"buyer_custodian"`
+	BuyerSettleAcct string `gorm:"column:buyer_settle_account;type:varchar(64)" json:"buyer_settle_account"`
+
+	SellerAccountID  string `gorm:"column:seller_account_id;type:varchar(64);index;not null" json:"seller_account_id"`
+	SellerCustodian  string `gorm:"column:seller_custodian;type:varchar(64)" json:"seller_custodian"`
+	SellerSettleAcct string `gorm:"column:seller_settle_account;type:varchar(64)" json:"seller_settle_account"`
+
+	TradeDate      time.Time        `gorm:"column:trade_date;not null" json:"trade_date"`
+	SettlementDate time.Time        `gorm:"column:settlement_date;index;not null" json:"settlement_date"`
+	ValueDate      time.Time        `gorm:"column:value_date" json:"value_date"`
+	Status         SettlementStatus `gorm:"column:status;type:tinyint;not null;default:1" json:"status"`
+	FailReason     string           `gorm:"column:fail_reason;type:varchar(512)" json:"fail_reason"`
+	RetryCount     int              `gorm:"column:retry_count;default:0" json:"retry_count"`
+	MaxRetry       int              `gorm:"column:max_retry;default:3" json:"max_retry"`
+
+	CCPFlag    bool   `gorm:"column:ccp_flag;default:false" json:"ccp_flag"`
+	CCPAccount string `gorm:"column:ccp_account;type:varchar(64)" json:"ccp_account"`
+
+	NettingID string `gorm:"column:netting_id;type:varchar(64);index" json:"netting_id"`
+	BatchID   string `gorm:"column:batch_id;type:varchar(64);index" json:"batch_id"`
+
+	FeeAmount   decimal.Decimal `gorm:"column:fee_amount;type:decimal(20,2)" json:"fee_amount"`
+	FeeCurrency string          `gorm:"column:fee_currency;type:varchar(3)" json:"fee_currency"`
+	TaxAmount   decimal.Decimal `gorm:"column:tax_amount;type:decimal(20,2)" json:"tax_amount"`
+
+	ConfirmedAt *time.Time `gorm:"column:confirmed_at" json:"confirmed_at"`
+	SettledAt   *time.Time `gorm:"column:settled_at" json:"settled_at"`
+
+	Events []SettlementEvent `gorm:"foreignKey:InstructionID;references:InstructionID" json:"events"`
 }
 
 // TableName 表名
@@ -208,21 +211,21 @@ func NewSettlementInstruction(
 	amount := quantity.Mul(price)
 
 	return &SettlementInstruction{
-		InstructionID:  fmt.Sprintf("SI%d%s", now.UnixNano(), tradeID[:8]),
-		TradeID:        tradeID,
-		Symbol:         symbol,
-		Quantity:       quantity,
-		Price:          price,
-		Amount:         amount,
-		Currency:       currency,
-		SettlementType: SettlementTypeDVP,
-		BuyerAccountID: buyerAccountID,
+		InstructionID:   fmt.Sprintf("SI%d%s", now.UnixNano(), tradeID[:8]),
+		TradeID:         tradeID,
+		Symbol:          symbol,
+		Quantity:        quantity,
+		Price:           price,
+		Amount:          amount,
+		Currency:        currency,
+		SettlementType:  SettlementTypeDVP,
+		BuyerAccountID:  buyerAccountID,
 		SellerAccountID: sellerAccountID,
-		TradeDate:      tradeDate,
-		SettlementDate: settlementDate,
-		Status:         SettlementStatusPending,
-		MaxRetry:       3,
-		Events:         []SettlementEvent{},
+		TradeDate:       tradeDate,
+		SettlementDate:  settlementDate,
+		Status:          SettlementStatusPending,
+		MaxRetry:        3,
+		Events:          []SettlementEvent{},
 	}
 }
 

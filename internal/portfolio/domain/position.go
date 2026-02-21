@@ -9,20 +9,20 @@ import (
 
 type Position struct {
 	gorm.Model
-	UserID       string          `gorm:"column:user_id;type:varchar(32);index:idx_user_symbol;not null"`
-	Symbol       string          `gorm:"column:symbol;type:varchar(20);index:idx_user_symbol;not null"`
-	Quantity     decimal.Decimal `gorm:"column:quantity;type:decimal(20,6);not null"`
-	AvailableQty decimal.Decimal `gorm:"column:available_qty;type:decimal(20,6);not null"`
-	FrozenQty    decimal.Decimal `gorm:"column:frozen_qty;type:decimal(20,6);not null"`
-	AvgCost      decimal.Decimal `gorm:"column:avg_cost;type:decimal(20,6);not null"`
-	UnrealizedPnL decimal.Decimal `gorm:"column:unrealized_pnl;type:decimal(20,6)"`
-	RealizedPnL  decimal.Decimal `gorm:"column:realized_pnl;type:decimal(20,6)"`
-	PositionType string          `gorm:"column:position_type;type:varchar(20);not null"`
-	Leverage     decimal.Decimal `gorm:"column:leverage;type:decimal(10,2);default:1"`
-	MarginUsed   decimal.Decimal `gorm:"column:margin_used;type:decimal(20,6)"`
+	UserID           string          `gorm:"column:user_id;type:varchar(32);index:idx_user_symbol;not null"`
+	Symbol           string          `gorm:"column:symbol;type:varchar(20);index:idx_user_symbol;not null"`
+	Quantity         decimal.Decimal `gorm:"column:quantity;type:decimal(20,6);not null"`
+	AvailableQty     decimal.Decimal `gorm:"column:available_qty;type:decimal(20,6);not null"`
+	FrozenQty        decimal.Decimal `gorm:"column:frozen_qty;type:decimal(20,6);not null"`
+	AvgCost          decimal.Decimal `gorm:"column:avg_cost;type:decimal(20,6);not null"`
+	UnrealizedPnL    decimal.Decimal `gorm:"column:unrealized_pnl;type:decimal(20,6)"`
+	RealizedPnL      decimal.Decimal `gorm:"column:realized_pnl;type:decimal(20,6)"`
+	PositionType     string          `gorm:"column:position_type;type:varchar(20);not null"`
+	Leverage         decimal.Decimal `gorm:"column:leverage;type:decimal(10,2);default:1"`
+	MarginUsed       decimal.Decimal `gorm:"column:margin_used;type:decimal(20,6)"`
 	LiquidationPrice decimal.Decimal `gorm:"column:liquidation_price;type:decimal(20,6)"`
-	OpenedAt     time.Time       `gorm:"column:opened_at;type:timestamp"`
-	UpdatedAt    time.Time       `gorm:"column:updated_at;type:timestamp"`
+	OpenedAt         time.Time       `gorm:"column:opened_at;type:timestamp"`
+	UpdatedAt        time.Time       `gorm:"column:updated_at;type:timestamp"`
 }
 
 func (Position) TableName() string { return "positions" }
@@ -120,16 +120,16 @@ func (p *Position) CostBasis() decimal.Decimal {
 }
 
 type PortfolioOverview struct {
-	UserID         string
-	TotalEquity    decimal.Decimal
-	TotalCost      decimal.Decimal
-	UnrealizedPnL  decimal.Decimal
-	RealizedPnL    decimal.Decimal
-	DailyPnL       decimal.Decimal
-	DailyPnLPct    decimal.Decimal
-	Positions      []*Position
-	Currency       string
-	LastUpdated    time.Time
+	UserID        string
+	TotalEquity   decimal.Decimal
+	TotalCost     decimal.Decimal
+	UnrealizedPnL decimal.Decimal
+	RealizedPnL   decimal.Decimal
+	DailyPnL      decimal.Decimal
+	DailyPnLPct   decimal.Decimal
+	Positions     []*Position
+	Currency      string
+	LastUpdated   time.Time
 }
 
 func NewPortfolioOverview(userID, currency string) *PortfolioOverview {
@@ -159,7 +159,7 @@ func (o *PortfolioOverview) UpdateDailyPnL(previousEquity decimal.Decimal) {
 	}
 }
 
-type PortfolioEvent struct {
+type PositionActionEvent struct {
 	ID          string
 	UserID      string
 	EventType   string
@@ -171,9 +171,9 @@ type PortfolioEvent struct {
 }
 
 const (
-	EventTypePositionOpen   = "position_open"
-	EventTypePositionClose  = "position_close"
-	EventTypePositionAdjust = "position_adjust"
-	EventTypeDividend       = "dividend"
-	EventTypeSplit          = "split"
+	PositionActionOpen     = "position_open"
+	PositionActionClose    = "position_close"
+	PositionActionAdjust   = "position_adjust"
+	PositionActionDividend = "dividend"
+	PositionActionSplit    = "split"
 )

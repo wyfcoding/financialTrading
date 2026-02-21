@@ -177,16 +177,16 @@ func (s *ExecutionCommandService) SubmitSOROrder(ctx context.Context, cmd Submit
 	for _, slice := range slices {
 		var side orderv1.OrderSide
 		if order.Side == domain.TradeSideBuy {
-			side = orderv1.OrderSide_BUY
+			side = orderv1.OrderSide_ORDER_SIDE_BUY
 		} else {
-			side = orderv1.OrderSide_SELL
+			side = orderv1.OrderSide_ORDER_SIDE_SELL
 		}
 
 		var otype orderv1.OrderType
 		if slice.OrderType == "MARKET" {
-			otype = orderv1.OrderType_MARKET
+			otype = orderv1.OrderType_ORDER_TYPE_MARKET
 		} else {
-			otype = orderv1.OrderType_LIMIT
+			otype = orderv1.OrderType_ORDER_TYPE_LIMIT
 		}
 
 		_, _ = s.orderClient.CreateOrder(ctx, &orderv1.CreateOrderRequest{
@@ -273,16 +273,16 @@ func (s *ExecutionCommandService) processActiveAlgoOrders(ctx context.Context) {
 		for _, slice := range slices {
 			var side orderv1.OrderSide
 			if order.Side == domain.TradeSideBuy {
-				side = orderv1.OrderSide_BUY
+				side = orderv1.OrderSide_ORDER_SIDE_BUY
 			} else {
-				side = orderv1.OrderSide_SELL
+				side = orderv1.OrderSide_ORDER_SIDE_SELL
 			}
 
 			var otype orderv1.OrderType
 			if slice.OrderType == "MARKET" {
-				otype = orderv1.OrderType_MARKET
+				otype = orderv1.OrderType_ORDER_TYPE_MARKET
 			} else {
-				otype = orderv1.OrderType_LIMIT
+				otype = orderv1.OrderType_ORDER_TYPE_LIMIT
 			}
 
 			_, _ = s.orderClient.CreateOrder(ctx, &orderv1.CreateOrderRequest{
@@ -324,16 +324,16 @@ func (s *ExecutionCommandService) HandleLiquidation(ctx context.Context, userID,
 	var orderSide orderv1.OrderSide
 	// 强平需要执行反向操作
 	if side == "buy" || side == "BUY" {
-		orderSide = orderv1.OrderSide_SELL
+		orderSide = orderv1.OrderSide_ORDER_SIDE_SELL
 	} else {
-		orderSide = orderv1.OrderSide_BUY
+		orderSide = orderv1.OrderSide_ORDER_SIDE_BUY
 	}
 
 	_, err := s.orderClient.CreateOrder(ctx, &orderv1.CreateOrderRequest{
 		UserId:   userID,
 		Symbol:   symbol,
 		Side:     orderSide,
-		Type:     orderv1.OrderType_MARKET,
+		Type:     orderv1.OrderType_ORDER_TYPE_MARKET,
 		Quantity: qty,
 	})
 	if err != nil {

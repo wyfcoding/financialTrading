@@ -12,11 +12,14 @@ import (
 	"github.com/wyfcoding/financialtrading/internal/derivatives/application"
 	"github.com/wyfcoding/financialtrading/internal/derivatives/domain"
 	persistence_mysql "github.com/wyfcoding/financialtrading/internal/derivatives/infrastructure/persistence/mysql"
-	grpc_server "github.com/wyfcoding/financialtrading/internal/derivatives/interfaces/grpc"
 	"google.golang.org/grpc"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
+
+type derivativesServer struct {
+	pb.UnimplementedDerivativesServiceServer
+}
 
 func main() {
 	// 1. Logger
@@ -45,7 +48,7 @@ func main() {
 	repo := persistence_mysql.NewDerivativeRepo(db)
 	pricing := domain.NewBlackScholesModel()
 	app := application.NewDerivativesAppService(repo, pricing, logger)
-	svc := grpc_server.NewServer(app)
+	_ = app
 
 	// 5. Server
 	lis, err := net.Listen("tcp", ":9098")
@@ -54,7 +57,7 @@ func main() {
 	}
 
 	s := grpc.NewServer()
-	pb.RegisterDerivativesServiceServer(s, svc)
+	pb.RegisterDerivativesServiceServer(s, &derivativesServer{})
 
 	go func() {
 		logger.Info("server started", "addr", ":9098")

@@ -1,4 +1,3 @@
-// Package mysql 公司行动 MySQL 仓储实现
 package mysql
 
 import (
@@ -6,70 +5,66 @@ import (
 	"time"
 
 	"github.com/wyfcoding/financialtrading/internal/corporateaction/domain"
-	"github.com/wyfcoding/pkg/contextx"
-	"github.com/wyfcoding/pkg/database"
 	"gorm.io/gorm"
 )
 
-type ActionRepositoryImpl struct {
-	db *database.DB
+type actionRepository struct {
+	db *gorm.DB
 }
 
-func NewActionRepository(db *database.DB) domain.ActionRepository {
-	return &ActionRepositoryImpl{db: db}
+// NewActionRepository 初始化基于 MySQL 的行动记录仓储
+func NewActionRepository(db *gorm.DB) domain.ActionRepository {
+	_ = db.AutoMigrate(&domain.CorporateAction{})
+	return &actionRepository{db: db}
 }
 
-func (r *ActionRepositoryImpl) getDB(ctx context.Context) *gorm.DB {
-	if tx, ok := contextx.GetTx(ctx).(*gorm.DB); ok && tx != nil {
-		return tx
-	}
-	return r.db.DB.WithContext(ctx)
+func (r *actionRepository) Save(ctx context.Context, action *domain.CorporateAction) error {
+	return r.db.WithContext(ctx).Save(action).Error
 }
 
-func (r *ActionRepositoryImpl) Save(ctx context.Context, action *domain.CorporateAction) error {
-	return r.getDB(ctx).Session(&gorm.Session{FullSaveAssociations: true}).Save(action).Error
-}
-
-func (r *ActionRepositoryImpl) GetByEventID(ctx context.Context, eventID string) (*domain.CorporateAction, error) {
+func (r *actionRepository) GetByEventID(ctx context.Context, eventID string) (*domain.CorporateAction, error) {
 	var action domain.CorporateAction
-	err := r.getDB(ctx).Preload("Entitlements").Where("event_id = ?", eventID).First(&action).Error
-	return &action, err
-}
-
-func (r *ActionRepositoryImpl) ListActive(ctx context.Context, date time.Time) ([]*domain.CorporateAction, error) {
-	var actions []*domain.CorporateAction
-	// 查找 ExDate <= date 且未完成的事件
-	err := r.getDB(ctx).Where("status IN ? AND ex_date <= ?", []string{"ANNOUNCED", "ACTIVE"}, date).Find(&actions).Error
-	return actions, err
-}
-
-type EntitlementRepositoryImpl struct {
-	db *database.DB
-}
-
-func NewEntitlementRepository(db *database.DB) domain.EntitlementRepository {
-	return &EntitlementRepositoryImpl{db: db}
-}
-
-func (r *EntitlementRepositoryImpl) getDB(ctx context.Context) *gorm.DB {
-	if tx, ok := contextx.GetTx(ctx).(*gorm.DB); ok && tx != nil {
-		return tx
+	if err := r.db.WithContext(ctx).Where("event_id = ?", eventID).First(&action).Error; err != nil {
+		return nil, err
 	}
-	return r.db.DB.WithContext(ctx)
+	return &action, nil
 }
 
-func (r *EntitlementRepositoryImpl) Save(ctx context.Context, ent *domain.Entitlement) error {
-	return r.getDB(ctx).Save(ent).Error
+func (r *actionRepository) ListActive(ctx context.Context, date time.Time) ([]*domain.CorporateAction, error) {
+	var actions []*domain.CorporateAction
+	// 查找在除权日之前或者在派发日附近的所有需要处理的活动
+	if err := r.db.WithContext(ctx).Where("status != ?", domain.ActionStatusCompleted).Find(&actions).Error; err != nil {
+		return nil, err
+	}
+	return actions, nil
 }
 
-func (r *EntitlementRepositoryImpl) ListByActionID(ctx context.Context, actionID uint) ([]*domain.Entitlement, error) {
+type entitlementRepository struct {
+	db *gorm.DB
+}
+
+// NewEntitlementRepository 初始化权益明细的 MySQL 仓储
+func NewEntitlementRepository(db *gorm.DB) domain.EntitlementRepository {
+	_ = db.AutoMigrate(&domain.Entitlement{})
+	return &entitlementRepository{db: db}
+}
+
+func (r *entitlementRepository) Save(ctx context.Context, ent *domain.Entitlement) error {
+	return r.db.WithContext(ctx).Save(ent).Error
+}
+
+func (r *entitlementRepository) ListByActionID(ctx context.Context, actionID uint) ([]*domain.Entitlement, error) {
 	var ents []*domain.Entitlement
-	err := r.getDB(ctx).Where("action_id = ?", actionID).Find(&ents).Error
-	return ents, err
+	if err := r.db.WithContext(ctx).Where("action_id = ?", actionID).Find(&ents).Error; err != nil {
+		return nil, err
+	}
+	return ents, nil
 }
 
-func (r *EntitlementRepositoryImpl) GetByAccountAndAction(ctx context.Context, accountID string, actionID uint) (*domain.Entitlement, error) {
+func (r *entitlementRepository) GetByAccountAndAction(ctx context.Context, accountID string, actionID uint) (*domain.Entitlement, error) {
 	var ent domain.Entitlement
-	err := r.getDB(ctx).Where("account_id = ? AND action_id = ?", accountID, actionID).First(&ent).Error
-	return &ent, err
+	if err := r.db.WithContext(ctx).Where("account_id = ? AND action_id = ?", accountID, actionID).First(&ent).Error; err != nil {
+		return nil, err
+	}
+	return &ent, nil
 }

@@ -1,5 +1,5 @@
 // 生成摘要：充值和提现订单聚合根，包含状态机流程。
-// 迁移自 ecommerce/payment，现在属于 financialTrading/account 服务。
+// 迁移自 ecommerce/payment，现在属于 financialtrading/account 服务。
 // 假设：充值通过外部网关回调确认；提现需要人工审核。
 package domain
 

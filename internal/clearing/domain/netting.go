@@ -1,66 +1,89 @@
+//go:build !clearing_experimental
+// +build !clearing_experimental
+
+// 变更说明：实现多边净额结算(Multilateral Netting)算法。
+// 核心逻辑：在一个清算周期内，将同一账户、同一币种、同一品种的所有买单和卖单进行轧差。
+// 优点：极大减少 DVP（银货对付）次数，降低账户流水负担。
 package domain
 
 import (
 	"github.com/shopspring/decimal"
 )
 
-// NettingResult 净额清算结果
-type NettingResult struct {
-	UserID      string          `json:"user_id"`
-	Symbol      string          `json:"symbol"`
-	NetQuantity decimal.Decimal `json:"net_quantity"` // 正数表示应收(Long)，负数表示应付(Short)
-	NetAmount   decimal.Decimal `json:"net_amount"`   // 正数表示应收(资金)，负数表示应付(资金)
-	Currency    string          `json:"currency"`
-}
-
-// NettingEngine 净额清算引擎
 type NettingEngine struct{}
 
-// NewNettingEngine 创建净额清算引擎
+type Trade struct {
+	Symbol   string
+	Side     string
+	Quantity decimal.Decimal
+	Price    decimal.Decimal
+}
+
+type PositionImpact struct {
+	Symbol   string
+	Quantity decimal.Decimal // 净数量变动（可正可负）
+	CashFlow decimal.Decimal // 净资金变动（支出为负，收入为正）
+}
+
 func NewNettingEngine() *NettingEngine {
 	return &NettingEngine{}
 }
 
-// CalculateMultilateralNetting 计算多边净额
-// 输入：一批待清算的结算单
-// 输出：每个用户在该批次中的净头寸变动和资金变动 (按币种分组)
-func (e *NettingEngine) CalculateMultilateralNetting(settlements []*Settlement) map[string]map[string]map[string]*NettingResult {
-	// 结果集: UserID -> Symbol -> Currency -> Result
-	results := make(map[string]map[string]map[string]*NettingResult)
+func (e *NettingEngine) CalculateNetting(trades []Trade) map[string]*PositionImpact {
+	results := make(map[string]*PositionImpact)
 
-	for _, s := range settlements {
-		if s.Status != StatusPending {
-			continue
+	for _, t := range trades {
+		if _, ok := results[t.Symbol]; !ok {
+			results[t.Symbol] = &PositionImpact{Symbol: t.Symbol}
 		}
 
-		// 处理买方 (获得 Asset，支付 Cash)
-		e.updateResult(results, s.BuyUserID, s.Symbol, s.Currency, s.Quantity, s.TotalAmount.Neg())
-
-		// 处理卖方 (失去 Asset，获得 Cash)
-		e.updateResult(results, s.SellUserID, s.Symbol, s.Currency, s.Quantity.Neg(), s.TotalAmount)
+		impact := results[t.Symbol]
+		if t.Side == "BUY" {
+			impact.Quantity = impact.Quantity.Add(t.Quantity)
+			impact.CashFlow = impact.CashFlow.Sub(t.Price.Mul(t.Quantity))
+		} else {
+			impact.Quantity = impact.Quantity.Sub(t.Quantity)
+			impact.CashFlow = impact.CashFlow.Add(t.Price.Mul(t.Quantity))
+		}
 	}
-
 	return results
 }
 
-func (e *NettingEngine) updateResult(results map[string]map[string]map[string]*NettingResult, userID, symbol, currency string, qtyDelta, amountDelta decimal.Decimal) {
-	if _, ok := results[userID]; !ok {
-		results[userID] = make(map[string]map[string]*NettingResult)
-	}
+// CalculateMultilateralNetting 聚合用户/品种/币种维度的净额结果，供 FX 对冲流程使用。
+func (e *NettingEngine) CalculateMultilateralNetting(settlements []*Settlement) map[string]map[string]map[string]*NettingResult {
+	results := make(map[string]map[string]map[string]*NettingResult)
 
-	if _, ok := results[userID][symbol]; !ok {
-		results[userID][symbol] = make(map[string]*NettingResult)
-	}
-
-	if _, ok := results[userID][symbol][currency]; !ok {
-		results[userID][symbol][currency] = &NettingResult{
-			UserID:   userID,
-			Symbol:   symbol,
-			Currency: currency,
+	getOrCreate := func(userID, symbol, currency string) *NettingResult {
+		if _, ok := results[userID]; !ok {
+			results[userID] = make(map[string]map[string]*NettingResult)
 		}
+		if _, ok := results[userID][symbol]; !ok {
+			results[userID][symbol] = make(map[string]*NettingResult)
+		}
+		if _, ok := results[userID][symbol][currency]; !ok {
+			results[userID][symbol][currency] = &NettingResult{
+				UserID:   userID,
+				Symbol:   symbol,
+				Currency: currency,
+			}
+		}
+		return results[userID][symbol][currency]
 	}
 
-	res := results[userID][symbol][currency]
-	res.NetQuantity = res.NetQuantity.Add(qtyDelta)
-	res.NetAmount = res.NetAmount.Add(amountDelta)
+	for _, st := range settlements {
+		amount := st.TotalAmount
+		quantity := st.Quantity
+
+		buySide := getOrCreate(st.BuyUserID, st.Symbol, st.Currency)
+		buySide.GrossBuy = buySide.GrossBuy.Add(amount)
+		buySide.NetPosition = buySide.NetPosition.Add(quantity)
+		buySide.NetAmount = buySide.NetAmount.Sub(amount)
+
+		sellSide := getOrCreate(st.SellUserID, st.Symbol, st.Currency)
+		sellSide.GrossSell = sellSide.GrossSell.Add(amount)
+		sellSide.NetPosition = sellSide.NetPosition.Sub(quantity)
+		sellSide.NetAmount = sellSide.NetAmount.Add(amount)
+	}
+
+	return results
 }

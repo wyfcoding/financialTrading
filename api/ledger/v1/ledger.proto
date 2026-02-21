@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package api.ledger.v1;
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/ledger/v1;ledgerv1";
+
+import "google/protobuf/empty.proto";
+
+// 分户账本服务，负责账户余额管理与复式记账。
+service LedgerService {
+  // 资金划转（复式记账核心）
+  rpc Transfer(TransferRequest) returns (TransferResponse);
+  // 查询余额
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
+  // 冻结资金
+  rpc HoldFunds(HoldFundsRequest) returns (google.protobuf.Empty);
+  // 解冻资金
+  rpc ReleaseFunds(ReleaseFundsRequest) returns (google.protobuf.Empty);
+}
+
+message TransferRequest {
+  string transaction_id = 1;
+  string from_account_id = 2;
+  string to_account_id = 3;
+  string currency = 4;
+  string amount = 5; // String representation of decimal
+  string description = 6;
+}
+
+message TransferResponse {
+  bool success = 1;
+  string journal_entry_id = 2;
+}
+
+message GetBalanceRequest {
+  string account_id = 1;
+  string currency = 2;
+}
+
+message GetBalanceResponse {
+  string available_balance = 1;
+  string hold_balance = 2;
+  string total_balance = 3;
+}
+
+message HoldFundsRequest {
+  string account_id = 1;
+  string amount = 2;
+  string reference_id = 3;
+}
+
+message ReleaseFundsRequest {
+  string reference_id = 1;
+}

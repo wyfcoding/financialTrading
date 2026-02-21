@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package api.audittrail.v1;
+
+option go_package = "github.com/wyfcoding/financialtrading/go-api/audittrail/v1;audittrailv1";
+
+service Service {
+  rpc Health(HealthRequest) returns (HealthResponse);
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  string status = 1;
+}

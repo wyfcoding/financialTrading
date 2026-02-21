@@ -5,7 +5,7 @@ import (
 	"math/rand"
 
 	"github.com/shopspring/decimal"
-	"github.com/wyfcoding/pkg/algorithm/sim"
+	"github.com/wyfcoding/pkg/algos/sim"
 )
 
 // PriceGenerator defines the interface for generating price updates

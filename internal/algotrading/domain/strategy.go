@@ -1,107 +1,102 @@
-// Package domain 算法交易服务领域层
-// 生成摘要：
-// 1) 定义策略聚合根
-// 2) 定义策略执行引擎接口
-// 3) 定义回测任务实体
+// 变更说明：
+// 1. 将所有价格和数量改为 decimal.Decimal
 package domain
 
 import (
 	"errors"
 	"time"
 
-	"gorm.io/gorm"
+	"github.com/shopspring/decimal"
 )
 
-// StrategyType 策略类型
+type StrategyStatus string
+
+const (
+	StrategyStatusCreated   StrategyStatus = "CREATED"
+	StrategyStatusRunning   StrategyStatus = "RUNNING"
+	StrategyStatusPaused    StrategyStatus = "PAUSED"
+	StrategyStatusStopped   StrategyStatus = "STOPPED"
+	StrategyStatusCompleted StrategyStatus = "COMPLETED"
+	StrategyStatusFailed    StrategyStatus = "FAILED"
+)
+
 type StrategyType int8
 
 const (
-	StrategyTypeTWAP      StrategyType = 1 // 时间加权平均价格
-	StrategyTypeVWAP      StrategyType = 2 // 成交量加权平均价格
-	StrategyTypeGrid      StrategyType = 3 // 网格交易
-	StrategyTypeArbitrage StrategyType = 4 // 套利
+	StrategyTypeUnknown StrategyType = 0
+	StrategyTypeTWAP    StrategyType = 1
+	StrategyTypeVWAP    StrategyType = 2
+	StrategyTypeIceberg StrategyType = 3
+	StrategyTypeSniper  StrategyType = 4
 )
 
-// StrategyStatus 策略状态
-type StrategyStatus int8
-
-const (
-	StrategyStatusCreated StrategyStatus = 1
-	StrategyStatusRunning StrategyStatus = 2
-	StrategyStatusPaused  StrategyStatus = 3
-	StrategyStatusStopped StrategyStatus = 4
-	StrategyStatusFailed  StrategyStatus = 5
-)
-
-// Strategy 策略聚合根
 type Strategy struct {
-	gorm.Model
-	StrategyID string         `gorm:"column:strategy_id;type:varchar(32);unique_index;not null"`
-	UserID     uint64         `gorm:"column:user_id;index;not null"`
-	Type       StrategyType   `gorm:"column:type;type:tinyint;not null"`
-	Status     StrategyStatus `gorm:"column:status;type:tinyint;not null;default:1"`
-	Symbol     string         `gorm:"column:symbol;type:varchar(32);not null"`
-	Parameters string         `gorm:"column:parameters;type:json"` // JSON存储参数
+	ID               string          `json:"id" gorm:"primaryKey"`
+	StrategyID       string          `json:"strategy_id" gorm:"column:strategy_id;uniqueIndex"`
+	UserID           uint64          `json:"user_id"`
+	Type             StrategyType    `json:"type" gorm:"column:type"`
+	AlgorithmName    string          `json:"algorithm_name"` // TWAP, VWAP, ICEBERG, SNIPER
+	Symbol           string          `json:"symbol"`
+	Side             string          `json:"side"`       // BUY, SELL
+	Parameters       string          `json:"parameters"` // JSON serialized params
+	TotalQuantity    decimal.Decimal `json:"total_quantity"`
+	ExecutedAmount   int64           `json:"executed_amount"`
+	ExecutedQuantity decimal.Decimal `json:"executed_quantity"`
+	Status           StrategyStatus  `json:"status"`
+	CreatedAt        time.Time       `json:"created_at"`
+	UpdatedAt        time.Time       `json:"updated_at"`
 
-	// 运行统计
-	ExecutedAmount   int64 `gorm:"column:executed_amount;not null;default:0"`
-	ExecutedQuantity int64 `gorm:"column:executed_quantity;not null;default:0"`
-
-	// 领域事件
-	domainEvents []DomainEvent `gorm:"-"`
+	domainEvents []DomainEvent `json:"-" gorm:"-"`
 }
 
-// TableName 表名
-func (Strategy) TableName() string {
-	return "strategies"
-}
-
-// NewStrategy 创建策略
-func NewStrategy(id string, userID uint64, sType StrategyType, symbol, params string) *Strategy {
+func NewStrategy(strategyID string, userID uint64, strategyType StrategyType, symbol, parameters string) *Strategy {
+	now := time.Now()
 	return &Strategy{
-		StrategyID: id,
-		UserID:     userID,
-		Type:       sType,
-		Status:     StrategyStatusCreated,
-		Symbol:     symbol,
-		Parameters: params,
+		ID:           strategyID,
+		StrategyID:   strategyID,
+		UserID:       userID,
+		Type:         strategyType,
+		Symbol:       symbol,
+		Parameters:   parameters,
+		Status:       StrategyStatusCreated,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+		domainEvents: make([]DomainEvent, 0),
 	}
 }
 
-// Start 启动策略
 func (s *Strategy) Start() error {
-	if s.Status != StrategyStatusCreated && s.Status != StrategyStatusPaused && s.Status != StrategyStatusStopped {
-		return errors.New("invalid status for start")
+	if s.Status == StrategyStatusRunning {
+		return nil
+	}
+	if s.Status == StrategyStatusStopped || s.Status == StrategyStatusCompleted {
+		return errors.New("strategy cannot be started from current status")
 	}
 	s.Status = StrategyStatusRunning
-
-	s.addEvent(&StrategyStartedEvent{
-		StrategyID: s.StrategyID,
+	s.UpdatedAt = time.Now()
+	s.domainEvents = append(s.domainEvents, &StrategyStartedEvent{
+		StrategyID: s.getStrategyID(),
 		UserID:     s.UserID,
-		Timestamp:  time.Now(),
+		Timestamp:  s.UpdatedAt,
 	})
-
 	return nil
 }
 
-// Stop 停止策略
 func (s *Strategy) Stop() error {
-	if s.Status != StrategyStatusRunning && s.Status != StrategyStatusPaused {
-		return errors.New("invalid status for stop")
+	if s.Status == StrategyStatusStopped {
+		return nil
+	}
+	if s.Status == StrategyStatusCompleted {
+		return errors.New("completed strategy cannot be stopped")
 	}
 	s.Status = StrategyStatusStopped
-
-	s.addEvent(&StrategyStoppedEvent{
-		StrategyID: s.StrategyID,
+	s.UpdatedAt = time.Now()
+	s.domainEvents = append(s.domainEvents, &StrategyStoppedEvent{
+		StrategyID: s.getStrategyID(),
 		UserID:     s.UserID,
-		Timestamp:  time.Now(),
+		Timestamp:  s.UpdatedAt,
 	})
-
 	return nil
-}
-
-func (s *Strategy) addEvent(event DomainEvent) {
-	s.domainEvents = append(s.domainEvents, event)
 }
 
 func (s *Strategy) GetDomainEvents() []DomainEvent {
@@ -109,24 +104,12 @@ func (s *Strategy) GetDomainEvents() []DomainEvent {
 }
 
 func (s *Strategy) ClearDomainEvents() {
-	s.domainEvents = nil
+	s.domainEvents = s.domainEvents[:0]
 }
 
-// Backtest 回测任务
-type Backtest struct {
-	gorm.Model
-	BacktestID string       `gorm:"column:backtest_id;type:varchar(32);unique_index;not null"`
-	UserID     uint64       `gorm:"column:user_id;index;not null"`
-	Type       StrategyType `gorm:"column:type;type:tinyint;not null"`
-	Symbol     string       `gorm:"column:symbol;type:varchar(32);not null"`
-	Parameters string       `gorm:"column:parameters;type:json"`
-	StartTime  time.Time    `gorm:"column:start_time;not null"`
-	EndTime    time.Time    `gorm:"column:end_time;not null"`
-	Status     string       `gorm:"column:status;type:varchar(16);not null;default:'PENDING'"`
-	ResultJSON string       `gorm:"column:result_json;type:json"`
-}
-
-// TableName 表名
-func (Backtest) TableName() string {
-	return "backtests"
+func (s *Strategy) getStrategyID() string {
+	if s.StrategyID != "" {
+		return s.StrategyID
+	}
+	return s.ID
 }

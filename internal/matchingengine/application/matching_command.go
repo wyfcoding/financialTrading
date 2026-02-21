@@ -11,7 +11,7 @@ import (
 	clearingv1 "github.com/wyfcoding/financialtrading/go-api/clearing/v1"
 	orderv1 "github.com/wyfcoding/financialtrading/go-api/order/v1"
 	"github.com/wyfcoding/financialtrading/internal/matchingengine/domain"
-	"github.com/wyfcoding/pkg/algorithm/types"
+	"github.com/wyfcoding/pkg/algos/types"
 	"github.com/wyfcoding/pkg/contextx"
 	"github.com/wyfcoding/pkg/logging"
 	"github.com/wyfcoding/pkg/messagequeue"
@@ -19,7 +19,7 @@ import (
 
 // MatchingCommandService 处理所有撮合引擎相关的写入操作（Commands）。
 type MatchingCommandService struct {
-	engine        *domain.DisruptionEngine
+	engine        *domain.MatchingEngine
 	tradeRepo     domain.TradeRepository
 	orderBookRepo domain.OrderBookRepository
 	publisher     messagequeue.EventPublisher
@@ -31,7 +31,7 @@ type MatchingCommandService struct {
 // NewMatchingCommandService 构造函数。
 func NewMatchingCommandService(
 	symbol string,
-	engine *domain.DisruptionEngine,
+	engine *domain.MatchingEngine,
 	tradeRepo domain.TradeRepository,
 	orderBookRepo domain.OrderBookRepository,
 	publisher messagequeue.EventPublisher,
@@ -72,7 +72,10 @@ func (m *MatchingCommandService) RecoverState(ctx context.Context) error {
 		return fmt.Errorf("critical error: order client is nil, cannot recover engine state")
 	}
 
-	activeStatuses := []string{"OPEN", "PARTIALLY_FILLED"}
+	activeStatuses := []orderv1.OrderStatus{
+		orderv1.OrderStatus_ORDER_STATUS_NEW,
+		orderv1.OrderStatus_ORDER_STATUS_PARTIALLY_FILLED,
+	}
 	totalReplayed := 0
 
 	for _, status := range activeStatuses {
@@ -83,10 +86,10 @@ func (m *MatchingCommandService) RecoverState(ctx context.Context) error {
 			m.logger.Debug("fetching active orders page", "status", status, "page", page)
 
 			resp, err := m.orderCli.ListOrders(ctx, &orderv1.ListOrdersRequest{
-				Symbol: m.engine.Symbol(),
-				Status: status,
-				Offset: (page - 1) * pageSize,
-				Limit:  pageSize,
+				Symbol:   m.engine.Symbol(),
+				Status:   status,
+				Page:     page,
+				PageSize: pageSize,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to fetch orders from OrderService (status=%s, page=%d): %w", status, page, err)
@@ -106,11 +109,11 @@ func (m *MatchingCommandService) RecoverState(ctx context.Context) error {
 					m.engine.ReplayOrder(&types.Order{
 						OrderID:   o.Id,
 						Symbol:    o.Symbol,
-						Side:      types.Side(o.Side),
+						Side:      toMatchingSide(o.Side),
 						Price:     price,
 						Quantity:  remQty,
 						UserID:    o.UserId,
-						Timestamp: o.CreatedAt.AsTime().UnixNano(),
+						Timestamp: orderCreatedAt(o).UnixNano(),
 					})
 					totalReplayed++
 				}
@@ -311,7 +314,10 @@ func settlementCurrency(symbol string) string {
 
 // SaveSnapshot 触发快照
 func (m *MatchingCommandService) SaveSnapshot(ctx context.Context, depth int) error {
-	snapshot := m.engine.GetOrderBookSnapshot(depth)
+	snapshot := toDomainSnapshot(m.engine.GetOrderBookSnapshot(depth))
+	if snapshot == nil {
+		return fmt.Errorf("empty order book snapshot")
+	}
 	if err := m.orderBookRepo.SaveSnapshot(ctx, snapshot); err != nil {
 		return err
 	}
@@ -324,4 +330,54 @@ func (m *MatchingCommandService) SaveSnapshot(ctx context.Context, depth int) er
 		return m.publisher.Publish(ctx, domain.OrderBookSnapshotEventType, snapshot.Symbol, event)
 	}
 	return nil
+}
+
+func toMatchingSide(side orderv1.OrderSide) types.Side {
+	switch side {
+	case orderv1.OrderSide_ORDER_SIDE_BUY:
+		return types.SideBuy
+	case orderv1.OrderSide_ORDER_SIDE_SELL:
+		return types.SideSell
+	default:
+		return types.SideBuy
+	}
+}
+
+func orderCreatedAt(o *orderv1.Order) time.Time {
+	if o != nil && o.CreatedAt != nil {
+		return o.CreatedAt.AsTime()
+	}
+	return time.Now()
+}
+
+func toDomainSnapshot(snapshot *domain.EngineOrderBookSnapshot) *domain.OrderBookSnapshot {
+	if snapshot == nil {
+		return nil
+	}
+	out := &domain.OrderBookSnapshot{
+		SnapshotID: fmt.Sprintf("SNAPSHOT_%d", snapshot.Timestamp),
+		Symbol:     snapshot.Symbol,
+		Timestamp:  time.Unix(0, snapshot.Timestamp),
+		Bids:       make([]*domain.PriceLevel, 0, len(snapshot.Bids)),
+		Asks:       make([]*domain.PriceLevel, 0, len(snapshot.Asks)),
+	}
+	for _, level := range snapshot.Bids {
+		if level == nil {
+			continue
+		}
+		out.Bids = append(out.Bids, &domain.PriceLevel{
+			Price:    level.Price,
+			Quantity: level.Quantity,
+		})
+	}
+	for _, level := range snapshot.Asks {
+		if level == nil {
+			continue
+		}
+		out.Asks = append(out.Asks, &domain.PriceLevel{
+			Price:    level.Price,
+			Quantity: level.Quantity,
+		})
+	}
+	return out
 }

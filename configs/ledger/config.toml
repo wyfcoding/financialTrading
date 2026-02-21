@@ -1,0 +1,35 @@
+# 金融交易系统 - 分户账本服务配置文件
+version = "1.0.0"
+
+[server]
+name = "ledger"
+environment = "dev"
+
+[server.http]
+addr = "0.0.0.0"
+port = 8117
+timeout = "3s"
+
+[server.grpc]
+addr = "0.0.0.0"
+port = 9117
+timeout = "3s"
+
+[log]
+level = "info"
+format = "json"
+output = "stdout"
+
+[data.database]
+driver = "mysql"
+dsn = "root:root@tcp(127.0.0.1:3306)/trading_ledger?charset=utf8mb4&parseTime=True&loc=Local"
+
+[data.redis]
+addrs = ["127.0.0.1:6379"]
+password = "redis_password"
+db = 0
+
+[messagequeue.kafka]
+brokers = ["localhost:9092"]
+topic = "ledger-events"
+group_id = "ledger-group"

@@ -1,6 +1,6 @@
 package arbitrage
 
-import "github.com/wyfcoding/pkg/algorithm/graph"
+import "github.com/wyfcoding/pkg/algos/graph"
 
 // MarketLiquidity 代表交易对的深度
 type MarketLiquidity struct {

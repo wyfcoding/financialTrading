@@ -1,3 +1,6 @@
+//go:build treasury_alt_repo
+// +build treasury_alt_repo
+
 // Package infrastructure 资金服务基础设施层
 package infrastructure
 

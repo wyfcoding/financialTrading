@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime"
+	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 
-	algorithm "github.com/wyfcoding/pkg/algorithm/structures"
-	"github.com/wyfcoding/pkg/algorithm/types"
+	algorithm "github.com/wyfcoding/pkg/algos/structures"
+	"github.com/wyfcoding/pkg/algos/types"
 
 	"github.com/shopspring/decimal"
 )
@@ -24,47 +26,54 @@ const (
 	StatusClosed  MarketStatus = 4
 )
 
-// OrderLevel 表示同一价格档位下的订单集合，保证时间优先 (FIFO)
-type OrderLevel struct {
+// EngineOrderLevel 表示同一价格档位下的订单集合，保证时间优先 (FIFO)
+type EngineOrderLevel struct {
 	Price  decimal.Decimal
 	Orders *list.List // 存储 *types.Order
 }
 
-func NewOrderLevel(price decimal.Decimal) *OrderLevel {
-	return &OrderLevel{
+func NewEngineOrderLevel(price decimal.Decimal) *EngineOrderLevel {
+	return &EngineOrderLevel{
 		Price:  price,
 		Orders: list.New(),
 	}
 }
 
-// OrderBook 内存订单簿实现
-type OrderBook struct {
+// EngineOrderBook 内存订单簿实现
+type EngineOrderBook struct {
 	Symbol       string
-	Bids         *algorithm.SkipList[float64, *OrderLevel]
-	Asks         *algorithm.SkipList[float64, *OrderLevel]
+	Bids         *algorithm.SkipList[float64, *EngineOrderLevel]
+	Asks         *algorithm.SkipList[float64, *EngineOrderLevel]
 	PeggedOrders map[string]*types.Order
+	OrderIndex   map[string]*OrderIndexEntry // O(1) OrderID -> Entry
 }
 
-func NewOrderBook(symbol string) *OrderBook {
-	return &OrderBook{
+type OrderIndexEntry struct {
+	Element *list.Element
+	Level   *EngineOrderLevel
+}
+
+func NewEngineOrderBook(symbol string) *EngineOrderBook {
+	return &EngineOrderBook{
 		Symbol:       symbol,
-		Bids:         algorithm.NewSkipList[float64, *OrderLevel](),
-		Asks:         algorithm.NewSkipList[float64, *OrderLevel](),
+		Bids:         algorithm.NewSkipList[float64, *EngineOrderLevel](),
+		Asks:         algorithm.NewSkipList[float64, *EngineOrderLevel](),
 		PeggedOrders: make(map[string]*types.Order),
+		OrderIndex:   make(map[string]*OrderIndexEntry),
 	}
 }
 
-type MatchTaskType int
+type EngineMatchTaskType int
 
 const (
-	TaskMatch   MatchTaskType = 1
-	TaskCancel  MatchTaskType = 2
-	TaskAuction MatchTaskType = 3
+	TaskMatch   EngineMatchTaskType = 1
+	TaskCancel  EngineMatchTaskType = 2
+	TaskAuction EngineMatchTaskType = 3
 )
 
-// MatchTask 定义了定序队列中的任务单元
-type MatchTask struct {
-	Type       MatchTaskType
+// EngineMatchTask 定义了定序队列中的任务单元
+type EngineMatchTask struct {
+	Type       EngineMatchTaskType
 	Order      *types.Order
 	CancelReq  *CancelRequest
 	AuctionReq *AuctionRequest
@@ -88,11 +97,11 @@ type CancelResult struct {
 	Status  string
 }
 
-// DisruptionEngine 核心撮合引擎
-type DisruptionEngine struct {
+// MatchingEngine 核心撮合引擎
+type MatchingEngine struct {
 	symbol         string
-	orderBook      *OrderBook
-	ring           *algorithm.MpscRingBuffer[MatchTask]
+	orderBook      *EngineOrderBook
+	ring           *algorithm.MpscRingBuffer[EngineMatchTask]
 	stopChan       chan struct{}
 	logger         *slog.Logger
 	halted         int32
@@ -102,17 +111,25 @@ type DisruptionEngine struct {
 	circuitBreaker *CircuitBreaker
 }
 
-func NewDisruptionEngine(symbol string, capacity uint64, logger *slog.Logger) (*DisruptionEngine, error) {
+var taskPool = sync.Pool{
+	New: func() any {
+		return &EngineMatchTask{
+			ResultChan: make(chan any, 1),
+		}
+	},
+}
+
+func NewMatchingEngine(symbol string, capacity uint64, logger *slog.Logger) (*MatchingEngine, error) {
 	if logger == nil {
-		logger = slog.Default().With("module", "disruption_engine", "symbol", symbol)
+		logger = slog.Default().With("module", "matching_engine", "symbol", symbol)
 	}
-	ring, err := algorithm.NewMpscRingBuffer[MatchTask](capacity)
+	ring, err := algorithm.NewMpscRingBuffer[EngineMatchTask](capacity)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ring buffer: %w", err)
 	}
-	engine := &DisruptionEngine{
+	engine := &MatchingEngine{
 		symbol:    symbol,
-		orderBook: NewOrderBook(symbol),
+		orderBook: NewEngineOrderBook(symbol),
 		ring:      ring,
 		stopChan:  make(chan struct{}),
 		logger:    logger,
@@ -127,45 +144,45 @@ func NewDisruptionEngine(symbol string, capacity uint64, logger *slog.Logger) (*
 	return engine, nil
 }
 
-func (e *DisruptionEngine) Start() error {
+func (e *MatchingEngine) Start() error {
 	go e.run()
 	return nil
 }
 
-func (e *DisruptionEngine) Shutdown() {
+func (e *MatchingEngine) Shutdown() {
 	close(e.stopChan)
 }
 
-func (e *DisruptionEngine) IsHalted() bool {
+func (e *MatchingEngine) IsHalted() bool {
 	return atomic.LoadInt32(&e.halted) == 1
 }
 
-func (e *DisruptionEngine) Halt() {
+func (e *MatchingEngine) Halt() {
 	atomic.StoreInt32(&e.halted, 1)
 }
 
-func (e *DisruptionEngine) Resume() {
+func (e *MatchingEngine) Resume() {
 	e.circuitBreaker.Reset()
 	atomic.StoreInt32(&e.halted, 0)
 	atomic.StoreInt32(&e.status, int32(StatusTrading))
 	e.logger.Info("matching engine resumed")
 }
 
-func (e *DisruptionEngine) GetStatus() MarketStatus {
+func (e *MatchingEngine) GetStatus() MarketStatus {
 	return MarketStatus(atomic.LoadInt32(&e.status))
 }
 
-func (e *DisruptionEngine) SetStatus(status MarketStatus) {
+func (e *MatchingEngine) SetStatus(status MarketStatus) {
 	atomic.StoreInt32(&e.status, int32(status))
 	e.logger.Info("market status changed", "status", status)
 }
 
-func (e *DisruptionEngine) SetBasePrice(price decimal.Decimal) {
+func (e *MatchingEngine) SetBasePrice(price decimal.Decimal) {
 	e.lastPrice.Store(price)
 	e.logger.Info("base price set", "price", price)
 }
 
-func (e *DisruptionEngine) validatePriceCage(price decimal.Decimal) bool {
+func (e *MatchingEngine) validatePriceCage(price decimal.Decimal) bool {
 	last := e.lastPrice.Load().(decimal.Decimal)
 	if last.IsZero() {
 		return true // 如果没有上一次成交价，暂时跳过校验
@@ -175,11 +192,11 @@ func (e *DisruptionEngine) validatePriceCage(price decimal.Decimal) bool {
 	return price.GreaterThanOrEqual(lower) && price.LessThanOrEqual(upper)
 }
 
-func (e *DisruptionEngine) Symbol() string {
+func (e *MatchingEngine) Symbol() string {
 	return e.symbol
 }
 
-func (e *DisruptionEngine) ReplayOrder(order *types.Order) {
+func (e *MatchingEngine) ReplayOrder(order *types.Order) {
 	ob := e.orderBook
 	if order.Side == "BUY" {
 		e.addToOrderBook(order, ob.Bids, -order.Price.InexactFloat64())
@@ -188,7 +205,7 @@ func (e *DisruptionEngine) ReplayOrder(order *types.Order) {
 	}
 }
 
-func (e *DisruptionEngine) run() {
+func (e *MatchingEngine) run() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
@@ -222,7 +239,7 @@ func (e *DisruptionEngine) run() {
 	}
 }
 
-func (e *DisruptionEngine) processCancel(req *CancelRequest) *CancelResult {
+func (e *MatchingEngine) processCancel(req *CancelRequest) *CancelResult {
 	res := &CancelResult{OrderID: req.OrderID, Success: false, Status: "ORDER_NOT_FOUND"}
 
 	// 从订单簿中查找并删除
@@ -241,7 +258,7 @@ func (e *DisruptionEngine) processCancel(req *CancelRequest) *CancelResult {
 	return res
 }
 
-func (e *DisruptionEngine) processAuction(req *AuctionRequest) *AuctionResult {
+func (e *MatchingEngine) processAuction(req *AuctionRequest) *AuctionResult {
 	e.logger.Info("executing auction", "symbol", req.Symbol)
 	// 初始化拍卖引擎，复用当前订单簿状态
 	ae := NewAuctionEngine(e.symbol, decimal.NewFromFloat(0.01), e.logger)
@@ -263,37 +280,46 @@ func (e *DisruptionEngine) processAuction(req *AuctionRequest) *AuctionResult {
 	return res
 }
 
-func (e *DisruptionEngine) SubmitOrder(order *types.Order) (*MatchingResult, error) {
-	resChan := make(chan any, 1)
-	task := &MatchTask{Type: TaskMatch, Order: order, ResultChan: resChan}
+func (e *MatchingEngine) SubmitOrder(order *types.Order) (*MatchingResult, error) {
+	task := taskPool.Get().(*EngineMatchTask)
+	task.Type = TaskMatch
+	task.Order = order
+	defer taskPool.Put(task)
+
 	if !e.ring.Offer(task) {
 		return nil, fmt.Errorf("queue full")
 	}
-	res := <-resChan
+	res := <-task.ResultChan
 	return res.(*MatchingResult), nil
 }
 
-func (e *DisruptionEngine) CancelOrder(req *CancelRequest) (*CancelResult, error) {
-	resChan := make(chan any, 1)
-	task := &MatchTask{Type: TaskCancel, CancelReq: req, ResultChan: resChan}
+func (e *MatchingEngine) CancelOrder(req *CancelRequest) (*CancelResult, error) {
+	task := taskPool.Get().(*EngineMatchTask)
+	task.Type = TaskCancel
+	task.CancelReq = req
+	defer taskPool.Put(task)
+
 	if !e.ring.Offer(task) {
 		return nil, fmt.Errorf("queue full")
 	}
-	res := <-resChan
+	res := <-task.ResultChan
 	return res.(*CancelResult), nil
 }
 
-func (e *DisruptionEngine) ExecuteAuction() (*AuctionResult, error) {
-	resChan := make(chan any, 1)
-	task := &MatchTask{Type: TaskAuction, AuctionReq: &AuctionRequest{Symbol: e.symbol}, ResultChan: resChan}
+func (e *MatchingEngine) ExecuteAuction() (*AuctionResult, error) {
+	task := taskPool.Get().(*EngineMatchTask)
+	task.Type = TaskAuction
+	task.AuctionReq = &AuctionRequest{Symbol: e.symbol}
+	defer taskPool.Put(task)
+
 	if !e.ring.Offer(task) {
 		return nil, fmt.Errorf("queue full")
 	}
-	res := <-resChan
+	res := <-task.ResultChan
 	return res.(*AuctionResult), nil
 }
 
-func (e *DisruptionEngine) applyOrder(order *types.Order) *MatchingResult {
+func (e *MatchingEngine) applyOrder(order *types.Order) *MatchingResult {
 	ob := e.orderBook
 	e.repricePeggedOrders(order.Symbol)
 
@@ -316,7 +342,7 @@ func (e *DisruptionEngine) applyOrder(order *types.Order) *MatchingResult {
 	}
 
 	// 3. 预查 (针对 FOK/AON)
-	var opponentBook *algorithm.SkipList[float64, *OrderLevel]
+	var opponentBook *algorithm.SkipList[float64, *EngineOrderLevel]
 	if order.Side == "BUY" {
 		opponentBook = ob.Asks
 	} else {
@@ -384,7 +410,7 @@ func (e *DisruptionEngine) applyOrder(order *types.Order) *MatchingResult {
 }
 
 // probeMatchableQuantity 探测可成交数量（不产生实际成交）
-func (e *DisruptionEngine) probeMatchableQuantity(order *types.Order, opponentBook *algorithm.SkipList[float64, *OrderLevel]) decimal.Decimal {
+func (e *MatchingEngine) probeMatchableQuantity(order *types.Order, opponentBook *algorithm.SkipList[float64, *EngineOrderLevel]) decimal.Decimal {
 	totalPossible := decimal.Zero
 	remainingToProbe := order.Quantity
 
@@ -437,7 +463,7 @@ func (e *DisruptionEngine) probeMatchableQuantity(order *types.Order, opponentBo
 	return totalPossible
 }
 
-func (e *DisruptionEngine) matchOrder(order *types.Order, opponentBook *algorithm.SkipList[float64, *OrderLevel], result *MatchingResult) {
+func (e *MatchingEngine) matchOrder(order *types.Order, opponentBook *algorithm.SkipList[float64, *EngineOrderLevel], result *MatchingResult) {
 	it := opponentBook.Iterator()
 	for {
 		oppPriceKey, oppLevel, ok := it.Next()
@@ -476,7 +502,7 @@ func (e *DisruptionEngine) matchOrder(order *types.Order, opponentBook *algorith
 
 			matchQty := decimal.Min(result.RemainingQuantity, availableQty)
 			trade := &types.Trade{
-				TradeID:   generateTradeID(),
+				TradeID:   generateEngineTradeID(),
 				Symbol:    e.symbol,
 				Price:     realOppPrice,
 				Quantity:  matchQty,
@@ -506,6 +532,7 @@ func (e *DisruptionEngine) matchOrder(order *types.Order, opponentBook *algorith
 			if oppOrder.Quantity.IsZero() {
 				oppLevel.Orders.Remove(el)
 				delete(e.orderBook.PeggedOrders, oppOrder.OrderID)
+				delete(e.orderBook.OrderIndex, oppOrder.OrderID)
 			} else if oppOrder.IsIceberg {
 				oppOrder.DisplayQty = oppOrder.DisplayQty.Sub(matchQty)
 			}
@@ -524,10 +551,10 @@ func (e *DisruptionEngine) matchOrder(order *types.Order, opponentBook *algorith
 	}
 }
 
-func (e *DisruptionEngine) addToOrderBook(order *types.Order, book *algorithm.SkipList[float64, *OrderLevel], key float64) {
+func (e *MatchingEngine) addToOrderBook(order *types.Order, book *algorithm.SkipList[float64, *EngineOrderLevel], key float64) {
 	level, ok := book.Search(key)
 	if !ok {
-		level = NewOrderLevel(order.Price)
+		level = NewEngineOrderLevel(order.Price)
 		book.Insert(key, level)
 	}
 
@@ -538,10 +565,14 @@ func (e *DisruptionEngine) addToOrderBook(order *types.Order, book *algorithm.Sk
 	if orderCopy.IsPegged {
 		e.orderBook.PeggedOrders[order.OrderID] = &orderCopy
 	}
-	level.Orders.PushBack(&orderCopy)
+	el := level.Orders.PushBack(&orderCopy)
+	e.orderBook.OrderIndex[order.OrderID] = &OrderIndexEntry{
+		Element: el,
+		Level:   level,
+	}
 }
 
-func (e *DisruptionEngine) refreshIceberg(order *types.Order) {
+func (e *MatchingEngine) refreshIceberg(order *types.Order) {
 	refreshAmount := decimal.Min(order.HiddenQty, order.Quantity.Mul(decimal.NewFromFloat(0.1)))
 	if refreshAmount.IsZero() && order.HiddenQty.IsPositive() {
 		refreshAmount = order.HiddenQty
@@ -550,7 +581,7 @@ func (e *DisruptionEngine) refreshIceberg(order *types.Order) {
 	order.HiddenQty = order.HiddenQty.Sub(refreshAmount)
 }
 
-func (e *DisruptionEngine) repricePeggedOrders(symbol string) {
+func (e *MatchingEngine) repricePeggedOrders(symbol string) {
 	ob := e.orderBook
 	if len(ob.PeggedOrders) == 0 {
 		return
@@ -590,7 +621,7 @@ func (e *DisruptionEngine) repricePeggedOrders(symbol string) {
 }
 
 // BatchMatch 批量撮合任务 (用于处理大规模同时到达的请求)
-func (e *DisruptionEngine) BatchMatch(orders []*types.Order) []*MatchingResult {
+func (e *MatchingEngine) BatchMatch(orders []*types.Order) []*MatchingResult {
 	results := make([]*MatchingResult, len(orders))
 	for i, order := range orders {
 		results[i] = e.applyOrder(order)
@@ -598,40 +629,45 @@ func (e *DisruptionEngine) BatchMatch(orders []*types.Order) []*MatchingResult {
 	return results
 }
 
-func (e *DisruptionEngine) removeFromOrderBookByID(orderID string, side types.Side) bool {
+func (e *MatchingEngine) removeFromOrderBookByID(orderID string, side types.Side) bool {
 	ob := e.orderBook
-	var book *algorithm.SkipList[float64, *OrderLevel]
-	if side == types.SideBuy {
-		book = ob.Bids
-	} else {
-		book = ob.Asks
+	entry, ok := ob.OrderIndex[orderID]
+	if !ok {
+		return false
 	}
 
-	it := book.Iterator()
-	for {
-		key, lv, ok := it.Next()
-		if !ok {
-			break
+	// 直接从 entry 获取 level 和 element，无需 Search
+	entry.Level.Orders.Remove(entry.Element)
+
+	// 如果该价格档位空了，才需要从 SkipList 删除
+	if entry.Level.Orders.Len() == 0 {
+		o := entry.Element.Value.(*types.Order)
+		var book *algorithm.SkipList[float64, *EngineOrderLevel]
+		var key float64
+		if o.Side == types.SideBuy {
+			book = ob.Bids
+			key = -o.Price.InexactFloat64()
+		} else {
+			book = ob.Asks
+			key = o.Price.InexactFloat64()
 		}
-		for el := lv.Orders.Front(); el != nil; el = el.Next() {
-			o := el.Value.(*types.Order)
-			if o.OrderID == orderID {
-				lv.Orders.Remove(el)
-				if lv.Orders.Len() == 0 {
-					book.Delete(key)
-				}
-				delete(ob.PeggedOrders, orderID)
-				return true
-			}
-		}
+		book.Delete(key)
 	}
-	return false
+
+	delete(ob.OrderIndex, orderID)
+	delete(ob.PeggedOrders, orderID)
+	return true
 }
 
-// GetOrderBookSnapshot 获取订单簿快照 (支持深度限制)
-func (e *DisruptionEngine) GetOrderBookSnapshot(depth int) *OrderBookSnapshot {
+// GetOrderBookSnapshot 获取订单簿快照 (为兼容性保留的原名称)
+func (e *MatchingEngine) GetOrderBookSnapshot(depth int) *EngineOrderBookSnapshot {
+	return e.GetEngineOrderBookSnapshot(depth)
+}
+
+// GetEngineOrderBookSnapshot 获取订单簿快照 (支持深度限制)
+func (e *MatchingEngine) GetEngineOrderBookSnapshot(depth int) *EngineOrderBookSnapshot {
 	ob := e.orderBook
-	snapshot := &OrderBookSnapshot{
+	snapshot := &EngineOrderBookSnapshot{
 		Symbol:    ob.Symbol,
 		Timestamp: time.Now().UnixNano(),
 	}
@@ -646,7 +682,7 @@ func (e *DisruptionEngine) GetOrderBookSnapshot(depth int) *OrderBookSnapshot {
 		for el := lv.Orders.Front(); el != nil; el = el.Next() {
 			qty = qty.Add(el.Value.(*types.Order).Quantity)
 		}
-		snapshot.Bids = append(snapshot.Bids, &OrderBookLevel{Price: lv.Price, Quantity: qty})
+		snapshot.Bids = append(snapshot.Bids, &EngineOrderBookLevel{Price: lv.Price, Quantity: qty})
 	}
 
 	itA := ob.Asks.Iterator()
@@ -659,14 +695,14 @@ func (e *DisruptionEngine) GetOrderBookSnapshot(depth int) *OrderBookSnapshot {
 		for el := lv.Orders.Front(); el != nil; el = el.Next() {
 			qty = qty.Add(el.Value.(*types.Order).Quantity)
 		}
-		snapshot.Asks = append(snapshot.Asks, &OrderBookLevel{Price: lv.Price, Quantity: qty})
+		snapshot.Asks = append(snapshot.Asks, &EngineOrderBookLevel{Price: lv.Price, Quantity: qty})
 	}
 
 	return snapshot
 }
 
-func generateTradeID() string {
-	return fmt.Sprintf("T-%d", time.Now().UnixNano())
+func generateEngineTradeID() string {
+	return fmt.Sprintf("ET-%d", time.Now().UnixNano())
 }
 
 type MatchingResult struct {
@@ -676,26 +712,23 @@ type MatchingResult struct {
 	Status            string
 }
 
-type OrderBookLevel struct {
+type EngineOrderBookLevel struct {
 	Price    decimal.Decimal `json:"price"`
 	Quantity decimal.Decimal `json:"quantity"`
 }
 
-type OrderBookSnapshot struct {
-	ID        uint              `json:"id"`
-	CreatedAt time.Time         `json:"created_at"`
-	UpdatedAt time.Time         `json:"updated_at"`
-	Symbol    string            `json:"symbol"`
-	Bids      []*OrderBookLevel `json:"bids"`
-	Asks      []*OrderBookLevel `json:"asks"`
-	Timestamp int64             `json:"timestamp"`
+type EngineOrderBookSnapshot struct {
+	Symbol    string                  `json:"symbol"`
+	Bids      []*EngineOrderBookLevel `json:"bids"`
+	Asks      []*EngineOrderBookLevel `json:"asks"`
+	Timestamp int64                   `json:"timestamp"`
 }
 
 // AuctionEngine 拍卖引擎
 type AuctionEngine struct {
 	Symbol  string
-	Bids    *algorithm.SkipList[float64, *OrderLevel]
-	Asks    *algorithm.SkipList[float64, *OrderLevel]
+	Bids    *algorithm.SkipList[float64, *EngineOrderLevel]
+	Asks    *algorithm.SkipList[float64, *EngineOrderLevel]
 	MinTick decimal.Decimal
 	Logger  *slog.Logger
 }
@@ -703,8 +736,8 @@ type AuctionEngine struct {
 func NewAuctionEngine(symbol string, minTick decimal.Decimal, logger *slog.Logger) *AuctionEngine {
 	return &AuctionEngine{
 		Symbol:  symbol,
-		Bids:    algorithm.NewSkipList[float64, *OrderLevel](),
-		Asks:    algorithm.NewSkipList[float64, *OrderLevel](),
+		Bids:    algorithm.NewSkipList[float64, *EngineOrderLevel](),
+		Asks:    algorithm.NewSkipList[float64, *EngineOrderLevel](),
 		MinTick: minTick,
 		Logger:  logger,
 	}
@@ -720,7 +753,7 @@ type AuctionResult struct {
 
 // SubmitOrder 提交订单到拍卖引擎
 func (e *AuctionEngine) SubmitOrder(order *types.Order) {
-	var book *algorithm.SkipList[float64, *OrderLevel]
+	var book *algorithm.SkipList[float64, *EngineOrderLevel]
 	var key float64
 
 	if order.Side == "BUY" {
@@ -733,16 +766,16 @@ func (e *AuctionEngine) SubmitOrder(order *types.Order) {
 
 	level, ok := book.Search(key)
 	if !ok {
-		level = NewOrderLevel(order.Price)
+		level = NewEngineOrderLevel(order.Price)
 		book.Insert(key, level)
 	}
 	level.Orders.PushBack(order)
 }
 
-// CalculateEquilibriumPrice 计算平衡价格
+// CalculateEquilibriumPrice 计算平衡价格 (O(N) 实现)
 func (e *AuctionEngine) CalculateEquilibriumPrice() (*AuctionResult, error) {
-	// 1. 收集所有独立价格点
-	priceMap := make(map[string]decimal.Decimal)
+	// 1. 获取所有独立价格点并排序
+	priceSet := make(map[string]decimal.Decimal)
 	var prices []decimal.Decimal
 
 	itB := e.Bids.Iterator()
@@ -751,20 +784,19 @@ func (e *AuctionEngine) CalculateEquilibriumPrice() (*AuctionResult, error) {
 		if !ok {
 			break
 		}
-		if _, exists := priceMap[lv.Price.String()]; !exists {
-			priceMap[lv.Price.String()] = lv.Price
+		if _, exists := priceSet[lv.Price.String()]; !exists {
+			priceSet[lv.Price.String()] = lv.Price
 			prices = append(prices, lv.Price)
 		}
 	}
-
 	itA := e.Asks.Iterator()
 	for {
 		_, lv, ok := itA.Next()
 		if !ok {
 			break
 		}
-		if _, exists := priceMap[lv.Price.String()]; !exists {
-			priceMap[lv.Price.String()] = lv.Price
+		if _, exists := priceSet[lv.Price.String()]; !exists {
+			priceSet[lv.Price.String()] = lv.Price
 			prices = append(prices, lv.Price)
 		}
 	}
@@ -773,78 +805,97 @@ func (e *AuctionEngine) CalculateEquilibriumPrice() (*AuctionResult, error) {
 		return nil, fmt.Errorf("no orders in book")
 	}
 
-	// 2. 对每个价格点计算累积买单和卖单数量
+	sort.Slice(prices, func(i, j int) bool {
+		return prices[i].LessThan(prices[j])
+	})
+
+	// 2. 计算每个价格级别的累计买量和卖量 (O(N))
+	buyVolumes := make([]decimal.Decimal, len(prices))
+	sellVolumes := make([]decimal.Decimal, len(prices))
+
+	// 累计买量 (从高价向低价累加)
+	totalBuy := decimal.Zero
+	currentPriceIdx := len(prices) - 1
+	itB = e.Bids.Iterator()
+	for {
+		_, lv, ok := itB.Next()
+		if !ok {
+			break
+		}
+		// 累加当前档位
+		levelQty := decimal.Zero
+		for el := lv.Orders.Front(); el != nil; el = el.Next() {
+			levelQty = levelQty.Add(el.Value.(*types.Order).Quantity)
+		}
+		totalBuy = totalBuy.Add(levelQty)
+
+		// 更新对应价格点
+		for currentPriceIdx >= 0 && prices[currentPriceIdx].GreaterThanOrEqual(lv.Price) {
+			buyVolumes[currentPriceIdx] = totalBuy
+			currentPriceIdx--
+		}
+	}
+	// 补齐低价档位的累计买量
+	for i := currentPriceIdx; i >= 0; i-- {
+		buyVolumes[i] = totalBuy
+	}
+
+	// 累计卖量 (从低价向高价累加)
+	totalSell := decimal.Zero
+	currentPriceIdx = 0
+	itA = e.Asks.Iterator()
+	for {
+		_, lv, ok := itA.Next()
+		if !ok {
+			break
+		}
+		levelQty := decimal.Zero
+		for el := lv.Orders.Front(); el != nil; el = el.Next() {
+			levelQty = levelQty.Add(el.Value.(*types.Order).Quantity)
+		}
+		totalSell = totalSell.Add(levelQty)
+
+		for currentPriceIdx < len(prices) && prices[currentPriceIdx].LessThanOrEqual(lv.Price) {
+			sellVolumes[currentPriceIdx] = totalSell
+			currentPriceIdx++
+		}
+	}
+	for i := currentPriceIdx; i < len(prices); i++ {
+		sellVolumes[i] = totalSell
+	}
+
+	// 3. 寻找最大成交量的价格
 	var bestPrice decimal.Decimal
 	var maxVol decimal.Decimal
-	minImbalance := decimal.NewFromInt(1000000000) // Max Value
+	minImbalance := decimal.NewFromInt(1 << 60)
 
-	// 简单的 O(N^2) 实现，生产环境应优化为 O(N) 累积数组
-	// 这里为了准确性遍历计算
-	for _, p := range prices {
-		// Buy Qty: Sum(Bid.Qty) where Bid.Price >= p
-		buyQty := decimal.Zero
-		itB := e.Bids.Iterator()
-		for {
-			_, lv, ok := itB.Next()
-			if !ok {
-				break
-			}
-			if lv.Price.GreaterThanOrEqual(p) {
-				for el := lv.Orders.Front(); el != nil; el = el.Next() {
-					buyQty = buyQty.Add(el.Value.(*types.Order).Quantity)
-				}
-			}
-		}
-
-		// Sell Qty: Sum(Ask.Qty) where Ask.Price <= p
-		sellQty := decimal.Zero
-		itA := e.Asks.Iterator()
-		for {
-			_, lv, ok := itA.Next()
-			if !ok {
-				break
-			}
-			if lv.Price.LessThanOrEqual(p) {
-				for el := lv.Orders.Front(); el != nil; el = el.Next() {
-					sellQty = sellQty.Add(el.Value.(*types.Order).Quantity)
-				}
-			}
-		}
-
-		execVol := decimal.Min(buyQty, sellQty)
-		imbalance := buyQty.Sub(sellQty).Abs()
-
-		// 3. 选择最大成交量
-		if execVol.GreaterThan(maxVol) {
-			maxVol = execVol
-			bestPrice = p
-			minImbalance = imbalance
-		} else if execVol.Equal(maxVol) {
-			// 4. 最小不平衡量
+	for i := 0; i < len(prices); i++ {
+		matched := decimal.Min(buyVolumes[i], sellVolumes[i])
+		if matched.GreaterThan(maxVol) {
+			maxVol = matched
+			bestPrice = prices[i]
+			minImbalance = buyVolumes[i].Sub(sellVolumes[i]).Abs()
+		} else if matched.Equal(maxVol) && maxVol.IsPositive() {
+			imbalance := buyVolumes[i].Sub(sellVolumes[i]).Abs()
 			if imbalance.LessThan(minImbalance) {
 				minImbalance = imbalance
-				bestPrice = p
-			} else if imbalance.Equal(minImbalance) {
-				// 5. 市场压力 (简单取均值或离中间价近的，这里取较高价以促进成交)
-				// 实际规则可能更复杂
-				if p.GreaterThan(bestPrice) {
-					bestPrice = p
-				}
+				bestPrice = prices[i]
 			}
 		}
 	}
 
 	if maxVol.IsZero() {
-		return nil, fmt.Errorf("no matchable volume")
+		return &AuctionResult{}, nil
 	}
 
+	// 4. 生成虚拟交易（实际撮合由调用者处理或进一步细化）
 	return &AuctionResult{
 		EquilibriumPrice: bestPrice,
 		MatchedQuantity:  maxVol,
 	}, nil
 }
 
-// Match 执行撮合
+// Match 执行拍卖撮合
 func (e *AuctionEngine) Match() (*AuctionResult, error) {
 	res, err := e.CalculateEquilibriumPrice()
 	if err != nil {
@@ -855,12 +906,9 @@ func (e *AuctionEngine) Match() (*AuctionResult, error) {
 	e.Logger.Info("auction equilibrium price calculated", "ep", ep, "vol", res.MatchedQuantity)
 
 	// 收集所有可成交订单
-	// Bids: Price >= EP
-	// Asks: Price <= EP
 	var buyOrders []*types.Order
 	var sellOrders []*types.Order
 
-	// 提取买单 (按价格优先，时间优先)
 	itB := e.Bids.Iterator()
 	for {
 		_, lv, ok := itB.Next()
@@ -874,7 +922,6 @@ func (e *AuctionEngine) Match() (*AuctionResult, error) {
 		}
 	}
 
-	// 提取卖单 (按价格优先，时间优先)
 	itA := e.Asks.Iterator()
 	for {
 		_, lv, ok := itA.Next()
@@ -888,13 +935,11 @@ func (e *AuctionEngine) Match() (*AuctionResult, error) {
 		}
 	}
 
-	// 执行匹配
-	// 双指针匹配
+	// 价格优先，时间优先匹配
 	bIdx, sIdx := 0, 0
 	for bIdx < len(buyOrders) && sIdx < len(sellOrders) {
 		buyOrd := buyOrders[bIdx]
 		sellOrd := sellOrders[sIdx]
-
 		qty := decimal.Min(buyOrd.Quantity, sellOrd.Quantity)
 		if qty.IsZero() {
 			if buyOrd.Quantity.IsZero() {
@@ -905,60 +950,87 @@ func (e *AuctionEngine) Match() (*AuctionResult, error) {
 			}
 			continue
 		}
-
 		trade := &types.Trade{
-			TradeID:     generateTradeID(),
+			TradeID:     generateEngineTradeID(),
 			Symbol:      e.Symbol,
-			Price:       ep, // 统一按 EP 成交
+			Price:       ep,
 			Quantity:    qty,
 			BuyOrderID:  buyOrd.OrderID,
 			SellOrderID: sellOrd.OrderID,
 			Timestamp:   time.Now().UnixNano(),
 		}
 		res.Trades = append(res.Trades, trade)
-
-		// 更新订单/Book
 		buyOrd.Quantity = buyOrd.Quantity.Sub(qty)
 		sellOrd.Quantity = sellOrd.Quantity.Sub(qty)
-
 		if buyOrd.Quantity.IsZero() {
-			e.removeOrder(buyOrd) // 辅助函数移除
 			bIdx++
 		}
 		if sellOrd.Quantity.IsZero() {
-			e.removeOrder(sellOrd)
 			sIdx++
 		}
 	}
-
-	res.MatchedQuantity = decimal.Zero
-	for _, t := range res.Trades {
-		res.MatchedQuantity = res.MatchedQuantity.Add(t.Quantity)
-	}
-
-	// 计算剩余 Imbalance
 	return res, nil
 }
 
-func (e *AuctionEngine) removeOrder(order *types.Order) {
-	var book *algorithm.SkipList[float64, *OrderLevel]
-	key := order.Price.InexactFloat64()
-	if order.Side == "BUY" {
-		book = e.Bids
-		key = -key
-	} else {
-		book = e.Asks
-	}
+// MarketData 市场数据聚合
+type MarketData struct {
+	Bid float64
+	Ask float64
+}
 
-	if lv, ok := book.Search(key); ok {
-		for el := lv.Orders.Front(); el != nil; el = el.Next() {
-			if el.Value.(*types.Order).OrderID == order.OrderID {
-				lv.Orders.Remove(el)
-				if lv.Orders.Len() == 0 {
-					book.Delete(key)
-				}
-				return
-			}
+// OrderBookDepth 订单簿深度数据
+type OrderBookDepth struct {
+	Bids []*PriceLevel
+	Asks []*PriceLevel
+}
+
+func (e *MatchingEngine) GetMarketData() MarketData {
+	bestBid := decimal.Zero
+	bestAsk := decimal.Zero
+
+	if e.orderBook.Bids != nil {
+		if _, level, ok := e.orderBook.Bids.Iterator().Next(); ok {
+			bestBid = level.Price
 		}
 	}
+
+	if e.orderBook.Asks != nil {
+		if _, level, ok := e.orderBook.Asks.Iterator().Next(); ok {
+			bestAsk = level.Price
+		}
+	}
+
+	return MarketData{
+		Bid: bestBid.InexactFloat64(),
+		Ask: bestAsk.InexactFloat64(),
+	}
+}
+
+func (e *MatchingEngine) GetOrderBookDepth(depth int) (*OrderBookDepth, error) {
+	if depth <= 0 {
+		depth = 10
+	}
+
+	snapshot := e.GetEngineOrderBookSnapshot(depth)
+
+	bids := make([]*PriceLevel, len(snapshot.Bids))
+	for i, b := range snapshot.Bids {
+		bids[i] = &PriceLevel{
+			Price:    b.Price,
+			Quantity: b.Quantity,
+		}
+	}
+
+	asks := make([]*PriceLevel, len(snapshot.Asks))
+	for i, a := range snapshot.Asks {
+		asks[i] = &PriceLevel{
+			Price:    a.Price,
+			Quantity: a.Quantity,
+		}
+	}
+
+	return &OrderBookDepth{
+		Bids: bids,
+		Asks: asks,
+	}, nil
 }

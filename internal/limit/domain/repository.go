@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/shopspring/decimal"
 )
@@ -109,7 +110,7 @@ func (s *LimitService) InitializeLimitsForAccount(ctx context.Context, accountID
 	}
 
 	for _, l := range limits {
-		limitID := "LM" + string(l.limitType)[:2] + string(accountID)
+		limitID := "LM" + string(l.limitType)[:2] + strconv.FormatUint(accountID, 10)
 		limit := NewLimit(limitID, accountID, l.limitType, l.scope, l.value, config.WarningThreshold)
 		if err := s.limitRepo.Save(ctx, limit); err != nil {
 			return err

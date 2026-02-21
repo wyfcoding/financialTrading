@@ -7,7 +7,6 @@ package application
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -90,11 +89,91 @@ func (s *TreasuryService) AddBankAccountToPool(ctx context.Context, poolID uint6
 // SyncAccountBalance 同步银行账户余额（并在内部逻辑账户上反映）
 // 这是一个模拟实现，实际应调用银企直连网关
 func (s *TreasuryService) SyncAccountBalance(ctx context.Context, accountID uint, newBalance decimal.Decimal) error {
-	// TODO: 1. 找到账户所属资金池
-	// TODO: 2. 更新 bank_account 余额
-	// TODO: 3. 更新 pool.total_balance
-	// TODO: 4. 如果变动金额大，可能生成一条内部 Transaction 记录
-	return errors.New("not implemented")
+	pools, err := s.cashPoolRepo.ListAll(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list cash pools: %w", err)
+	}
+
+	var (
+		targetPool *domain.CashPool
+		oldBalance decimal.Decimal
+		found      bool
+	)
+	for _, pool := range pools {
+		if pool == nil {
+			continue
+		}
+		for _, acc := range pool.Accounts {
+			if acc.ID == accountID {
+				oldBalance = acc.Balance
+				if !pool.UpdateAccountBalance(accountID, newBalance) {
+					return fmt.Errorf("failed to update bank account %d in pool %d", accountID, pool.ID)
+				}
+				targetPool = pool
+				found = true
+				break
+			}
+		}
+		if found {
+			break
+		}
+	}
+	if !found || targetPool == nil {
+		return fmt.Errorf("bank account %d not found in any cash pool", accountID)
+	}
+
+	if err := s.cashPoolRepo.Save(ctx, targetPool); err != nil {
+		return fmt.Errorf("failed to persist pool balance update: %w", err)
+	}
+
+	delta := newBalance.Sub(oldBalance)
+	if !delta.IsZero() && s.accountRepo != nil {
+		// 尝试同步逻辑账户(若存在映射)；映射缺失不阻断资金池同步。
+		if logicalAccount, getErr := s.accountRepo.GetByID(ctx, uint64(accountID)); getErr == nil && logicalAccount != nil {
+			deltaCents := delta.Mul(decimal.NewFromInt(100)).Round(0).IntPart()
+			logicalAccount.Balance += deltaCents
+			logicalAccount.Available += deltaCents
+			if logicalAccount.Available < 0 {
+				logicalAccount.Available = 0
+			}
+			if logicalAccount.Balance < logicalAccount.Frozen {
+				logicalAccount.Balance = logicalAccount.Frozen
+			}
+			if saveErr := s.accountRepo.Save(ctx, logicalAccount); saveErr != nil {
+				s.logger.WarnContext(ctx, "logical account sync failed", "account_id", accountID, "error", saveErr)
+			}
+		}
+	}
+
+	// 对大额余额变动记录内部流水，便于风控/审计追踪。
+	if s.transactionRepo != nil && delta.Abs().GreaterThanOrEqual(decimal.NewFromInt(10000)) {
+		amountCents := delta.Mul(decimal.NewFromInt(100)).Round(0).IntPart()
+		txType := domain.TransactionTypeTransferIn
+		if amountCents < 0 {
+			txType = domain.TransactionTypeTransferOut
+		}
+		tx := &domain.Transaction{
+			TransactionID: fmt.Sprintf("SYNC-%s", idgen.GenIDString()),
+			AccountID:     accountID,
+			Type:          txType,
+			Amount:        amountCents,
+			BalanceAfter:  newBalance.Mul(decimal.NewFromInt(100)).Round(0).IntPart(),
+			ReferenceID:   fmt.Sprintf("BANK_SYNC_%d", accountID),
+			Remark:        "bank account balance synchronization",
+		}
+		if err := s.transactionRepo.Save(ctx, tx); err != nil {
+			s.logger.WarnContext(ctx, "failed to persist sync transaction", "account_id", accountID, "error", err)
+		}
+	}
+
+	s.logger.InfoContext(ctx, "bank account balance synced",
+		"account_id", accountID,
+		"pool_id", targetPool.ID,
+		"old_balance", oldBalance.String(),
+		"new_balance", newBalance.String(),
+		"delta", delta.String(),
+	)
+	return nil
 }
 
 // MonitorLiquidity 监控资金池水位，生成调拨建议
@@ -107,8 +186,51 @@ func (s *TreasuryService) MonitorLiquidity(ctx context.Context, poolID uint64) e
 	isLow, isHigh, deviation := pool.CheckLiquidity()
 	if isLow {
 		s.logger.WarnContext(ctx, "cash pool liquidity low", "pool_name", pool.Name, "deviation", deviation)
-		// 自动生成调拨建议（从主账户或其他池调入）
-		// TODO: Create TransferInstruction Proposal
+		// 自动生成调拨建议（提案），不直接执行。
+		if len(pool.Accounts) >= 2 {
+			var (
+				from *domain.BankAccount
+				to   *domain.BankAccount
+			)
+			for i := range pool.Accounts {
+				acc := &pool.Accounts[i]
+				if acc.Status != domain.BankAccountStatusActive {
+					continue
+				}
+				if from == nil || acc.Balance.GreaterThan(from.Balance) {
+					from = acc
+				}
+				if to == nil || acc.Balance.LessThan(to.Balance) {
+					to = acc
+				}
+			}
+			if from != nil && to != nil && from.ID != to.ID {
+				amount := decimal.Min(deviation, from.Balance.Div(decimal.NewFromInt(2)))
+				if amount.GreaterThan(decimal.Zero) {
+					ins := &domain.TransferInstruction{
+						InstructionID: fmt.Sprintf("INS%s", idgen.GenIDString()),
+						FromAccountID: uint64(from.ID),
+						ToAccountID:   uint64(to.ID),
+						Amount:        amount,
+						Currency:      pool.Currency,
+						RequestDate:   time.Now(),
+						Status:        domain.InstructionStatusPending,
+						Purpose:       "AUTO_LIQUIDITY_REBALANCE_PROPOSAL",
+					}
+					if err := s.transferInsRepo.Save(ctx, ins); err != nil {
+						s.logger.WarnContext(ctx, "failed to save liquidity transfer proposal", "pool_id", poolID, "error", err)
+					} else {
+						s.logger.InfoContext(ctx, "liquidity transfer proposal generated",
+							"pool_id", poolID,
+							"instruction_id", ins.InstructionID,
+							"from_account_id", ins.FromAccountID,
+							"to_account_id", ins.ToAccountID,
+							"amount", ins.Amount.String(),
+						)
+					}
+				}
+			}
+		}
 	}
 	if isHigh {
 		s.logger.InfoContext(ctx, "cash pool liquidity high", "pool_name", pool.Name, "excess", deviation)

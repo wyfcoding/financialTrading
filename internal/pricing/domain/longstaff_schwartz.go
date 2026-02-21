@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"github.com/wyfcoding/pkg/algorithm/finance"
+	"github.com/wyfcoding/pkg/algos/finance"
 )
 
 // AmericanOptionParams 定义美国期权合约参数

@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"github.com/wyfcoding/pkg/algorithm/surveillance"
+	"github.com/wyfcoding/financialtrading/internal/monitoringanalytics/domain/surveillance"
 )
 
 // OrderEvent 监控服务接收到的订单事件简报

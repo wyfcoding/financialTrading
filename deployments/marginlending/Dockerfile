@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o marginlending financialTrading/cmd/marginlending/main.go
+RUN go build -o marginlending financialtrading/cmd/marginlending/main.go
 
 # Run stage
 FROM alpine:latest
@@ -16,7 +16,7 @@ FROM alpine:latest
 WORKDIR /app
 
 COPY --from=builder /app/marginlending .
-COPY --from=builder /app/financialTrading/configs/marginlending/config.toml ./configs/
+COPY --from=builder /app/financialtrading/configs/marginlending/config.toml ./configs/
 
 EXPOSE 50055
 

@@ -1,3 +1,6 @@
+//go:build !risk_experimental
+// +build !risk_experimental
+
 // 变更说明：新增实时盯市 (Mark-to-Market) 服务逻辑，支持持仓浮盈浮亏计算与风险预警。
 // 假设：行情通过外部 Provider 注入，保证金率低于 5% 时触发强平预警。
 package domain

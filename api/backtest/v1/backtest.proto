@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package backtest.v1;
 
-option go_package = "github.com/wyfcoding/financialTrading/go-api/backtest/v1;pb";
+option go_package = "github.com/wyfcoding/financialtrading/go-api/backtest/v1;pb";
 
 import "google/protobuf/timestamp.proto";
 

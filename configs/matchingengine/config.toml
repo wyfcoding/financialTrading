@@ -1,63 +1,32 @@
-# 金融交易系统 - 撮合引擎配置文件
 version = "1.0.0"
 
 [server]
 name = "matchingengine"
-environment = "dev"
+environment = "prod"
 
-[server.http]
-addr = "0.0.0.0"
-port = 8101
-timeout = "3s"
+  [server.grpc]
+  addr = "0.0.0.0"
+  port = 9097
+  timeout = "1s"
 
-[server.grpc]
-addr = "0.0.0.0"
-port = 9101
-timeout = "3s"
+[data.redis]
+addrs = ["127.0.0.1:6379"]
+password = ""
+db = 3
+
+[messagequeue.kafka]
+brokers = ["127.0.0.1:9092"]
+topic = "market.trades"         
+group_id = "matching-engine-01"
+async = true
+max_bytes = 1048576             
 
 [log]
 level = "info"
 format = "json"
-output = "stdout"
 
 [tracing]
-enabled = true
+enabled = false                 
 service_name = "matchingengine"
 otlp_endpoint = "localhost:4317"
-
-[metrics]
-enabled = true
-port = "18101"
-path = "/metrics"
-
-[cache]
-prefix = "matching:"
-default_expiration = "1h"
-
-[lock]
-prefix = "matching:lock:"
-default_expiration = "10s"
-
-[data.database]
-driver = "mysql"
-dsn = "root:root@tcp(127.0.0.1:3306)/trading_matching?charset=utf8mb4&parseTime=True&loc=Local"
-max_idle_conns = 20
-max_open_conns = 200
-conn_max_lifetime = "1h"
-
-[data.redis]
-addrs = ["127.0.0.1:6379"]
-password = "redis_password"
-db = 0
-pool_size = 20
-
-[messagequeue.kafka]
-brokers = ["localhost:9092"]
-topic = "match-events"
-group_id = "matching-group"
-
-[services]
-[services.order]
-grpc_addr = "127.0.0.1:9001"
-[services.clearing]
-grpc_addr = "127.0.0.1:9102"
+sampler_ratio = 0.0

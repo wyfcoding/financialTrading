@@ -1,0 +1,56 @@
+# 市场监察服务配置
+# 生成摘要：
+#   1) 服务端口、数据库连接、Redis、Kafka 配置
+#   2) 检测引擎默认参数
+#   3) 支持环境变量覆盖（${ENV_VAR} 风格）
+
+[server]
+# gRPC 端口
+grpc_port = 9090
+# HTTP 端口（健康检查 + 管理API）
+http_port = 8090
+# 服务名
+service_name = "marketsurveillance"
+
+[database]
+# MySQL DSN
+dsn = "${MYSQL_DSN:root:password@tcp(localhost:3306)/market_surveillance?charset=utf8mb4&parseTime=True&loc=Local}"
+max_open_conns = 50
+max_idle_conns = 10
+conn_max_lifetime = "30m"
+
+[redis]
+addr = "${REDIS_ADDR:localhost:6379}"
+password = "${REDIS_PASSWORD:}"
+db = 0
+pool_size = 20
+
+[kafka]
+# Kafka Broker 地址
+brokers = ["${KAFKA_BROKERS:localhost:9092}"]
+# 消费者组
+consumer_group = "surveillance-consumer"
+# 生产者 Topic（告警事件）
+alert_topic = "surveillance.alerts"
+# 消费 Topic（订单事件流）
+order_event_topic = "order.events"
+
+[logging]
+level = "info"
+format = "json"
+output = "stdout"
+
+[tracing]
+# Jaeger 端点
+endpoint = "${JAEGER_ENDPOINT:http://localhost:14268/api/traces}"
+sample_rate = 1.0
+
+[detection]
+# 默认检测窗口（秒）
+default_window_seconds = 300
+# 幌骗检测默认撤单率阈值
+default_cancel_ratio = "0.80"
+# 洗售检测默认自成交比率阈值
+default_wash_ratio = "0.50"
+# 价格偏差默认阈值
+default_price_deviation = "0.02"

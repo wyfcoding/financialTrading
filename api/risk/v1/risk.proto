@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package risk.v1;
 
-import "risk/v1/error_reason.proto";
-
 option go_package = "github.com/wyfcoding/financialtrading/go-api/risk/v1;v1";
 
 service RiskService {

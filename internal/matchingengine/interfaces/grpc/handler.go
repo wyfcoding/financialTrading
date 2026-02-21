@@ -174,7 +174,7 @@ func (h *Handler) GetOrderBook(ctx context.Context, req *pb.GetOrderBookRequest)
 		Symbol:    snapshot.Symbol,
 		Bids:      pbBids,
 		Asks:      pbAsks,
-		Timestamp: snapshot.Timestamp,
+		Timestamp: snapshot.Timestamp.UnixNano(),
 	}, nil
 }
 

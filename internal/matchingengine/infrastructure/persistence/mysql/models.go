@@ -110,7 +110,7 @@ func toSnapshotModel(s *domain.OrderBookSnapshot) (*OrderBookSnapshotModel, erro
 		Symbol:    s.Symbol,
 		BidsJSON:  string(bids),
 		AsksJSON:  string(asks),
-		Timestamp: s.Timestamp,
+		Timestamp: s.Timestamp.UnixNano(),
 	}, nil
 }
 
@@ -133,7 +133,7 @@ func toSnapshot(m *OrderBookSnapshotModel) (*domain.OrderBookSnapshot, error) {
 		Symbol:    m.Symbol,
 		Bids:      bids,
 		Asks:      asks,
-		Timestamp: m.Timestamp,
+		Timestamp: time.Unix(0, m.Timestamp),
 	}, nil
 }
 

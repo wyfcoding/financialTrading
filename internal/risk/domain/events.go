@@ -1,3 +1,6 @@
+//go:build !risk_experimental
+// +build !risk_experimental
+
 package domain
 
 import "time"

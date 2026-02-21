@@ -29,7 +29,7 @@ func NewAMLService(repo amlRepo) *AMLService {
 func (s *AMLService) MonitorTransaction(ctx context.Context, req *pb.MonitorTransactionRequest) (*pb.MonitorTransactionResponse, error) {
 	alertID := ""
 	riskLevel := classifyRisk(req.Amount)
-	isSuspicious := riskLevel == "HIGH"
+	isSuspicious := riskLevel >= pb.RiskLevel_RISK_LEVEL_HIGH
 
 	if isSuspicious {
 		alertID = fmt.Sprintf("aml_%d", time.Now().UnixNano())
@@ -38,7 +38,7 @@ func (s *AMLService) MonitorTransaction(ctx context.Context, req *pb.MonitorTran
 			UserID:      req.UserId,
 			Type:        "TRANSACTION",
 			Status:      "NEW",
-			RiskLevel:   riskLevel,
+			RiskLevel:   riskLevel.String(),
 			Title:       "Suspicious transaction",
 			Description: fmt.Sprintf("transaction=%s amount=%s currency=%s", req.TransactionId, req.Amount, req.Currency),
 			CreatedAt:   time.Now(),
@@ -65,7 +65,7 @@ func (s *AMLService) GetRiskScore(ctx context.Context, userID string) (*pb.GetRi
 		return &pb.GetRiskScoreResponse{
 			UserId:    userID,
 			Score:     0,
-			RiskLevel: "LOW",
+			RiskLevel: pb.RiskLevel_RISK_LEVEL_LOW,
 		}, nil
 	}
 	return &pb.GetRiskScoreResponse{
@@ -81,46 +81,104 @@ func (s *AMLService) ListAlerts(ctx context.Context, status string) (*pb.ListAle
 		return nil, err
 	}
 
-	items := make([]*pb.AlertItem, 0, len(alerts))
+	items := make([]*pb.AMLAlert, 0, len(alerts))
 	for _, a := range alerts {
 		if a == nil {
 			continue
 		}
-		items = append(items, &pb.AlertItem{
+		items = append(items, &pb.AMLAlert{
 			AlertId:     a.AlertID,
 			UserId:      a.UserID,
-			Type:        a.Type,
+			Type:        mapAlertType(a.Type),
+			Status:      mapAlertStatus(a.Status),
+			RiskLevel:   normalizeRiskLevel(a.RiskLevel),
+			Title:       a.Title,
 			Description: a.Description,
-			Status:      a.Status,
+			AssignedTo:  a.AssignedTo,
 			CreatedAt:   timestamppb.New(a.CreatedAt),
+			UpdatedAt:   timestamppb.New(a.UpdatedAt),
 		})
 	}
 
 	return &pb.ListAlertsResponse{Alerts: items}, nil
 }
 
-func classifyRisk(amount string) string {
+func classifyRisk(amount string) pb.RiskLevel {
 	value := strings.TrimSpace(amount)
 	switch {
 	case value == "":
-		return "LOW"
+		return pb.RiskLevel_RISK_LEVEL_LOW
 	case strings.HasPrefix(value, "-"):
-		return "LOW"
+		return pb.RiskLevel_RISK_LEVEL_LOW
 	case len(strings.SplitN(value, ".", 2)[0]) >= 6:
-		return "HIGH"
+		return pb.RiskLevel_RISK_LEVEL_HIGH
 	case len(strings.SplitN(value, ".", 2)[0]) >= 5:
-		return "MEDIUM"
+		return pb.RiskLevel_RISK_LEVEL_MEDIUM
 	default:
-		return "LOW"
+		return pb.RiskLevel_RISK_LEVEL_LOW
 	}
 }
 
-func normalizeRiskLevel(level string) string {
+func normalizeRiskLevel(level string) pb.RiskLevel {
 	upper := strings.ToUpper(strings.TrimSpace(level))
 	switch upper {
-	case "LOW", "MEDIUM", "HIGH":
-		return upper
+	case "RISK_LEVEL_LOW", "LOW":
+		return pb.RiskLevel_RISK_LEVEL_LOW
+	case "RISK_LEVEL_MEDIUM", "MEDIUM":
+		return pb.RiskLevel_RISK_LEVEL_MEDIUM
+	case "RISK_LEVEL_HIGH", "HIGH":
+		return pb.RiskLevel_RISK_LEVEL_HIGH
+	case "RISK_LEVEL_CRITICAL", "CRITICAL":
+		return pb.RiskLevel_RISK_LEVEL_CRITICAL
 	default:
-		return "LOW"
+		return pb.RiskLevel_RISK_LEVEL_LOW
+	}
+}
+
+func mapAlertType(t string) pb.AlertType {
+	switch strings.ToUpper(strings.TrimSpace(t)) {
+	case "TRANSACTION", "LARGE_TRANSACTION":
+		return pb.AlertType_ALERT_TYPE_LARGE_TRANSACTION
+	case "FREQUENT_TRANSACTION":
+		return pb.AlertType_ALERT_TYPE_FREQUENT_TRANSACTION
+	case "STRUCTURING":
+		return pb.AlertType_ALERT_TYPE_STRUCTURING
+	case "RAPID_MOVEMENT":
+		return pb.AlertType_ALERT_TYPE_RAPID_MOVEMENT
+	case "HIGH_RISK_COUNTRY":
+		return pb.AlertType_ALERT_TYPE_HIGH_RISK_COUNTRY
+	case "SANCTIONS_MATCH":
+		return pb.AlertType_ALERT_TYPE_SANCTIONS_MATCH
+	case "PEP_ASSOCIATION":
+		return pb.AlertType_ALERT_TYPE_PEP_ASSOCIATION
+	case "UNUSUAL_PATTERN":
+		return pb.AlertType_ALERT_TYPE_UNUSUAL_PATTERN
+	case "ROUND_TRIPPING":
+		return pb.AlertType_ALERT_TYPE_ROUND_TRIPPING
+	case "SHELL_COMPANY":
+		return pb.AlertType_ALERT_TYPE_SHELL_COMPANY
+	default:
+		return pb.AlertType_ALERT_TYPE_UNSPECIFIED
+	}
+}
+
+func mapAlertStatus(s string) pb.AlertStatus {
+	switch strings.ToUpper(strings.TrimSpace(s)) {
+	case "NEW":
+		return pb.AlertStatus_ALERT_STATUS_NEW
+	case "UNDER_REVIEW":
+		return pb.AlertStatus_ALERT_STATUS_UNDER_REVIEW
+	case "ESCALATED":
+		return pb.AlertStatus_ALERT_STATUS_ESCALATED
+	case "FALSE_POSITIVE":
+		return pb.AlertStatus_ALERT_STATUS_FALSE_POSITIVE
+	case "CONFIRMED":
+		return pb.AlertStatus_ALERT_STATUS_CONFIRMED
+	case "REPORTED":
+		return pb.AlertStatus_ALERT_STATUS_REPORTED
+	case "CLOSED":
+		return pb.AlertStatus_ALERT_STATUS_CLOSED
+	default:
+		return pb.AlertStatus_ALERT_STATUS_UNSPECIFIED
 	}
 }

@@ -1,3 +1,6 @@
+//go:build !risk_experimental
+// +build !risk_experimental
+
 package domain
 
 import (
@@ -8,7 +11,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	algorithm "github.com/wyfcoding/pkg/algorithm/math"
+	algorithm "github.com/wyfcoding/pkg/algos/math"
 )
 
 // PortfolioAsset 组合中的单项资产

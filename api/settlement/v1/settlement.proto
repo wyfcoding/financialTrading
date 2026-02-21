@@ -4,8 +4,6 @@ package settlement.v1;
 
 option go_package = "github.com/wyfcoding/financialtrading/go-api/settlement/v1;v1";
 
-import "google/protobuf/timestamp.proto";
-
 // SettlementService 结算服务
 service SettlementService {
   // CreateInstruction 创建结算指令

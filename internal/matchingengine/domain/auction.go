@@ -6,16 +6,17 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	algorithm "github.com/wyfcoding/pkg/algorithm/structures"
-	"github.com/wyfcoding/pkg/algorithm/types"
+	algorithm "github.com/wyfcoding/pkg/algos/structures"
+	"github.com/wyfcoding/pkg/algos/types"
 )
 
 // CalculateEquilibrium 寻找平衡价格 (Equilibrium Price)
 // 1. 最大化成交量
 // 2. 最小化失衡
 func (a *AuctionEngine) CalculateEquilibrium() *AuctionResult {
-	// 获取所有候选价格 (买盘和卖盘中的所有价格点)
-	priceSet := make(map[float64]struct{})
+	// 1. 收集所有不重复的价格点
+	// 使用 map 去重
+	priceMap := make(map[float64]struct{})
 
 	itB := a.Bids.Iterator()
 	for {
@@ -23,7 +24,7 @@ func (a *AuctionEngine) CalculateEquilibrium() *AuctionResult {
 		if !ok {
 			break
 		}
-		priceSet[mathAbs(p)] = struct{}{}
+		priceMap[mathAbs(p)] = struct{}{}
 	}
 
 	itA := a.Asks.Iterator()
@@ -32,29 +33,86 @@ func (a *AuctionEngine) CalculateEquilibrium() *AuctionResult {
 		if !ok {
 			break
 		}
-		priceSet[p] = struct{}{}
+		priceMap[p] = struct{}{}
 	}
 
+	// 2. 排序价格
 	var prices []float64
-	for p := range priceSet {
+	for p := range priceMap {
 		prices = append(prices, p)
 	}
 	sort.Float64s(prices)
 
+	if len(prices) == 0 {
+		return &AuctionResult{}
+	}
+
+	// 3. 构建累积量 (CDF)
+	// bids: Price Descending -> CumQty increases as Price decreases
+	// asks: Price Ascending -> CumQty increases as Price increases
+
+	// 为了 O(N) 扫描，我们需要预计算每个价格点的 Bid/Ask 这一档的独立数量
+	bidVols := make(map[float64]decimal.Decimal)
+	itB = a.Bids.Iterator()
+	for {
+		p, lv, ok := itB.Next()
+		if !ok {
+			break
+		}
+		bidVols[mathAbs(p)] = a.getLevelQty(lv)
+	}
+
+	askVols := make(map[float64]decimal.Decimal)
+	itA = a.Bids.Iterator()
+	// Fixed: should use a.Asks
+	itA = a.Asks.Iterator()
+	for {
+		p, lv, ok := itA.Next()
+		if !ok {
+			break
+		}
+		askVols[p] = a.getLevelQty(lv)
+	}
+
+	n := len(prices)
+	cumBids := make([]decimal.Decimal, n) // cumBids[i] = Sum(BidVols where Price >= prices[i])
+	cumAsks := make([]decimal.Decimal, n) // cumAsks[i] = Sum(AskVols where Price <= prices[i])
+
+	// Calculate Cumulative Bids (Right to Left / High to Low)
+	// prices are sorted Low to High.
+	// Bids accumulate from High Price down to Low Price.
+	currentBidSum := decimal.Zero
+	for i := n - 1; i >= 0; i-- {
+		p := prices[i]
+		if v, ok := bidVols[p]; ok {
+			currentBidSum = currentBidSum.Add(v)
+		}
+		cumBids[i] = currentBidSum
+	}
+
+	// Calculate Cumulative Asks (Left to Right / Low to High)
+	currentAskSum := decimal.Zero
+	for i := 0; i < n; i++ {
+		p := prices[i]
+		if v, ok := askVols[p]; ok {
+			currentAskSum = currentAskSum.Add(v)
+		}
+		cumAsks[i] = currentAskSum
+	}
+
+	// 4. Find Equilibrium
 	var bestPrice decimal.Decimal
 	var maxMatched decimal.Decimal
 	var minImbalance = decimal.NewFromFloat(math.MaxFloat64)
 
-	for _, p := range prices {
-		priceDec := decimal.NewFromFloat(p)
-
-		// 累积买入量 (价格 >= p)
-		buyQty := a.getCumulativeQty(a.Bids, priceDec, true)
-		// 累积卖出量 (价格 <= p)
-		sellQty := a.getCumulativeQty(a.Asks, priceDec, false)
+	for i := 0; i < n; i++ {
+		p := prices[i]
+		buyQty := cumBids[i]
+		sellQty := cumAsks[i]
 
 		matched := decimal.Min(buyQty, sellQty)
 		imbalance := buyQty.Sub(sellQty).Abs()
+		priceDec := decimal.NewFromFloat(p)
 
 		if matched.GreaterThan(maxMatched) {
 			maxMatched = matched
@@ -156,7 +214,7 @@ func (a *AuctionEngine) CalculateEquilibrium() *AuctionResult {
 	return result
 }
 
-func (a *AuctionEngine) getCumulativeQty(book *algorithm.SkipList[float64, *OrderLevel], price decimal.Decimal, isBid bool) decimal.Decimal {
+func (a *AuctionEngine) getCumulativeQty(book *algorithm.SkipList[float64, *EngineOrderLevel], price decimal.Decimal, isBid bool) decimal.Decimal {
 	var total decimal.Decimal
 	it := book.Iterator()
 	for {
@@ -179,7 +237,7 @@ func (a *AuctionEngine) getCumulativeQty(book *algorithm.SkipList[float64, *Orde
 	return total
 }
 
-func (a *AuctionEngine) getLevelQty(level *OrderLevel) decimal.Decimal {
+func (a *AuctionEngine) getLevelQty(level *EngineOrderLevel) decimal.Decimal {
 	var q decimal.Decimal
 	for el := level.Orders.Front(); el != nil; el = el.Next() {
 		q = q.Add(el.Value.(*types.Order).Quantity)

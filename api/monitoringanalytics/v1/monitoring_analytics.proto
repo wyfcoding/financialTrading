@@ -3,7 +3,6 @@ syntax = "proto3";
 package monitoringanalytics.v1;
 
 import "google/protobuf/timestamp.proto";
-import "monitoringanalytics/v1/error_reason.proto";
 
 option go_package = "github.com/wyfcoding/financialtrading/go-api/monitoringanalytics/v1;v1";
 

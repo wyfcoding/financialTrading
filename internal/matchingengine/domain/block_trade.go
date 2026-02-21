@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"github.com/wyfcoding/pkg/algorithm/types"
+	"github.com/wyfcoding/pkg/algos/types"
 )
 
 // BlockTradeEngine 大宗交易处理引擎

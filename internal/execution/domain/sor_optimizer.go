@@ -4,17 +4,17 @@ import (
 	"context"
 
 	"github.com/shopspring/decimal"
-	"github.com/wyfcoding/pkg/algorithm/optimization"
+	soralgo "github.com/wyfcoding/financialtrading/internal/execution/domain/sor"
 )
 
 // SOROptimizer 封装了智能路由的优化计算逻辑
 type SOROptimizer struct {
-	impl *optimization.SOROptimizer
+	impl *soralgo.SOROptimizer
 }
 
 func NewSOROptimizer(latencyFactor float64) *SOROptimizer {
 	return &SOROptimizer{
-		impl: &optimization.SOROptimizer{LatencyFactor: latencyFactor},
+		impl: &soralgo.SOROptimizer{LatencyFactor: latencyFactor},
 	}
 }
 
@@ -33,7 +33,7 @@ func (o *SOROptimizer) Optimize(
 	venues []*Venue,
 	depths []*VenueDepth,
 ) ([]RouteResult, error) {
-	var inputs []optimization.RouteInput
+	var inputs []soralgo.RouteInput
 	venueMap := make(map[string]*Venue)
 	for _, v := range venues {
 		venueMap[v.ID] = v
@@ -46,7 +46,7 @@ func (o *SOROptimizer) Optimize(
 			levels = d.Bids
 		}
 		for _, l := range levels {
-			inputs = append(inputs, optimization.RouteInput{
+			inputs = append(inputs, soralgo.RouteInput{
 				VenueID:   d.VenueID,
 				Price:     l.Price,
 				Quantity:  l.Quantity,

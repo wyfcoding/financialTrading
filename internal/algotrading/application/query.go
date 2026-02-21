@@ -74,15 +74,22 @@ func (s *QueryService) GetBacktestResult(ctx context.Context, backtestID string)
 }
 
 func (s *QueryService) toStrategyDTO(strategy *domain.Strategy) *StrategyDTO {
+	if strategy == nil {
+		return nil
+	}
+	strategyID := strategy.StrategyID
+	if strategyID == "" {
+		strategyID = strategy.ID
+	}
 	return &StrategyDTO{
-		StrategyID:       strategy.StrategyID,
+		StrategyID:       strategyID,
 		UserID:           strategy.UserID,
 		Type:             strategy.Type,
 		Status:           strategy.Status,
 		Symbol:           strategy.Symbol,
 		Parameters:       strategy.Parameters,
 		ExecutedAmount:   strategy.ExecutedAmount,
-		ExecutedQuantity: strategy.ExecutedQuantity,
+		ExecutedQuantity: strategy.ExecutedQuantity.IntPart(),
 		CreatedAt:        strategy.CreatedAt,
 	}
 }

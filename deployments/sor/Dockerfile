@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o sor financialTrading/cmd/sor/main.go
+RUN go build -o sor financialtrading/cmd/sor/main.go
 
 # Run stage
 FROM alpine:latest
@@ -16,7 +16,7 @@ FROM alpine:latest
 WORKDIR /app
 
 COPY --from=builder /app/sor .
-COPY --from=builder /app/financialTrading/configs/sor/config.toml ./configs/
+COPY --from=builder /app/financialtrading/configs/sor/config.toml ./configs/
 
 EXPOSE 50052
 

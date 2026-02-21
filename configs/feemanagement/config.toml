@@ -1,0 +1,30 @@
+# 金融交易系统 - 费用管理服务配置文件
+version = "1.0.0"
+
+[server]
+name = "feemanagement"
+environment = "dev"
+
+[server.http]
+addr = "0.0.0.0"
+port = 8118
+timeout = "3s"
+
+[server.grpc]
+addr = "0.0.0.0"
+port = 9118
+timeout = "3s"
+
+[log]
+level = "info"
+format = "json"
+output = "stdout"
+
+[data.database]
+driver = "mysql"
+dsn = "root:root@tcp(127.0.0.1:3306)/trading_feemanagement?charset=utf8mb4&parseTime=True&loc=Local"
+
+[data.redis]
+addrs = ["127.0.0.1:6379"]
+password = "redis_password"
+db = 0

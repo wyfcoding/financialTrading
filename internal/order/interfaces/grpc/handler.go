@@ -2,6 +2,9 @@ package grpc
 
 import (
 	"context"
+	"math"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -25,18 +28,16 @@ func NewHandler(cmd *application.OrderCommandService, query *application.OrderQu
 
 func (h *Handler) CreateOrder(ctx context.Context, req *pb.CreateOrderRequest) (*pb.CreateOrderResponse, error) {
 	cmd := application.PlaceOrderCommand{
-		UserID:          req.UserId,
-		Symbol:          req.Symbol,
-		Side:            req.Side.String(),
-		Type:            req.Type.String(),
-		Price:           req.Price,
-		Quantity:        req.Quantity,
-		StopPrice:       req.StopPrice,
-		TakeProfitPrice: req.TakeProfitPrice,
-		ParentOrderID:   req.ParentOrderId,
-		OcoOrderID:      req.OcoOrderId,
-		IsOCO:           req.IsOco,
+		UserID:        req.UserId,
+		Symbol:        req.Symbol,
+		Side:          orderSideToDomain(req.Side),
+		Type:          orderTypeToDomain(req.Type),
+		Price:         req.Price,
+		Quantity:      req.Quantity,
+		TimeInForce:   timeInForceToDomain(req.TimeInForce),
+		ParentOrderID: req.ParentOrderId,
 	}
+	applyCompatMetadata(&cmd, req.Metadata)
 
 	orderID, err := h.cmd.PlaceOrder(ctx, cmd)
 	if err != nil {
@@ -44,8 +45,10 @@ func (h *Handler) CreateOrder(ctx context.Context, req *pb.CreateOrderRequest) (
 	}
 
 	return &pb.CreateOrderResponse{
-		OrderId: orderID,
-		Status:  pb.OrderStatus_PENDING,
+		OrderId:       orderID,
+		ClientOrderId: req.ClientOrderId,
+		Status:        pb.OrderStatus_ORDER_STATUS_PENDING_NEW,
+		CreatedAt:     timestamppb.Now(),
 	}, nil
 }
 
@@ -53,18 +56,29 @@ func (h *Handler) CancelOrder(ctx context.Context, req *pb.CancelOrderRequest) (
 	cmd := application.CancelOrderCommand{
 		OrderID: req.OrderId,
 		UserID:  req.UserId,
-		Reason:  "user request",
+		Reason:  req.Reason,
+	}
+	if cmd.Reason == "" {
+		cmd.Reason = "user request"
 	}
 
 	if err := h.cmd.CancelOrder(ctx, cmd); err != nil {
 		return &pb.CancelOrderResponse{Success: false}, status.Errorf(codes.Internal, "cancel order failed: %v", err)
 	}
 
-	return &pb.CancelOrderResponse{Success: true}, nil
+	return &pb.CancelOrderResponse{
+		Success:     true,
+		FinalStatus: pb.OrderStatus_ORDER_STATUS_CANCELLED,
+		CancelledAt: timestamppb.Now(),
+	}, nil
 }
 
 func (h *Handler) GetOrder(ctx context.Context, req *pb.GetOrderRequest) (*pb.GetOrderResponse, error) {
-	dto, err := h.query.GetOrder(ctx, req.OrderId)
+	orderID := req.OrderId
+	if orderID == "" {
+		orderID = req.ClientOrderId
+	}
+	dto, err := h.query.GetOrder(ctx, orderID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "get order failed: %v", err)
 	}
@@ -77,12 +91,18 @@ func (h *Handler) GetOrder(ctx context.Context, req *pb.GetOrderRequest) (*pb.Ge
 }
 
 func (h *Handler) ListOrders(ctx context.Context, req *pb.ListOrdersRequest) (*pb.ListOrdersResponse, error) {
-	var statusVal domain.OrderStatus
-	if req.Status != "" {
-		statusVal = domain.OrderStatus(req.Status)
+	page := req.Page
+	if page <= 0 {
+		page = 1
 	}
+	pageSize := req.PageSize
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	offset := int((page - 1) * pageSize)
 
-	dtos, _, err := h.query.ListOrders(ctx, req.UserId, statusVal, int(req.Limit), int(req.Offset))
+	statusVal := orderStatusToDomain(req.Status)
+	dtos, total, err := h.query.ListOrders(ctx, req.UserId, statusVal, int(pageSize), offset)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list orders failed: %v", err)
 	}
@@ -93,64 +113,235 @@ func (h *Handler) ListOrders(ctx context.Context, req *pb.ListOrdersRequest) (*p
 	}
 
 	return &pb.ListOrdersResponse{
-		Orders: orders,
+		Orders:     orders,
+		TotalCount: int64ToInt32(total),
+		Page:       page,
+		PageSize:   pageSize,
 	}, nil
 }
 
 func (h *Handler) toProtoOrder(d *application.OrderDTO) *pb.Order {
-	price, _ := decimal.NewFromString(d.Price)
-	qty, _ := decimal.NewFromString(d.Quantity)
-	filled, _ := decimal.NewFromString(d.FilledQuantity)
-
-	var side pb.OrderSide
-	if d.Side == "buy" {
-		side = pb.OrderSide_BUY
-	} else {
-		side = pb.OrderSide_SELL
+	price := parseDecimalString(d.Price)
+	qty := parseDecimalString(d.Quantity)
+	filled := parseDecimalString(d.FilledQuantity)
+	avg := parseDecimalString(d.AveragePrice)
+	remaining := qty - filled
+	if remaining < 0 {
+		remaining = 0
 	}
 
-	var oType pb.OrderType
-	if d.OrderType == "limit" {
-		oType = pb.OrderType_LIMIT
-	} else {
-		oType = pb.OrderType_MARKET
+	metadata := make(map[string]string)
+	if d.StopPrice != "" && d.StopPrice != "0" {
+		metadata["stop_price"] = d.StopPrice
+	}
+	if d.TakeProfitPrice != "" && d.TakeProfitPrice != "0" {
+		metadata["take_profit_price"] = d.TakeProfitPrice
+	}
+	if d.IsOCO {
+		metadata["is_oco"] = "true"
+	}
+	if len(metadata) == 0 {
+		metadata = nil
 	}
 
-	var status pb.OrderStatus
-	switch d.Status {
-	case "pending":
-		status = pb.OrderStatus_PENDING
-	case "validated":
-		status = pb.OrderStatus_VALIDATED
-	case "filled":
-		status = pb.OrderStatus_FILLED
-	case "partially_filled":
-		status = pb.OrderStatus_PARTIALLY_FILLED
-	case "cancelled":
-		status = pb.OrderStatus_CANCELLED
-	default:
-		status = pb.OrderStatus_STATUS_UNSPECIFIED
+	linkedType := pb.LinkedOrderType_LINKED_UNSPECIFIED
+	if d.IsOCO || d.OcoOrderID != "" {
+		linkedType = pb.LinkedOrderType_OCO
 	}
-
-	stopPrice, _ := decimal.NewFromString(d.StopPrice)
-	tpPrice, _ := decimal.NewFromString(d.TakeProfitPrice)
 
 	return &pb.Order{
-		Id:              d.OrderID,
-		UserId:          d.UserID,
-		Symbol:          d.Symbol,
-		Side:            side,
-		Type:            oType,
-		Price:           price.InexactFloat64(),
-		Quantity:        qty.InexactFloat64(),
-		FilledQuantity:  filled.InexactFloat64(),
-		Status:          status,
-		StopPrice:       stopPrice.InexactFloat64(),
-		TakeProfitPrice: tpPrice.InexactFloat64(),
-		ParentOrderId:   d.ParentOrderID,
-		OcoOrderId:      d.OcoOrderID,
-		IsOco:           d.IsOCO,
-		CreatedAt:       timestamppb.New(time.Unix(d.CreatedAt, 0)),
-		UpdatedAt:       timestamppb.New(time.Unix(d.UpdatedAt, 0)),
+		Id:                d.OrderID,
+		UserId:            d.UserID,
+		Symbol:            d.Symbol,
+		Side:              domainSideToOrderSide(d.Side),
+		Type:              domainTypeToOrderType(d.OrderType),
+		Price:             price,
+		Quantity:          qty,
+		FilledQuantity:    filled,
+		RemainingQuantity: remaining,
+		AveragePrice:      avg,
+		TotalValue:        avg * filled,
+		Status:            domainStatusToOrderStatus(d.Status),
+		TimeInForce:       domainTimeInForceToPB(d.TimeInForce),
+		ParentOrderId:     d.ParentOrderID,
+		LinkedOrderId:     d.OcoOrderID,
+		LinkedType:        linkedType,
+		CreatedAt:         unixToTimestamp(d.CreatedAt),
+		UpdatedAt:         unixToTimestamp(d.UpdatedAt),
+		Metadata:          metadata,
 	}
+}
+
+func applyCompatMetadata(cmd *application.PlaceOrderCommand, md map[string]string) {
+	if len(md) == 0 {
+		return
+	}
+	if v := md["oco_order_id"]; v != "" {
+		cmd.OcoOrderID = v
+	}
+	if v := md["is_oco"]; v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			cmd.IsOCO = b
+		}
+	}
+	if v := md["stop_price"]; v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			cmd.StopPrice = f
+		}
+	}
+	if v := md["take_profit_price"]; v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			cmd.TakeProfitPrice = f
+		}
+	}
+}
+
+func orderSideToDomain(side pb.OrderSide) string {
+	switch side {
+	case pb.OrderSide_ORDER_SIDE_BUY:
+		return string(domain.SideBuy)
+	case pb.OrderSide_ORDER_SIDE_SELL:
+		return string(domain.SideSell)
+	default:
+		return ""
+	}
+}
+
+func orderTypeToDomain(typ pb.OrderType) string {
+	switch typ {
+	case pb.OrderType_ORDER_TYPE_LIMIT:
+		return string(domain.TypeLimit)
+	case pb.OrderType_ORDER_TYPE_MARKET:
+		return string(domain.TypeMarket)
+	case pb.OrderType_ORDER_TYPE_STOP_LIMIT:
+		return string(domain.TypeStopLimit)
+	case pb.OrderType_ORDER_TYPE_STOP_MARKET:
+		return string(domain.TypeStopMarket)
+	case pb.OrderType_ORDER_TYPE_TRAILING_STOP:
+		return string(domain.TypeTrailing)
+	default:
+		name := strings.TrimPrefix(typ.String(), "ORDER_TYPE_")
+		return strings.ToLower(name)
+	}
+}
+
+func timeInForceToDomain(tif pb.TimeInForce) string {
+	switch tif {
+	case pb.TimeInForce_TIME_IN_FORCE_IMMEDIATE_OR_CANCEL:
+		return string(domain.IOC)
+	case pb.TimeInForce_TIME_IN_FORCE_FILL_OR_KILL:
+		return string(domain.FOK)
+	case pb.TimeInForce_TIME_IN_FORCE_GOOD_TILL_CANCEL, pb.TimeInForce_TIME_IN_FORCE_DAY:
+		return string(domain.GTC)
+	default:
+		return ""
+	}
+}
+
+func orderStatusToDomain(status pb.OrderStatus) domain.OrderStatus {
+	switch status {
+	case pb.OrderStatus_ORDER_STATUS_PENDING_NEW:
+		return domain.StatusPending
+	case pb.OrderStatus_ORDER_STATUS_NEW:
+		return domain.StatusValidated
+	case pb.OrderStatus_ORDER_STATUS_PARTIALLY_FILLED:
+		return domain.StatusPartiallyFilled
+	case pb.OrderStatus_ORDER_STATUS_FILLED:
+		return domain.StatusFilled
+	case pb.OrderStatus_ORDER_STATUS_CANCELLED:
+		return domain.StatusCancelled
+	case pb.OrderStatus_ORDER_STATUS_REJECTED:
+		return domain.StatusRejected
+	case pb.OrderStatus_ORDER_STATUS_EXPIRED:
+		return domain.StatusExpired
+	default:
+		return ""
+	}
+}
+
+func domainSideToOrderSide(side string) pb.OrderSide {
+	switch strings.ToLower(side) {
+	case "buy":
+		return pb.OrderSide_ORDER_SIDE_BUY
+	case "sell":
+		return pb.OrderSide_ORDER_SIDE_SELL
+	default:
+		return pb.OrderSide_ORDER_SIDE_UNSPECIFIED
+	}
+}
+
+func domainTypeToOrderType(orderType string) pb.OrderType {
+	switch strings.ToLower(orderType) {
+	case "limit":
+		return pb.OrderType_ORDER_TYPE_LIMIT
+	case "market":
+		return pb.OrderType_ORDER_TYPE_MARKET
+	case "stop_limit":
+		return pb.OrderType_ORDER_TYPE_STOP_LIMIT
+	case "stop_market":
+		return pb.OrderType_ORDER_TYPE_STOP_MARKET
+	case "trailing_stop":
+		return pb.OrderType_ORDER_TYPE_TRAILING_STOP
+	default:
+		return pb.OrderType_ORDER_TYPE_UNSPECIFIED
+	}
+}
+
+func domainStatusToOrderStatus(status string) pb.OrderStatus {
+	switch strings.ToLower(status) {
+	case "pending":
+		return pb.OrderStatus_ORDER_STATUS_PENDING_NEW
+	case "validated":
+		return pb.OrderStatus_ORDER_STATUS_NEW
+	case "partially_filled":
+		return pb.OrderStatus_ORDER_STATUS_PARTIALLY_FILLED
+	case "filled":
+		return pb.OrderStatus_ORDER_STATUS_FILLED
+	case "cancelled":
+		return pb.OrderStatus_ORDER_STATUS_CANCELLED
+	case "rejected":
+		return pb.OrderStatus_ORDER_STATUS_REJECTED
+	case "expired":
+		return pb.OrderStatus_ORDER_STATUS_EXPIRED
+	default:
+		return pb.OrderStatus_ORDER_STATUS_UNSPECIFIED
+	}
+}
+
+func domainTimeInForceToPB(tif string) pb.TimeInForce {
+	switch strings.ToUpper(tif) {
+	case "IOC":
+		return pb.TimeInForce_TIME_IN_FORCE_IMMEDIATE_OR_CANCEL
+	case "FOK":
+		return pb.TimeInForce_TIME_IN_FORCE_FILL_OR_KILL
+	case "GTC":
+		return pb.TimeInForce_TIME_IN_FORCE_GOOD_TILL_CANCEL
+	default:
+		return pb.TimeInForce_TIME_IN_FORCE_UNSPECIFIED
+	}
+}
+
+func parseDecimalString(v string) float64 {
+	d, err := decimal.NewFromString(v)
+	if err != nil {
+		return 0
+	}
+	return d.InexactFloat64()
+}
+
+func int64ToInt32(v int64) int32 {
+	if v > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if v < math.MinInt32 {
+		return math.MinInt32
+	}
+	return int32(v)
+}
+
+func unixToTimestamp(sec int64) *timestamppb.Timestamp {
+	if sec <= 0 {
+		return nil
+	}
+	return timestamppb.New(time.Unix(sec, 0))
 }

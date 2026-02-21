@@ -47,9 +47,11 @@ func (c *OrderClientImpl) PlaceOrder(ctx context.Context, symbol string, side st
 	var orderSide orderv1.OrderSide
 	switch side {
 	case "BUY":
-		orderSide = orderv1.OrderSide_BUY
+		orderSide = orderv1.OrderSide_ORDER_SIDE_BUY
 	case "SELL":
-		orderSide = orderv1.OrderSide_SELL
+		orderSide = orderv1.OrderSide_ORDER_SIDE_SELL
+	default:
+		orderSide = orderv1.OrderSide_ORDER_SIDE_UNSPECIFIED
 	}
 
 	req := &orderv1.CreateOrderRequest{
@@ -58,7 +60,7 @@ func (c *OrderClientImpl) PlaceOrder(ctx context.Context, symbol string, side st
 		Side:     orderSide,
 		Price:    price.InexactFloat64(),
 		Quantity: quantity.InexactFloat64(),
-		Type:     orderv1.OrderType_LIMIT,
+		Type:     orderv1.OrderType_ORDER_TYPE_LIMIT,
 	}
 
 	resp, err := c.orderCli.CreateOrder(ctx, req)
